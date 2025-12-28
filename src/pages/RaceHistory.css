@@ -148,6 +148,12 @@
   border-radius: 20px;
 }
 
+/* テーブルラッパー（横スクロール対応） */
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* モデル比較表（RaceDetailと同じスタイル） */
 .date-card .model-comparison-table {
   width: 100%;

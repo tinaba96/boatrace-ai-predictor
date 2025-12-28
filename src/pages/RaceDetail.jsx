@@ -208,7 +208,9 @@ function RaceDetail() {
   const getModelComparison = () => {
     if (!raceData || !raceData.races) return null
 
-    const models = ['standard', 'safeBet', 'upsetFocus']
+    // 12/18以前は prediction（単数形）、12/19以降は predictions（複数形）
+    const hasNewFormat = raceData.races.some(r => r.predictions)
+    const models = hasNewFormat ? ['standard', 'safeBet', 'upsetFocus'] : ['standard']
     const modelNames = {
       standard: 'スタンダード',
       safeBet: '本命狙い',
@@ -221,7 +223,8 @@ function RaceDetail() {
       let winPayouts = 0, placePayouts = 0, trifecta3Payouts = 0, trio3Payouts = 0
 
       finishedRaces.forEach(race => {
-        const prediction = race.predictions?.[modelKey]
+        // 新形式: predictions[modelKey]、旧形式: prediction (standardとして扱う)
+        const prediction = race.predictions?.[modelKey] || (modelKey === 'standard' ? race.prediction : null)
         if (!prediction) return
 
         const topPick = prediction.topPick
