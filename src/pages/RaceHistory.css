@@ -152,11 +152,14 @@
 .table-wrapper {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  margin: 0 -0.5rem;
+  padding: 0 0.5rem;
 }
 
 /* モデル比較表（RaceDetailと同じスタイル） */
 .date-card .model-comparison-table {
   width: 100%;
+  min-width: 600px;
   border-collapse: collapse;
   margin-bottom: 1rem;
 }
