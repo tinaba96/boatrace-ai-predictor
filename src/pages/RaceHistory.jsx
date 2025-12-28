@@ -279,57 +279,46 @@ function RaceHistory() {
 
                             {/* モデル間パフォーマンス比較表 */}
                             {dateInfo.modelComparison && dateInfo.modelComparison.length > 0 && (
-                              <div style={{
-                                overflowX: 'auto',
-                                WebkitOverflowScrolling: 'touch',
-                                margin: '0 -1rem',
-                                padding: '0 1rem'
-                              }}>
-                                <table style={{
-                                  minWidth: '580px',
-                                  width: '100%',
-                                  borderCollapse: 'collapse',
-                                  marginBottom: '0.5rem',
-                                  fontSize: '0.8rem'
-                                }}>
+                              <div className="table-wrapper">
+                                <table className="model-comparison-table">
                                   <thead>
-                                    <tr style={{ background: '#f8fafc' }}>
-                                      <th style={{ padding: '0.5rem 0.3rem', textAlign: 'left', fontWeight: 700, borderBottom: '2px solid #e2e8f0' }}>モデル</th>
-                                      <th colSpan="2" style={{ padding: '0.5rem 0.3rem', textAlign: 'center', fontWeight: 700, borderBottom: '2px solid #e2e8f0' }}>単勝</th>
-                                      <th colSpan="2" style={{ padding: '0.5rem 0.3rem', textAlign: 'center', fontWeight: 700, borderBottom: '2px solid #e2e8f0' }}>複勝</th>
-                                      <th colSpan="2" style={{ padding: '0.5rem 0.3rem', textAlign: 'center', fontWeight: 700, borderBottom: '2px solid #e2e8f0' }}>3連複</th>
-                                      <th colSpan="2" style={{ padding: '0.5rem 0.3rem', textAlign: 'center', fontWeight: 700, borderBottom: '2px solid #e2e8f0' }}>3連単</th>
+                                    <tr>
+                                      <th>モデル</th>
+                                      <th colSpan="2">単勝</th>
+                                      <th colSpan="2">複勝</th>
+                                      <th colSpan="2">3連複</th>
+                                      <th colSpan="2">3連単</th>
                                     </tr>
-                                    <tr style={{ background: '#f8fafc' }}>
+                                    <tr className="sub-header">
                                       <th></th>
-                                      <th style={{ padding: '0.3rem', fontSize: '0.7rem', color: '#64748b' }}>的中</th>
-                                      <th style={{ padding: '0.3rem', fontSize: '0.7rem', color: '#64748b' }}>回収</th>
-                                      <th style={{ padding: '0.3rem', fontSize: '0.7rem', color: '#64748b' }}>的中</th>
-                                      <th style={{ padding: '0.3rem', fontSize: '0.7rem', color: '#64748b' }}>回収</th>
-                                      <th style={{ padding: '0.3rem', fontSize: '0.7rem', color: '#64748b' }}>的中</th>
-                                      <th style={{ padding: '0.3rem', fontSize: '0.7rem', color: '#64748b' }}>回収</th>
-                                      <th style={{ padding: '0.3rem', fontSize: '0.7rem', color: '#64748b' }}>的中</th>
-                                      <th style={{ padding: '0.3rem', fontSize: '0.7rem', color: '#64748b' }}>回収</th>
+                                      <th className="sub-th">的中率</th>
+                                      <th className="sub-th">回収率</th>
+                                      <th className="sub-th">的中率</th>
+                                      <th className="sub-th">回収率</th>
+                                      <th className="sub-th">的中率</th>
+                                      <th className="sub-th">回収率</th>
+                                      <th className="sub-th">的中率</th>
+                                      <th className="sub-th">回収率</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {dateInfo.modelComparison.map(model => (
-                                      <tr key={model.key} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                                        <td style={{ padding: '0.5rem 0.3rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{model.name}</td>
-                                        <td style={{ padding: '0.5rem 0.3rem', textAlign: 'center' }}>{model.races > 0 ? formatPercent(model.winHitRate) : '-'}</td>
-                                        <td style={{ padding: '0.5rem 0.3rem', textAlign: 'center', fontWeight: 600, color: model.races > 0 ? getRecoveryColor(model.winRecoveryRate) : '#64748b' }}>
+                                      <tr key={model.key}>
+                                        <td className="model-name">{model.name}</td>
+                                        <td className="hit-rate">{model.races > 0 ? formatPercent(model.winHitRate) : '-'}</td>
+                                        <td className="recovery-rate" style={{ color: model.races > 0 ? getRecoveryColor(model.winRecoveryRate) : '#64748b' }}>
                                           {model.races > 0 ? formatPercent(model.winRecoveryRate) : '-'}
                                         </td>
-                                        <td style={{ padding: '0.5rem 0.3rem', textAlign: 'center' }}>{model.races > 0 ? formatPercent(model.placeHitRate) : '-'}</td>
-                                        <td style={{ padding: '0.5rem 0.3rem', textAlign: 'center', fontWeight: 600, color: model.races > 0 ? getRecoveryColor(model.placeRecoveryRate) : '#64748b' }}>
+                                        <td className="hit-rate">{model.races > 0 ? formatPercent(model.placeHitRate) : '-'}</td>
+                                        <td className="recovery-rate" style={{ color: model.races > 0 ? getRecoveryColor(model.placeRecoveryRate) : '#64748b' }}>
                                           {model.races > 0 ? formatPercent(model.placeRecoveryRate) : '-'}
                                         </td>
-                                        <td style={{ padding: '0.5rem 0.3rem', textAlign: 'center' }}>{model.races > 0 ? formatPercent(model.trifectaHitRate) : '-'}</td>
-                                        <td style={{ padding: '0.5rem 0.3rem', textAlign: 'center', fontWeight: 600, color: model.races > 0 ? getRecoveryColor(model.trifectaRecoveryRate) : '#64748b' }}>
+                                        <td className="hit-rate">{model.races > 0 ? formatPercent(model.trifectaHitRate) : '-'}</td>
+                                        <td className="recovery-rate" style={{ color: model.races > 0 ? getRecoveryColor(model.trifectaRecoveryRate) : '#64748b' }}>
                                           {model.races > 0 ? formatPercent(model.trifectaRecoveryRate) : '-'}
                                         </td>
-                                        <td style={{ padding: '0.5rem 0.3rem', textAlign: 'center' }}>{model.races > 0 ? formatPercent(model.trioHitRate) : '-'}</td>
-                                        <td style={{ padding: '0.5rem 0.3rem', textAlign: 'center', fontWeight: 600, color: model.races > 0 ? getRecoveryColor(model.trioRecoveryRate) : '#64748b' }}>
+                                        <td className="hit-rate">{model.races > 0 ? formatPercent(model.trioHitRate) : '-'}</td>
+                                        <td className="recovery-rate" style={{ color: model.races > 0 ? getRecoveryColor(model.trioRecoveryRate) : '#64748b' }}>
                                           {model.races > 0 ? formatPercent(model.trioRecoveryRate) : '-'}
                                         </td>
                                       </tr>
