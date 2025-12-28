@@ -144,76 +144,7 @@
   font-weight: 600;
 }
 
-/* モデル比較表 */
-.model-comparison-section {
-  background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 2px solid #e2e8f0;
-}
-
-.model-comparison-section h3 {
-  font-size: 1.5rem;
-  color: #1e293b;
-  margin: 0 0 1.5rem 0;
-  font-weight: 800;
-  text-align: center;
-}
-
-.model-comparison-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.model-comparison-table th {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  padding: 1rem;
-  text-align: center;
-  font-weight: 700;
-  color: #1e293b;
-  border-bottom: 2px solid #e2e8f0;
-}
-
-.model-comparison-table .sub-header th {
-  font-size: 0.85rem;
-  padding: 0.5rem;
-  font-weight: 600;
-  color: #64748b;
-}
-
-.model-comparison-table td {
-  padding: 1rem;
-  text-align: center;
-  border-bottom: 1px solid #e2e8f0;
-  color: #1e293b;
-}
-
-.model-comparison-table tr.selected-model {
-  background: #eff6ff;
-  border-left: 4px solid #0ea5e9;
-}
-
-.model-comparison-table tr.selected-model td {
-  color: #1e293b;
-}
-
-.model-comparison-table .model-name {
-  font-weight: 700;
-  color: #1e293b;
-  text-align: left;
-}
-
-.model-comparison-table .races-cell {
-  color: #1e293b;
-  font-weight: 600;
-}
-
-.model-comparison-table .hit-rate {
-  color: #1e293b;
-  font-weight: 600;
-}
+/* モデル比較表は ModelComparisonTable.css を使用 */
 
 /* レース一覧セクション */
 .race-list-section {

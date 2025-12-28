@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async'
 import Header from '../components/Header'
 import Breadcrumb from '../components/Breadcrumb'
 import LoadingScreen from '../components/LoadingScreen'
+import ModelComparisonTable from '../components/ModelComparisonTable'
 import './RaceHistory.css'
 
 function RaceHistory() {
@@ -181,16 +182,6 @@ function RaceHistory() {
     { label: '過去の予想', path: '/races' }
   ]
 
-  // パーセント表示
-  const formatPercent = (rate) => (rate * 100).toFixed(1) + '%'
-
-  // 回収率の色を取得
-  const getRecoveryColor = (rate) => {
-    if (rate >= 1.0) return '#10b981'
-    if (rate >= 0.9) return '#f59e0b'
-    return '#ef4444'
-  }
-
   // 月のサマリーを計算
   const getMonthSummary = (dates) => {
     const totalRaces = dates.reduce((sum, d) => sum + d.finishedRaces, 0)
@@ -278,55 +269,10 @@ function RaceHistory() {
                             </div>
 
                             {/* モデル間パフォーマンス比較表 */}
-                            {dateInfo.modelComparison && dateInfo.modelComparison.length > 0 && (
-                              <div className="table-wrapper">
-                                <table className="model-comparison-table">
-                                  <thead>
-                                    <tr>
-                                      <th>モデル</th>
-                                      <th colSpan="2">単勝</th>
-                                      <th colSpan="2">複勝</th>
-                                      <th colSpan="2">3連複</th>
-                                      <th colSpan="2">3連単</th>
-                                    </tr>
-                                    <tr className="sub-header">
-                                      <th></th>
-                                      <th className="sub-th">的中率</th>
-                                      <th className="sub-th">回収率</th>
-                                      <th className="sub-th">的中率</th>
-                                      <th className="sub-th">回収率</th>
-                                      <th className="sub-th">的中率</th>
-                                      <th className="sub-th">回収率</th>
-                                      <th className="sub-th">的中率</th>
-                                      <th className="sub-th">回収率</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {dateInfo.modelComparison.map(model => (
-                                      <tr key={model.key}>
-                                        <td className="model-name">{model.name}</td>
-                                        <td className="hit-rate">{model.races > 0 ? formatPercent(model.winHitRate) : '-'}</td>
-                                        <td className="recovery-rate" style={{ color: model.races > 0 ? getRecoveryColor(model.winRecoveryRate) : '#64748b' }}>
-                                          {model.races > 0 ? formatPercent(model.winRecoveryRate) : '-'}
-                                        </td>
-                                        <td className="hit-rate">{model.races > 0 ? formatPercent(model.placeHitRate) : '-'}</td>
-                                        <td className="recovery-rate" style={{ color: model.races > 0 ? getRecoveryColor(model.placeRecoveryRate) : '#64748b' }}>
-                                          {model.races > 0 ? formatPercent(model.placeRecoveryRate) : '-'}
-                                        </td>
-                                        <td className="hit-rate">{model.races > 0 ? formatPercent(model.trifectaHitRate) : '-'}</td>
-                                        <td className="recovery-rate" style={{ color: model.races > 0 ? getRecoveryColor(model.trifectaRecoveryRate) : '#64748b' }}>
-                                          {model.races > 0 ? formatPercent(model.trifectaRecoveryRate) : '-'}
-                                        </td>
-                                        <td className="hit-rate">{model.races > 0 ? formatPercent(model.trioHitRate) : '-'}</td>
-                                        <td className="recovery-rate" style={{ color: model.races > 0 ? getRecoveryColor(model.trioRecoveryRate) : '#64748b' }}>
-                                          {model.races > 0 ? formatPercent(model.trioRecoveryRate) : '-'}
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            )}
+                            <ModelComparisonTable
+                              data={dateInfo.modelComparison}
+                              compact={true}
+                            />
 
                             <div className="date-card-footer">
                               <span className="view-detail">詳細を見る →</span>

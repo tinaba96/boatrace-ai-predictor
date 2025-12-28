@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import Header from '../components/Header'
 import Breadcrumb from '../components/Breadcrumb'
+import ModelComparisonTable from '../components/ModelComparisonTable'
 import './RaceDetail.css'
 
 function RaceDetail() {
@@ -275,67 +276,6 @@ function RaceDetail() {
 
   const modelComparison = getModelComparison()
 
-  // モデル比較表コンポーネント
-  const ModelComparisonTable = () => {
-    if (!modelComparison) return null
-
-    return (
-      <div className="model-comparison-section">
-        <h3>📊 モデル間パフォーマンス比較</h3>
-        <div className="table-wrapper">
-          <table className="model-comparison-table">
-            <thead>
-              <tr>
-                <th>モデル</th>
-                <th>レース数</th>
-                <th colSpan="2">単勝</th>
-                <th colSpan="2">複勝</th>
-                <th colSpan="2">3連複</th>
-                <th colSpan="2">3連単</th>
-              </tr>
-              <tr className="sub-header">
-                <th></th>
-                <th></th>
-                <th className="sub-th">的中率</th>
-                <th className="sub-th">回収率</th>
-                <th className="sub-th">的中率</th>
-                <th className="sub-th">回収率</th>
-                <th className="sub-th">的中率</th>
-                <th className="sub-th">回収率</th>
-                <th className="sub-th">的中率</th>
-                <th className="sub-th">回収率</th>
-              </tr>
-            </thead>
-            <tbody>
-              {modelComparison.map(model => (
-                <tr key={model.key}>
-                  <td className="model-name">{model.name}</td>
-                  <td className="races-cell">{model.races > 0 ? `${model.races}レース` : '-'}</td>
-                  <td className="hit-rate">{model.races > 0 ? formatPercent(model.winHitRate) : '-'}</td>
-                  <td className="recovery-rate" style={{ color: model.races > 0 ? getRecoveryColor(model.winRecoveryRate) : '#64748b' }}>
-                    {model.races > 0 ? formatPercent(model.winRecoveryRate) : '-'}
-                  </td>
-                  <td className="hit-rate">{model.races > 0 ? formatPercent(model.placeHitRate) : '-'}</td>
-                  <td className="recovery-rate" style={{ color: model.races > 0 ? getRecoveryColor(model.placeRecoveryRate) : '#64748b' }}>
-                    {model.races > 0 ? formatPercent(model.placeRecoveryRate) : '-'}
-                  </td>
-                  <td className="hit-rate">{model.races > 0 ? formatPercent(model.trifectaHitRate) : '-'}</td>
-                  <td className="recovery-rate" style={{ color: model.races > 0 ? getRecoveryColor(model.trifectaRecoveryRate) : '#64748b' }}>
-                    {model.races > 0 ? formatPercent(model.trifectaRecoveryRate) : '-'}
-                  </td>
-                  <td className="hit-rate">{model.races > 0 ? formatPercent(model.trioHitRate) : '-'}</td>
-                  <td className="recovery-rate" style={{ color: model.races > 0 ? getRecoveryColor(model.trioRecoveryRate) : '#64748b' }}>
-                    {model.races > 0 ? formatPercent(model.trioRecoveryRate) : '-'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <>
       <Helmet>
@@ -371,9 +311,11 @@ function RaceDetail() {
         ) : (
           <>
             {/* 統計セクション */}
-            <div className="stats-section">
-              <ModelComparisonTable />
-            </div>
+            <ModelComparisonTable
+              data={modelComparison}
+              showRaceCount={true}
+              title="📊 モデル間パフォーマンス比較"
+            />
 
             {/* レース場選択 */}
             {venuesData.length > 0 && (
