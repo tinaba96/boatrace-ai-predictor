@@ -148,61 +148,7 @@
   border-radius: 20px;
 }
 
-/* テーブルラッパー（横スクロール対応） */
-.table-wrapper {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  margin: 0 -0.5rem;
-  padding: 0 0.5rem;
-}
-
-/* モデル比較表（RaceDetailと同じスタイル） */
-.date-card .model-comparison-table {
-  width: 100%;
-  min-width: 600px;
-  border-collapse: collapse;
-  margin-bottom: 1rem;
-}
-
-.date-card .model-comparison-table th {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  padding: 0.75rem 0.5rem;
-  text-align: center;
-  font-weight: 700;
-  color: #1e293b;
-  border-bottom: 2px solid #e2e8f0;
-  font-size: 0.85rem;
-}
-
-.date-card .model-comparison-table .sub-header th {
-  font-size: 0.75rem;
-  padding: 0.4rem 0.3rem;
-  font-weight: 600;
-  color: #64748b;
-}
-
-.date-card .model-comparison-table td {
-  padding: 0.75rem 0.5rem;
-  text-align: center;
-  border-bottom: 1px solid #e2e8f0;
-  color: #1e293b;
-  font-size: 0.85rem;
-}
-
-.date-card .model-comparison-table .model-name {
-  font-weight: 700;
-  color: #1e293b;
-  text-align: left;
-}
-
-.date-card .model-comparison-table .hit-rate {
-  color: #1e293b;
-  font-weight: 600;
-}
-
-.date-card .model-comparison-table .recovery-rate {
-  font-weight: 700;
-}
+/* モデル比較表はインラインスタイルを使用 */
 
 .date-card-footer {
   text-align: right;
@@ -242,21 +188,6 @@
   .race-count {
     align-self: flex-start;
   }
-
-  .date-card .model-comparison-table th {
-    padding: 0.6rem 0.3rem;
-    font-size: 0.75rem;
-  }
-
-  .date-card .model-comparison-table .sub-header th {
-    padding: 0.4rem 0.2rem;
-    font-size: 0.7rem;
-  }
-
-  .date-card .model-comparison-table td {
-    padding: 0.6rem 0.3rem;
-    font-size: 0.75rem;
-  }
 }
 
 @media (max-width: 480px) {
@@ -270,20 +201,5 @@
 
   .month-title h2 {
     font-size: 1.1rem;
-  }
-
-  .date-card .model-comparison-table th {
-    padding: 0.5rem 0.2rem;
-    font-size: 0.7rem;
-  }
-
-  .date-card .model-comparison-table .sub-header th {
-    padding: 0.35rem 0.15rem;
-    font-size: 0.65rem;
-  }
-
-  .date-card .model-comparison-table td {
-    padding: 0.5rem 0.2rem;
-    font-size: 0.7rem;
   }
 }
