@@ -1379,6 +1379,7 @@ function App({ tab = 'races' }) {
                 }}>
                     <Link to="/blog" style={{ color: '#94a3b8', textDecoration: 'none' }}>ブログ</Link>
                     <Link to="/about" style={{ color: '#94a3b8', textDecoration: 'none' }}>About</Link>
+                    <Link to="/profile" style={{ color: '#94a3b8', textDecoration: 'none' }}>運営者</Link>
                     <Link to="/faq" style={{ color: '#94a3b8', textDecoration: 'none' }}>FAQ</Link>
                     <Link to="/privacy" style={{ color: '#94a3b8', textDecoration: 'none' }}>プライバシーポリシー</Link>
                     <Link to="/terms" style={{ color: '#94a3b8', textDecoration: 'none' }}>利用規約</Link>

@@ -8,6 +8,7 @@ import FAQ from './pages/FAQ';
 import HowToUse from './pages/HowToUse';
 import RaceHistory from './pages/RaceHistory';
 import RaceDetail from './pages/RaceDetail';
+import Profile from './pages/Profile';
 
 // 旧ハッシュURLからのリダイレクトを処理するコンポーネント
 function HashRedirect() {
@@ -57,6 +58,7 @@ export default function AppRouter() {
         <Route path="/about" element={<About />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/how-to-use" element={<HowToUse />} />
+        <Route path="/profile" element={<Profile />} />
 
         {/* Fallback: 不明なパスはトップへ */}
         <Route path="*" element={<Navigate to="/" replace />} />

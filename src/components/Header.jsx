@@ -20,6 +20,7 @@ function Header() {
     if (location.pathname.startsWith('/blog')) return 'blog'
     if (location.pathname === '/faq') return 'faq'
     if (location.pathname === '/about') return 'about'
+    if (location.pathname === '/profile') return 'profile'
     return 'races'
   }
 
@@ -118,6 +119,13 @@ function Header() {
                   onClick={() => setIsMenuOpen(false)}
                 >
                   ℹ️ サービスについて
+                </Link>
+                <Link
+                  to="/profile"
+                  className={`submenu-item ${activeTab === 'profile' ? 'active' : ''}`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  👤 運営者プロフィール
                 </Link>
               </div>
             )}
