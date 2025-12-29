@@ -2,7 +2,7 @@ name: Linear Task Sync
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ master, main, develop ]
   pull_request:
     types: [ opened, closed, synchronize ]
 
