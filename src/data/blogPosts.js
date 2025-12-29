@@ -1,6 +1,16 @@
 // Blog post metadata
 export const blogPosts = [
     {
+        id: 'how-we-measure-accuracy',
+        title: 'BoatAIの実績は本物か？計測方法と透明性を徹底解説',
+        description: 'BoatAIの的中率・回収率はどうやって計測しているのか？なぜ全データを公開しているのか？実績の信頼性と透明性について徹底解説します。',
+        date: '2025-12-29',
+        category: 'データ分析',
+        tags: ['実績', '的中率', '回収率', '透明性', '計測方法'],
+        readTime: '12分',
+        featured: true
+    },
+    {
         id: 'why-you-lose',
         title: 'ボートレースで勝てない人の5つの共通点とAI予想による解決策',
         description: 'なぜあなたはボートレースで勝てないのか？1,899レースのデータ分析から見えてきた「負けパターン」と、AI予想を使った解決策をお伝えします。',
