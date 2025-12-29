@@ -38,20 +38,12 @@ jobs:
             # PRのタイトルと説明も含める
             PR_TITLE="${{ github.event.pull_request.title }}"
             PR_BODY="${{ github.event.pull_request.body }}"
-            COMMIT_MSG="$PR_TITLE
-
-$PR_BODY
-
-$COMMIT_MSG"
+            COMMIT_MSG="${PR_TITLE}"$'\n\n'"${PR_BODY}"$'\n\n'"${COMMIT_MSG}"
           fi
-          
+
           # マルチライン文字列を安全に保存
-          {
-            echo 'EOF'
-            echo "$COMMIT_MSG"
-            echo 'EOF'
-          } > /tmp/commit_msg.txt
-          
+          echo "$COMMIT_MSG" > /tmp/commit_msg.txt
+
           echo "commit_msg_file=/tmp/commit_msg.txt" >> $GITHUB_OUTPUT
 
       - name: Update Linear tasks
@@ -65,13 +57,13 @@ $COMMIT_MSG"
             echo "💡 Linear GitHub統合を使用する場合は、このステップは不要です。"
             exit 0
           fi
-          
-          COMMIT_MSG=$(cat "$GITHUB_COMMIT_MESSAGE" | tail -n +2 | head -n -1)
-          
+
+          COMMIT_MSG=$(cat "$GITHUB_COMMIT_MESSAGE")
+
           echo "📝 コミットメッセージ:"
           echo "$COMMIT_MSG"
           echo ""
-          
+
           # Node.jsスクリプトを使用してLinearタスクを更新
           node .github/scripts/linear-sync.js "$COMMIT_MSG"
 
