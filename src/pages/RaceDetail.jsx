@@ -432,12 +432,23 @@ function RaceDetail() {
                     const isFinished = result?.finished
 
                     // 的中判定（買い方別）
+                    // 新形式: predictions（複数形）、旧形式: prediction（単数形）
                     let hitBadges = []
-                    if (isFinished && racePrediction?.predictions) {
+                    const hasNewFormat = !!racePrediction?.predictions
+                    const hasOldFormat = !!racePrediction?.prediction
+
+                    if (isFinished && (hasNewFormat || hasOldFormat)) {
                       // モデルキーを変換
                       const modelKey = selectedModel === 'safe-bet' ? 'safeBet' :
                         selectedModel === 'upset-focus' ? 'upsetFocus' : 'standard'
-                      const prediction = racePrediction.predictions[modelKey]
+
+                      // 旧形式の場合はstandardモデルのみ
+                      let prediction
+                      if (hasNewFormat) {
+                        prediction = racePrediction.predictions[modelKey]
+                      } else if (modelKey === 'standard') {
+                        prediction = racePrediction.prediction
+                      }
 
                       if (prediction) {
                         const topPick = prediction.topPick
