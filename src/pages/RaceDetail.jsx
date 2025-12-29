@@ -144,7 +144,11 @@ function RaceDetail() {
     setSelectedRace(race)
 
     const racePrediction = race.rawData
-    if (!racePrediction || !racePrediction.predictions) {
+    // 新形式: predictions（複数形）、旧形式: prediction（単数形）
+    const hasNewFormat = !!racePrediction?.predictions
+    const hasOldFormat = !!racePrediction?.prediction
+
+    if (!racePrediction || (!hasNewFormat && !hasOldFormat)) {
       setPrediction({
         error: true,
         errorMessage: '予想データがありません'
@@ -162,7 +166,22 @@ function RaceDetail() {
     // 現在選択中のモデルを使用（推奨モデルに自動切り替えしない）
     const modelKey = selectedModel === 'safe-bet' ? 'safeBet' :
       selectedModel === 'upset-focus' ? 'upsetFocus' : 'standard'
-    const modelPrediction = racePrediction.predictions[modelKey]
+
+    // 旧形式の場合はstandardモデルのみ対応
+    let modelPrediction
+    if (hasNewFormat) {
+      modelPrediction = racePrediction.predictions[modelKey]
+    } else {
+      // 旧形式: predictionをstandardとして扱う
+      if (modelKey !== 'standard') {
+        setPrediction({
+          error: true,
+          errorMessage: 'この日付のデータはスタンダードモデルのみ対応しています'
+        })
+        return
+      }
+      modelPrediction = racePrediction.prediction
+    }
 
     if (!modelPrediction) {
       setPrediction({
@@ -184,10 +203,10 @@ function RaceDetail() {
       recommended: top3Players,
       allPlayers: modelPrediction.players,
       confidence: modelPrediction.confidence,
-      reasoning: modelPrediction.reasoning,
+      reasoning: modelPrediction.reasoning || ['予想根拠データなし'],
       top3: modelPrediction.top3,
       result: racePrediction.result,
-      predictions: racePrediction.predictions
+      predictions: racePrediction.predictions || { standard: racePrediction.prediction }
     })
 
     // スクロール
