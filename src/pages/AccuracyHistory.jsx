@@ -143,10 +143,10 @@ function AccuracyHistory() {
                 winRecoveryRate: data.actualRecovery?.win?.recoveryRate || 0,
                 placeHitRate: data.topPickPlaceRate || 0,
                 placeRecoveryRate: data.actualRecovery?.place?.recoveryRate || 0,
-                trifectaHitRate: data.top3IncludedRate || 0,
-                trifectaRecoveryRate: data.actualRecovery?.trio?.recoveryRate || 0,
-                trioHitRate: data.top3HitRate || 0,
-                trioRecoveryRate: data.actualRecovery?.trifecta?.recoveryRate || 0
+                trifectaHitRate: data.top3HitRate || 0,
+                trifectaRecoveryRate: data.actualRecovery?.trifecta?.recoveryRate || 0,
+                trioHitRate: data.top3IncludedRate || 0,
+                trioRecoveryRate: data.actualRecovery?.trio?.recoveryRate || 0
             }
         })
     }
