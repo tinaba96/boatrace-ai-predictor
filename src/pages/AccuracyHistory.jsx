@@ -6,7 +6,6 @@ function AccuracyHistory() {
     const [summary, setSummary] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
-    const [selectedModel, setSelectedModel] = useState('standard')
 
     const modelNames = {
         standard: 'スタンダード',
@@ -40,10 +39,10 @@ function AccuracyHistory() {
 
     const formatPercent = (rate) => (rate * 100).toFixed(1) + '%'
 
-    const getRecoveryClass = (rate) => {
-        if (rate >= 1.0) return 'recovery-positive'
-        if (rate >= 0.8) return 'recovery-neutral'
-        return 'recovery-negative'
+    const getRecoveryColor = (rate) => {
+        if (rate >= 1.0) return '#10b981'
+        if (rate >= 0.8) return '#f59e0b'
+        return '#ef4444'
     }
 
     if (loading) {
@@ -74,7 +73,7 @@ function AccuracyHistory() {
 
     // 月別データを収集
     const getMonthlyData = () => {
-        const months = []
+        const monthsMap = {}
         const models = ['standard', 'safeBet', 'upsetFocus']
 
         // lastMonth データを追加
@@ -82,18 +81,16 @@ function AccuracyHistory() {
             if (summary.models && summary.models[model]?.lastMonth) {
                 const lastMonth = summary.models[model].lastMonth
                 if (lastMonth.totalRaces > 0) {
-                    const key = `${lastMonth.year}-${lastMonth.month}`
-                    let existing = months.find(m => m.key === key)
-                    if (!existing) {
-                        existing = {
+                    const key = `${lastMonth.year}-${String(lastMonth.month).padStart(2, '0')}`
+                    if (!monthsMap[key]) {
+                        monthsMap[key] = {
                             key,
                             year: lastMonth.year,
                             month: lastMonth.month,
                             models: {}
                         }
-                        months.push(existing)
                     }
-                    existing.models[model] = lastMonth
+                    monthsMap[key].models[model] = lastMonth
                 }
             }
         })
@@ -103,105 +100,55 @@ function AccuracyHistory() {
             if (summary.models && summary.models[model]?.monthlyHistory) {
                 summary.models[model].monthlyHistory.forEach(monthData => {
                     if (monthData.totalRaces > 0) {
-                        const key = `${monthData.year}-${monthData.month}`
-                        let existing = months.find(m => m.key === key)
-                        if (!existing) {
-                            existing = {
+                        const key = `${monthData.year}-${String(monthData.month).padStart(2, '0')}`
+                        if (!monthsMap[key]) {
+                            monthsMap[key] = {
                                 key,
                                 year: monthData.year,
                                 month: monthData.month,
                                 models: {}
                             }
-                            months.push(existing)
                         }
-                        existing.models[model] = monthData
+                        monthsMap[key].models[model] = monthData
                     }
                 })
             }
         })
 
         // 新しい月順にソート
-        months.sort((a, b) => {
+        return Object.values(monthsMap).sort((a, b) => {
             if (a.year !== b.year) return b.year - a.year
             return b.month - a.month
         })
-
-        return months
     }
 
     const monthlyData = getMonthlyData()
 
-    const renderMonthCard = (monthInfo) => {
-        const modelData = monthInfo.models[selectedModel]
-        if (!modelData) return null
-
-        const recovery = modelData.actualRecovery || {}
-
-        return (
-            <div key={monthInfo.key} className="month-card">
-                <h3 className="month-title">
-                    {monthInfo.year}年{monthInfo.month}月
-                </h3>
-                <div className="month-stats">
-                    <div className="stat-row">
-                        <span className="stat-label">総レース数</span>
-                        <span className="stat-value">{modelData.totalRaces}R</span>
-                    </div>
-                </div>
-
-                <div className="hit-rates-section">
-                    <h4>的中率</h4>
-                    <div className="stats-grid">
-                        <div className="stat-item">
-                            <span className="stat-label">1着的中</span>
-                            <span className="stat-value">{formatPercent(modelData.topPickHitRate)}</span>
-                        </div>
-                        <div className="stat-item">
-                            <span className="stat-label">複勝的中</span>
-                            <span className="stat-value">{formatPercent(modelData.topPickPlaceRate)}</span>
-                        </div>
-                        <div className="stat-item">
-                            <span className="stat-label">3連単的中</span>
-                            <span className="stat-value">{formatPercent(modelData.top3HitRate)}</span>
-                        </div>
-                        <div className="stat-item">
-                            <span className="stat-label">3連複的中</span>
-                            <span className="stat-value">{formatPercent(modelData.top3IncludedRate)}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="recovery-section">
-                    <h4>回収率</h4>
-                    <div className="recovery-grid">
-                        <div className="recovery-item">
-                            <span className="recovery-label">単勝</span>
-                            <span className={`recovery-value ${getRecoveryClass(recovery.win?.recoveryRate || 0)}`}>
-                                {formatPercent(recovery.win?.recoveryRate || 0)}
-                            </span>
-                        </div>
-                        <div className="recovery-item">
-                            <span className="recovery-label">複勝</span>
-                            <span className={`recovery-value ${getRecoveryClass(recovery.place?.recoveryRate || 0)}`}>
-                                {formatPercent(recovery.place?.recoveryRate || 0)}
-                            </span>
-                        </div>
-                        <div className="recovery-item">
-                            <span className="recovery-label">3連単</span>
-                            <span className={`recovery-value ${getRecoveryClass(recovery.trifecta?.recoveryRate || 0)}`}>
-                                {formatPercent(recovery.trifecta?.recoveryRate || 0)}
-                            </span>
-                        </div>
-                        <div className="recovery-item">
-                            <span className="recovery-label">3連複</span>
-                            <span className={`recovery-value ${getRecoveryClass(recovery.trio?.recoveryRate || 0)}`}>
-                                {formatPercent(recovery.trio?.recoveryRate || 0)}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )
+    // 月ごとのモデル比較データを生成
+    const getModelComparisonForMonth = (monthInfo) => {
+        return Object.entries(modelNames).map(([key, name]) => {
+            const data = monthInfo.models[key]
+            if (!data) {
+                return {
+                    key,
+                    name,
+                    races: 0
+                }
+            }
+            return {
+                key,
+                name,
+                races: data.totalRaces || 0,
+                winHitRate: data.topPickHitRate || 0,
+                winRecoveryRate: data.actualRecovery?.win?.recoveryRate || 0,
+                placeHitRate: data.topPickPlaceRate || 0,
+                placeRecoveryRate: data.actualRecovery?.place?.recoveryRate || 0,
+                trifectaHitRate: data.top3IncludedRate || 0,
+                trifectaRecoveryRate: data.actualRecovery?.trio?.recoveryRate || 0,
+                trioHitRate: data.top3HitRate || 0,
+                trioRecoveryRate: data.actualRecovery?.trifecta?.recoveryRate || 0
+            }
+        })
     }
 
     return (
@@ -209,36 +156,73 @@ function AccuracyHistory() {
             <div className="page-header">
                 <Link to="/accuracy" className="back-link">← 成績ページへ戻る</Link>
                 <h1>月別成績アーカイブ</h1>
-                <p className="page-description">過去の月別AI予想成績を確認できます</p>
             </div>
 
-            <div className="model-selector">
-                {Object.entries(modelNames).map(([key, name]) => (
-                    <button
-                        key={key}
-                        className={`model-button ${selectedModel === key ? 'active' : ''}`}
-                        onClick={() => setSelectedModel(key)}
-                    >
-                        {name}
-                    </button>
-                ))}
-            </div>
-
-            <div className="months-container">
-                {monthlyData.length === 0 ? (
-                    <div className="no-data">
-                        <p>まだ月別データがありません。</p>
-                        <p>月が終わるとここに成績が記録されます。</p>
-                    </div>
-                ) : (
-                    monthlyData.map(monthInfo => renderMonthCard(monthInfo))
-                )}
-            </div>
-
-            <div className="archive-notice">
-                <p>※ 毎月月末に前月の成績が自動的にアーカイブされます</p>
-                <p>※ 詳細な会場別分析は<Link to="/blog">ブログ</Link>の月間レポートをご覧ください</p>
-            </div>
+            {monthlyData.length === 0 ? (
+                <div className="no-data">
+                    <p>まだ月別データがありません。</p>
+                    <p>月が終わるとここに成績が記録されます。</p>
+                </div>
+            ) : (
+                monthlyData.map(monthInfo => {
+                    const modelComparison = getModelComparisonForMonth(monthInfo)
+                    return (
+                        <div key={monthInfo.key} className="model-comparison-section">
+                            <h3>📊 {monthInfo.year}年{monthInfo.month}月 モデル間パフォーマンス比較</h3>
+                            <div className="table-wrapper">
+                                <table className="model-comparison-table">
+                                    <thead>
+                                        <tr>
+                                            <th>モデル</th>
+                                            <th>レース数</th>
+                                            <th colSpan="2">単勝</th>
+                                            <th colSpan="2">複勝</th>
+                                            <th colSpan="2">3連複</th>
+                                            <th colSpan="2">3連単</th>
+                                        </tr>
+                                        <tr className="sub-header">
+                                            <th></th>
+                                            <th></th>
+                                            <th className="sub-th">的中率</th>
+                                            <th className="sub-th">回収率</th>
+                                            <th className="sub-th">的中率</th>
+                                            <th className="sub-th">回収率</th>
+                                            <th className="sub-th">的中率</th>
+                                            <th className="sub-th">回収率</th>
+                                            <th className="sub-th">的中率</th>
+                                            <th className="sub-th">回収率</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {modelComparison.map(model => (
+                                            <tr key={model.key}>
+                                                <td className="model-name">{model.name}</td>
+                                                <td className="races-cell">{model.races > 0 ? `${model.races}R` : '-'}</td>
+                                                <td className="hit-rate">{model.races > 0 ? formatPercent(model.winHitRate) : '-'}</td>
+                                                <td className="recovery-rate" style={{ color: model.races > 0 ? getRecoveryColor(model.winRecoveryRate) : '#64748b' }}>
+                                                    {model.races > 0 ? formatPercent(model.winRecoveryRate) : '-'}
+                                                </td>
+                                                <td className="hit-rate">{model.races > 0 ? formatPercent(model.placeHitRate) : '-'}</td>
+                                                <td className="recovery-rate" style={{ color: model.races > 0 ? getRecoveryColor(model.placeRecoveryRate) : '#64748b' }}>
+                                                    {model.races > 0 ? formatPercent(model.placeRecoveryRate) : '-'}
+                                                </td>
+                                                <td className="hit-rate">{model.races > 0 ? formatPercent(model.trifectaHitRate) : '-'}</td>
+                                                <td className="recovery-rate" style={{ color: model.races > 0 ? getRecoveryColor(model.trifectaRecoveryRate) : '#64748b' }}>
+                                                    {model.races > 0 ? formatPercent(model.trifectaRecoveryRate) : '-'}
+                                                </td>
+                                                <td className="hit-rate">{model.races > 0 ? formatPercent(model.trioHitRate) : '-'}</td>
+                                                <td className="recovery-rate" style={{ color: model.races > 0 ? getRecoveryColor(model.trioRecoveryRate) : '#64748b' }}>
+                                                    {model.races > 0 ? formatPercent(model.trioRecoveryRate) : '-'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )
+                })
+            )}
         </div>
     )
 }
