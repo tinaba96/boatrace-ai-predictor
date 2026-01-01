@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { Link } from 'react-router-dom'
 import UpdateStatus from './UpdateStatus'
 import './AccuracyDashboard.css'
 
@@ -724,6 +725,11 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
                         </div>
                         <div className="info-section">
                             <p><strong>データ更新:</strong> レース終了後、自動的に的中率と回収率が計算されます</p>
+                        </div>
+                        <div className="info-section history-link-section">
+                            <Link to="/accuracy/history" className="history-link">
+                                📅 月別成績アーカイブを見る →
+                            </Link>
                         </div>
                     </div>
                 </>
