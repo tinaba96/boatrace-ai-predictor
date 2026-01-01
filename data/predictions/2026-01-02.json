@@ -1,7 +1,7 @@
 {
   "date": "2026-01-02",
-  "generatedAt": "2026-01-01T22:28:19.423Z",
-  "updatedAt": "2026-01-01T22:59:23.721Z",
+  "generatedAt": "2026-01-01T23:27:22.937Z",
+  "updatedAt": "2026-01-01T23:58:17.457Z",
   "races": [
     {
       "raceId": "2026-01-02-01-01",
@@ -75557,30 +75557,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 1,
+        "rank2": 5,
+        "rank3": 4,
+        "payouts": {
+          "win": {
+            "1": 100
+          },
+          "place": {
+            "1": 100,
+            "5": 260
+          },
+          "trifecta": {
+            "1-4-5": 800
+          },
+          "trio": {
+            "1-5-4": 2670
+          }
+        },
+        "updatedAt": "2026-01-01T23:56:36.394Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": true,
+          "top3Included": false
         }
       }
     },
