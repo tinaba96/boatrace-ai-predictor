@@ -389,25 +389,25 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
             trio: '3連単'
         }
 
-        // 選択されたモデルの24ボートレース場データを取得（上部のselectedModelを使用）
+        // 選択されたモデルの24ボートレース場データを取得（全期間データ）
         const venueData = Object.keys(stadiumNames).map(venueCode => {
             const venueStats = summary.models[selectedModel]?.byVenue?.[venueCode]
-            const thisMonthStats = venueStats?.thisMonth
+            const overallStats = venueStats?.overall
 
             return {
                 venueCode: parseInt(venueCode),
                 venueName: stadiumNames[venueCode],
-                win: thisMonthStats?.actualRecovery?.win?.recoveryRate,
-                place: thisMonthStats?.actualRecovery?.place?.recoveryRate,
-                trifecta: thisMonthStats?.actualRecovery?.trifecta?.recoveryRate,
-                trio: thisMonthStats?.actualRecovery?.trio?.recoveryRate,
-                totalRaces: thisMonthStats?.totalRaces || 0
+                win: overallStats?.actualRecovery?.win?.recoveryRate,
+                place: overallStats?.actualRecovery?.place?.recoveryRate,
+                trifecta: overallStats?.actualRecovery?.trifecta?.recoveryRate,
+                trio: overallStats?.actualRecovery?.trio?.recoveryRate,
+                totalRaces: overallStats?.totalRaces || 0
             }
         })
 
         return (
             <div className="venue-strategy-section">
-                <h3>🎯 ボートレース場別投資戦略（今月）</h3>
+                <h3>🎯 ボートレース場別投資戦略</h3>
                 <p className="section-description">
                     {modelNames[selectedModel]}モデルの各ボートレース場・各買い方の回収率を表示しています
                 </p>
