@@ -1,7 +1,7 @@
 {
   "date": "2026-01-03",
-  "generatedAt": "2026-01-02T23:27:48.569Z",
-  "updatedAt": "2026-01-03T00:05:09.061Z",
+  "generatedAt": "2026-01-03T01:53:50.519Z",
+  "updatedAt": "2026-01-03T02:30:59.512Z",
   "races": [
     {
       "raceId": "2026-01-03-01-01",
@@ -10417,30 +10417,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 1,
+        "rank2": 2,
+        "rank3": 6,
+        "payouts": {
+          "win": {
+            "1": 100
+          },
+          "place": {
+            "1": 130,
+            "2": 190
+          },
+          "trifecta": {
+            "1-2-6": 1850
+          },
+          "trio": {
+            "1-2-6": 4810
+          }
+        },
+        "updatedAt": "2026-01-03T01:57:48.538Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -15446,30 +15461,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 5,
+        "rank2": 4,
+        "rank3": 1,
+        "payouts": {
+          "win": {
+            "5": 550
+          },
+          "place": {
+            "4": 470,
+            "5": 120
+          },
+          "trifecta": {
+            "1-4-5": 2440
+          },
+          "trio": {
+            "5-4-1": 18120
+          }
+        },
+        "updatedAt": "2026-01-03T01:59:41.735Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -20462,30 +20492,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 5,
+        "rank2": 4,
+        "rank3": 2,
+        "payouts": {
+          "win": {
+            "5": 2080
+          },
+          "place": {
+            "4": 440,
+            "5": 1360
+          },
+          "trifecta": {
+            "2-4-5": 960
+          },
+          "trio": {
+            "5-4-2": 31700
+          }
+        },
+        "updatedAt": "2026-01-03T02:01:42.203Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -30481,30 +30526,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 4,
+        "rank2": 1,
+        "rank3": 6,
+        "payouts": {
+          "win": {
+            "4": 720
+          },
+          "place": {
+            "1": 100,
+            "4": 120
+          },
+          "trifecta": {
+            "1-4-6": 3860
+          },
+          "trio": {
+            "4-1-6": 11770
+          }
+        },
+        "updatedAt": "2026-01-03T02:05:37.449Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -35495,30 +35555,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 1,
+        "rank2": 2,
+        "rank3": 4,
+        "payouts": {
+          "win": {
+            "1": 120
+          },
+          "place": {
+            "1": 110,
+            "2": 130
+          },
+          "trifecta": {
+            "1-2-4": 1180
+          },
+          "trio": {
+            "1-2-4": 2740
+          }
+        },
+        "updatedAt": "2026-01-03T02:07:36.273Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -40498,30 +40573,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 1,
+        "rank2": 2,
+        "rank3": 4,
+        "payouts": {
+          "win": {
+            "1": 100
+          },
+          "place": {
+            "1": 100,
+            "2": 200
+          },
+          "trifecta": {
+            "1-2-4": 740
+          },
+          "trio": {
+            "1-2-4": 2040
+          }
+        },
+        "updatedAt": "2026-01-03T02:09:30.450Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -40915,30 +41005,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 2,
+        "rank2": 1,
+        "rank3": 3,
+        "payouts": {
+          "win": {
+            "2": 420
+          },
+          "place": {
+            "1": 130,
+            "2": 220
+          },
+          "trifecta": {
+            "1-2-3": 380
+          },
+          "trio": {
+            "2-1-3": 1580
+          }
+        },
+        "updatedAt": "2026-01-03T02:09:41.312Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": true,
+          "top3Hit": true,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": true,
+          "top3Hit": true,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": true,
+          "top3Hit": true,
+          "top3Included": false
         }
       }
     },
@@ -41333,30 +41438,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 4,
+        "rank2": 1,
+        "rank3": 5,
+        "payouts": {
+          "win": {
+            "4": 600
+          },
+          "place": {
+            "1": 110,
+            "4": 160
+          },
+          "trifecta": {
+            "1-4-5": 1000
+          },
+          "trio": {
+            "4-1-5": 2670
+          }
+        },
+        "updatedAt": "2026-01-03T02:09:50.069Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -41749,30 +41869,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 1,
+        "rank2": 4,
+        "rank3": 2,
+        "payouts": {
+          "win": {
+            "1": 160
+          },
+          "place": {
+            "1": 100,
+            "4": 630
+          },
+          "trifecta": {
+            "1-2-4": 720
+          },
+          "trio": {
+            "1-4-2": 2920
+          }
+        },
+        "updatedAt": "2026-01-03T02:09:58.851Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -42166,30 +42301,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 3,
+        "rank2": 4,
+        "rank3": 5,
+        "payouts": {
+          "win": {
+            "3": 410
+          },
+          "place": {
+            "3": 680,
+            "4": 680
+          },
+          "trifecta": {
+            "3-4-5": 1080
+          },
+          "trio": {
+            "3-4-5": 3640
+          }
+        },
+        "updatedAt": "2026-01-03T02:10:08.634Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -43527,19 +43677,6 @@
               "aiScore": 2045
             },
             {
-              "number": 5,
-              "name": "吉田　　和仁",
-              "grade": "B1",
-              "age": 42,
-              "winRate": "4.690",
-              "localWinRate": "3.200",
-              "motorNumber": 31,
-              "motor2Rate": "41.5",
-              "boatNumber": 54,
-              "boat2Rate": "41.7",
-              "aiScore": 1936
-            },
-            {
               "number": 2,
               "name": "菅沼　　佳昭",
               "grade": "B1",
@@ -43551,6 +43688,19 @@
               "boatNumber": 48,
               "boat2Rate": "32.4",
               "aiScore": 1813
+            },
+            {
+              "number": 5,
+              "name": "吉田　　和仁",
+              "grade": "B1",
+              "age": 42,
+              "winRate": "4.690",
+              "localWinRate": "3.200",
+              "motorNumber": 31,
+              "motor2Rate": "41.5",
+              "boatNumber": 58,
+              "boat2Rate": "23.0",
+              "aiScore": 1749
             }
           ],
           "reasoning": [
@@ -43628,8 +43778,8 @@
               "localWinRate": "3.200",
               "motorNumber": 31,
               "motor2Rate": "41.5",
-              "boatNumber": 54,
-              "boat2Rate": "41.7",
+              "boatNumber": 58,
+              "boat2Rate": "23.0",
               "aiScore": 2467
             },
             {
@@ -43656,7 +43806,7 @@
           "top3": [
             6,
             4,
-            5
+            1
           ],
           "confidence": 95,
           "players": [
@@ -43687,19 +43837,6 @@
               "aiScore": 13153
             },
             {
-              "number": 5,
-              "name": "吉田　　和仁",
-              "grade": "B1",
-              "age": 42,
-              "winRate": "4.690",
-              "localWinRate": "3.200",
-              "motorNumber": 31,
-              "motor2Rate": "41.5",
-              "boatNumber": 54,
-              "boat2Rate": "41.7",
-              "aiScore": 12068
-            },
-            {
               "number": 1,
               "name": "小林　　孝彰",
               "grade": "A2",
@@ -43724,6 +43861,19 @@
               "boatNumber": 56,
               "boat2Rate": "31.7",
               "aiScore": 11211
+            },
+            {
+              "number": 5,
+              "name": "吉田　　和仁",
+              "grade": "B1",
+              "age": 42,
+              "winRate": "4.690",
+              "localWinRate": "3.200",
+              "motorNumber": 31,
+              "motor2Rate": "41.5",
+              "boatNumber": 58,
+              "boat2Rate": "23.0",
+              "aiScore": 10570
             },
             {
               "number": 2,
@@ -43807,19 +43957,6 @@
             "aiScore": 2045
           },
           {
-            "number": 5,
-            "name": "吉田　　和仁",
-            "grade": "B1",
-            "age": 42,
-            "winRate": "4.690",
-            "localWinRate": "3.200",
-            "motorNumber": 31,
-            "motor2Rate": "41.5",
-            "boatNumber": 54,
-            "boat2Rate": "41.7",
-            "aiScore": 1936
-          },
-          {
             "number": 2,
             "name": "菅沼　　佳昭",
             "grade": "B1",
@@ -43831,6 +43968,19 @@
             "boatNumber": 48,
             "boat2Rate": "32.4",
             "aiScore": 1813
+          },
+          {
+            "number": 5,
+            "name": "吉田　　和仁",
+            "grade": "B1",
+            "age": 42,
+            "winRate": "4.690",
+            "localWinRate": "3.200",
+            "motorNumber": 31,
+            "motor2Rate": "41.5",
+            "boatNumber": 58,
+            "boat2Rate": "23.0",
+            "aiScore": 1749
           }
         ],
         "reasoning": [
@@ -45509,30 +45659,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 1,
+        "rank2": 2,
+        "rank3": 3,
+        "payouts": {
+          "win": {
+            "1": 160
+          },
+          "place": {
+            "1": 100,
+            "2": 170
+          },
+          "trifecta": {
+            "1-2-3": 390
+          },
+          "trio": {
+            "1-2-3": 910
+          }
+        },
+        "updatedAt": "2026-01-03T02:11:21.620Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -55533,30 +55698,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 1,
+        "rank2": 5,
+        "rank3": 2,
+        "payouts": {
+          "win": {
+            "1": 100
+          },
+          "place": {
+            "1": 100,
+            "5": 130
+          },
+          "trifecta": {
+            "1-2-5": 990
+          },
+          "trio": {
+            "1-5-2": 2770
+          }
+        },
+        "updatedAt": "2026-01-03T02:15:10.739Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": true,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": true,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": true,
+          "top3Hit": true,
+          "top3Included": false
         }
       }
     },
@@ -55950,30 +56130,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 2,
+        "rank2": 4,
+        "rank3": 1,
+        "payouts": {
+          "win": {
+            "2": 110
+          },
+          "place": {
+            "2": 130,
+            "4": 220
+          },
+          "trifecta": {
+            "1-2-4": 860
+          },
+          "trio": {
+            "2-4-1": 4130
+          }
+        },
+        "updatedAt": "2026-01-03T02:15:21.676Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -55982,7 +56177,7 @@
       "venue": "鳴門",
       "venueCode": 14,
       "raceNumber": 3,
-      "startTime": "09:39",
+      "startTime": "09:42",
       "volatility": {
         "score": 42,
         "level": "medium",
@@ -56368,30 +56563,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 3,
+        "rank2": 6,
+        "rank3": 5,
+        "payouts": {
+          "win": {
+            "3": 430
+          },
+          "place": {
+            "3": 160,
+            "6": 1530
+          },
+          "trifecta": {
+            "3-5-6": 4560
+          },
+          "trio": {
+            "3-6-5": 36020
+          }
+        },
+        "updatedAt": "2026-01-03T02:15:32.447Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -56400,7 +56610,7 @@
       "venue": "鳴門",
       "venueCode": 14,
       "raceNumber": 4,
-      "startTime": "10:05",
+      "startTime": "10:08",
       "volatility": {
         "score": 30,
         "level": "low",
@@ -56785,30 +56995,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 1,
+        "rank2": 3,
+        "rank3": 4,
+        "payouts": {
+          "win": {
+            "1": 170
+          },
+          "place": {
+            "1": 100,
+            "3": 150
+          },
+          "trifecta": {
+            "1-3-4": 470
+          },
+          "trio": {
+            "1-3-4": 1040
+          }
+        },
+        "updatedAt": "2026-01-03T02:15:43.226Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": true,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -56817,7 +57042,7 @@
       "venue": "鳴門",
       "venueCode": 14,
       "raceNumber": 5,
-      "startTime": "10:32",
+      "startTime": "10:35",
       "volatility": {
         "score": 65,
         "level": "high",
@@ -57203,30 +57428,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 2,
+        "rank2": 3,
+        "rank3": 5,
+        "payouts": {
+          "win": {
+            "2": 240
+          },
+          "place": {
+            "2": 100,
+            "3": 130
+          },
+          "trifecta": {
+            "2-3-5": 500
+          },
+          "trio": {
+            "2-3-5": 1190
+          }
+        },
+        "updatedAt": "2026-01-03T02:15:53.028Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": true,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": true,
+          "top3Included": false
         }
       }
     },
@@ -57235,7 +57475,7 @@
       "venue": "鳴門",
       "venueCode": 14,
       "raceNumber": 6,
-      "startTime": "11:00",
+      "startTime": "11:03",
       "volatility": {
         "score": 63,
         "level": "medium",
@@ -57652,7 +57892,7 @@
       "venue": "鳴門",
       "venueCode": 14,
       "raceNumber": 7,
-      "startTime": "11:30",
+      "startTime": "11:32",
       "volatility": {
         "score": 67,
         "level": "high",
@@ -58070,7 +58310,7 @@
       "venue": "鳴門",
       "venueCode": 14,
       "raceNumber": 8,
-      "startTime": "12:01",
+      "startTime": "12:02",
       "volatility": {
         "score": 83,
         "level": "high",
@@ -65555,30 +65795,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 1,
+        "rank2": 2,
+        "rank3": 4,
+        "payouts": {
+          "win": {
+            "1": 120
+          },
+          "place": {
+            "1": 100,
+            "2": 300
+          },
+          "trifecta": {
+            "1-2-4": 330
+          },
+          "trio": {
+            "1-2-4": 620
+          }
+        },
+        "updatedAt": "2026-01-03T02:19:09.878Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": true,
+          "top3Included": true
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -65587,7 +65842,7 @@
       "venue": "宮島",
       "venueCode": 17,
       "raceNumber": 2,
-      "startTime": "10:43",
+      "startTime": "10:44",
       "volatility": {
         "score": 78,
         "level": "high",
@@ -65973,30 +66228,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 1,
+        "rank2": 4,
+        "rank3": 5,
+        "payouts": {
+          "win": {
+            "1": 190
+          },
+          "place": {
+            "1": 100,
+            "4": 170
+          },
+          "trifecta": {
+            "1-4-5": 520
+          },
+          "trio": {
+            "1-4-5": 1600
+          }
+        },
+        "updatedAt": "2026-01-03T02:19:20.766Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": true,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": true,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": true,
+          "top3Included": false
         }
       }
     },
@@ -66005,7 +66275,7 @@
       "venue": "宮島",
       "venueCode": 17,
       "raceNumber": 3,
-      "startTime": "11:08",
+      "startTime": "11:09",
       "volatility": {
         "score": 75,
         "level": "high",
@@ -66423,7 +66693,7 @@
       "venue": "宮島",
       "venueCode": 17,
       "raceNumber": 4,
-      "startTime": "11:38",
+      "startTime": "11:39",
       "volatility": {
         "score": 61,
         "level": "medium",
@@ -66840,7 +67110,7 @@
       "venue": "宮島",
       "venueCode": 17,
       "raceNumber": 5,
-      "startTime": "12:19",
+      "startTime": "12:20",
       "volatility": {
         "score": 18,
         "level": "low",
@@ -67257,7 +67527,7 @@
       "venue": "宮島",
       "venueCode": 17,
       "raceNumber": 6,
-      "startTime": "12:44",
+      "startTime": "12:45",
       "volatility": {
         "score": 16,
         "level": "low",
@@ -67674,7 +67944,7 @@
       "venue": "宮島",
       "venueCode": 17,
       "raceNumber": 7,
-      "startTime": "13:14",
+      "startTime": "13:15",
       "volatility": {
         "score": 17,
         "level": "low",
@@ -68090,7 +68360,7 @@
       "venue": "宮島",
       "venueCode": 17,
       "raceNumber": 8,
-      "startTime": "13:38",
+      "startTime": "13:39",
       "volatility": {
         "score": 61,
         "level": "medium",
@@ -68507,7 +68777,7 @@
       "venue": "宮島",
       "venueCode": 17,
       "raceNumber": 9,
-      "startTime": "14:04",
+      "startTime": "14:05",
       "volatility": {
         "score": 74,
         "level": "high",
@@ -68925,7 +69195,7 @@
       "venue": "宮島",
       "venueCode": 17,
       "raceNumber": 10,
-      "startTime": "14:35",
+      "startTime": "14:36",
       "volatility": {
         "score": 86,
         "level": "high",
@@ -69344,7 +69614,7 @@
       "venue": "宮島",
       "venueCode": 17,
       "raceNumber": 11,
-      "startTime": "15:02",
+      "startTime": "15:03",
       "volatility": {
         "score": 50,
         "level": "medium",
@@ -69761,7 +70031,7 @@
       "venue": "宮島",
       "venueCode": 17,
       "raceNumber": 12,
-      "startTime": "15:30",
+      "startTime": "15:31",
       "volatility": {
         "score": 25,
         "level": "low",
@@ -70565,30 +70835,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 1,
+        "rank2": 5,
+        "rank3": 2,
+        "payouts": {
+          "win": {
+            "1": 130
+          },
+          "place": {
+            "1": 110,
+            "5": 570
+          },
+          "trifecta": {
+            "1-2-5": 300
+          },
+          "trio": {
+            "1-5-2": 930
+          }
+        },
+        "updatedAt": "2026-01-03T02:21:08.529Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": true,
+          "top3Included": true
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -70984,30 +71269,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 1,
+        "rank2": 5,
+        "rank3": 4,
+        "payouts": {
+          "win": {
+            "1": 120
+          },
+          "place": {
+            "1": 100,
+            "5": 230
+          },
+          "trifecta": {
+            "1-4-5": 770
+          },
+          "trio": {
+            "1-5-4": 2960
+          }
+        },
+        "updatedAt": "2026-01-03T02:21:19.277Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -71403,30 +71703,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 2,
+        "rank2": 1,
+        "rank3": 6,
+        "payouts": {
+          "win": {
+            "2": 730
+          },
+          "place": {
+            "1": 100,
+            "2": 210
+          },
+          "trifecta": {
+            "1-2-6": 5050
+          },
+          "trio": {
+            "2-1-6": 26020
+          }
+        },
+        "updatedAt": "2026-01-03T02:21:28.032Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -71820,30 +72135,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 2,
+        "rank2": 1,
+        "rank3": 3,
+        "payouts": {
+          "win": {
+            "2": 420
+          },
+          "place": {
+            "1": 100,
+            "2": 130
+          },
+          "trifecta": {
+            "1-2-3": 210
+          },
+          "trio": {
+            "2-1-3": 2740
+          }
+        },
+        "updatedAt": "2026-01-03T02:21:36.749Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": true,
+          "top3Hit": true,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -72238,30 +72568,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 1,
+        "rank2": 3,
+        "rank3": 5,
+        "payouts": {
+          "win": {
+            "1": 130
+          },
+          "place": {
+            "1": 110,
+            "3": 140
+          },
+          "trifecta": {
+            "1-3-5": 220
+          },
+          "trio": {
+            "1-3-5": 770
+          }
+        },
+        "updatedAt": "2026-01-03T02:21:47.494Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": true,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": true,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -72657,30 +73002,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 1,
+        "rank2": 2,
+        "rank3": 3,
+        "payouts": {
+          "win": {
+            "1": 140
+          },
+          "place": {
+            "1": 100,
+            "2": 100
+          },
+          "trifecta": {
+            "1-2-3": 580
+          },
+          "trio": {
+            "1-2-3": 1130
+          }
+        },
+        "updatedAt": "2026-01-03T02:21:58.283Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -73539,27 +73899,14 @@
       },
       "predictions": {
         "standard": {
-          "topPick": 1,
+          "topPick": 6,
           "top3": [
-            1,
             6,
+            1,
             2
           ],
-          "confidence": 82,
+          "confidence": 74,
           "players": [
-            {
-              "number": 1,
-              "name": "幸野　　史明",
-              "grade": "B1",
-              "age": 40,
-              "winRate": "4.400",
-              "localWinRate": "3.280",
-              "motorNumber": 39,
-              "motor2Rate": "34.8",
-              "boatNumber": 73,
-              "boat2Rate": "45.5",
-              "aiScore": 2398
-            },
             {
               "number": 6,
               "name": "白井　　英治",
@@ -73572,6 +73919,19 @@
               "boatNumber": 26,
               "boat2Rate": "32.6",
               "aiScore": 2275
+            },
+            {
+              "number": 1,
+              "name": "幸野　　史明",
+              "grade": "B1",
+              "age": 40,
+              "winRate": "4.400",
+              "localWinRate": "3.280",
+              "motorNumber": 39,
+              "motor2Rate": "34.8",
+              "boatNumber": 61,
+              "boat2Rate": "28.9",
+              "aiScore": 2233
             },
             {
               "number": 2,
@@ -73627,8 +73987,8 @@
             }
           ],
           "reasoning": [
-            "1号艇 幸野　　史明選手を本命に選定",
-            "総合的なデータ分析により最高評価を獲得"
+            "6号艇 白井　　英治選手を本命に選定",
+            "全国勝率6.870の実力者、当地成績8.020と好相性で総合評価が最高"
           ]
         },
         "safeBet": {
@@ -73688,8 +74048,8 @@
               "localWinRate": "3.280",
               "motorNumber": 39,
               "motor2Rate": "34.8",
-              "boatNumber": 73,
-              "boat2Rate": "45.5",
+              "boatNumber": 61,
+              "boat2Rate": "28.9",
               "aiScore": 2375
             },
             {
@@ -73773,19 +74133,6 @@
               "aiScore": 11763
             },
             {
-              "number": 1,
-              "name": "幸野　　史明",
-              "grade": "B1",
-              "age": 40,
-              "winRate": "4.400",
-              "localWinRate": "3.280",
-              "motorNumber": 39,
-              "motor2Rate": "34.8",
-              "boatNumber": 73,
-              "boat2Rate": "45.5",
-              "aiScore": 11011
-            },
-            {
               "number": 5,
               "name": "内田　　　壮",
               "grade": "B2",
@@ -73797,6 +74144,19 @@
               "boatNumber": 45,
               "boat2Rate": "38.5",
               "aiScore": 10681
+            },
+            {
+              "number": 1,
+              "name": "幸野　　史明",
+              "grade": "B1",
+              "age": 40,
+              "winRate": "4.400",
+              "localWinRate": "3.280",
+              "motorNumber": 39,
+              "motor2Rate": "34.8",
+              "boatNumber": 61,
+              "boat2Rate": "28.9",
+              "aiScore": 9691
             },
             {
               "number": 3,
@@ -73819,27 +74179,14 @@
         }
       },
       "prediction": {
-        "topPick": 1,
+        "topPick": 6,
         "top3": [
-          1,
           6,
+          1,
           2
         ],
-        "confidence": 82,
+        "confidence": 74,
         "players": [
-          {
-            "number": 1,
-            "name": "幸野　　史明",
-            "grade": "B1",
-            "age": 40,
-            "winRate": "4.400",
-            "localWinRate": "3.280",
-            "motorNumber": 39,
-            "motor2Rate": "34.8",
-            "boatNumber": 73,
-            "boat2Rate": "45.5",
-            "aiScore": 2398
-          },
           {
             "number": 6,
             "name": "白井　　英治",
@@ -73852,6 +74199,19 @@
             "boatNumber": 26,
             "boat2Rate": "32.6",
             "aiScore": 2275
+          },
+          {
+            "number": 1,
+            "name": "幸野　　史明",
+            "grade": "B1",
+            "age": 40,
+            "winRate": "4.400",
+            "localWinRate": "3.280",
+            "motorNumber": 39,
+            "motor2Rate": "34.8",
+            "boatNumber": 61,
+            "boat2Rate": "28.9",
+            "aiScore": 2233
           },
           {
             "number": 2,
@@ -73907,8 +74267,8 @@
           }
         ],
         "reasoning": [
-          "1号艇 幸野　　史明選手を本命に選定",
-          "総合的なデータ分析により最高評価を獲得"
+          "6号艇 白井　　英治選手を本命に選定",
+          "全国勝率6.870の実力者、当地成績8.020と好相性で総合評価が最高"
         ]
       },
       "result": {
@@ -80614,7 +80974,7 @@
             "3-2-4": 3940
           }
         },
-        "updatedAt": "2026-01-02T23:59:25.256Z"
+        "updatedAt": "2026-01-03T02:25:09.808Z"
       },
       "accuracy": {
         "standard": {
@@ -81028,30 +81388,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 3,
+        "rank2": 4,
+        "rank3": 1,
+        "payouts": {
+          "win": {
+            "3": 940
+          },
+          "place": {
+            "3": 470,
+            "4": 250
+          },
+          "trifecta": {
+            "1-3-4": 800
+          },
+          "trio": {
+            "3-4-1": 33130
+          }
+        },
+        "updatedAt": "2026-01-03T02:25:20.572Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -81446,30 +81821,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 1,
+        "rank2": 3,
+        "rank3": 2,
+        "payouts": {
+          "win": {
+            "1": 120
+          },
+          "place": {
+            "1": 110,
+            "3": 120
+          },
+          "trifecta": {
+            "1-2-3": 210
+          },
+          "trio": {
+            "1-3-2": 690
+          }
+        },
+        "updatedAt": "2026-01-03T02:25:29.314Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": true,
+          "top3Included": true
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": true,
+          "top3Included": true
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -81865,30 +82255,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 2,
+        "rank2": 5,
+        "rank3": 1,
+        "payouts": {
+          "win": {
+            "2": 1610
+          },
+          "place": {
+            "2": 530,
+            "5": 390
+          },
+          "trifecta": {
+            "1-2-5": 930
+          },
+          "trio": {
+            "2-5-1": 59670
+          }
+        },
+        "updatedAt": "2026-01-03T02:25:40.208Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -82284,30 +82689,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 1,
+        "rank2": 5,
+        "rank3": 3,
+        "payouts": {
+          "win": {
+            "1": 150
+          },
+          "place": {
+            "1": 100,
+            "5": 150
+          },
+          "trifecta": {
+            "1-3-5": 1420
+          },
+          "trio": {
+            "1-5-3": 5420
+          }
+        },
+        "updatedAt": "2026-01-03T02:25:50.961Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
@@ -82702,30 +83122,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 3,
+        "rank2": 2,
+        "rank3": 4,
+        "payouts": {
+          "win": {
+            "3": 180
+          },
+          "place": {
+            "2": 110,
+            "3": 130
+          },
+          "trifecta": {
+            "2-3-4": 1120
+          },
+          "trio": {
+            "3-2-4": 5350
+          }
+        },
+        "updatedAt": "2026-01-03T02:26:00.752Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": false,
+          "topPickPlace": false,
+          "top3Hit": true,
+          "top3Included": false
         }
       }
     },
@@ -85626,30 +86061,45 @@
         ]
       },
       "result": {
-        "finished": false,
-        "rank1": null,
-        "rank2": null,
-        "rank3": null,
-        "updatedAt": null
+        "finished": true,
+        "rank1": 1,
+        "rank2": 2,
+        "rank3": 4,
+        "payouts": {
+          "win": {
+            "1": 100
+          },
+          "place": {
+            "1": 100,
+            "2": 170
+          },
+          "trifecta": {
+            "1-2-4": 1310
+          },
+          "trio": {
+            "1-2-4": 1840
+          }
+        },
+        "updatedAt": "2026-01-03T02:27:11.838Z"
       },
       "accuracy": {
         "standard": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "safeBet": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         },
         "upsetFocus": {
-          "topPickHit": null,
-          "topPickPlace": null,
-          "top3Hit": null,
-          "top3Included": null
+          "topPickHit": true,
+          "topPickPlace": true,
+          "top3Hit": false,
+          "top3Included": false
         }
       }
     },
