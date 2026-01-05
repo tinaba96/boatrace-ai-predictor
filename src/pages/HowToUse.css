@@ -423,3 +423,76 @@
     flex: 1 1 30%;
   }
 }
+
+/* 極小スマートフォン対応 */
+@media (max-width: 320px) {
+  .how-to-use-container {
+    padding: 0.75rem 0.5rem;
+  }
+
+  .how-to-use-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .how-to-use-header p {
+    font-size: 0.9rem;
+  }
+
+  .step-nav-btn {
+    min-width: 80px;
+    padding: 0.5rem 0.25rem;
+  }
+
+  .step-icon {
+    font-size: 1rem;
+  }
+
+  .step-number {
+    font-size: 0.7rem;
+  }
+
+  .step-content {
+    padding: 1rem;
+  }
+
+  .step-icon-large {
+    font-size: 2rem;
+  }
+
+  .step-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .step-detail,
+  .example-box,
+  .tip-box,
+  .warning-box {
+    padding: 0.75rem;
+  }
+
+  .model-card {
+    padding: 1rem;
+  }
+
+  .model-card h5 {
+    font-size: 1rem;
+  }
+
+  .nav-button {
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+  }
+
+  .faq-link-section {
+    padding: 1rem;
+  }
+
+  .faq-link-section h3 {
+    font-size: 1.2rem;
+  }
+
+  .faq-button {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.95rem;
+  }
+}

@@ -19,23 +19,23 @@
 }
 
 .breadcrumb-item a {
-  color: #4a90e2;
+  color: #0ea5e9;
   text-decoration: none;
   transition: color 0.2s;
 }
 
 .breadcrumb-item a:hover {
-  color: #357abd;
+  color: #0284c7;
   text-decoration: underline;
 }
 
 .breadcrumb-separator {
-  color: #999;
+  color: #64748b;
   user-select: none;
 }
 
 .breadcrumb-current {
-  color: #333;
+  color: #1e293b;
   font-weight: 500;
 }
 

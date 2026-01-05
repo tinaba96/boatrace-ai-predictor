@@ -694,7 +694,7 @@ function App({ tab = 'races' }) {
                                                                         textAlign: 'center',
                                                                         fontSize: '0.85rem',
                                                                         fontWeight: '600',
-                                                                        color: '#666'
+                                                                        color: '#475569'
                                                                     }}>
                                                                         ⏱️ 終了
                                                                     </div>
@@ -734,14 +734,14 @@ function App({ tab = 'races' }) {
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 style={{
-                                                    color: '#1976d2',
+                                                    color: '#0ea5e9',
                                                     textDecoration: 'none',
                                                     fontWeight: '500'
                                                 }}
                                             >
                                                 公式サイトでレース情報を見る
                                             </a>
-                                            <span style={{ marginLeft: '0.5rem', fontSize: '0.9rem', color: '#666' }}>
+                                            <span style={{ marginLeft: '0.5rem', fontSize: '0.9rem', color: '#475569' }}>
                                                 （新しいタブで開きます）
                                             </span>
                                         </div>
@@ -834,7 +834,7 @@ function App({ tab = 'races' }) {
                                                                 marginTop: '0.35rem',
                                                                 paddingLeft: '1.6rem',
                                                                 fontSize: '0.85rem',
-                                                                color: '#666'
+                                                                color: '#475569'
                                                             }}>
                                                                 {volatility.level === 'high' && '荒れ度が高いため、高配当を狙える穴狙い型がおすすめです'}
                                                                 {volatility.level === 'low' && '堅いレースのため、的中率重視の本命狙い型がおすすめです'}
@@ -945,7 +945,7 @@ function App({ tab = 'races' }) {
                                                     background: 'rgba(255, 255, 255, 0.7)',
                                                     borderRadius: '6px',
                                                     fontSize: '0.85rem',
-                                                    color: '#666',
+                                                    color: '#475569',
                                                     lineHeight: '1.5'
                                                 }}>
                                                     💡 <strong>ヒント：</strong>荒れ度スコアを参考に、レースの特性に合ったモデルを選択すると、より精度の高い予想が可能です。

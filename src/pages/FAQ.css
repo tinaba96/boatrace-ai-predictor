@@ -218,3 +218,49 @@
     width: 100%;
   }
 }
+
+/* 極小スマートフォン対応 */
+@media (max-width: 320px) {
+  .faq-container {
+    padding: 1rem 0.5rem;
+  }
+
+  .faq-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .faq-header p {
+    font-size: 0.9rem;
+  }
+
+  .faq-category h2 {
+    font-size: 1.2rem;
+  }
+
+  .faq-question {
+    padding: 0.75rem 1rem;
+  }
+
+  .question-text {
+    font-size: 0.9rem;
+  }
+
+  .faq-answer {
+    padding: 0.75rem 1rem;
+  }
+
+  .faq-answer p,
+  .faq-answer li {
+    font-size: 0.85rem;
+  }
+
+  .faq-cta h2 {
+    font-size: 1.3rem;
+  }
+
+  .contact-button,
+  .try-button {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.95rem;
+  }
+}

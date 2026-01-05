@@ -1694,4 +1694,18 @@ body {
     line-height: 36px;
     font-size: 1rem;
   }
+
+  /* グリッドを1カラムに */
+  .race-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* テーブルの最小幅を縮小 */
+  .players-table {
+    min-width: 480px;
+  }
+
+  .players-table-detailed {
+    min-width: 550px;
+  }
 }
