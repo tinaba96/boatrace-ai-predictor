@@ -1,12 +1,12 @@
 // Blog post metadata
 export const blogPosts = [
     {
-        id: 'venue-monthly-202412',
-        title: '【2024年12月】全国24ボートレース場 BoatAI成績まとめ',
-        description: '2024年12月のBoatAI実績を全国24場ごとに徹底分析。芦屋3連単1259%、浜名湖515%など驚異の回収率TOP30を公開。見送り推奨5場も解説。',
+        id: 'venue-monthly-202512',
+        title: '【2025年12月】全国24ボートレース場 BoatAI成績まとめ',
+        description: '2025年12月のBoatAI実績を全国24場ごとに徹底分析。芦屋3連単1259%、浜名湖515%など驚異の回収率TOP30を公開。見送り推奨5場も解説。',
         date: '2025-12-31',
         category: '月間レポート',
-        tags: ['月間まとめ', 'ボートレース場', '全24場', '回収率', '2024年12月'],
+        tags: ['月間まとめ', 'ボートレース場', '全24場', '回収率', '2025年12月'],
         readTime: '15分',
         featured: true
     },
