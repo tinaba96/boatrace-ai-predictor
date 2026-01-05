@@ -471,3 +471,4 @@ WHERE race_id = '2025-12-05-01-01';
 - PostgreSQL JSONB公式ドキュメント: https://www.postgresql.org/docs/current/datatype-json.html
 - JSONB演算子: https://www.postgresql.org/docs/current/functions-json.html
 
+

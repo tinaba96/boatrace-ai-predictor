@@ -1100,7 +1100,7 @@ function App({ tab = 'races' }) {
                                             </div>
 
                                             {/* SNSシェアボタン */}
-                                            <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem', textAlign: 'center' }}>
+                                            <div className="social-share-wrapper">
                                                 <SocialShareButtons
                                                     shareUrl="https://boat-ai.jp/"
                                                     title={(() => {

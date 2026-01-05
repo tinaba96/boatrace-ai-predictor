@@ -78,7 +78,8 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: 3連複と3連単の回収率計算を修正\n\n配当データがオブジェクト形式で格納されているため、\n正しいキーを使用して配当額を取得するように修正。\nこれにより、NaN%だった的中率と回収率が正しく表示されるようになる。\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nstyle: デザインを青系に統一し、全ページで一貫したカラースキームを適用\n\n- 全ページの背景色を白に統一（暗い青系背景を削除）\n- 紫系グラデーション \\(#667eea → #764ba2\\) を青系 \\(#0ea5e9 → #0284c7\\) に変更\n- テキストカラーを統一 \\(プライマリ: #1e293b, セカンダリ: #64748b\\)\n- グレー系グラデーションを淡色に調整\n- 全7ページでHeaderコンポーネントの使用を確認\n\n【変更ファイル】\nCSS: Blog.css, About.css, FAQ.css, BlogPost.css, HowToUse.css, RaceDetail.css, RaceHistory.css\nJSX: App.jsx, RaceDetail.jsx\n\n【プロジェクトルール追加】\n- Git操作ルール: コミット時の過度な確認を禁止\n- デザイン統一ルール: カラースキームの厳守、ページごとの背景色変更を禁止\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "WebSearch",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(git stash pop:*)"
     ],
     "deny": [],
     "ask": []

@@ -537,6 +537,12 @@ body {
   font-size: 1.2rem;
 }
 
+/* SNSシェアボタンラッパー */
+.social-share-wrapper {
+  margin: 1.5rem 0;
+  text-align: center;
+}
+
 /* 全艇情報テーブル */
 .all-players {
   margin-top: 2.5rem;
@@ -923,13 +929,14 @@ body {
   }
 
   .player-card {
-    padding: 1.25rem;
+    padding: 1rem;
+    gap: 0.75rem;
   }
 
   .player-number {
-    width: 70px;
-    height: 70px;
-    font-size: 2.25rem;
+    width: 60px;
+    height: 60px;
+    font-size: 2rem;
   }
 
   .player-details h4 {
@@ -945,28 +952,53 @@ body {
   }
 
   .prediction-result {
-    padding: 1.25rem;
+    padding: 1rem;
   }
 
   .top-pick h3 {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
+    margin-bottom: 0.75rem;
   }
 
   .reasoning,
   .statistical-insights,
   .data-guide {
-    padding: 1.25rem;
+    padding: 1rem;
+    margin: 1rem 0;
   }
 
   .reasoning h4,
   .statistical-insights h4,
   .data-guide h4 {
-    font-size: 1.15rem;
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
   }
 
   .reasoning li,
   .statistical-insights li {
-    font-size: 0.9rem;
+    font-size: 0.875rem;
+    padding: 0.5rem 0;
+  }
+
+  .confidence-bar {
+    margin-bottom: 1rem;
+  }
+
+  .top-pick {
+    margin-bottom: 1rem;
+  }
+
+  .all-players {
+    margin-top: 1rem;
+  }
+
+  .detailed-analysis {
+    margin-top: 1rem;
+    padding-top: 1rem;
+  }
+
+  .social-share-wrapper {
+    margin: 0.75rem 0;
   }
 
   .all-players h4 {
