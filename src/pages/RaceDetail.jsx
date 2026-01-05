@@ -994,9 +994,10 @@ function RaceDetail() {
                       </div>
                     )}
 
-                    {/* 全艇情報 */}
+                    {/* AI予想順位 */}
                     <div className="all-players">
-                      <h4>全艇情報</h4>
+                      <h4>🏆 AI予想順位</h4>
+                      <div className="table-wrapper">
                       <table className="players-table">
                         <thead>
                           <tr>
@@ -1023,6 +1024,7 @@ function RaceDetail() {
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     </div>
                   </div>
                   </>

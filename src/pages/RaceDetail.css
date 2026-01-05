@@ -472,7 +472,7 @@
   border-radius: 6px;
 }
 
-/* 全艇情報 */
+/* AI予想順位 */
 .all-players {
   background: #F8FAFC;
   border-radius: 12px;
@@ -485,12 +485,18 @@
   color: #1E293B;
 }
 
+.all-players .table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 8px;
+}
+
 .players-table {
   width: 100%;
+  min-width: 600px;
   border-collapse: collapse;
   background: white;
   border-radius: 8px;
-  overflow: hidden;
 }
 
 .players-table thead {

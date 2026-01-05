@@ -543,7 +543,7 @@ body {
   text-align: center;
 }
 
-/* 全艇情報テーブル */
+/* AI予想順位テーブル */
 .all-players {
   margin-top: 2.5rem;
 }
@@ -551,18 +551,24 @@ body {
 .all-players h4 {
   font-size: 1.5rem;
   color: var(--text-dark);
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   font-weight: 700;
+}
+
+.all-players .table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .players-table {
   width: 100%;
+  min-width: 600px;
   border-collapse: separate;
   border-spacing: 0;
   background: white;
   border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .players-table th {
@@ -831,15 +837,11 @@ body {
   /* テーブルのモバイル最適化 */
   .players-table {
     font-size: 0.85rem;
-    display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
   }
 
   .players-table th,
   .players-table td {
     padding: 0.75rem 0.5rem;
-    white-space: nowrap;
   }
 
   .analyzing {
@@ -1002,13 +1004,12 @@ body {
   }
 
   .all-players h4 {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
   }
 
   .players-table {
     font-size: 0.8rem;
-    display: block;
-    overflow-x: auto;
   }
 
   .players-table th,

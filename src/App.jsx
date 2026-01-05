@@ -1126,7 +1126,8 @@ function App({ tab = 'races' }) {
                                             </div>
 
                                             <div className="all-players">
-                                                <h4>全艇情報</h4>
+                                                <h4>🏆 AI予想順位</h4>
+                                                <div className="table-wrapper">
                                                 <table className="players-table">
                                                     <thead>
                                                         <tr>
@@ -1153,6 +1154,7 @@ function App({ tab = 'races' }) {
                                                         ))}
                                                     </tbody>
                                                 </table>
+                                                </div>
                                             </div>
 
                                             {/* レース結果セクション */}
