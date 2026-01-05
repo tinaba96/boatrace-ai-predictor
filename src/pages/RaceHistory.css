@@ -196,7 +196,7 @@
 
   .date-card .model-comparison-table .sub-header th {
     padding: 0.4rem 0.2rem;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
   }
 
   .date-card .model-comparison-table td {
@@ -220,16 +220,64 @@
 
   .date-card .model-comparison-table th {
     padding: 0.5rem 0.2rem;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
   }
 
   .date-card .model-comparison-table .sub-header th {
     padding: 0.35rem 0.15rem;
-    font-size: 0.65rem;
+    font-size: 0.75rem;
   }
 
   .date-card .model-comparison-table td {
     padding: 0.5rem 0.2rem;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* 極小スマートフォン対応 */
+@media (max-width: 320px) {
+  .race-history-page {
+    padding: 0.75rem 0.375rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .page-description {
+    font-size: 0.9rem;
+  }
+
+  .dates-section {
+    padding: 1rem 0.5rem;
+  }
+
+  .month-title h2 {
+    font-size: 0.95rem;
+  }
+
+  .month-summary {
+    font-size: 0.75rem;
+  }
+
+  .dates-list {
+    padding: 1rem 0.5rem;
+  }
+
+  .date-card {
+    padding: 0.75rem;
+  }
+
+  .date-card-header h3 {
+    font-size: 1rem;
+  }
+
+  .race-count {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.6rem;
+  }
+
+  .view-detail {
+    font-size: 0.8rem;
   }
 }

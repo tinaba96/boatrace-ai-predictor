@@ -1,0 +1,77 @@
+{
+  "generatedAt": "2025-12-25T01:40:42.665Z",
+  "totalRaces": 897,
+  "dateRange": {
+    "start": "2025-12-19",
+    "end": "2025-12-24"
+  },
+  "topPickAnalysis": {
+    "agreed": {
+      "total": 407,
+      "win": {
+        "hits": 148,
+        "totalInvestment": 40700,
+        "totalPayout": 37950
+      },
+      "place": {
+        "hits": 294,
+        "totalInvestment": 40700,
+        "totalPayout": 38450
+      }
+    },
+    "disagreed": {
+      "total": 490,
+      "win": {
+        "hits": 212,
+        "totalInvestment": 49000,
+        "totalPayout": 41820
+      },
+      "place": {
+        "hits": 361,
+        "totalInvestment": 49000,
+        "totalPayout": 43740
+      }
+    }
+  },
+  "top3Analysis": {
+    "fullMatch": {
+      "total": 105,
+      "trifecta": {
+        "hits": 3,
+        "totalInvestment": 10500,
+        "totalPayout": 6550
+      },
+      "trio": {
+        "hits": 16,
+        "totalInvestment": 10500,
+        "totalPayout": 59540
+      }
+    },
+    "unorderedMatch": {
+      "total": 214,
+      "trifecta": {
+        "hits": 9,
+        "totalInvestment": 21400,
+        "totalPayout": 3560
+      },
+      "trio": {
+        "hits": 30,
+        "totalInvestment": 21400,
+        "totalPayout": 56730
+      }
+    },
+    "noMatch": {
+      "total": 578,
+      "trifecta": {
+        "hits": 31,
+        "totalInvestment": 57800,
+        "totalPayout": 10060
+      },
+      "trio": {
+        "hits": 106,
+        "totalInvestment": 57800,
+        "totalPayout": 255140
+      }
+    }
+  }
+}

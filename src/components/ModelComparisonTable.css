@@ -139,7 +139,7 @@
   }
 
   .mct-table-compact .mct-sub-header th {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
   }
 
   .mct-table-compact td {
@@ -167,12 +167,41 @@
   }
 
   .mct-table .mct-sub-header th {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     padding: 0.3rem;
   }
 
   .mct-table td {
     padding: 0.5rem 0.3rem;
     font-size: 0.8rem;
+  }
+}
+
+/* 極小スマートフォン対応 */
+@media (max-width: 320px) {
+  .mct-wrapper {
+    padding: 0.75rem 0.5rem;
+  }
+
+  .mct-title {
+    font-size: 1rem;
+  }
+
+  .mct-table {
+    min-width: 480px;
+  }
+
+  .mct-table-compact {
+    min-width: 450px;
+  }
+
+  .mct-table th {
+    padding: 0.4rem 0.2rem;
+    font-size: 0.75rem;
+  }
+
+  .mct-table td {
+    padding: 0.4rem 0.2rem;
+    font-size: 0.75rem;
   }
 }

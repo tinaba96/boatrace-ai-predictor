@@ -152,6 +152,33 @@
     }
 
     .model-comparison-table .sub-header th {
-        font-size: 0.7rem;
+        font-size: 0.75rem;
+    }
+}
+
+/* 極小スマートフォン対応 */
+@media (max-width: 320px) {
+    .accuracy-history-page {
+        padding: 12px;
+    }
+
+    .page-header h1 {
+        font-size: 1.1rem;
+    }
+
+    .back-link {
+        font-size: 12px;
+    }
+
+    .model-comparison-section {
+        padding: 0.75rem;
+    }
+
+    .model-comparison-section h3 {
+        font-size: 0.95rem;
+    }
+
+    .model-comparison-table {
+        min-width: 600px;
     }
 }

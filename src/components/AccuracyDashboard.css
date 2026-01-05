@@ -733,7 +733,7 @@
   }
 
   .daily-history-table .sub-th {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     padding: 0.4rem 0.2rem;
   }
 
@@ -849,7 +849,7 @@
   }
 
   .daily-history-table .sub-th {
-    font-size: 0.65rem;
+    font-size: 0.75rem;
   }
 
   .accuracy-info {
@@ -1154,4 +1154,65 @@
 
 .history-link:hover {
   color: #0ea5e9;
+}
+
+/* 極小スマートフォン対応 */
+@media (max-width: 320px) {
+  .accuracy-dashboard h2 {
+    font-size: 1.1rem;
+  }
+
+  .model-selector button {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.75rem;
+    min-width: 80px;
+  }
+
+  .best-performance {
+    padding: 0.75rem;
+  }
+
+  .best-performance h3 {
+    font-size: 0.95rem;
+  }
+
+  .best-date {
+    font-size: 0.85rem;
+  }
+
+  .best-stat-item .stat-value {
+    font-size: 1.1rem;
+  }
+
+  .best-stat-item.highlight .stat-value {
+    font-size: 1.3rem;
+  }
+
+  .stats-table-container h3,
+  .daily-history h3 {
+    font-size: 0.9rem;
+  }
+
+  .daily-history-table {
+    min-width: 550px;
+  }
+
+  .accuracy-info h4 {
+    font-size: 0.85rem;
+  }
+
+  .accuracy-info li {
+    font-size: 0.75rem;
+  }
+
+  .venue-detailed-analysis h3,
+  .venue-strategy-section h3 {
+    font-size: 0.95rem;
+  }
+
+  .strategy-model-selector button {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.75rem;
+    min-width: 80px;
+  }
 }

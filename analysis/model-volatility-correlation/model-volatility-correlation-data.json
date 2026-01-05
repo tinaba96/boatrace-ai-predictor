@@ -1,0 +1,314 @@
+{
+  "generatedAt": "2025-12-25T00:50:42.593Z",
+  "totalRaces": 2925,
+  "basicStats": [
+    {
+      "range": "低荒れ度 (0-33)",
+      "volatilityRange": "0-33",
+      "totalRaces": 171,
+      "avgVolatility": 22.485380116959064,
+      "models": {
+        "standard": {
+          "totalRaces": 171,
+          "hits": 102,
+          "hitRate": 0.5964912280701754
+        },
+        "safeBet": {
+          "totalRaces": 171,
+          "hits": 75,
+          "hitRate": 0.43859649122807015
+        },
+        "upsetFocus": {
+          "totalRaces": 171,
+          "hits": 46,
+          "hitRate": 0.26900584795321636
+        }
+      }
+    },
+    {
+      "range": "中荒れ度 (34-66)",
+      "volatilityRange": "34-66",
+      "totalRaces": 453,
+      "avgVolatility": 51.2560706401766,
+      "models": {
+        "standard": {
+          "totalRaces": 453,
+          "hits": 173,
+          "hitRate": 0.3818984547461369
+        },
+        "safeBet": {
+          "totalRaces": 453,
+          "hits": 151,
+          "hitRate": 0.3333333333333333
+        },
+        "upsetFocus": {
+          "totalRaces": 453,
+          "hits": 109,
+          "hitRate": 0.24061810154525387
+        }
+      }
+    },
+    {
+      "range": "高荒れ度 (67-100)",
+      "volatilityRange": "67-100",
+      "totalRaces": 273,
+      "avgVolatility": 75.32234432234432,
+      "models": {
+        "standard": {
+          "totalRaces": 273,
+          "hits": 85,
+          "hitRate": 0.31135531135531136
+        },
+        "safeBet": {
+          "totalRaces": 273,
+          "hits": 76,
+          "hitRate": 0.2783882783882784
+        },
+        "upsetFocus": {
+          "totalRaces": 273,
+          "hits": 61,
+          "hitRate": 0.22344322344322345
+        }
+      }
+    }
+  ],
+  "detailedStats": [
+    {
+      "range": "0-9",
+      "totalRaces": 14,
+      "avgVolatility": 4.571428571428571,
+      "models": {
+        "standard": {
+          "totalRaces": 14,
+          "hits": 11,
+          "hitRate": 0.7857142857142857
+        },
+        "safeBet": {
+          "totalRaces": 14,
+          "hits": 6,
+          "hitRate": 0.42857142857142855
+        },
+        "upsetFocus": {
+          "totalRaces": 14,
+          "hits": 6,
+          "hitRate": 0.42857142857142855
+        }
+      }
+    },
+    {
+      "range": "10-19",
+      "totalRaces": 52,
+      "avgVolatility": 15.25,
+      "models": {
+        "standard": {
+          "totalRaces": 52,
+          "hits": 32,
+          "hitRate": 0.6153846153846154
+        },
+        "safeBet": {
+          "totalRaces": 52,
+          "hits": 24,
+          "hitRate": 0.46153846153846156
+        },
+        "upsetFocus": {
+          "totalRaces": 52,
+          "hits": 12,
+          "hitRate": 0.23076923076923078
+        }
+      }
+    },
+    {
+      "range": "20-29",
+      "totalRaces": 51,
+      "avgVolatility": 25.274509803921568,
+      "models": {
+        "standard": {
+          "totalRaces": 51,
+          "hits": 27,
+          "hitRate": 0.5294117647058824
+        },
+        "safeBet": {
+          "totalRaces": 51,
+          "hits": 17,
+          "hitRate": 0.3333333333333333
+        },
+        "upsetFocus": {
+          "totalRaces": 51,
+          "hits": 14,
+          "hitRate": 0.27450980392156865
+        }
+      }
+    },
+    {
+      "range": "30-39",
+      "totalRaces": 130,
+      "avgVolatility": 34.353846153846156,
+      "models": {
+        "standard": {
+          "totalRaces": 130,
+          "hits": 69,
+          "hitRate": 0.5307692307692308
+        },
+        "safeBet": {
+          "totalRaces": 130,
+          "hits": 65,
+          "hitRate": 0.5
+        },
+        "upsetFocus": {
+          "totalRaces": 130,
+          "hits": 38,
+          "hitRate": 0.2923076923076923
+        }
+      }
+    },
+    {
+      "range": "40-49",
+      "totalRaces": 111,
+      "avgVolatility": 44.6036036036036,
+      "models": {
+        "standard": {
+          "totalRaces": 111,
+          "hits": 44,
+          "hitRate": 0.3963963963963964
+        },
+        "safeBet": {
+          "totalRaces": 111,
+          "hits": 42,
+          "hitRate": 0.3783783783783784
+        },
+        "upsetFocus": {
+          "totalRaces": 111,
+          "hits": 29,
+          "hitRate": 0.26126126126126126
+        }
+      }
+    },
+    {
+      "range": "50-59",
+      "totalRaces": 142,
+      "avgVolatility": 54.605633802816904,
+      "models": {
+        "standard": {
+          "totalRaces": 142,
+          "hits": 47,
+          "hitRate": 0.33098591549295775
+        },
+        "safeBet": {
+          "totalRaces": 142,
+          "hits": 38,
+          "hitRate": 0.2676056338028169
+        },
+        "upsetFocus": {
+          "totalRaces": 142,
+          "hits": 31,
+          "hitRate": 0.21830985915492956
+        }
+      }
+    },
+    {
+      "range": "60-69",
+      "totalRaces": 189,
+      "avgVolatility": 64.39153439153439,
+      "models": {
+        "standard": {
+          "totalRaces": 189,
+          "hits": 67,
+          "hitRate": 0.3544973544973545
+        },
+        "safeBet": {
+          "totalRaces": 189,
+          "hits": 50,
+          "hitRate": 0.26455026455026454
+        },
+        "upsetFocus": {
+          "totalRaces": 189,
+          "hits": 38,
+          "hitRate": 0.20105820105820105
+        }
+      }
+    },
+    {
+      "range": "70-79",
+      "totalRaces": 142,
+      "avgVolatility": 74.25352112676056,
+      "models": {
+        "standard": {
+          "totalRaces": 142,
+          "hits": 44,
+          "hitRate": 0.30985915492957744
+        },
+        "safeBet": {
+          "totalRaces": 142,
+          "hits": 44,
+          "hitRate": 0.30985915492957744
+        },
+        "upsetFocus": {
+          "totalRaces": 142,
+          "hits": 35,
+          "hitRate": 0.24647887323943662
+        }
+      }
+    },
+    {
+      "range": "80-89",
+      "totalRaces": 53,
+      "avgVolatility": 82.86792452830188,
+      "models": {
+        "standard": {
+          "totalRaces": 53,
+          "hits": 16,
+          "hitRate": 0.3018867924528302
+        },
+        "safeBet": {
+          "totalRaces": 53,
+          "hits": 14,
+          "hitRate": 0.2641509433962264
+        },
+        "upsetFocus": {
+          "totalRaces": 53,
+          "hits": 11,
+          "hitRate": 0.20754716981132076
+        }
+      }
+    },
+    {
+      "range": "90-99",
+      "totalRaces": 12,
+      "avgVolatility": 92,
+      "models": {
+        "standard": {
+          "totalRaces": 12,
+          "hits": 3,
+          "hitRate": 0.25
+        },
+        "safeBet": {
+          "totalRaces": 12,
+          "hits": 2,
+          "hitRate": 0.16666666666666666
+        },
+        "upsetFocus": {
+          "totalRaces": 12,
+          "hits": 2,
+          "hitRate": 0.16666666666666666
+        }
+      }
+    }
+  ],
+  "correlations": {
+    "standard": {
+      "correlation": -0.9457987539506462,
+      "dataPoints": 10,
+      "interpretation": "強い負の相関"
+    },
+    "safeBet": {
+      "correlation": -0.8246564381253272,
+      "dataPoints": 10,
+      "interpretation": "強い負の相関"
+    },
+    "upsetFocus": {
+      "correlation": -0.7622003137495458,
+      "dataPoints": 10,
+      "interpretation": "強い負の相関"
+    }
+  }
+}
