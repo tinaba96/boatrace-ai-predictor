@@ -41,6 +41,18 @@ body {
 }
 
 /* =====================================================
+   グローバルフォーカスインジケーター（アクセシビリティ）
+   ===================================================== */
+a:focus-visible,
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid #0ea5e9;
+  outline-offset: 2px;
+}
+
+/* =====================================================
    ヘッダー
    ===================================================== */
 .header {
@@ -120,6 +132,17 @@ body {
   box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
 }
 
+/* フォーカスインジケーター（アクセシビリティ） */
+.nav-btn:focus-visible {
+  outline: 3px solid white;
+  outline-offset: 2px;
+}
+
+.nav-btn.active:focus-visible {
+  outline: 3px solid #0ea5e9;
+  outline-offset: 2px;
+}
+
 /* ハンバーガーメニューボタン */
 .menu-toggle-btn {
   font-size: 1.5rem;
@@ -157,6 +180,12 @@ body {
 .mobile-menu-item:active {
   background: #f8fafc;
   color: #0ea5e9;
+}
+
+.mobile-menu-item:focus-visible {
+  outline: 2px solid #0ea5e9;
+  outline-offset: -2px;
+  background: #f8fafc;
 }
 
 /* =====================================================
@@ -323,6 +352,11 @@ body {
 
 .predict-btn:active {
   transform: scale(0.98);
+}
+
+.predict-btn:focus-visible {
+  outline: 3px solid #0ea5e9;
+  outline-offset: 2px;
 }
 
 /* =====================================================

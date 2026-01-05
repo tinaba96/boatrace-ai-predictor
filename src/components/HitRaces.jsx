@@ -277,7 +277,7 @@ function HitRaces({ allVenuesData, analyzeRace, stadiumNames, fetchWithRetry, la
                 />
 
                 {/* 期間選択タブ */}
-                <div className="period-selector">
+                <div className="period-selector" role="group" aria-label="期間選択">
                     <button
                         onClick={() => setSelectedPeriod('today')}
                         className={selectedPeriod === 'today' ? 'active' : ''}
@@ -299,7 +299,7 @@ function HitRaces({ allVenuesData, analyzeRace, stadiumNames, fetchWithRetry, la
                 </div>
 
                 {/* モデル選択タブ */}
-                <div className="model-selector">
+                <div className="model-selector" role="group" aria-label="予想モデル選択">
                     <button
                         onClick={() => setSelectedModel('standard')}
                         className={selectedModel === 'standard' ? 'active standard' : ''}

@@ -264,7 +264,7 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
 
     // Model selector component
     const ModelSelector = () => (
-        <div className="model-selector">
+        <div className="model-selector" role="group" aria-label="予想モデル選択">
             <button
                 className={selectedModel === 'standard' ? 'active' : ''}
                 onClick={() => setSelectedModel('standard')}
@@ -326,7 +326,7 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
                 </div>
 
                 {/* モデル選択タブ */}
-                <div className="strategy-model-selector">
+                <div className="strategy-model-selector" role="group" aria-label="詳細分析用モデル選択">
                     <button
                         className={detailModel === 'standard' ? 'active' : ''}
                         onClick={() => setDetailModel('standard')}

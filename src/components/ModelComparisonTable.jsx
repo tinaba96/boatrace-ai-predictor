@@ -32,33 +32,33 @@ export default function ModelComparisonTable({
     <div className={wrapperClass}>
       {title && <h3 className="mct-title">{title}</h3>}
       <div className="mct-scroll-container">
-        <table className={tableClass}>
+        <table className={tableClass} aria-label="モデル別パフォーマンス比較">
           <thead>
             <tr>
-              <th>モデル</th>
-              {showRaceCount && <th>レース数</th>}
-              <th colSpan="2">単勝</th>
-              <th colSpan="2">複勝</th>
-              <th colSpan="2">3連複</th>
-              <th colSpan="2">3連単</th>
+              <th scope="col">モデル</th>
+              {showRaceCount && <th scope="col">レース数</th>}
+              <th scope="colgroup" colSpan="2">単勝</th>
+              <th scope="colgroup" colSpan="2">複勝</th>
+              <th scope="colgroup" colSpan="2">3連複</th>
+              <th scope="colgroup" colSpan="2">3連単</th>
             </tr>
             <tr className="mct-sub-header">
-              <th></th>
-              {showRaceCount && <th></th>}
-              <th>的中</th>
-              <th>回収</th>
-              <th>的中</th>
-              <th>回収</th>
-              <th>的中</th>
-              <th>回収</th>
-              <th>的中</th>
-              <th>回収</th>
+              <th scope="col"></th>
+              {showRaceCount && <th scope="col"></th>}
+              <th scope="col">的中</th>
+              <th scope="col">回収</th>
+              <th scope="col">的中</th>
+              <th scope="col">回収</th>
+              <th scope="col">的中</th>
+              <th scope="col">回収</th>
+              <th scope="col">的中</th>
+              <th scope="col">回収</th>
             </tr>
           </thead>
           <tbody>
             {data.map(model => (
               <tr key={model.key}>
-                <td className="mct-model-name">{model.name}</td>
+                <th scope="row" className="mct-model-name">{model.name}</th>
                 {showRaceCount && (
                   <td className="mct-races">{model.races > 0 ? `${model.races}` : '-'}</td>
                 )}

@@ -493,55 +493,69 @@ function App({ tab = 'races' }) {
 
     return (
         <div className="app">
-            <header className="header">
+            <header className="header" role="banner">
                 <div>
-                    <div className="logo" onClick={handleLogoClick} style={{ cursor: 'pointer' }}>
-                        <span className="logo-icon">🚤</span>
+                    <div
+                        className="logo"
+                        onClick={handleLogoClick}
+                        style={{ cursor: 'pointer' }}
+                        role="button"
+                        tabIndex={0}
+                        aria-label="BoatAI ホームに戻る"
+                        onKeyDown={(e) => e.key === 'Enter' && handleLogoClick()}
+                    >
+                        <span className="logo-icon" aria-hidden="true">🚤</span>
                         <h1>BoatAI</h1>
                     </div>
-                    <nav className="nav">
+                    <nav className="nav" role="navigation" aria-label="メインナビゲーション">
                         <button
                             className={`nav-btn ${activeTab === 'races' ? 'active' : ''}`}
                             onClick={() => handleTabChange('races')}
+                            aria-current={activeTab === 'races' ? 'page' : undefined}
                         >
-                            🏁 予想
+                            <span aria-hidden="true">🏁</span> 予想
                         </button>
                         <button
                             className={`nav-btn ${activeTab === 'hit-races' ? 'active' : ''}`}
                             onClick={() => handleTabChange('hit-races')}
+                            aria-current={activeTab === 'hit-races' ? 'page' : undefined}
                         >
-                            ✅ 的中
+                            <span aria-hidden="true">✅</span> 的中
                         </button>
                         <button
                             className={`nav-btn ${activeTab === 'accuracy' ? 'active' : ''}`}
                             onClick={() => handleTabChange('accuracy')}
+                            aria-current={activeTab === 'accuracy' ? 'page' : undefined}
                         >
-                            📊 成績
+                            <span aria-hidden="true">📊</span> 成績
                         </button>
                         <button
                             className="nav-btn menu-toggle-btn"
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            aria-label="その他のメニュー"
+                            aria-expanded={isMenuOpen}
+                            aria-haspopup="true"
                         >
-                            ☰
+                            <span aria-hidden="true">☰</span>
                         </button>
                     </nav>
                     {/* ドロップダウンメニュー - navの外に配置 */}
                     {isMenuOpen && (
-                        <div className="mobile-menu-dropdown">
-                            <Link to="/races" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)}>
-                                📅 過去の予想
+                        <div className="mobile-menu-dropdown" role="menu" aria-label="サブメニュー">
+                            <Link to="/races" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)} role="menuitem">
+                                <span aria-hidden="true">📅</span> 過去の予想
                             </Link>
-                            <Link to="/how-to-use" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)}>
-                                📚 使い方
+                            <Link to="/how-to-use" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)} role="menuitem">
+                                <span aria-hidden="true">📚</span> 使い方
                             </Link>
-                            <Link to="/blog" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)}>
-                                📝 ブログ
+                            <Link to="/blog" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)} role="menuitem">
+                                <span aria-hidden="true">📝</span> ブログ
                             </Link>
-                            <Link to="/faq" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)}>
-                                ❓ よくある質問
+                            <Link to="/faq" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)} role="menuitem">
+                                <span aria-hidden="true">❓</span> よくある質問
                             </Link>
-                            <Link to="/about" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)}>
-                                ℹ️ サービスについて
+                            <Link to="/about" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)} role="menuitem">
+                                <span aria-hidden="true">ℹ️</span> サービスについて
                             </Link>
                         </div>
                     )}
@@ -1126,24 +1140,24 @@ function App({ tab = 'races' }) {
                                             </div>
 
                                             <div className="all-players">
-                                                <h4>🏆 AI予想順位</h4>
+                                                <h4><span aria-hidden="true">🏆</span> AI予想順位</h4>
                                                 <div className="table-wrapper">
-                                                <table className="players-table">
+                                                <table className="players-table" aria-label="AI予想順位一覧">
                                                     <thead>
                                                         <tr>
-                                                            <th>艇番</th>
-                                                            <th>選手名</th>
-                                                            <th>級別</th>
-                                                            <th>年齢</th>
-                                                            <th>勝率</th>
-                                                            <th>モーター</th>
-                                                            <th>AIスコア</th>
+                                                            <th scope="col">艇番</th>
+                                                            <th scope="col">選手名</th>
+                                                            <th scope="col">級別</th>
+                                                            <th scope="col">年齢</th>
+                                                            <th scope="col">勝率</th>
+                                                            <th scope="col">モーター</th>
+                                                            <th scope="col">AIスコア</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
                                                         {prediction.allPlayers.map(player => (
                                                             <tr key={player.number} className={player.number <= 3 ? 'recommended' : ''}>
-                                                                <td><strong>{player.number}</strong></td>
+                                                                <th scope="row"><strong>{player.number}</strong></th>
                                                                 <td>{player.name}</td>
                                                                 <td>{player.grade}</td>
                                                                 <td>{player.age}歳</td>
@@ -1160,7 +1174,7 @@ function App({ tab = 'races' }) {
                                             {/* レース結果セクション */}
                                             {prediction.result && prediction.result.finished && (
                                                 <div className="race-result">
-                                                    <h4>🏁 レース結果</h4>
+                                                    <h4><span aria-hidden="true">🏁</span> レース結果</h4>
 
                                                     <div className="result-podium">
                                                         <div className="podium-item first">
@@ -1285,39 +1299,39 @@ function App({ tab = 'races' }) {
 
                                             {/* 詳細データ分析セクション（新規追加） */}
                                             <div className="detailed-analysis">
-                                                <h3>📊 詳細データ分析</h3>
+                                                <h3><span aria-hidden="true">📊</span> 詳細データ分析</h3>
 
                                                 {/* 強化されたテーブル */}
                                                 <div className="enhanced-table">
-                                                    <table className="players-table-detailed">
+                                                    <table className="players-table-detailed" aria-label="選手詳細データ">
                                                         <thead>
                                                             <tr>
-                                                                <th>艇番</th>
-                                                                <th>選手名</th>
-                                                                <th>級別</th>
-                                                                <th>全国勝率</th>
-                                                                <th>当地勝率</th>
-                                                                <th>モーター番号</th>
-                                                                <th>モーター2率</th>
-                                                                <th>ボート番号</th>
-                                                                <th>ボート2率</th>
+                                                                <th scope="col">艇番</th>
+                                                                <th scope="col">選手名</th>
+                                                                <th scope="col">級別</th>
+                                                                <th scope="col">全国勝率</th>
+                                                                <th scope="col">当地勝率</th>
+                                                                <th scope="col">モーター番号</th>
+                                                                <th scope="col">モーター2率</th>
+                                                                <th scope="col">ボート番号</th>
+                                                                <th scope="col">ボート2率</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
                                                             {prediction.allPlayers.map(player => (
                                                                 <tr key={player.number}>
-                                                                    <td><strong>{player.number}</strong></td>
+                                                                    <th scope="row"><strong>{player.number}</strong></th>
                                                                     <td>{player.name}</td>
                                                                     <td>{player.grade}</td>
                                                                     <td>{player.winRate}</td>
                                                                     <td>
                                                                         {player.localWinRate}
-                                                                        {parseFloat(player.localWinRate) > 7.0 && <span className="fire">🔥</span>}
+                                                                        {parseFloat(player.localWinRate) > 7.0 && <span className="fire" aria-label="優秀">🔥</span>}
                                                                     </td>
                                                                     <td>{player.motorNumber}</td>
                                                                     <td>
                                                                         {player.motor2Rate}%
-                                                                        {parseFloat(player.motor2Rate) > 40 && <span className="fire">🔥</span>}
+                                                                        {parseFloat(player.motor2Rate) > 40 && <span className="fire" aria-label="優秀">🔥</span>}
                                                                     </td>
                                                                     <td>{player.boatNumber}</td>
                                                                     <td>{player.boat2Rate}%</td>
@@ -1329,7 +1343,7 @@ function App({ tab = 'races' }) {
 
                                                 {/* 統計的な注目ポイント */}
                                                 <div className="statistical-insights">
-                                                    <h4>📌 統計的な注目ポイント</h4>
+                                                    <h4><span aria-hidden="true">📌</span> 統計的な注目ポイント</h4>
                                                     <ul>
                                                         {generateInsights(prediction.allPlayers).map((insight, idx) => (
                                                             <li key={idx}>{insight}</li>
@@ -1339,7 +1353,7 @@ function App({ tab = 'races' }) {
 
                                                 {/* データの見方（解説） */}
                                                 <div className="data-guide">
-                                                    <h4>💡 データの見方</h4>
+                                                    <h4><span aria-hidden="true">💡</span> データの見方</h4>
                                                     <div className="guide-grid">
                                                         <div className="guide-item">
                                                             <strong>全国勝率</strong>
