@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { Link } from 'react-router-dom'
 import UpdateStatus from './UpdateStatus'
+import { dataService } from '../services/dataService'
 import './AccuracyDashboard.css'
 
 function AccuracyDashboard({ onRefresh, isRefreshing }) {
@@ -22,15 +23,7 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
         const fetchSummary = async () => {
             try {
                 setLoading(true)
-                // キャッシュバスティング: タイムスタンプをクエリパラメータに追加
-                const summaryUrl = import.meta.env.BASE_URL + 'data/predictions/summary.json?t=' + Date.now()
-                const response = await fetch(summaryUrl)
-
-                if (!response.ok) {
-                    throw new Error('Summary data not available yet')
-                }
-
-                const data = await response.json()
+                const data = await dataService.getAccuracy()
                 setSummary(data)
             } catch (err) {
                 console.error('Failed to load accuracy summary:', err)
