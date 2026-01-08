@@ -25,7 +25,8 @@ export const supabaseDataService = {
    */
   async getRaces() {
     if (!supabase) {
-      throw new Error('Supabase client not initialized');
+      console.error('Supabase client not initialized');
+      return { success: false, data: [], scrapedAt: null };
     }
 
     // 今日の日付
@@ -110,7 +111,8 @@ export const supabaseDataService = {
    */
   async getPredictions(date) {
     if (!supabase) {
-      throw new Error('Supabase client not initialized');
+      console.error('Supabase client not initialized');
+      return { date, generatedAt: null, updatedAt: null, races: [] };
     }
 
     // レースと予測と結果を取得
@@ -290,7 +292,8 @@ export const supabaseDataService = {
    */
   async getAccuracy() {
     if (!supabase) {
-      throw new Error('Supabase client not initialized');
+      console.error('Supabase client not initialized');
+      return { lastUpdated: null, models: {} };
     }
 
     // モデル情報を取得
