@@ -59,7 +59,8 @@ export const supabaseDataService = {
       .order('race_number');
 
     if (racesError) {
-      throw new Error(`Supabase error: ${racesError.message}`);
+      console.error('Supabase getRaces error:', racesError.message);
+      return { success: false, data: [], scrapedAt: null };
     }
 
     // 会場ごとにグループ化
@@ -168,7 +169,8 @@ export const supabaseDataService = {
       .order('race_number');
 
     if (racesError) {
-      throw new Error(`Supabase error: ${racesError.message}`);
+      console.error('Supabase getPredictions error:', racesError.message);
+      return { date, generatedAt: null, updatedAt: null, races: [] };
     }
 
     // JSON形式に変換
@@ -302,14 +304,15 @@ export const supabaseDataService = {
       .select('model_id, display_name, total_predictions, hit_rate_win, recovery_rate_win');
 
     if (modelsError) {
-      throw new Error(`Supabase error: ${modelsError.message}`);
+      console.error('Supabase getAccuracy error:', modelsError.message);
+      return { lastUpdated: null, models: {} };
     }
 
     // v_prediction_performance ビューから統計を取得（もしあれば）
     // 現時点ではmodelsテーブルの情報で代替
     const modelStats = {};
 
-    for (const model of models) {
+    for (const model of models || []) {
       modelStats[model.model_id] = {
         overall: {
           totalRaces: model.total_predictions || 0,
