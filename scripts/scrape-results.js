@@ -1,10 +1,12 @@
 // Race Results Scraper
 // Reads data/predictions/YYYY-MM-DD.json and adds race results
+// Supabaseにも同時書き込み（デュアルライト）
 
 import * as cheerio from 'cheerio';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { supabase, isSupabaseEnabled } from './lib/supabaseClient.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -168,6 +170,71 @@ async function scrapeRaceResult(venueCode, raceNo, dateStr) {
   }
 }
 
+// Supabaseにレース結果を書き込む関数
+async function writeResultsToSupabase(races, dateStr) {
+  if (!isSupabaseEnabled()) {
+    console.log('⚠️  Supabase未設定のため、DB書き込みをスキップします');
+    return;
+  }
+
+  // 結果があるレースのみフィルタ
+  const finishedRaces = races.filter(r => r.result?.finished);
+
+  if (finishedRaces.length === 0) {
+    console.log('📤 Supabase: 書き込む結果なし');
+    return;
+  }
+
+  console.log(`\n📤 Supabaseに結果を書き込み中...`);
+
+  try {
+    const resultsData = finishedRaces.map(race => {
+      const payouts = race.result.payouts || {};
+
+      // 単勝配当を取得
+      const winPayout = payouts.win ? Object.values(payouts.win)[0] : null;
+
+      // 複勝配当を取得（1着と2着）
+      const placePayouts = payouts.place ? Object.entries(payouts.place) : [];
+      const place1Payout = placePayouts.find(([k]) => k === String(race.result.rank1))?.[1] || null;
+      const place2Payout = placePayouts.find(([k]) => k === String(race.result.rank2))?.[1] || null;
+
+      // 3連単配当を取得
+      const trioPayout = payouts.trio ? Object.values(payouts.trio)[0] : null;
+
+      // 3連複配当を取得
+      const trifectaPayout = payouts.trifecta ? Object.values(payouts.trifecta)[0] : null;
+
+      return {
+        race_id: race.raceId,
+        rank1: race.result.rank1,
+        rank2: race.result.rank2,
+        rank3: race.result.rank3,
+        payout_win: winPayout,
+        payout_place_1: place1Payout,
+        payout_place_2: place2Payout,
+        payout_trifecta: trifectaPayout,
+        payout_trio: trioPayout,
+        result_at: race.result.updatedAt
+      };
+    });
+
+    // upsert（既存の結果があれば更新）
+    const { error } = await supabase
+      .from('race_results')
+      .upsert(resultsData, { onConflict: 'race_id' });
+
+    if (error) {
+      console.error('❌ race_results書き込みエラー:', error.message);
+    } else {
+      console.log(`  ✅ race_results: ${resultsData.length}件（トリガーでpredictions.is_hit_win自動更新）`);
+    }
+
+  } catch (error) {
+    console.error('❌ Supabase書き込みエラー:', error.message);
+  }
+}
+
 // Update prediction data with results
 async function updatePredictionWithResults(dateStr = null) {
   try {
@@ -237,6 +304,9 @@ async function updatePredictionWithResults(dateStr = null) {
     console.log(`  - Already finished: ${alreadyFinishedCount} races`);
     console.log(`  - Not yet finished: ${notYetCount} races`);
     console.log(`\nUpdated: ${predictionsPath}`);
+
+    // Supabaseにも書き込み（デュアルライト）
+    await writeResultsToSupabase(predictionsData.races, targetDate);
 
   } catch (error) {
     console.error('Error occurred:', error);

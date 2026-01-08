@@ -1,9 +1,11 @@
 // Accuracy Calculation Script
 // Calculates prediction accuracy and generates summary.json
+// Supabaseのmodels統計も更新（デュアルライト）
 
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { supabase, isSupabaseEnabled } from './lib/supabaseClient.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -798,9 +800,61 @@ async function calculateAccuracy() {
         console.log(`  Top 3 exact rate: ${(overallStats.top3IncludedRate * 100).toFixed(1)}%`);
         console.log(`\nSaved: ${summaryPath}`);
 
+        // Supabaseのmodels統計を更新
+        await updateModelsInSupabase(modelsSummary);
+
     } catch (error) {
         console.error('Error occurred:', error);
         process.exit(1);
+    }
+}
+
+// Supabaseのmodelsテーブルを更新
+async function updateModelsInSupabase(modelsSummary) {
+    if (!isSupabaseEnabled()) {
+        console.log('⚠️  Supabase未設定のため、models更新をスキップします');
+        return;
+    }
+
+    console.log('\n📤 Supabaseのmodels統計を更新中...');
+
+    try {
+        const modelUpdates = [];
+
+        for (const [modelKey, stats] of Object.entries(modelsSummary)) {
+            modelUpdates.push({
+                model_id: modelKey,
+                total_predictions: stats.overall.totalRaces,
+                hit_rate_win: stats.overall.topPickHitRate,
+                recovery_rate_win: stats.overall.actualRecovery?.win?.recoveryRate || 0,
+                last_evaluated_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            });
+        }
+
+        for (const update of modelUpdates) {
+            const { error } = await supabase
+                .from('models')
+                .update({
+                    total_predictions: update.total_predictions,
+                    hit_rate_win: update.hit_rate_win,
+                    recovery_rate_win: update.recovery_rate_win,
+                    last_evaluated_at: update.last_evaluated_at,
+                    updated_at: update.updated_at
+                })
+                .eq('model_id', update.model_id);
+
+            if (error) {
+                console.error(`❌ ${update.model_id}更新エラー:`, error.message);
+            } else {
+                console.log(`  ✅ ${update.model_id}: hit_rate=${(update.hit_rate_win * 100).toFixed(1)}%, recovery=${(update.recovery_rate_win * 100).toFixed(1)}%`);
+            }
+        }
+
+        console.log('✅ models更新完了');
+
+    } catch (error) {
+        console.error('❌ Supabase更新エラー:', error.message);
     }
 }
 

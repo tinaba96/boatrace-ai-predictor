@@ -44,17 +44,23 @@ jobs:
         run: node scripts/generate-predictions.js
         env:
           TZ: 'Asia/Tokyo'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
 
       - name: Scrape race results
         run: node scripts/scrape-results.js
         env:
           TZ: 'Asia/Tokyo'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         continue-on-error: true
 
       - name: Calculate accuracy
         run: node scripts/calculate-accuracy.js
         env:
           TZ: 'Asia/Tokyo'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         continue-on-error: true
 
       - name: Copy data to public directory for Vercel

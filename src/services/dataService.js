@@ -2,13 +2,23 @@
  * データ取得サービス
  *
  * DB移行に備えて、データ取得ロジックを抽象化します。
- * 現在はJSONファイルから取得し、将来的にはAPI経由で取得できるようにします。
+ *
+ * データソース切り替え:
+ *   VITE_DATA_SOURCE=json     - JSONファイルから取得（デフォルト）
+ *   VITE_DATA_SOURCE=supabase - Supabaseから取得
+ *   VITE_DATA_SOURCE=api      - API経由で取得（将来用）
  */
 
-// データ取得モード: 'json' or 'api'
-const API_MODE = import.meta.env.VITE_API_MODE || 'json';
+import { supabaseDataService } from './supabaseDataService';
+
+// データ取得モード: 'json', 'supabase', or 'api'
+const DATA_SOURCE = import.meta.env.VITE_DATA_SOURCE || 'json';
+const API_MODE = import.meta.env.VITE_API_MODE || DATA_SOURCE; // 後方互換性
 const API_URL = import.meta.env.VITE_API_URL || '';
 const BASE_URL = import.meta.env.BASE_URL || '';
+
+// 起動時にデータソースをログ出力
+console.log(`📊 データソース: ${DATA_SOURCE}`);
 
 /**
  * リトライ機能付きfetch関数
@@ -45,12 +55,15 @@ export const dataService = {
    * レースデータを取得
    */
   async getRaces() {
-    if (API_MODE === 'api') {
-      // 将来: API経由で取得
+    if (DATA_SOURCE === 'supabase') {
+      // Supabaseから取得
+      return supabaseDataService.getRaces();
+    } else if (DATA_SOURCE === 'api' || API_MODE === 'api') {
+      // API経由で取得
       const response = await fetchWithRetry(`${API_URL}/api/races`);
       return response.json();
     } else {
-      // 現在: JSONファイルから取得
+      // JSONファイルから取得
       const response = await fetchWithRetry(BASE_URL + 'data/races.json');
       return response.json();
     }
@@ -61,12 +74,15 @@ export const dataService = {
    * @param {string} date - 日付文字列（YYYY-MM-DD形式）
    */
   async getPredictions(date) {
-    if (API_MODE === 'api') {
-      // 将来: API経由で取得
+    if (DATA_SOURCE === 'supabase') {
+      // Supabaseから取得
+      return supabaseDataService.getPredictions(date);
+    } else if (DATA_SOURCE === 'api' || API_MODE === 'api') {
+      // API経由で取得
       const response = await fetchWithRetry(`${API_URL}/api/predictions?date=${date}`);
       return response.json();
     } else {
-      // 現在: JSONファイルから取得
+      // JSONファイルから取得
       const response = await fetchWithRetry(BASE_URL + `data/predictions/${date}.json`, 2, 1000);
       return response.json();
     }
@@ -76,12 +92,15 @@ export const dataService = {
    * 精度統計データを取得
    */
   async getAccuracy() {
-    if (API_MODE === 'api') {
-      // 将来: API経由で取得
+    if (DATA_SOURCE === 'supabase') {
+      // Supabaseから取得
+      return supabaseDataService.getAccuracy();
+    } else if (DATA_SOURCE === 'api' || API_MODE === 'api') {
+      // API経由で取得
       const response = await fetchWithRetry(`${API_URL}/api/accuracy`);
       return response.json();
     } else {
-      // 現在: JSONファイルから取得
+      // JSONファイルから取得
       const response = await fetchWithRetry(BASE_URL + 'data/predictions/summary.json');
       return response.json();
     }

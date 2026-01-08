@@ -472,3 +472,4 @@ WHERE race_id = '2025-12-05-01-01';
 - JSONB演算子: https://www.postgresql.org/docs/current/functions-json.html
 
 
+

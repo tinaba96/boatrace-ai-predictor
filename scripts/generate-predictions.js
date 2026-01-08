@@ -1,9 +1,11 @@
 // AI予想生成スクリプト
 // data/races.json を読み込んで、data/predictions/YYYY-MM-DD.json を生成
+// Supabaseにも同時書き込み（デュアルライト）
 
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { supabase, isSupabaseEnabled, VENUE_CODES } from './lib/supabaseClient.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -494,6 +496,165 @@ function generateRacePrediction(race, date) {
     };
 }
 
+// Supabaseにデータを書き込む関数
+async function writeToSupabase(allPredictions, date) {
+    if (!isSupabaseEnabled()) {
+        console.log('⚠️  Supabase未設定のため、DB書き込みをスキップします');
+        return;
+    }
+
+    console.log('\n📤 Supabaseにデータを書き込み中...');
+
+    try {
+        // 1. racesテーブルにupsert
+        const racesData = allPredictions.map(race => {
+            // 選手データから統計を計算
+            const players = race.predictions.standard.players;
+            const winRates = players.map(p => parseFloat(p.winRate));
+            const motorRates = players.map(p => parseFloat(p.motor2Rate));
+            const firstPlayer = players.find(p => p.number === 1);
+
+            return {
+                race_id: race.raceId,
+                race_date: date,
+                venue_code: race.venueCode,
+                race_number: race.raceNumber,
+                start_time: race.startTime !== '未定' ? race.startTime + ':00' : null,
+                volatility_score: race.volatility.score,
+                volatility_level: race.volatility.level,
+                recommended_model: race.volatility.recommendedModel,
+                volatility_reasons: race.volatility.reasons,
+                first_boat_grade: firstPlayer?.grade || null,
+                first_boat_win_rate: firstPlayer ? parseFloat(firstPlayer.winRate) : null,
+                first_boat_motor_2rate: firstPlayer ? parseFloat(firstPlayer.motor2Rate) : null,
+                win_rate_stddev: calculateStdDev(winRates),
+                win_rate_avg: winRates.reduce((a, b) => a + b, 0) / winRates.length,
+                motor_2rate_stddev: calculateStdDev(motorRates),
+                updated_at: new Date().toISOString()
+            };
+        });
+
+        const { error: racesError } = await supabase
+            .from('races')
+            .upsert(racesData, { onConflict: 'race_id' });
+
+        if (racesError) {
+            console.error('❌ races書き込みエラー:', racesError.message);
+        } else {
+            console.log(`  ✅ races: ${racesData.length}件`);
+        }
+
+        // 2. race_entriesテーブルにupsert
+        const entriesData = [];
+        for (const race of allPredictions) {
+            const standardPlayers = race.predictions.standard.players;
+            const safeBetPlayers = race.predictions.safeBet.players;
+            const upsetPlayers = race.predictions.upsetFocus.players;
+
+            for (const player of standardPlayers) {
+                const safeBetPlayer = safeBetPlayers.find(p => p.number === player.number);
+                const upsetPlayer = upsetPlayers.find(p => p.number === player.number);
+
+                entriesData.push({
+                    race_id: race.raceId,
+                    boat_number: player.number,
+                    player_name: player.name,
+                    grade: player.grade,
+                    age: player.age,
+                    win_rate: parseFloat(player.winRate),
+                    local_win_rate: parseFloat(player.localWinRate),
+                    motor_number: player.motorNumber,
+                    motor_2rate: parseFloat(player.motor2Rate),
+                    boat_number_id: player.boatNumber,
+                    boat_2rate: parseFloat(player.boat2Rate),
+                    ai_score_standard: player.aiScore,
+                    ai_score_safe_bet: safeBetPlayer?.aiScore || 0,
+                    ai_score_upset_focus: upsetPlayer?.aiScore || 0
+                });
+            }
+        }
+
+        // バッチでupsert（1000件ずつ）
+        for (let i = 0; i < entriesData.length; i += 1000) {
+            const batch = entriesData.slice(i, i + 1000);
+            const { error: entriesError } = await supabase
+                .from('race_entries')
+                .upsert(batch, { onConflict: 'race_id,boat_number' });
+
+            if (entriesError) {
+                console.error('❌ race_entries書き込みエラー:', entriesError.message);
+            }
+        }
+        console.log(`  ✅ race_entries: ${entriesData.length}件`);
+
+        // 3. predictionsテーブルにupsert
+        const predictionsData = [];
+        for (const race of allPredictions) {
+            // Standard model
+            const std = race.predictions.standard;
+            predictionsData.push({
+                race_id: race.raceId,
+                model_id: 'standard',
+                top_pick: std.topPick,
+                top_2nd: std.top3[1] || null,
+                top_3rd: std.top3[2] || null,
+                confidence: std.confidence,
+                is_shadow: false
+            });
+
+            // SafeBet model
+            const safe = race.predictions.safeBet;
+            predictionsData.push({
+                race_id: race.raceId,
+                model_id: 'safeBet',
+                top_pick: safe.topPick,
+                top_2nd: safe.top3[1] || null,
+                top_3rd: safe.top3[2] || null,
+                confidence: safe.confidence,
+                is_shadow: false
+            });
+
+            // UpsetFocus model
+            const upset = race.predictions.upsetFocus;
+            predictionsData.push({
+                race_id: race.raceId,
+                model_id: 'upsetFocus',
+                top_pick: upset.topPick,
+                top_2nd: upset.top3[1] || null,
+                top_3rd: upset.top3[2] || null,
+                confidence: upset.confidence,
+                is_shadow: false
+            });
+        }
+
+        // 既存の予測を削除してから挿入（upsertだと複合キーが必要なため）
+        const raceIds = allPredictions.map(r => r.raceId);
+        await supabase
+            .from('predictions')
+            .delete()
+            .in('race_id', raceIds)
+            .eq('is_shadow', false);
+
+        // バッチで挿入
+        for (let i = 0; i < predictionsData.length; i += 1000) {
+            const batch = predictionsData.slice(i, i + 1000);
+            const { error: predsError } = await supabase
+                .from('predictions')
+                .insert(batch);
+
+            if (predsError) {
+                console.error('❌ predictions書き込みエラー:', predsError.message);
+            }
+        }
+        console.log(`  ✅ predictions: ${predictionsData.length}件`);
+
+        console.log('✅ Supabase書き込み完了');
+
+    } catch (error) {
+        console.error('❌ Supabase書き込みエラー:', error.message);
+    }
+}
+
 // メイン処理
 async function main() {
     try {
@@ -561,6 +722,10 @@ async function main() {
 
         await fs.writeFile(outputPath, JSON.stringify(outputData, null, 2), 'utf-8');
         console.log(`\n💾 予想データを保存しました: ${outputPath}`);
+
+        // Supabaseにも書き込み（デュアルライト）
+        await writeToSupabase(allPredictions, today);
+
         console.log('✨ 予想生成が完了しました！');
 
     } catch (error) {
