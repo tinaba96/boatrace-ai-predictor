@@ -653,9 +653,9 @@ function App({ tab = 'races' }) {
                                                         outline: 'none'
                                                     }}
                                                 >
-                                                    {allVenuesData.map(venue => (
+                                                    {(allVenuesData || []).map(venue => (
                                                         <option key={venue.placeCd} value={venue.placeCd}>
-                                                            {venue.placeName} ({venue.races.length}レース)
+                                                            {venue.placeName} ({venue.races?.length || 0}レース)
                                                         </option>
                                                     ))}
                                                 </select>

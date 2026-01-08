@@ -5,6 +5,7 @@ import { SocialShareButtons } from './SocialShareButtons'
 import { shareHitRaceToX, generateHitRaceShareText } from '../utils/share'
 import UpdateStatus from './UpdateStatus'
 import LoadingScreen from './LoadingScreen'
+import { dataService } from '../services/dataService'
 import './HitRaces.css'
 
 function HitRaces({ allVenuesData, analyzeRace, stadiumNames, fetchWithRetry, lastUpdated, onRefresh, isRefreshing }) {
@@ -55,9 +56,7 @@ function HitRaces({ allVenuesData, analyzeRace, stadiumNames, fetchWithRetry, la
                 // 今日と昨日の予想データを読み込む
                 const loadDayPredictions = async (dateStr) => {
                     try {
-                        const predictionUrl = import.meta.env.BASE_URL + `data/predictions/${dateStr}.json`
-                        const response = await fetchWithRetry(predictionUrl, 2, 1000)
-                        const data = await response.json()
+                        const data = await dataService.getPredictions(dateStr)
                         return data.races || []
                     } catch (error) {
                         console.warn(`予想データ読み込みエラー (${dateStr}):`, error)
@@ -192,8 +191,8 @@ function HitRaces({ allVenuesData, analyzeRace, stadiumNames, fetchWithRetry, la
     }, [stadiumNames, fetchWithRetry, selectedModel])
 
     const handleCardClick = (hitRace) => {
-        const venueData = allVenuesData.find(v => v.placeCd === hitRace.placeCode)
-        if (venueData) {
+        const venueData = (allVenuesData || []).find(v => v.placeCd === hitRace.placeCode)
+        if (venueData && venueData.races) {
             const race = venueData.races.find(r => r.raceNo === hitRace.raceNumber)
             if (race) {
                 const formattedRace = {
