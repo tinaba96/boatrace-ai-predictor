@@ -1,15 +1,8 @@
 // Race Results Scraper
-// Reads data/predictions/YYYY-MM-DD.json and adds race results
-// Supabaseにも同時書き込み（デュアルライト）
+// Supabaseからレース一覧を取得し、結果をスクレイピングしてSupabaseに書き込む
 
 import * as cheerio from 'cheerio';
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { supabase, isSupabaseEnabled } from './lib/supabaseClient.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { supabase, isSupabaseEnabled, VENUE_NAMES } from './lib/supabaseClient.js';
 
 // Get today's date in JST (YYYY-MM-DD format)
 function getTodayDateJST() {
@@ -49,8 +42,6 @@ function scrapePayouts($) {
     if (payoutTable.length === 0) {
       return payouts;
     }
-
-    const rows = payoutTable.find('tbody tr');
 
     let currentType = '';
 
@@ -100,7 +91,6 @@ function scrapePayouts($) {
 
   } catch (error) {
     console.error(`  Payout scraping error: ${error.message}`);
-    // エラーが発生しても空のpayoutsを返して処理を続行
   }
 
   return payouts;
@@ -139,7 +129,6 @@ async function scrapeRaceResult(venueCode, raceNo, dateStr) {
     $('.is-w495 tbody tr').each((index, row) => {
       if (index < 3) {
         const $row = $(row);
-        // Get the second column (boat number), not the first (rank)
         const boatNumber = parseInt($row.find('td').eq(1).text().trim());
         if (boatNumber && !isNaN(boatNumber)) {
           rankings.push(boatNumber);
@@ -156,12 +145,10 @@ async function scrapeRaceResult(venueCode, raceNo, dateStr) {
     const payouts = scrapePayouts($);
 
     return {
-      finished: true,
       rank1: rankings[0],
       rank2: rankings[1],
       rank3: rankings[2],
       payouts: payouts,
-      updatedAt: new Date().toISOString(),
     };
 
   } catch (error) {
@@ -170,147 +157,121 @@ async function scrapeRaceResult(venueCode, raceNo, dateStr) {
   }
 }
 
-// Supabaseにレース結果を書き込む関数
-async function writeResultsToSupabase(races, dateStr) {
+// Main function
+async function scrapeResults(dateStr = null) {
   if (!isSupabaseEnabled()) {
-    console.log('⚠️  Supabase未設定のため、DB書き込みをスキップします');
-    return;
+    console.error('❌ Supabaseが設定されていません');
+    process.exit(1);
   }
 
-  // 結果があるレースのみフィルタ
-  const finishedRaces = races.filter(r => r.result?.finished);
+  const targetDate = dateStr || getTodayDateJST();
+  console.log(`Starting race result scraping: ${targetDate}`);
 
-  if (finishedRaces.length === 0) {
-    console.log('📤 Supabase: 書き込む結果なし');
-    return;
+  // Supabaseから対象日のレース一覧を取得（結果がないもの）
+  const { data: races, error: racesError } = await supabase
+    .from('races')
+    .select('race_id, venue_code, race_number')
+    .eq('race_date', targetDate)
+    .order('race_id');
+
+  if (racesError) {
+    console.error('❌ レース取得エラー:', racesError.message);
+    process.exit(1);
   }
 
-  console.log(`\n📤 Supabaseに結果を書き込み中...`);
+  if (!races || races.length === 0) {
+    console.log('⚠️  対象日のレースがありません');
+    process.exit(0);
+  }
 
-  try {
-    const resultsData = finishedRaces.map(race => {
-      const payouts = race.result.payouts || {};
+  // 既に結果があるレースを取得
+  const { data: existingResults } = await supabase
+    .from('race_results')
+    .select('race_id, payout_win')
+    .like('race_id', `${targetDate}%`);
 
-      // 単勝配当を取得
+  const finishedRaceIds = new Set(
+    (existingResults || [])
+      .filter(r => r.payout_win !== null)  // 配当データがあるもののみ
+      .map(r => r.race_id)
+  );
+
+  console.log(`Fetching results for ${races.length} races (${finishedRaceIds.size} already finished)\n`);
+
+  let updatedCount = 0;
+  let alreadyFinishedCount = 0;
+  let notYetCount = 0;
+  const newResults = [];
+
+  // Fetch results for each race
+  for (const race of races) {
+    const venueName = VENUE_NAMES[race.venue_code] || `会場${race.venue_code}`;
+    const raceInfo = `${venueName} R${race.race_number}`;
+    process.stdout.write(`${raceInfo.padEnd(20)} `);
+
+    // Skip if already finished with payout data
+    if (finishedRaceIds.has(race.race_id)) {
+      console.log(`Already finished`);
+      alreadyFinishedCount++;
+      continue;
+    }
+
+    // Scrape result
+    const result = await scrapeRaceResult(race.venue_code, race.race_number, targetDate);
+
+    if (result) {
+      console.log(`New result: ${result.rank1}-${result.rank2}-${result.rank3}`);
+
+      const payouts = result.payouts || {};
       const winPayout = payouts.win ? Object.values(payouts.win)[0] : null;
-
-      // 複勝配当を取得（1着と2着）
       const placePayouts = payouts.place ? Object.entries(payouts.place) : [];
-      const place1Payout = placePayouts.find(([k]) => k === String(race.result.rank1))?.[1] || null;
-      const place2Payout = placePayouts.find(([k]) => k === String(race.result.rank2))?.[1] || null;
-
-      // 3連単配当を取得
+      const place1Payout = placePayouts.find(([k]) => k === String(result.rank1))?.[1] || null;
+      const place2Payout = placePayouts.find(([k]) => k === String(result.rank2))?.[1] || null;
       const trioPayout = payouts.trio ? Object.values(payouts.trio)[0] : null;
-
-      // 3連複配当を取得
       const trifectaPayout = payouts.trifecta ? Object.values(payouts.trifecta)[0] : null;
 
-      return {
-        race_id: race.raceId,
-        rank1: race.result.rank1,
-        rank2: race.result.rank2,
-        rank3: race.result.rank3,
+      newResults.push({
+        race_id: race.race_id,
+        rank1: result.rank1,
+        rank2: result.rank2,
+        rank3: result.rank3,
         payout_win: winPayout,
         payout_place_1: place1Payout,
         payout_place_2: place2Payout,
         payout_trifecta: trifectaPayout,
         payout_trio: trioPayout,
-        result_at: race.result.updatedAt
-      };
-    });
+        result_at: new Date().toISOString()
+      });
+      updatedCount++;
+    } else {
+      console.log(`Not yet finished`);
+      notYetCount++;
+    }
 
-    // upsert（既存の結果があれば更新）
+    // Wait to avoid server overload
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+
+  console.log(`\nResults summary:`);
+  console.log(`  - Newly fetched: ${updatedCount} races`);
+  console.log(`  - Already finished: ${alreadyFinishedCount} races`);
+  console.log(`  - Not yet finished: ${notYetCount} races`);
+
+  // Supabaseに書き込み
+  if (newResults.length > 0) {
+    console.log(`\n📤 Supabaseに結果を書き込み中...`);
+
     const { error } = await supabase
       .from('race_results')
-      .upsert(resultsData, { onConflict: 'race_id' });
+      .upsert(newResults, { onConflict: 'race_id' });
 
     if (error) {
       console.error('❌ race_results書き込みエラー:', error.message);
     } else {
-      console.log(`  ✅ race_results: ${resultsData.length}件（トリガーでpredictions.is_hit_win自動更新）`);
+      console.log(`  ✅ race_results: ${newResults.length}件（トリガーでpredictions.is_hit_win自動更新）`);
     }
-
-  } catch (error) {
-    console.error('❌ Supabase書き込みエラー:', error.message);
-  }
-}
-
-// Update prediction data with results
-async function updatePredictionWithResults(dateStr = null) {
-  try {
-    const targetDate = dateStr || getTodayDateJST();
-    console.log(`Starting race result scraping: ${targetDate}`);
-
-    // Read prediction data
-    const predictionsPath = path.join(__dirname, '..', 'data', 'predictions', `${targetDate}.json`);
-
-    let predictionsData;
-    try {
-      predictionsData = JSON.parse(await fs.readFile(predictionsPath, 'utf-8'));
-    } catch (error) {
-      console.error(`Prediction data not found: ${predictionsPath}`);
-      console.error('Please generate predictions first');
-      process.exit(1);
-    }
-
-    console.log(`Fetching results for ${predictionsData.races.length} races\n`);
-
-    let updatedCount = 0;
-    let alreadyFinishedCount = 0;
-    let notYetCount = 0;
-
-    // Fetch results for each race
-    for (const race of predictionsData.races) {
-      const raceInfo = `${race.venue} R${race.raceNumber}`;
-      process.stdout.write(`${raceInfo.padEnd(20)} `);
-
-      // Skip if already finished and has payout data
-      const hasPayouts = race.result?.payouts &&
-                         (Object.keys(race.result.payouts.win).length > 0 ||
-                          Object.keys(race.result.payouts.place).length > 0 ||
-                          Object.keys(race.result.payouts.trifecta).length > 0 ||
-                          Object.keys(race.result.payouts.trio).length > 0);
-
-      if (race.result && race.result.finished && hasPayouts) {
-        console.log(`Already finished (${race.result.rank1}-${race.result.rank2}-${race.result.rank3})`);
-        alreadyFinishedCount++;
-        continue;
-      }
-
-      // Scrape result
-      const result = await scrapeRaceResult(race.venueCode, race.raceNumber, targetDate);
-
-      if (result) {
-        race.result = result;
-        console.log(`New result: ${result.rank1}-${result.rank2}-${result.rank3}`);
-        updatedCount++;
-      } else {
-        console.log(`Not yet finished`);
-        notYetCount++;
-      }
-
-      // Wait to avoid server overload
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-
-    // Update timestamp
-    predictionsData.updatedAt = new Date().toISOString();
-
-    // Write back to file
-    await fs.writeFile(predictionsPath, JSON.stringify(predictionsData, null, 2), 'utf-8');
-
-    console.log(`\nResults summary:`);
-    console.log(`  - Newly fetched: ${updatedCount} races`);
-    console.log(`  - Already finished: ${alreadyFinishedCount} races`);
-    console.log(`  - Not yet finished: ${notYetCount} races`);
-    console.log(`\nUpdated: ${predictionsPath}`);
-
-    // Supabaseにも書き込み（デュアルライト）
-    await writeResultsToSupabase(predictionsData.races, targetDate);
-
-  } catch (error) {
-    console.error('Error occurred:', error);
-    process.exit(1);
+  } else {
+    console.log('\n📤 Supabase: 新規結果なし');
   }
 }
 
@@ -320,4 +281,4 @@ const dateArg = args.find(arg => arg.startsWith('--date='));
 const targetDate = dateArg ? dateArg.split('=')[1] : null;
 
 // Execute script
-updatePredictionWithResults(targetDate);
+scrapeResults(targetDate);

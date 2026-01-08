@@ -2,16 +2,11 @@ name: Scrape Race Data
 
 on:
   schedule:
-    # テスト中: 1時間間隔で24時間実行
-    # GitHub Actionsのcronは分・時・日・月・曜日の順（UTC時刻）
+    # 1時間間隔で実行（UTC時刻）
     - cron: '0 * * * *'
 
   # 手動実行も可能
   workflow_dispatch:
-
-# Git へのプッシュ権限を設定
-permissions:
-  contents: write
 
 jobs:
   scrape:
@@ -20,8 +15,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.DEPLOY_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -33,7 +26,7 @@ jobs:
         run: npm ci
 
       - name: Create data directory
-        run: mkdir -p data data/predictions
+        run: mkdir -p data
 
       - name: Run scraper
         run: node scripts/scrape-to-json.js
@@ -62,55 +55,3 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         continue-on-error: true
-
-      - name: Copy data to public directory for Vercel
-        run: |
-          mkdir -p public/data/predictions
-          cp -r data/* public/data/
-          echo "Data synced to public/data/ for Vercel deployment"
-
-      - name: Generate sitemap
-        run: node scripts/generate-sitemap.js
-        env:
-          TZ: 'Asia/Tokyo'
-
-      - name: Check for changes
-        id: git-check
-        run: |
-          git add -N data/predictions/*.json 2>/dev/null || true
-          git diff --exit-code data/ || echo "changed=true" >> $GITHUB_OUTPUT
-
-      - name: Commit and push if changed
-        if: steps.git-check.outputs.changed == 'true'
-        run: |
-          git config user.name "GitHub Actions Bot"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          # 最新の状態を取得
-          git fetch origin master
-
-          # リモートに新しいコミットがある場合は、先にマージ
-          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/master)" ]; then
-            echo "Remote has new commits, merging first..."
-            git merge origin/master -X theirs --no-edit || {
-              echo "Merge failed due to conflicts, skipping this run"
-              exit 0
-            }
-          fi
-
-          git add data/races.json data/predictions/*.json public/data/ public/sitemap.xml
-          git commit -m "Update race data and predictions [automated] $(date +'%Y-%m-%d %H:%M:%S JST')" || {
-            echo "No changes to commit"
-            exit 0
-          }
-          git push
-
-      - name: Trigger Vercel deployment
-        if: steps.git-check.outputs.changed == 'true'
-        run: |
-          if [ -n "${{ secrets.VERCEL_DEPLOY_HOOK }}" ]; then
-            curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"
-            echo "Vercel deployment triggered"
-          else
-            echo "VERCEL_DEPLOY_HOOK not configured, skipping deployment trigger"
-          fi

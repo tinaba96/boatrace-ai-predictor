@@ -707,23 +707,7 @@ async function main() {
 
         console.log(`\n📊 合計 ${totalRaces}レースの予想を生成しました`);
 
-        // data/predictions/ ディレクトリを作成（存在しない場合）
-        const predictionsDir = path.join(__dirname, '..', 'data', 'predictions');
-        await fs.mkdir(predictionsDir, { recursive: true });
-
-        // data/predictions/YYYY-MM-DD.json に保存
-        const outputPath = path.join(predictionsDir, `${today}.json`);
-        const outputData = {
-            date: today,
-            generatedAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            races: allPredictions,
-        };
-
-        await fs.writeFile(outputPath, JSON.stringify(outputData, null, 2), 'utf-8');
-        console.log(`\n💾 予想データを保存しました: ${outputPath}`);
-
-        // Supabaseにも書き込み（デュアルライト）
+        // Supabaseに書き込み
         await writeToSupabase(allPredictions, today);
 
         console.log('✨ 予想生成が完了しました！');
