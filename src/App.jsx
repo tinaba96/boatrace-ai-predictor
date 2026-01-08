@@ -280,7 +280,7 @@ function App({ tab = 'races' }) {
         }
     }, [races, loading])
 
-    // 予想データをJSONファイルから読み込む
+    // 予想データをSupabaseから読み込む
     const loadPredictionData = async (race) => {
         try {
             // 日本時間で今日の日付を取得
@@ -289,11 +289,8 @@ function App({ tab = 'races' }) {
             const jstDate = new Date(now.getTime() + jstOffset * 60 * 1000)
             const dateStr = jstDate.toISOString().split('T')[0]
 
-            // 予想データを読み込み（リトライ機能付き）
-            const predictionUrl = import.meta.env.BASE_URL + `data/predictions/${dateStr}.json`
-            const response = await fetchWithRetry(predictionUrl, 2, 1000) // リトライ2回、1秒間隔
-
-            const predictionData = await response.json()
+            // Supabaseから予想データを取得
+            const predictionData = await dataService.getPredictions(dateStr)
 
             // レースIDを生成して該当する予想を探す
             const raceId = `${race.rawData?.date || dateStr}-${String(race.rawData?.placeCd || 0).padStart(2, '0')}-${String(race.raceNumber).padStart(2, '0')}`
