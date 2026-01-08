@@ -79,6 +79,8 @@ export const supabaseDataService = {
       const raceData = {
         raceNo: race.race_number,
         startTime: race.start_time?.substring(0, 5) || '',
+        date: race.race_date,
+        placeCd: race.venue_code,
         racers: (race.race_entries || []).map(entry => ({
           waku: entry.boat_number,
           name: entry.player_name,
