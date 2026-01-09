@@ -3,10 +3,14 @@ name: Scrape Race Data
 on:
   schedule:
     # 1時間間隔で実行（UTC時刻）
-    - cron: '0 * * * *'
+    # JST 10:00-22:00 = UTC 1:00-13:00 の間、毎時実行
+    - cron: '0 1-13 * * *'
 
   # 手動実行も可能
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   scrape:
@@ -55,3 +59,13 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         continue-on-error: true
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -A
+          git diff --staged --quiet || git commit -m "Update race data and predictions [automated]"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
