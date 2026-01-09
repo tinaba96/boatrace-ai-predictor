@@ -707,17 +707,6 @@ async function main() {
 
         console.log(`\n📊 合計 ${totalRaces}レースの予想を生成しました`);
 
-        // JSONファイルに出力
-        const outputPath = path.join(__dirname, '..', 'public', 'data', 'predictions', `${today}.json`);
-        const outputData = {
-            date: today,
-            generatedAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            races: allPredictions
-        };
-        await fs.writeFile(outputPath, JSON.stringify(outputData, null, 2), 'utf-8');
-        console.log(`\n📝 JSONファイル出力: ${outputPath}`);
-
         // Supabaseに書き込み
         await writeToSupabase(allPredictions, today);
 

@@ -33,5 +33,13 @@ export const dataService = {
    */
   async getAccuracy() {
     return supabaseDataService.getAccuracy();
+  },
+
+  /**
+   * 予想データが存在する日付リストを取得
+   * @param {number} days - 過去何日分を取得するか
+   */
+  async getAvailableDates(days = 90) {
+    return supabaseDataService.getAvailableDates(days);
   }
 };

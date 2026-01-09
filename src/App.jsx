@@ -280,21 +280,19 @@ function App({ tab = 'races' }) {
         }
     }, [races, loading])
 
-    // 予想データをJSONファイルから読み込む（RaceDetail.jsxと同じ方式）
+    // 予想データをSupabaseから読み込む
     const loadPredictionData = async (race) => {
         try {
-            // 日本時間で今日の日付を取得
-            const now = new Date()
-            const jstOffset = 9 * 60 // JST is UTC+9
-            const jstDate = new Date(now.getTime() + jstOffset * 60 * 1000)
-            const dateStr = jstDate.toISOString().split('T')[0]
+            // レースの日付を取得（rawDataから、なければ今日の日付）
+            const dateStr = race.rawData?.date || (() => {
+                const now = new Date()
+                const jstOffset = 9 * 60
+                const jstDate = new Date(now.getTime() + jstOffset * 60 * 1000)
+                return jstDate.toISOString().split('T')[0]
+            })()
 
-            // JSONファイルから予想データを取得（RaceDetail.jsxと同じ方式）
-            const response = await fetch(import.meta.env.BASE_URL + `data/predictions/${dateStr}.json`)
-            if (!response.ok) {
-                throw new Error('予想データが見つかりません')
-            }
-            const predictionData = await response.json()
+            // Supabaseから予想データを取得
+            const predictionData = await dataService.getPredictions(dateStr)
 
             // レースIDを生成して該当する予想を探す
             const venueCode = race.rawData?.placeCd || 0
@@ -302,7 +300,8 @@ function App({ tab = 'races' }) {
             const racePrediction = predictionData.races?.find(r => r.raceId === raceId)
 
             if (!racePrediction) {
-                throw new Error(`レースID ${raceId} の予想が見つかりません`)
+                console.warn(`レースID ${raceId} の予想が見つかりません`)
+                return null
             }
 
             return racePrediction

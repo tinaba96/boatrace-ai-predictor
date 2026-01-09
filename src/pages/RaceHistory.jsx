@@ -5,6 +5,7 @@ import Header from '../components/Header'
 import Breadcrumb from '../components/Breadcrumb'
 import LoadingScreen from '../components/LoadingScreen'
 import ModelComparisonTable from '../components/ModelComparisonTable'
+import { dataService } from '../services/dataService'
 import './RaceHistory.css'
 
 function RaceHistory() {
@@ -35,111 +36,95 @@ function RaceHistory() {
     }))
   }
 
-  // 利用可能な日付を取得し、月別にグループ化
+  // 利用可能な日付を取得し、月別にグループ化（Supabaseから）
   useEffect(() => {
     const fetchAvailableDates = async () => {
       try {
         setLoading(true)
 
-        // 利用可能な日付を推測（過去90日分をチェック）
+        // Supabaseから利用可能な日付リストを取得
+        const availableDates = await dataService.getAvailableDates(90)
         const dates = []
-        const today = new Date()
-        const jstOffset = 9 * 60
-        const jstToday = new Date(today.getTime() + jstOffset * 60 * 1000)
 
-        for (let i = 1; i < 90; i++) {
-          const targetDate = new Date(jstToday.getTime() - i * 24 * 60 * 60 * 1000)
-          const dateStr = targetDate.toISOString().split('T')[0]
-
-          // ファイルが存在するかチェック
+        // 各日付のデータを取得して統計を計算
+        for (const dateStr of availableDates) {
           try {
-            const response = await fetch(
-              import.meta.env.BASE_URL + `data/predictions/${dateStr}.json`,
-              { method: 'HEAD' }
-            )
-            if (response.ok) {
-              // 実際にデータを取得して統計を計算
-              const dataResponse = await fetch(import.meta.env.BASE_URL + `data/predictions/${dateStr}.json`)
-              const data = await dataResponse.json()
+            const data = await dataService.getPredictions(dateStr)
+            if (!data.races || data.races.length === 0) continue
 
-              const totalRaces = data.races?.length || 0
-              const finishedRaces = data.races?.filter(r => r.result?.finished).length || 0
+            const totalRaces = data.races.length
+            const finishedRaces = data.races.filter(r => r.result?.finished).length
 
-              // モデル間パフォーマンスを計算
-              // 12/18以前は prediction (単数形)、12/19以降は predictions (複数形)
-              const hasNewFormat = data.races?.some(r => r.predictions)
-              const models = hasNewFormat ? ['standard', 'safeBet', 'upsetFocus'] : ['standard']
-              const modelNames = {
-                standard: 'スタンダード',
-                safeBet: '本命狙い',
-                upsetFocus: '穴狙い'
-              }
+            // モデル間パフォーマンスを計算
+            const hasNewFormat = data.races.some(r => r.predictions)
+            const models = hasNewFormat ? ['standard', 'safeBet', 'upsetFocus'] : ['standard']
+            const modelNames = {
+              standard: 'スタンダード',
+              safeBet: '本命狙い',
+              upsetFocus: '穴狙い'
+            }
 
-              const modelComparison = models.map(modelKey => {
-                const races = data.races?.filter(r => r.result?.finished) || []
-                let winHits = 0, placeHits = 0, trifecta3Hits = 0, trio3Hits = 0
-                let winPayouts = 0, placePayouts = 0, trifecta3Payouts = 0, trio3Payouts = 0
+            const modelComparison = models.map(modelKey => {
+              const races = data.races.filter(r => r.result?.finished)
+              let winHits = 0, placeHits = 0, trifecta3Hits = 0, trio3Hits = 0
+              let winPayouts = 0, placePayouts = 0, trifecta3Payouts = 0, trio3Payouts = 0
 
-                races.forEach(race => {
-                  // 新形式: predictions[modelKey]、旧形式: prediction (standardとして扱う)
-                  const prediction = race.predictions?.[modelKey] || (modelKey === 'standard' ? race.prediction : null)
-                  if (!prediction) return
+              races.forEach(race => {
+                const prediction = race.predictions?.[modelKey] || (modelKey === 'standard' ? race.prediction : null)
+                if (!prediction) return
 
-                  const topPick = prediction.topPick
-                  const top3 = prediction.top3
-                  const result = race.result
+                const topPick = prediction.topPick
+                const top3 = prediction.top3
+                const result = race.result
 
-                  // 的中判定
-                  if (topPick === result.rank1) {
-                    winHits++
-                    const payout = result.payouts?.win?.[String(topPick)]
-                    if (payout) winPayouts += payout
-                  }
-                  if (topPick === result.rank1 || topPick === result.rank2) {
-                    placeHits++
-                    const payout = result.payouts?.place?.[String(topPick)]
-                    if (payout) placePayouts += payout
-                  }
-                  if (top3.includes(result.rank1) && top3.includes(result.rank2) && top3.includes(result.rank3)) {
-                    trifecta3Hits++
-                    // 3連複の配当を取得
-                    const sorted = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b)
-                    const key = sorted.join('-')
-                    const payout = result.payouts?.trifecta?.[key]
-                    if (payout) trifecta3Payouts += payout
-                  }
-                  if (top3[0] === result.rank1 && top3[1] === result.rank2 && top3[2] === result.rank3) {
-                    trio3Hits++
-                    const key = `${result.rank1}-${result.rank2}-${result.rank3}`
-                    const payout = result.payouts?.trio?.[key]
-                    if (payout) trio3Payouts += payout
-                  }
-                })
-
-                return {
-                  key: modelKey,
-                  name: modelNames[modelKey],
-                  races: finishedRaces,
-                  winHitRate: finishedRaces > 0 ? winHits / finishedRaces : 0,
-                  winRecoveryRate: finishedRaces > 0 ? (winPayouts / 100) / finishedRaces : 0,
-                  placeHitRate: finishedRaces > 0 ? placeHits / finishedRaces : 0,
-                  placeRecoveryRate: finishedRaces > 0 ? (placePayouts / 100) / finishedRaces : 0,
-                  trifectaHitRate: finishedRaces > 0 ? trifecta3Hits / finishedRaces : 0,
-                  trifectaRecoveryRate: finishedRaces > 0 ? (trifecta3Payouts / 100) / finishedRaces : 0,
-                  trioHitRate: finishedRaces > 0 ? trio3Hits / finishedRaces : 0,
-                  trioRecoveryRate: finishedRaces > 0 ? (trio3Payouts / 100) / finishedRaces : 0
+                if (topPick === result.rank1) {
+                  winHits++
+                  const payout = result.payouts?.win?.[String(topPick)]
+                  if (payout) winPayouts += payout
+                }
+                if (topPick === result.rank1 || topPick === result.rank2) {
+                  placeHits++
+                  const payout = result.payouts?.place?.[String(topPick)]
+                  if (payout) placePayouts += payout
+                }
+                if (top3?.includes(result.rank1) && top3?.includes(result.rank2) && top3?.includes(result.rank3)) {
+                  trifecta3Hits++
+                  const sorted = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b)
+                  const key = sorted.join('-')
+                  const payout = result.payouts?.trifecta?.[key]
+                  if (payout) trifecta3Payouts += payout
+                }
+                if (top3?.[0] === result.rank1 && top3?.[1] === result.rank2 && top3?.[2] === result.rank3) {
+                  trio3Hits++
+                  const key = `${result.rank1}-${result.rank2}-${result.rank3}`
+                  const payout = result.payouts?.trio?.[key]
+                  if (payout) trio3Payouts += payout
                 }
               })
 
-              dates.push({
-                date: dateStr,
-                totalRaces,
-                finishedRaces,
-                modelComparison
-              })
-            }
+              return {
+                key: modelKey,
+                name: modelNames[modelKey],
+                races: finishedRaces,
+                winHitRate: finishedRaces > 0 ? winHits / finishedRaces : 0,
+                winRecoveryRate: finishedRaces > 0 ? (winPayouts / 100) / finishedRaces : 0,
+                placeHitRate: finishedRaces > 0 ? placeHits / finishedRaces : 0,
+                placeRecoveryRate: finishedRaces > 0 ? (placePayouts / 100) / finishedRaces : 0,
+                trifectaHitRate: finishedRaces > 0 ? trifecta3Hits / finishedRaces : 0,
+                trifectaRecoveryRate: finishedRaces > 0 ? (trifecta3Payouts / 100) / finishedRaces : 0,
+                trioHitRate: finishedRaces > 0 ? trio3Hits / finishedRaces : 0,
+                trioRecoveryRate: finishedRaces > 0 ? (trio3Payouts / 100) / finishedRaces : 0
+              }
+            })
+
+            dates.push({
+              date: dateStr,
+              totalRaces,
+              finishedRaces,
+              modelComparison
+            })
           } catch (error) {
-            // ファイルが存在しない場合はスキップ
+            console.warn(`${dateStr}のデータ取得エラー:`, error)
             continue
           }
         }

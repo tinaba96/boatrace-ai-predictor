@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async'
 import Header from '../components/Header'
 import Breadcrumb from '../components/Breadcrumb'
 import ModelComparisonTable from '../components/ModelComparisonTable'
+import { dataService } from '../services/dataService'
 import './RaceDetail.css'
 
 function RaceDetail() {
@@ -48,19 +49,20 @@ function RaceDetail() {
     return '#ef4444'
   }
 
-  // レースデータを取得
+  // レースデータを取得（Supabaseから）
   useEffect(() => {
     const fetchRaceData = async () => {
       try {
         setLoading(true)
         setError(null)
 
-        const response = await fetch(import.meta.env.BASE_URL + `data/predictions/${date}.json`)
-        if (!response.ok) {
+        // Supabaseから予想データを取得
+        const data = await dataService.getPredictions(date)
+
+        if (!data.races || data.races.length === 0) {
           throw new Error('データが見つかりません')
         }
 
-        const data = await response.json()
         setRaceData(data)
 
         // 会場ごとにレースをグループ化

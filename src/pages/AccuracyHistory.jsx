@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { dataService } from '../services/dataService'
 import './AccuracyHistory.css'
 
 function AccuracyHistory() {
@@ -17,14 +18,8 @@ function AccuracyHistory() {
         const fetchSummary = async () => {
             try {
                 setLoading(true)
-                const summaryUrl = import.meta.env.BASE_URL + 'data/predictions/summary.json?t=' + Date.now()
-                const response = await fetch(summaryUrl)
-
-                if (!response.ok) {
-                    throw new Error('Summary data not available')
-                }
-
-                const data = await response.json()
+                // Supabaseから精度データを取得
+                const data = await dataService.getAccuracy()
                 setSummary(data)
             } catch (err) {
                 console.error('Failed to load accuracy summary:', err)

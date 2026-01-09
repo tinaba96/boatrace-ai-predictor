@@ -331,5 +331,39 @@ export const supabaseDataService = {
       lastUpdated: new Date().toISOString(),
       models: modelStats
     };
+  },
+
+  /**
+   * 予想データが存在する日付リストを取得
+   * @param {number} days - 過去何日分を取得するか
+   */
+  async getAvailableDates(days = 90) {
+    if (!supabase) {
+      console.error('Supabase client not initialized');
+      return [];
+    }
+
+    // 日付範囲を計算
+    const today = new Date();
+    const jstOffset = 9 * 60;
+    const jstToday = new Date(today.getTime() + jstOffset * 60 * 1000);
+    const startDate = new Date(jstToday.getTime() - days * 24 * 60 * 60 * 1000);
+    const startDateStr = startDate.toISOString().split('T')[0];
+
+    // 日付ごとのレース数を取得
+    const { data, error } = await supabase
+      .from('races')
+      .select('race_date')
+      .gte('race_date', startDateStr)
+      .order('race_date', { ascending: false });
+
+    if (error) {
+      console.error('Supabase getAvailableDates error:', error.message);
+      return [];
+    }
+
+    // ユニークな日付を抽出
+    const uniqueDates = [...new Set(data.map(r => r.race_date))];
+    return uniqueDates;
   }
 };
