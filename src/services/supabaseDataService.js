@@ -247,6 +247,9 @@ export const supabaseDataService = {
 
       // 結果データ
       if (result && result.rank1) {
+        // 3連複用のソート済みキー（順不同なのでソートが必要）
+        const trioKey = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b).join('-');
+
         raceData.result = {
           finished: true,
           rank1: result.rank1,
@@ -256,7 +259,7 @@ export const supabaseDataService = {
             win: result.payout_win ? { [result.rank1]: result.payout_win } : {},
             place: {},
             trifecta: result.payout_trifecta ? { [`${result.rank1}-${result.rank2}-${result.rank3}`]: result.payout_trifecta } : {},
-            trio: result.payout_trio ? { [`${result.rank1}-${result.rank2}-${result.rank3}`]: result.payout_trio } : {}
+            trio: result.payout_trio ? { [trioKey]: result.payout_trio } : {}
           }
         };
 
