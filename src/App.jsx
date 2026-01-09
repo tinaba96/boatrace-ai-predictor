@@ -322,11 +322,11 @@ function App({ tab = 'races' }) {
             model === 'upset-focus' ? 'upsetFocus' : 'standard'
         const modelPrediction = prediction.predictions[modelKey]
 
-        if (modelPrediction) {
+        if (modelPrediction && modelPrediction.players) {
             const topPickPlayer = modelPrediction.players.find(
                 p => p.number === modelPrediction.topPick
             )
-            const top3Players = modelPrediction.top3.map(num =>
+            const top3Players = (modelPrediction.top3 || []).map(num =>
                 modelPrediction.players.find(p => p.number === num)
             )
 
@@ -336,8 +336,8 @@ function App({ tab = 'races' }) {
                 recommended: top3Players,
                 allPlayers: modelPrediction.players,
                 confidence: modelPrediction.confidence,
-                reasoning: modelPrediction.reasoning,
-                top3: modelPrediction.top3
+                reasoning: modelPrediction.reasoning || [],
+                top3: modelPrediction.top3 || []
             })
         }
     }
@@ -387,10 +387,20 @@ function App({ tab = 'races' }) {
                     modelPrediction = racePrediction.prediction
                 }
 
+                if (!modelPrediction || !modelPrediction.players) {
+                    console.error('❌ モデル予想データが見つかりません:', currentModel)
+                    setPrediction({
+                        error: true,
+                        errorMessage: 'このモデルの予想データが見つかりません。'
+                    })
+                    setIsAnalyzing(false)
+                    return
+                }
+
                 const topPickPlayer = modelPrediction.players.find(
                     p => p.number === modelPrediction.topPick
                 )
-                const top3Players = modelPrediction.top3.map(num =>
+                const top3Players = (modelPrediction.top3 || []).map(num =>
                     modelPrediction.players.find(p => p.number === num)
                 )
 
@@ -399,8 +409,8 @@ function App({ tab = 'races' }) {
                     recommended: top3Players,
                     allPlayers: modelPrediction.players,
                     confidence: modelPrediction.confidence,
-                    reasoning: modelPrediction.reasoning,
-                    top3: modelPrediction.top3, // トップ3の艇番（number配列）
+                    reasoning: modelPrediction.reasoning || [], // 未設定の場合は空配列
+                    top3: modelPrediction.top3 || [], // トップ3の艇番（number配列）
                     result: racePrediction.result, // レース結果
                     predictions: racePrediction.predictions // 全モデルの予想データ
                 }
