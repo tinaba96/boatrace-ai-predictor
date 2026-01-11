@@ -348,6 +348,88 @@ async function scrapeResults(dateStr = null) {
   } else {
     console.log('\n📤 Supabase: 新規結果なし');
   }
+
+  // 欠落した的中フラグを修正（結果があるのにis_hit_winがNULLの予測）
+  await fixMissingHitFlags(targetDate);
+}
+
+// 結果があるのにis_hit_winがNULLの予測を修正
+async function fixMissingHitFlags(targetDate) {
+  // is_hit_winがNULLの予測を取得
+  const { data: missingPredictions, error: predError } = await supabase
+    .from('predictions')
+    .select('prediction_id, race_id, top_pick, top_2nd, top_3rd')
+    .like('race_id', `${targetDate}%`)
+    .is('is_hit_win', null);
+
+  if (predError || !missingPredictions || missingPredictions.length === 0) {
+    return; // 欠落なし
+  }
+
+  console.log(`\n🔧 欠落した的中フラグを修正中... (${missingPredictions.length}件)`);
+
+  // 結果データを取得
+  const { data: results, error: resError } = await supabase
+    .from('race_results')
+    .select('race_id, rank1, rank2, rank3, payout_win, payout_place_1, payout_place_2, payout_trifecta, payout_trio')
+    .like('race_id', `${targetDate}%`);
+
+  if (resError || !results) {
+    console.error('  ❌ 結果取得エラー');
+    return;
+  }
+
+  const resultsMap = new Map();
+  for (const r of results) {
+    resultsMap.set(r.race_id, r);
+  }
+
+  let fixed = 0;
+  for (const pred of missingPredictions) {
+    const result = resultsMap.get(pred.race_id);
+    if (!result || !result.rank1) continue;
+
+    const isWinHit = pred.top_pick === result.rank1;
+    const isPlaceHit = pred.top_pick === result.rank1 || pred.top_pick === result.rank2;
+
+    const predTop3 = [pred.top_pick, pred.top_2nd, pred.top_3rd].sort((a, b) => a - b);
+    const resultTop3 = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b);
+    const isTrifectaHit = predTop3[0] === resultTop3[0] &&
+                          predTop3[1] === resultTop3[1] &&
+                          predTop3[2] === resultTop3[2];
+    const isTrioHit = pred.top_pick === result.rank1 &&
+                      pred.top_2nd === result.rank2 &&
+                      pred.top_3rd === result.rank3;
+
+    let payoutPlace = 0;
+    if (isPlaceHit) {
+      if (pred.top_pick === result.rank1) {
+        payoutPlace = result.payout_place_1 || 0;
+      } else if (pred.top_pick === result.rank2) {
+        payoutPlace = result.payout_place_2 || 0;
+      }
+    }
+
+    const { error: updateError } = await supabase
+      .from('predictions')
+      .update({
+        is_hit_win: isWinHit,
+        is_hit_place: isPlaceHit,
+        is_hit_trifecta: isTrifectaHit,
+        is_hit_trio: isTrioHit,
+        payout_win: isWinHit ? result.payout_win : 0,
+        payout_place: payoutPlace,
+        payout_trifecta: isTrifectaHit ? result.payout_trifecta : 0,
+        payout_trio: isTrioHit ? result.payout_trio : 0
+      })
+      .eq('prediction_id', pred.prediction_id);
+
+    if (!updateError) fixed++;
+  }
+
+  if (fixed > 0) {
+    console.log(`  ✅ ${fixed}件の欠落フラグを修正`);
+  }
 }
 
 // Get date from command line argument (optional)
