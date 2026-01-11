@@ -258,6 +258,7 @@ function RaceDetail() {
           winHits++
           winPayouts += result.payouts?.win?.[topPick] || 0
         }
+        // 複勝: topPickが2着以内なら的中（競艇のルール）
         if (topPick === result.rank1 || topPick === result.rank2) {
           placeHits++
           placePayouts += result.payouts?.place?.[topPick] || 0
@@ -457,6 +458,7 @@ function RaceDetail() {
                         const top3 = prediction.top3
 
                         const isWinHit = topPick === result.rank1
+                        // 複勝: topPickが2着以内なら的中（競艇のルール）
                         const isPlaceHit = topPick === result.rank1 || topPick === result.rank2
                         const is3FukuHit = top3.includes(result.rank1) && top3.includes(result.rank2) && top3.includes(result.rank3)
                         const is3TanHit = top3[0] === result.rank1 && top3[1] === result.rank2 && top3[2] === result.rank3

@@ -86,6 +86,7 @@ function HitRaces({ allVenuesData, analyzeRace, stadiumNames, fetchWithRetry, la
                             const result = race.result
 
                             const isWinHit = topPick === result.rank1
+                            // 複勝: topPickが2着以内なら的中（競艇のルール）
                             const isPlaceHit = topPick === result.rank1 || topPick === result.rank2
                             const is3FukuHit = top3.includes(result.rank1) &&
                                 top3.includes(result.rank2) &&
@@ -116,7 +117,7 @@ function HitRaces({ allVenuesData, analyzeRace, stadiumNames, fetchWithRetry, la
                                 totalPayout += payout
                             }
 
-                            // 複勝
+                            // 複勝: topPickが2着以内なら的中（競艇のルール）
                             if (topPick === result.rank1 || topPick === result.rank2) {
                                 const payout = payouts.place?.[topPick] || 0
                                 hitTypes.push({ type: '複勝', payout })

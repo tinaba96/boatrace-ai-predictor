@@ -248,7 +248,9 @@ export const supabaseDataService = {
       // 結果データ
       if (result && result.rank1) {
         // 3連複用のソート済みキー（順不同なのでソートが必要）
-        const trioKey = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b).join('-');
+        const trifectaKey = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b).join('-');
+        // 3連単用のキー（順序が重要なのでソートしない）
+        const trioKey = `${result.rank1}-${result.rank2}-${result.rank3}`;
 
         raceData.result = {
           finished: true,
@@ -258,7 +260,7 @@ export const supabaseDataService = {
           payouts: {
             win: result.payout_win ? { [result.rank1]: result.payout_win } : {},
             place: {},
-            trifecta: result.payout_trifecta ? { [`${result.rank1}-${result.rank2}-${result.rank3}`]: result.payout_trifecta } : {},
+            trifecta: result.payout_trifecta ? { [trifectaKey]: result.payout_trifecta } : {},
             trio: result.payout_trio ? { [trioKey]: result.payout_trio } : {}
           }
         };
@@ -301,6 +303,19 @@ export const supabaseDataService = {
       return { lastUpdated: null, models: {} };
     }
 
+    // 今月の日付範囲を計算
+    const now = new Date();
+    const jstOffset = 9 * 60;
+    const jstNow = new Date(now.getTime() + jstOffset * 60 * 1000);
+    const thisYear = jstNow.getUTCFullYear();
+    const thisMonth = jstNow.getUTCMonth() + 1;
+    const thisMonthStart = `${thisYear}-${String(thisMonth).padStart(2, '0')}-01`;
+    const thisMonthEnd = `${thisYear}-${String(thisMonth).padStart(2, '0')}-31`;
+
+    // 過去30日の開始日を計算
+    const thirtyDaysAgo = new Date(jstNow.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+
     // モデル情報を取得
     const { data: models, error: modelsError } = await supabase
       .from('models')
@@ -311,22 +326,172 @@ export const supabaseDataService = {
       return { lastUpdated: null, models: {} };
     }
 
-    // v_prediction_performance ビューから統計を取得（もしあれば）
-    // 現時点ではmodelsテーブルの情報で代替
-    const modelStats = {};
+    // ページネーション付きでデータを取得するヘルパー関数
+    const fetchAllPredictions = async (startDate, endDate) => {
+      let allData = [];
+      let from = 0;
+      const pageSize = 1000;
 
-    for (const model of models || []) {
-      modelStats[model.model_id] = {
+      while (true) {
+        let query = supabase
+          .from('predictions')
+          .select('race_id, model_id, is_hit_win, is_hit_place, is_hit_trifecta, is_hit_trio, payout_win, payout_place, payout_trifecta, payout_trio')
+          .gte('race_id', startDate)
+          .not('is_hit_win', 'is', null)
+          .range(from, from + pageSize - 1);
+
+        if (endDate) {
+          query = query.lte('race_id', endDate);
+        }
+
+        const { data: page, error } = await query;
+
+        if (error || !page || page.length === 0) break;
+        allData = allData.concat(page);
+        if (page.length < pageSize) break;
+        from += pageSize;
+      }
+
+      return allData;
+    };
+
+    // 今月の予測データを取得（is_hit_winがセットされているもの = 結果が出ているもの）
+    const thisMonthPredictions = await fetchAllPredictions(thisMonthStart, thisMonthEnd);
+
+    // 過去7日分の日別データ取得
+    const sevenDaysAgo = new Date(jstNow.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+
+    const recentPredictions = await fetchAllPredictions(sevenDaysAgoStr, null);
+
+    // 全期間のデータを取得（会場別統計用）- 過去90日分
+    const ninetyDaysAgo = new Date(jstNow.getTime() - 90 * 24 * 60 * 60 * 1000);
+    const ninetyDaysAgoStr = ninetyDaysAgo.toISOString().split('T')[0];
+    const allPredictions = await fetchAllPredictions(ninetyDaysAgoStr, null);
+
+    // race_idから日付を抽出するヘルパー関数
+    const extractDate = (raceId) => raceId.substring(0, 10);
+
+    // race_idから会場コードを抽出するヘルパー関数 (YYYY-MM-DD-VV-RR形式)
+    const extractVenueCode = (raceId) => parseInt(raceId.substring(11, 13), 10);
+
+    // 統計を計算する関数
+    const calculateStats = (predictions) => {
+      if (!predictions || predictions.length === 0) {
+        return {
+          totalRaces: 0,
+          topPickHitRate: 0,
+          topPickPlaceRate: 0,
+          top3HitRate: 0,
+          top3IncludedRate: 0,
+          actualRecovery: {
+            win: { recoveryRate: 0 },
+            place: { recoveryRate: 0 },
+            trifecta: { recoveryRate: 0 },
+            trio: { recoveryRate: 0 }
+          }
+        };
+      }
+
+      const total = predictions.length;
+      const winHits = predictions.filter(p => p.is_hit_win).length;
+      const placeHits = predictions.filter(p => p.is_hit_place).length;
+      const trifectaHits = predictions.filter(p => p.is_hit_trifecta).length;
+      const trioHits = predictions.filter(p => p.is_hit_trio).length;
+
+      const winPayout = predictions.reduce((sum, p) => sum + (p.payout_win || 0), 0);
+      const placePayout = predictions.reduce((sum, p) => sum + (p.payout_place || 0), 0);
+      const trifectaPayout = predictions.reduce((sum, p) => sum + (p.payout_trifecta || 0), 0);
+      const trioPayout = predictions.reduce((sum, p) => sum + (p.payout_trio || 0), 0);
+
+      return {
+        totalRaces: total,
+        topPickHitRate: winHits / total,
+        topPickPlaceRate: placeHits / total,
+        top3HitRate: trifectaHits / total,
+        top3IncludedRate: trioHits / total,
+        actualRecovery: {
+          win: { recoveryRate: winPayout / (total * 100) },
+          place: { recoveryRate: placePayout / (total * 100) },
+          trifecta: { recoveryRate: trifectaPayout / (total * 100) },
+          trio: { recoveryRate: trioPayout / (total * 100) }
+        }
+      };
+    };
+
+    // 日別履歴を計算する関数
+    const calculateDailyHistory = (predictions, modelId) => {
+      const modelPreds = predictions?.filter(p => p.model_id === modelId) || [];
+      const dateMap = new Map();
+
+      for (const pred of modelPreds) {
+        const date = extractDate(pred.race_id);
+        if (!dateMap.has(date)) {
+          dateMap.set(date, []);
+        }
+        dateMap.get(date).push(pred);
+      }
+
+      return Array.from(dateMap.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, preds]) => ({
+          date,
+          ...calculateStats(preds)
+        }));
+    };
+
+    // 会場別統計を計算する関数
+    const calculateByVenue = (predictions, modelId) => {
+      const modelPreds = predictions?.filter(p => p.model_id === modelId) || [];
+      const venueMap = new Map();
+
+      for (const pred of modelPreds) {
+        const venueCode = extractVenueCode(pred.race_id);
+        if (!venueMap.has(venueCode)) {
+          venueMap.set(venueCode, []);
+        }
+        venueMap.get(venueCode).push(pred);
+      }
+
+      const byVenue = {};
+      for (const [venueCode, preds] of venueMap) {
+        byVenue[venueCode] = {
+          overall: calculateStats(preds)
+        };
+      }
+
+      return byVenue;
+    };
+
+    // 各モデルの統計を構築
+    const modelStats = {};
+    const modelIds = ['standard', 'safeBet', 'upsetFocus'];
+
+    for (const modelId of modelIds) {
+      const modelInfo = models?.find(m => m.model_id === modelId);
+      const thisMonthPreds = thisMonthPredictions?.filter(p => p.model_id === modelId) || [];
+      const thisMonthStats = calculateStats(thisMonthPreds);
+      const dailyHistory = calculateDailyHistory(recentPredictions, modelId);
+      const byVenue = calculateByVenue(allPredictions, modelId);
+
+      modelStats[modelId] = {
         overall: {
-          totalRaces: model.total_predictions || 0,
-          finishedRaces: model.total_predictions || 0,
-          topPickHitRate: model.hit_rate_win || 0,
+          totalRaces: modelInfo?.total_predictions || 0,
+          finishedRaces: modelInfo?.total_predictions || 0,
+          topPickHitRate: modelInfo?.hit_rate_win || 0,
           actualRecovery: {
             win: {
-              recoveryRate: model.recovery_rate_win || 0
+              recoveryRate: modelInfo?.recovery_rate_win || 0
             }
           }
-        }
+        },
+        thisMonth: {
+          year: thisYear,
+          month: thisMonth,
+          ...thisMonthStats
+        },
+        dailyHistory,
+        byVenue
       };
     }
 

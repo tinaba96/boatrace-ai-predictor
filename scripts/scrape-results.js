@@ -268,8 +268,83 @@ async function scrapeResults(dateStr = null) {
     if (error) {
       console.error('❌ race_results書き込みエラー:', error.message);
     } else {
-      console.log(`  ✅ race_results: ${newResults.length}件（トリガーでpredictions.is_hit_win自動更新）`);
+      console.log(`  ✅ race_results: ${newResults.length}件`);
     }
+
+    // predictions の的中判定を更新
+    console.log(`\n📤 predictions の的中判定を更新中...`);
+    let winHits = 0;
+    let placeHits = 0;
+    let trifectaHits = 0;
+    let trioHits = 0;
+
+    for (const result of newResults) {
+      // このレースの予測を取得
+      const { data: predictions, error: predError } = await supabase
+        .from('predictions')
+        .select('prediction_id, model_id, top_pick, top_2nd, top_3rd')
+        .eq('race_id', result.race_id);
+
+      if (predError || !predictions) continue;
+
+      for (const pred of predictions) {
+        // 単勝: 1着予測が的中
+        const isWinHit = pred.top_pick === result.rank1;
+
+        // 複勝: 1着予測が2着以内（競艇のルール）
+        const isPlaceHit = pred.top_pick === result.rank1 ||
+                           pred.top_pick === result.rank2;
+
+        const predTop3 = [pred.top_pick, pred.top_2nd, pred.top_3rd].sort((a, b) => a - b);
+        const resultTop3 = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b);
+
+        // 3連複: 順序関係なく同じ3艇なら的中
+        const isTrifectaHit = predTop3[0] === resultTop3[0] &&
+                              predTop3[1] === resultTop3[1] &&
+                              predTop3[2] === resultTop3[2];
+
+        // 3連単: 順序も一致なら的中
+        const isTrioHit = pred.top_pick === result.rank1 &&
+                          pred.top_2nd === result.rank2 &&
+                          pred.top_3rd === result.rank3;
+
+        // 複勝の配当を計算（top_pickが何着かによって異なる）
+        let payoutPlace = 0;
+        if (isPlaceHit) {
+          if (pred.top_pick === result.rank1) {
+            payoutPlace = result.payout_place_1 || 0;
+          } else if (pred.top_pick === result.rank2) {
+            payoutPlace = result.payout_place_2 || 0;
+          }
+        }
+
+        const updateData = {
+          is_hit_win: isWinHit,
+          is_hit_place: isPlaceHit,
+          is_hit_trifecta: isTrifectaHit,
+          is_hit_trio: isTrioHit,
+          payout_win: isWinHit ? result.payout_win : 0,
+          payout_place: payoutPlace,
+          payout_trifecta: isTrifectaHit ? result.payout_trifecta : 0,
+          payout_trio: isTrioHit ? result.payout_trio : 0
+        };
+
+        const { error: updateError } = await supabase
+          .from('predictions')
+          .update(updateData)
+          .eq('prediction_id', pred.prediction_id);
+
+        if (!updateError) {
+          if (isWinHit) winHits++;
+          if (isPlaceHit) placeHits++;
+          if (isTrifectaHit) trifectaHits++;
+          if (isTrioHit) trioHits++;
+        }
+      }
+    }
+
+    console.log(`  ✅ 単勝的中: ${winHits}件, 複勝的中: ${placeHits}件`);
+    console.log(`  ✅ 3連複的中: ${trifectaHits}件, 3連単的中: ${trioHits}件`);
   } else {
     console.log('\n📤 Supabase: 新規結果なし');
   }

@@ -81,7 +81,7 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
     }
 
     const modelData = getModelData()
-    const hasData = modelData.overall.totalRaces > 0
+    const hasData = modelData.overall?.totalRaces > 0
 
     // 今月の最も回収率が高いモデルを取得
     const getBestModelThisMonth = () => {
@@ -99,7 +99,7 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
 
         for (const modelKey of models) {
             const model = summary.models[modelKey]
-            if (model.thisMonth && model.thisMonth.totalRaces > 0) {
+            if (model?.thisMonth && model.thisMonth.totalRaces > 0) {
                 const trioRate = model.thisMonth.actualRecovery?.trio?.recoveryRate || 0
                 if (trioRate > bestRate) {
                     bestRate = trioRate
@@ -132,7 +132,7 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
 
         return models.map(modelKey => {
             const model = summary.models[modelKey]
-            const thisMonth = model.thisMonth || {}
+            const thisMonth = model?.thisMonth || {}
 
             return {
                 key: modelKey,
@@ -180,6 +180,7 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
     // 今月で3連単の回収率が最も高かった日を取得
     const bestTrioDay = (() => {
         if (!modelData.dailyHistory || modelData.dailyHistory.length === 0) return null
+        if (!modelData.thisMonth) return null
 
         const thisMonthDays = modelData.dailyHistory.filter(day => {
             const { year, month } = getDateInfo(day.date)
@@ -197,6 +198,8 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
 
     // 統計テーブルコンポーネント
     const StatsTable = ({ data, title }) => {
+        if (!data || !data.totalRaces) return null
+
         // 的中したレース数を計算するヘルパー関数
         const getHitCount = (hitRate) => Math.round(hitRate * data.totalRaces)
 
@@ -452,7 +455,8 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
 
         // Get date range for this month's data
         const getThisMonthDateRange = () => {
-            if (!summary.models || !summary.models.standard.dailyHistory) return ''
+            if (!summary.models || !summary.models.standard?.dailyHistory) return ''
+            if (!modelData.thisMonth) return ''
             const history = summary.models.standard.dailyHistory
             const thisMonthHistory = history.filter(day => {
                 const { year, month } = getDateInfo(day.date)
@@ -629,7 +633,7 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
             ) : (
                 <>
                     {/* 統計の信頼性警告 */}
-                    <ReliabilityWarning races={modelData.thisMonth.totalRaces || 0} />
+                    <ReliabilityWarning races={modelData.thisMonth?.totalRaces || 0} />
 
                     {/* 直近のパフォーマンス */}
                     {modelData.dailyHistory && modelData.dailyHistory.length > 0 && (

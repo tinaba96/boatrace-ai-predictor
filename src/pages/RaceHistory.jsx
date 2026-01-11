@@ -82,6 +82,7 @@ function RaceHistory() {
                   const payout = result.payouts?.win?.[String(topPick)]
                   if (payout) winPayouts += payout
                 }
+                // 複勝: topPickが2着以内なら的中（競艇のルール）
                 if (topPick === result.rank1 || topPick === result.rank2) {
                   placeHits++
                   const payout = result.payouts?.place?.[String(topPick)]
