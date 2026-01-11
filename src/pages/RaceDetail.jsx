@@ -122,11 +122,11 @@ function RaceDetail() {
     const modelPrediction = prediction.predictions[modelKey]
 
     if (modelPrediction) {
-      const topPickPlayer = modelPrediction.players.find(
+      const topPickPlayer = modelPrediction.players?.find(
         p => p.number === modelPrediction.topPick
       )
-      const top3Players = modelPrediction.top3.map(num =>
-        modelPrediction.players.find(p => p.number === num)
+      const top3Players = (modelPrediction.top3 || []).map(num =>
+        modelPrediction.players?.find(p => p.number === num)
       )
 
       setPrediction({
@@ -193,11 +193,11 @@ function RaceDetail() {
       return
     }
 
-    const topPickPlayer = modelPrediction.players.find(
+    const topPickPlayer = modelPrediction.players?.find(
       p => p.number === modelPrediction.topPick
     )
-    const top3Players = modelPrediction.top3.map(num =>
-      modelPrediction.players.find(p => p.number === num)
+    const top3Players = (modelPrediction.top3 || []).map(num =>
+      modelPrediction.players?.find(p => p.number === num)
     )
 
     setPrediction({
