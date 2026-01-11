@@ -1017,7 +1017,7 @@ function RaceDetail() {
                           </tr>
                         </thead>
                         <tbody>
-                          {(prediction.allPlayers || []).map(player => (
+                          {[...(prediction.allPlayers || [])].sort((a, b) => b.aiScore - a.aiScore).map(player => (
                             <tr key={player.number} className={(prediction.top3 || []).includes(player.number) ? 'recommended' : ''}>
                               <td><strong>{player.number}</strong></td>
                               <td>{player.name}</td>
