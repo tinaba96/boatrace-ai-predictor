@@ -2,14 +2,7 @@
 // Supabaseから予測結果を集計し、models統計を更新する
 
 import { supabase, isSupabaseEnabled } from './lib/supabaseClient.js';
-
-// Get today's date in JST (YYYY-MM-DD format)
-function getTodayDateJST() {
-    const now = new Date();
-    const jstOffset = 9 * 60;
-    const jstDate = new Date(now.getTime() + jstOffset * 60 * 1000);
-    return jstDate.toISOString().split('T')[0];
-}
+import { getTodayDateJST } from './lib/dateUtils.js';
 
 // Calculate statistics for a model
 async function calculateModelStats(modelId) {

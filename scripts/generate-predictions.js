@@ -6,18 +6,10 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { supabase, isSupabaseEnabled, VENUE_CODES } from './lib/supabaseClient.js';
+import { getTodayDateJST } from './lib/dateUtils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// 日本時間で今日の日付を取得 (YYYY-MM-DD形式)
-function getTodayDateJST() {
-    const now = new Date();
-    // JSTはUTC+9時間
-    const jstOffset = 9 * 60;
-    const jstDate = new Date(now.getTime() + jstOffset * 60 * 1000);
-    return jstDate.toISOString().split('T')[0];
-}
 
 // 標準偏差を計算
 function calculateStdDev(values) {

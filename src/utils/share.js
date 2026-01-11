@@ -2,6 +2,8 @@
  * SNSシェア関数
  */
 
+import { MODEL_NAMES } from '../constants';
+
 /**
  * AI予想をXでシェア
  * @param {Object} race - レースデータ
@@ -14,13 +16,7 @@ export const shareRacePredictionToX = (race, model = 'standard') => {
     const top3 = race.prediction?.top3?.join('-') || '?-?-?';
     const aiScore = race.prediction?.aiScores?.[0]?.toFixed(1) || '?';
 
-    // モデル名の日本語表記
-    const modelNames = {
-        'standard': 'スタンダード',
-        'safeBet': '本命狙い',
-        'upsetFocus': '穴狙い'
-    };
-    const modelName = modelNames[model] || 'スタンダード';
+    const modelName = MODEL_NAMES[model] || 'スタンダード';
 
     // 日付をフォーマット (YYYY-MM-DD -> MM/DD)
     let dateStr = '';
@@ -115,13 +111,7 @@ export const shareHitRaceToX = (race, model = 'standard') => {
     const payout = race.totalPayout || 0;
     const hitTypes = race.hitTypes || [];
 
-    // モデル名の日本語表記
-    const modelNames = {
-        'standard': 'スタンダード',
-        'safeBet': '本命狙い',
-        'upsetFocus': '穴狙い'
-    };
-    const modelName = modelNames[model] || 'スタンダード';
+    const modelName = MODEL_NAMES[model] || 'スタンダード';
 
     // 的中券種を文字列化
     let hitTypesStr = '';
@@ -250,13 +240,7 @@ export const generatePredictionShareText = (race, model = 'standard') => {
     const top3 = race.prediction?.top3?.join('-') || '?-?-?';
     const aiScore = race.prediction?.aiScores?.[0]?.toFixed(1) || '?';
 
-    // モデル名の日本語表記
-    const modelNames = {
-        'standard': 'スタンダード',
-        'safeBet': '本命狙い',
-        'upsetFocus': '穴狙い'
-    };
-    const modelName = modelNames[model] || 'スタンダード';
+    const modelName = MODEL_NAMES[model] || 'スタンダード';
 
     let dateStr = '';
     if (race.date) {
@@ -290,13 +274,7 @@ export const generateHitRaceShareText = (race, model = 'standard') => {
     const payout = race.totalPayout || 0;
     const hitTypes = race.hitTypes || [];
 
-    // モデル名の日本語表記
-    const modelNames = {
-        'standard': 'スタンダード',
-        'safeBet': '本命狙い',
-        'upsetFocus': '穴狙い'
-    };
-    const modelName = modelNames[model] || 'スタンダード';
+    const modelName = MODEL_NAMES[model] || 'スタンダード';
 
     // 的中券種を文字列化
     let hitTypesStr = '';

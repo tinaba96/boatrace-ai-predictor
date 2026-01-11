@@ -6,27 +6,14 @@ import Breadcrumb from '../components/Breadcrumb'
 import LoadingScreen from '../components/LoadingScreen'
 import ModelComparisonTable from '../components/ModelComparisonTable'
 import { dataService } from '../services/dataService'
+import { MODEL_NAMES, MODEL_KEYS } from '../constants'
+import { formatDateObject } from '../utils/formatters'
 import './RaceHistory.css'
 
 function RaceHistory() {
   const [groupedDates, setGroupedDates] = useState({})
   const [loading, setLoading] = useState(true)
   const [expandedMonths, setExpandedMonths] = useState({})
-
-  // 日付フォーマット関数
-  const formatDate = (dateStr) => {
-    const date = new Date(dateStr + 'T00:00:00+09:00')
-    const year = date.getFullYear()
-    const month = date.getMonth() + 1
-    const day = date.getDate()
-    const weekdays = ['日', '月', '火', '水', '木', '金', '土']
-    const weekday = weekdays[date.getDay()]
-    return {
-      full: `${year}年${month}月${day}日(${weekday})`,
-      short: `${month}/${day}(${weekday})`,
-      yearMonth: `${year}年${month}月`
-    }
-  }
 
   // 月の切り替え
   const toggleMonth = (yearMonth) => {
@@ -57,12 +44,7 @@ function RaceHistory() {
 
             // モデル間パフォーマンスを計算
             const hasNewFormat = data.races.some(r => r.predictions)
-            const models = hasNewFormat ? ['standard', 'safeBet', 'upsetFocus'] : ['standard']
-            const modelNames = {
-              standard: 'スタンダード',
-              safeBet: '本命狙い',
-              upsetFocus: '穴狙い'
-            }
+            const models = hasNewFormat ? MODEL_KEYS : ['standard']
 
             const modelComparison = models.map(modelKey => {
               const races = data.races.filter(r => r.result?.finished)
@@ -105,7 +87,7 @@ function RaceHistory() {
 
               return {
                 key: modelKey,
-                name: modelNames[modelKey],
+                name: MODEL_NAMES[modelKey],
                 races: finishedRaces,
                 winHitRate: finishedRaces > 0 ? winHits / finishedRaces : 0,
                 winRecoveryRate: finishedRaces > 0 ? (winPayouts / 100) / finishedRaces : 0,
@@ -133,7 +115,7 @@ function RaceHistory() {
         // 月別にグループ化
         const grouped = {}
         dates.forEach(dateInfo => {
-          const { yearMonth } = formatDate(dateInfo.date)
+          const { yearMonth } = formatDateObject(dateInfo.date)
           if (!grouped[yearMonth]) {
             grouped[yearMonth] = []
           }
@@ -248,7 +230,7 @@ function RaceHistory() {
                             className="date-card"
                           >
                             <div className="date-card-header">
-                              <h3>{formatDate(dateInfo.date).short}</h3>
+                              <h3>{formatDateObject(dateInfo.date).short}</h3>
                               <span className="race-count">
                                 {dateInfo.finishedRaces}/{dateInfo.totalRaces} レース完了
                               </span>

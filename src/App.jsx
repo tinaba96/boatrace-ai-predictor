@@ -11,6 +11,8 @@ import { ShareButton } from './components/ShareButton'
 import { SocialShareButtons } from './components/SocialShareButtons'
 import { shareRacePredictionToX, generatePredictionShareText } from './utils/share'
 import { dataService } from './services/dataService'
+import { STADIUM_NAMES, WEEKDAYS } from './constants'
+import { getTodayJST } from './utils/dateUtils'
 
 function App({ tab = 'races' }) {
     const navigate = useNavigate()
@@ -32,21 +34,12 @@ function App({ tab = 'races' }) {
     const predictionRef = useRef(null)
     const raceCardRefs = useRef({}) // 各レースカードへの参照を保持
 
-    // レース場番号から名前へのマッピング
-    const stadiumNames = {
-        1: '桐生', 2: '戸田', 3: '江戸川', 4: '平和島', 5: '多摩川', 6: '浜名湖',
-        7: '蒲郡', 8: '常滑', 9: '津', 10: '三国', 11: 'びわこ', 12: '住之江',
-        13: '尼崎', 14: '鳴門', 15: '丸亀', 16: '児島', 17: '宮島', 18: '徳山',
-        19: '下関', 20: '若松', 21: '芦屋', 22: '福岡', 23: '唐津', 24: '大村'
-    }
-
     // 本日の日付をフォーマット
     const getTodayDateShort = () => {
         const today = new Date()
         const month = today.getMonth() + 1
         const day = today.getDate()
-        const weekdays = ['日', '月', '火', '水', '木', '金', '土']
-        const weekday = weekdays[today.getDay()]
+        const weekday = WEEKDAYS[today.getDay()]
         return `${month}/${day}(${weekday})`
     }
 
@@ -590,7 +583,7 @@ function App({ tab = 'races' }) {
                         <HitRaces
                             allVenuesData={allVenuesData}
                             analyzeRace={analyzeRace}
-                            stadiumNames={stadiumNames}
+                            stadiumNames={STADIUM_NAMES}
                             fetchWithRetry={fetchWithRetry}
                             lastUpdated={lastUpdated}
                             onRefresh={handleRefresh}

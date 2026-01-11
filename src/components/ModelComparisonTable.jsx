@@ -1,14 +1,6 @@
+import { formatPercent } from '../utils/formatters'
+import { getRecoveryColor } from '../utils/colors'
 import './ModelComparisonTable.css'
-
-// 回収率の色を取得
-const getRecoveryColor = (rate) => {
-  if (rate >= 1.0) return '#10b981'
-  if (rate >= 0.9) return '#f59e0b'
-  return '#ef4444'
-}
-
-// パーセント表示
-const formatPercent = (rate) => (rate * 100).toFixed(1) + '%'
 
 /**
  * モデル比較表コンポーネント

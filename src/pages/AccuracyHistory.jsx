@@ -1,18 +1,15 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { dataService } from '../services/dataService'
+import { MODEL_NAMES } from '../constants'
+import { formatPercent } from '../utils/formatters'
+import { getRecoveryColor } from '../utils/colors'
 import './AccuracyHistory.css'
 
 function AccuracyHistory() {
     const [summary, setSummary] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
-
-    const modelNames = {
-        standard: 'スタンダード',
-        safeBet: '本命狙い',
-        upsetFocus: '穴狙い'
-    }
 
     useEffect(() => {
         const fetchSummary = async () => {
@@ -31,14 +28,6 @@ function AccuracyHistory() {
 
         fetchSummary()
     }, [])
-
-    const formatPercent = (rate) => (rate * 100).toFixed(1) + '%'
-
-    const getRecoveryColor = (rate) => {
-        if (rate >= 1.0) return '#10b981'
-        if (rate >= 0.8) return '#f59e0b'
-        return '#ef4444'
-    }
 
     if (loading) {
         return (
@@ -121,7 +110,7 @@ function AccuracyHistory() {
 
     // 月ごとのモデル比較データを生成
     const getModelComparisonForMonth = (monthInfo) => {
-        return Object.entries(modelNames).map(([key, name]) => {
+        return Object.entries(MODEL_NAMES).map(([key, name]) => {
             const data = monthInfo.models[key]
             if (!data) {
                 return {

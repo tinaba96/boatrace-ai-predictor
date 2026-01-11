@@ -3,19 +3,8 @@
 
 import * as cheerio from 'cheerio';
 import { supabase, isSupabaseEnabled, VENUE_NAMES } from './lib/supabaseClient.js';
-
-// Get today's date in JST (YYYY-MM-DD format)
-function getTodayDateJST() {
-  const now = new Date();
-  const jstOffset = 9 * 60;
-  const jstDate = new Date(now.getTime() + jstOffset * 60 * 1000);
-  return jstDate.toISOString().split('T')[0];
-}
-
-// Convert date to YYYYMMDD format
-function formatDateForUrl(dateStr) {
-  return dateStr.replace(/-/g, '');
-}
+import { getTodayDateJST, formatDateForUrl, parseDateArg } from './lib/dateUtils.js';
+import { calculateHits } from './lib/hitCalculator.js';
 
 // Generate race result page URL
 function getRaceResultUrl(venueCode, raceNo, dateStr) {
@@ -433,9 +422,7 @@ async function fixMissingHitFlags(targetDate) {
 }
 
 // Get date from command line argument (optional)
-const args = process.argv.slice(2);
-const dateArg = args.find(arg => arg.startsWith('--date='));
-const targetDate = dateArg ? dateArg.split('=')[1] : null;
+const targetDate = parseDateArg();
 
 // Execute script
 scrapeResults(targetDate);
