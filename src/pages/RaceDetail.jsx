@@ -884,7 +884,7 @@ function RaceDetail() {
                     <div className="reasoning">
                       <h4>📌 予想根拠</h4>
                       <ul>
-                        {prediction.reasoning.map((reason, idx) => (
+                        {(prediction.reasoning || []).map((reason, idx) => (
                           <li key={idx}>{reason}</li>
                         ))}
                       </ul>
@@ -952,7 +952,8 @@ function RaceDetail() {
 
                           {/* 3連複 */}
                           <div className="check-item">
-                            {prediction.top3.includes(prediction.result.rank1) &&
+                            {prediction.top3 &&
+                            prediction.top3.includes(prediction.result.rank1) &&
                             prediction.top3.includes(prediction.result.rank2) &&
                             prediction.top3.includes(prediction.result.rank3) ? (
                               <div className="hit">
@@ -975,7 +976,8 @@ function RaceDetail() {
 
                           {/* 3連単 */}
                           <div className="check-item">
-                            {prediction.top3[0] === prediction.result.rank1 &&
+                            {prediction.top3 &&
+                            prediction.top3[0] === prediction.result.rank1 &&
                             prediction.top3[1] === prediction.result.rank2 &&
                             prediction.top3[2] === prediction.result.rank3 ? (
                               <div className="hit">
@@ -1015,8 +1017,8 @@ function RaceDetail() {
                           </tr>
                         </thead>
                         <tbody>
-                          {prediction.allPlayers.map(player => (
-                            <tr key={player.number} className={prediction.top3.includes(player.number) ? 'recommended' : ''}>
+                          {(prediction.allPlayers || []).map(player => (
+                            <tr key={player.number} className={(prediction.top3 || []).includes(player.number) ? 'recommended' : ''}>
                               <td><strong>{player.number}</strong></td>
                               <td>{player.name}</td>
                               <td>{player.grade}</td>
