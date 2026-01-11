@@ -358,6 +358,19 @@ export const supabaseDataService = {
     // 今月の予測データを取得（is_hit_winがセットされているもの = 結果が出ているもの）
     const thisMonthPredictions = await fetchAllPredictions(thisMonthStart, thisMonthEnd);
 
+    // 先月の日付範囲を計算
+    let lastMonthYear = thisYear;
+    let lastMonthMonth = thisMonth - 1;
+    if (lastMonthMonth === 0) {
+      lastMonthMonth = 12;
+      lastMonthYear = thisYear - 1;
+    }
+    const lastMonthStart = `${lastMonthYear}-${String(lastMonthMonth).padStart(2, '0')}-01`;
+    const lastMonthEnd = `${lastMonthYear}-${String(lastMonthMonth).padStart(2, '0')}-31`;
+
+    // 先月の予測データを取得
+    const lastMonthPredictions = await fetchAllPredictions(lastMonthStart, lastMonthEnd);
+
     // 過去7日分の日別データ取得
     const sevenDaysAgo = new Date(jstNow.getTime() - 7 * 24 * 60 * 60 * 1000);
     const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
@@ -471,6 +484,8 @@ export const supabaseDataService = {
       const modelInfo = models?.find(m => m.model_id === modelId);
       const thisMonthPreds = thisMonthPredictions?.filter(p => p.model_id === modelId) || [];
       const thisMonthStats = calculateStats(thisMonthPreds);
+      const lastMonthPreds = lastMonthPredictions?.filter(p => p.model_id === modelId) || [];
+      const lastMonthStats = calculateStats(lastMonthPreds);
       const dailyHistory = calculateDailyHistory(recentPredictions, modelId);
       const byVenue = calculateByVenue(allPredictions, modelId);
 
@@ -489,6 +504,11 @@ export const supabaseDataService = {
           year: thisYear,
           month: thisMonth,
           ...thisMonthStats
+        },
+        lastMonth: {
+          year: lastMonthYear,
+          month: lastMonthMonth,
+          ...lastMonthStats
         },
         dailyHistory,
         byVenue
