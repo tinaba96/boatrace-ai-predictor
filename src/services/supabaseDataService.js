@@ -17,6 +17,45 @@ const VENUE_NAMES = {
 };
 
 /**
+ * 予想根拠を生成する関数
+ */
+function generateReasoning(topPickPlayer, modelType) {
+  if (!topPickPlayer) return ['予想データなし'];
+
+  const reasons = [];
+  const number = topPickPlayer.number;
+  const winRate = parseFloat(topPickPlayer.winRate) || 0;
+  const localWinRate = parseFloat(topPickPlayer.localWinRate) || 0;
+  const motor2Rate = parseFloat(topPickPlayer.motor2Rate) || 0;
+
+  if (modelType === 'standard') {
+    reasons.push(`${number}号艇 ${topPickPlayer.name}選手を本命に選定`);
+    const strengths = [];
+    if (winRate >= 6.5) strengths.push(`全国勝率${topPickPlayer.winRate}の実力者`);
+    if (localWinRate >= 5.5) strengths.push(`当地成績${topPickPlayer.localWinRate}と好相性`);
+    if (motor2Rate >= 35) strengths.push(`モーター2連率${topPickPlayer.motor2Rate}%の${motor2Rate >= 40 ? '好' : '安定'}機材`);
+    reasons.push(strengths.length > 0 ? strengths.join('、') + 'で総合評価が最高' : '総合的なデータ分析により最高評価を獲得');
+  } else if (modelType === 'safeBet') {
+    reasons.push(`${number}号艇 ${topPickPlayer.name}選手を本命に選定`);
+    const strengths = [];
+    if (number === 1) strengths.push('1号艇の有利なコース取り');
+    if (topPickPlayer.grade === 'A1') strengths.push('A1級選手として安定した実力');
+    else if (topPickPlayer.grade === 'A2') strengths.push('A2級選手として堅実な実績');
+    if (winRate >= 6.0) strengths.push(`全国勝率${topPickPlayer.winRate}の高い実力`);
+    reasons.push(strengths.length > 0 ? strengths.join('、') + 'により的中率が期待できる' : '安全性を重視した評価で最高スコアを獲得');
+  } else if (modelType === 'upsetFocus') {
+    reasons.push(`${number}号艇 ${topPickPlayer.name}選手を本命に選定`);
+    const strengths = [];
+    if (number >= 4 && motor2Rate >= 38) strengths.push(`${number}号艇ながらモーター2連率${topPickPlayer.motor2Rate}%の好機材`);
+    if (localWinRate >= 6.0 && number >= 3) strengths.push(`当地勝率${topPickPlayer.localWinRate}の高い適性`);
+    if (topPickPlayer.grade === 'B1' && winRate >= 5.5) strengths.push('B1級ながら高い勝率で穴要素あり');
+    reasons.push(strengths.length > 0 ? strengths.join('、') + 'で高配当期待' : '穴馬候補として期待値が高い');
+  }
+
+  return reasons;
+}
+
+/**
  * Supabase データサービス
  */
 export const supabaseDataService = {
@@ -221,29 +260,38 @@ export const supabaseDataService = {
         raceData.predictions = {};
 
         if (standardPred) {
+          const players = createPlayers(standardPred, 'ai_score_standard');
+          const topPickPlayer = players.find(p => p.number === standardPred.top_pick);
           raceData.predictions.standard = {
             topPick: standardPred.top_pick,
             top3: [standardPred.top_pick, standardPred.top_2nd, standardPred.top_3rd].filter(Boolean),
             confidence: Number(standardPred.confidence) || 0,
-            players: createPlayers(standardPred, 'ai_score_standard')
+            players,
+            reasoning: generateReasoning(topPickPlayer, 'standard')
           };
         }
 
         if (safeBetPred) {
+          const players = createPlayers(safeBetPred, 'ai_score_safe_bet');
+          const topPickPlayer = players.find(p => p.number === safeBetPred.top_pick);
           raceData.predictions.safeBet = {
             topPick: safeBetPred.top_pick,
             top3: [safeBetPred.top_pick, safeBetPred.top_2nd, safeBetPred.top_3rd].filter(Boolean),
             confidence: Number(safeBetPred.confidence) || 0,
-            players: createPlayers(safeBetPred, 'ai_score_safe_bet')
+            players,
+            reasoning: generateReasoning(topPickPlayer, 'safeBet')
           };
         }
 
         if (upsetPred) {
+          const players = createPlayers(upsetPred, 'ai_score_upset_focus');
+          const topPickPlayer = players.find(p => p.number === upsetPred.top_pick);
           raceData.predictions.upsetFocus = {
             topPick: upsetPred.top_pick,
             top3: [upsetPred.top_pick, upsetPred.top_2nd, upsetPred.top_3rd].filter(Boolean),
             confidence: Number(upsetPred.confidence) || 0,
-            players: createPlayers(upsetPred, 'ai_score_upset_focus')
+            players,
+            reasoning: generateReasoning(topPickPlayer, 'upsetFocus')
           };
         }
       }
