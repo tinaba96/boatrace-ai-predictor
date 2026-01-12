@@ -176,6 +176,8 @@ function App({ tab = 'races' }) {
     const handleRefresh = async () => {
         setIsRefreshing(true)
         try {
+            // キャッシュをクリアして最新データを取得
+            dataService.clearCache()
             await fetchRaceData()
         } finally {
             setIsRefreshing(false)

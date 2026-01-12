@@ -4,10 +4,10 @@
  * Supabaseからデータを取得します。
  */
 
-import { supabaseDataService } from './supabaseDataService';
+import { supabaseDataService, clearCache } from './supabaseDataService';
 
 // 起動時にログ出力
-console.log('📊 データソース: Supabase');
+console.log('📊 データソース: Supabase (30分キャッシュ有効)');
 
 /**
  * データサービス
@@ -41,5 +41,13 @@ export const dataService = {
    */
   async getAvailableDates(days = 90) {
     return supabaseDataService.getAvailableDates(days);
+  },
+
+  /**
+   * キャッシュをクリア（手動更新時に使用）
+   * @param {string|null} key - 特定のキーをクリア（nullで全クリア）
+   */
+  clearCache(key = null) {
+    clearCache(key);
   }
 };

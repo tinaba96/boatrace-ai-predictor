@@ -7,6 +7,39 @@
 import { supabase } from './supabaseClient';
 
 /**
+ * キャッシュ機構
+ * スクレイピングは1時間に1回なので、30分間キャッシュを保持
+ */
+const cache = new Map();
+const CACHE_TTL = 30 * 60 * 1000; // 30分
+
+function withCache(key, fetcher) {
+  const cached = cache.get(key);
+
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    console.log(`[Cache HIT] ${key} (${Math.round((CACHE_TTL - (Date.now() - cached.timestamp)) / 1000)}s remaining)`);
+    return Promise.resolve(cached.data);
+  }
+
+  console.log(`[Cache MISS] ${key}`);
+  return fetcher().then(data => {
+    cache.set(key, { data, timestamp: Date.now() });
+    return data;
+  });
+}
+
+// キャッシュクリア（手動更新時に使用）
+export function clearCache(key = null) {
+  if (key) {
+    cache.delete(key);
+    console.log(`[Cache CLEAR] ${key}`);
+  } else {
+    cache.clear();
+    console.log('[Cache CLEAR] All');
+  }
+}
+
+/**
  * 会場コード→会場名のマッピング
  */
 const VENUE_NAMES = {
@@ -178,16 +211,17 @@ export const supabaseDataService = {
    * レースデータを取得（races.json形式で返す）
    */
   async getRaces() {
-    if (!supabase) {
-      console.error('Supabase client not initialized');
-      return { success: false, data: [], scrapedAt: null };
-    }
-
     // 今日の日付（JST）
     const now = new Date();
     const jstOffset = 9 * 60;
     const jstNow = new Date(now.getTime() + jstOffset * 60 * 1000);
     const today = jstNow.toISOString().split('T')[0];
+
+    return withCache(`races-${today}`, async () => {
+      if (!supabase) {
+        console.error('Supabase client not initialized');
+        return { success: false, data: [], scrapedAt: null };
+      }
 
     // 今日のレースを取得
     const { data: races, error: racesError } = await supabase
@@ -257,21 +291,23 @@ export const supabaseDataService = {
       venueMap.get(venueCode).races.push(raceData);
     }
 
-    return {
-      success: true,
-      data: Array.from(venueMap.values()),
-      scrapedAt: new Date().toISOString()
-    };
+      return {
+        success: true,
+        data: Array.from(venueMap.values()),
+        scrapedAt: new Date().toISOString()
+      };
+    }); // withCache end
   },
 
   /**
    * 予測データを取得（predictions/YYYY-MM-DD.json形式で返す）
    */
   async getPredictions(date) {
-    if (!supabase) {
-      console.error('Supabase client not initialized');
-      return { date, generatedAt: null, updatedAt: null, races: [] };
-    }
+    return withCache(`predictions-${date}`, async () => {
+      if (!supabase) {
+        console.error('Supabase client not initialized');
+        return { date, generatedAt: null, updatedAt: null, races: [] };
+      }
 
     // レースと予測と結果を取得
     const { data: races, error: racesError } = await supabase
@@ -452,22 +488,24 @@ export const supabaseDataService = {
       return raceData;
     });
 
-    return {
-      date: date,
-      generatedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      races: transformedRaces
-    };
+      return {
+        date: date,
+        generatedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        races: transformedRaces
+      };
+    }); // withCache end
   },
 
   /**
    * 精度統計データを取得（summary.json形式で返す）
    */
   async getAccuracy() {
-    if (!supabase) {
-      console.error('Supabase client not initialized');
-      return { lastUpdated: null, models: {} };
-    }
+    return withCache('accuracy', async () => {
+      if (!supabase) {
+        console.error('Supabase client not initialized');
+        return { lastUpdated: null, models: {} };
+      }
 
     // 今月の日付範囲を計算
     const now = new Date();
@@ -681,10 +719,11 @@ export const supabaseDataService = {
       };
     }
 
-    return {
-      lastUpdated: new Date().toISOString(),
-      models: modelStats
-    };
+      return {
+        lastUpdated: new Date().toISOString(),
+        models: modelStats
+      };
+    }); // withCache end
   },
 
   /**
@@ -692,10 +731,11 @@ export const supabaseDataService = {
    * @param {number} days - 過去何日分を取得するか
    */
   async getAvailableDates(days = 90) {
-    if (!supabase) {
-      console.error('Supabase client not initialized');
-      return [];
-    }
+    return withCache(`availableDates-${days}`, async () => {
+      if (!supabase) {
+        console.error('Supabase client not initialized');
+        return [];
+      }
 
     // 日付範囲を計算
     const today = new Date();
@@ -716,8 +756,9 @@ export const supabaseDataService = {
       return [];
     }
 
-    // ユニークな日付を抽出
-    const uniqueDates = [...new Set(data.map(r => r.race_date))];
-    return uniqueDates;
+      // ユニークな日付を抽出
+      const uniqueDates = [...new Set(data.map(r => r.race_date))];
+      return uniqueDates;
+    }); // withCache end
   }
 };
