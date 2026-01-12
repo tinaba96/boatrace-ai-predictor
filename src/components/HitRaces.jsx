@@ -5,7 +5,7 @@ import LoadingScreen from './LoadingScreen'
 import { dataService } from '../services/dataService'
 import { STADIUM_NAMES } from '../constants'
 import { formatDateShort } from '../utils/formatters'
-import { getJSTDateInfo } from '../utils/dateUtils'
+import { getJSTDateInfo, getDateListJST } from '../utils/dateUtils'
 import { HitRaceCard, HitStats, VenueStatsTable } from './hits'
 import './HitRaces.css'
 
@@ -21,7 +21,7 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
   const [selectedPeriod, setSelectedPeriod] = useState('today')
   const [selectedModel, setSelectedModel] = useState('standard')
 
-  const { todayStr, yesterdayStr, jstNow } = getJSTDateInfo()
+  const { todayStr, yesterdayStr } = getJSTDateInfo()
 
   // 的中レースを読み込む
   useEffect(() => {
@@ -125,10 +125,7 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
         setHitRacesYesterday(extractHitRaces(yesterdayPredictions, selectedModel))
 
         // 全期間のデータを読み込む（過去14日分）- 並列取得で高速化
-        const dateList = Array.from({ length: 14 }, (_, i) => {
-          const date = new Date(jstNow.getTime() - i * 24 * 60 * 60 * 1000)
-          return date.toISOString().split('T')[0]
-        })
+        const dateList = getDateListJST(14)
 
         const allPredictions = await Promise.all(
           dateList.map(dateStr => loadDayPredictions(dateStr))
@@ -146,8 +143,7 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
     }
 
     fetchHitRaces()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedModel, todayStr, yesterdayStr]) // jstNowを除外（Date objectは毎回新規生成されるため無限ループになる）
+  }, [selectedModel, todayStr, yesterdayStr])
 
   const handleCardClick = (hitRace) => {
     const venueData = (allVenuesData || []).find(v => v.placeCd === hitRace.placeCode)

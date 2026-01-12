@@ -45,14 +45,22 @@ export const getDaysAgoJST = (days) => {
 
 /**
  * JST日付情報を一括取得
- * @returns {Object} todayStr, yesterdayStr, jstNow
+ * 注意: Dateオブジェクトは返さない（Reactの依存配列で無限ループの原因になるため）
+ * @returns {Object} todayStr, yesterdayStr
  */
 export const getJSTDateInfo = () => {
-  const jstNow = getJSTNow();
-  const todayStr = jstNow.toISOString().split('T')[0];
-  const yesterday = new Date(jstNow.getTime() - 24 * 60 * 60 * 1000);
-  const yesterdayStr = yesterday.toISOString().split('T')[0];
-  return { todayStr, yesterdayStr, jstNow };
+  const todayStr = getTodayJST();
+  const yesterdayStr = getYesterdayJST();
+  return { todayStr, yesterdayStr };
+};
+
+/**
+ * 過去N日分の日付リストを取得
+ * @param {number} days - 日数
+ * @returns {string[]} YYYY-MM-DD形式の日付配列
+ */
+export const getDateListJST = (days) => {
+  return Array.from({ length: days }, (_, i) => getDaysAgoJST(i));
 };
 
 /**
