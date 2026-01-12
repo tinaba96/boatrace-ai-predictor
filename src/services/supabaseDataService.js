@@ -226,7 +226,7 @@ export const supabaseDataService = {
       const safeBetPred = predictions.find(p => p.model_id === 'safeBet');
       const upsetPred = predictions.find(p => p.model_id === 'upsetFocus');
 
-      // players配列を作成
+      // players配列を作成（aiScoreで降順ソート）
       const createPlayers = (pred, scoreField) => entries.map(e => ({
         number: e.boat_number,
         name: e.player_name,
@@ -239,7 +239,7 @@ export const supabaseDataService = {
         boatNumber: e.boat_number_id,
         boat2Rate: String(e.boat_2rate || ''),
         aiScore: e[scoreField] || 0
-      }));
+      })).sort((a, b) => b.aiScore - a.aiScore);
 
       const raceData = {
         raceId: race.race_id,
