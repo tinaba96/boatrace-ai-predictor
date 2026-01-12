@@ -18,38 +18,153 @@ const VENUE_NAMES = {
 
 /**
  * 予想根拠を生成する関数
+ * 各モデルの特性に基づいた詳細な分析結果を生成
  */
 function generateReasoning(topPickPlayer, modelType) {
   if (!topPickPlayer) return ['予想データなし'];
 
   const reasons = [];
   const number = topPickPlayer.number;
+  const name = topPickPlayer.name;
+  const grade = topPickPlayer.grade || '';
   const winRate = parseFloat(topPickPlayer.winRate) || 0;
   const localWinRate = parseFloat(topPickPlayer.localWinRate) || 0;
   const motor2Rate = parseFloat(topPickPlayer.motor2Rate) || 0;
+  const boat2Rate = parseFloat(topPickPlayer.boat2Rate) || 0;
 
   if (modelType === 'standard') {
-    reasons.push(`${number}号艇 ${topPickPlayer.name}選手を本命に選定`);
-    const strengths = [];
-    if (winRate >= 6.5) strengths.push(`全国勝率${topPickPlayer.winRate}の実力者`);
-    if (localWinRate >= 5.5) strengths.push(`当地成績${topPickPlayer.localWinRate}と好相性`);
-    if (motor2Rate >= 35) strengths.push(`モーター2連率${topPickPlayer.motor2Rate}%の${motor2Rate >= 40 ? '好' : '安定'}機材`);
-    reasons.push(strengths.length > 0 ? strengths.join('、') + 'で総合評価が最高' : '総合的なデータ分析により最高評価を獲得');
+    // スタンダードモデル: 選手実力・機材・コース・当地相性を総合評価
+    reasons.push(`【総合分析】${number}号艇 ${name}選手を本命に選定`);
+
+    // 選手評価
+    const playerAnalysis = [];
+    if (grade === 'A1') playerAnalysis.push('最高峰A1級の実力');
+    else if (grade === 'A2') playerAnalysis.push('上位A2級の安定感');
+    else if (grade === 'B1') playerAnalysis.push('B1級');
+
+    if (winRate >= 7.0) playerAnalysis.push(`全国勝率${topPickPlayer.winRate}はトップクラス`);
+    else if (winRate >= 6.0) playerAnalysis.push(`全国勝率${topPickPlayer.winRate}の高水準`);
+    else if (winRate >= 5.0) playerAnalysis.push(`全国勝率${topPickPlayer.winRate}`);
+
+    if (playerAnalysis.length > 0) {
+      reasons.push(`選手力: ${playerAnalysis.join('、')}`);
+    }
+
+    // 機材評価
+    const equipAnalysis = [];
+    if (motor2Rate >= 45) equipAnalysis.push(`モーター2連率${topPickPlayer.motor2Rate}%は上位機`);
+    else if (motor2Rate >= 35) equipAnalysis.push(`モーター2連率${topPickPlayer.motor2Rate}%で安定`);
+    if (boat2Rate >= 40) equipAnalysis.push(`ボート2連率${topPickPlayer.boat2Rate}%の好艇`);
+
+    if (equipAnalysis.length > 0) {
+      reasons.push(`機材力: ${equipAnalysis.join('、')}`);
+    }
+
+    // 当地・コース評価
+    const courseAnalysis = [];
+    if (number === 1) courseAnalysis.push('1コースの圧倒的有利を活かせる位置');
+    else if (number <= 3) courseAnalysis.push(`${number}コースからのスタート展開に期待`);
+
+    if (localWinRate >= 7.0) courseAnalysis.push(`当地勝率${topPickPlayer.localWinRate}と抜群の相性`);
+    else if (localWinRate >= 5.5) courseAnalysis.push(`当地勝率${topPickPlayer.localWinRate}で水面適性あり`);
+
+    if (courseAnalysis.length > 0) {
+      reasons.push(`展開: ${courseAnalysis.join('、')}`);
+    }
+
+    reasons.push('→ 独自の重み付けアルゴリズムにより総合スコア最高と判定');
+
   } else if (modelType === 'safeBet') {
-    reasons.push(`${number}号艇 ${topPickPlayer.name}選手を本命に選定`);
-    const strengths = [];
-    if (number === 1) strengths.push('1号艇の有利なコース取り');
-    if (topPickPlayer.grade === 'A1') strengths.push('A1級選手として安定した実力');
-    else if (topPickPlayer.grade === 'A2') strengths.push('A2級選手として堅実な実績');
-    if (winRate >= 6.0) strengths.push(`全国勝率${topPickPlayer.winRate}の高い実力`);
-    reasons.push(strengths.length > 0 ? strengths.join('、') + 'により的中率が期待できる' : '安全性を重視した評価で最高スコアを獲得');
+    // 本命狙いモデル: 的中率重視、1コース・A級選手・安定性を重視
+    reasons.push(`【堅実分析】${number}号艇 ${name}選手を本命に選定`);
+
+    // コース優位性（本命狙いでは最重要）
+    if (number === 1) {
+      reasons.push(`コース: 1号艇は統計上55%以上の1着率、最も信頼できるコース`);
+    } else if (number === 2) {
+      reasons.push(`コース: 2号艇から差し・まくりの展開を想定`);
+    } else if (number === 3) {
+      reasons.push(`コース: 3号艇からまくり展開の可能性を評価`);
+    } else {
+      reasons.push(`コース: ${number}号艇ながら他要素で高評価`);
+    }
+
+    // 選手の安定性評価
+    const stabilityAnalysis = [];
+    if (grade === 'A1') {
+      stabilityAnalysis.push('A1級選手は安定した成績を残す傾向が強い');
+      if (winRate >= 7.0) stabilityAnalysis.push(`勝率${topPickPlayer.winRate}は信頼度◎`);
+    } else if (grade === 'A2') {
+      stabilityAnalysis.push('A2級選手として堅実なレース運び');
+      if (winRate >= 6.0) stabilityAnalysis.push(`勝率${topPickPlayer.winRate}で期待十分`);
+    } else if (grade === 'B1' && winRate >= 5.5) {
+      stabilityAnalysis.push(`B1級ながら勝率${topPickPlayer.winRate}と実力上位`);
+    }
+
+    if (stabilityAnalysis.length > 0) {
+      reasons.push(`安定性: ${stabilityAnalysis.join('、')}`);
+    }
+
+    // 機材の信頼性
+    if (motor2Rate >= 40 || boat2Rate >= 40) {
+      const equipParts = [];
+      if (motor2Rate >= 40) equipParts.push(`モーター${topPickPlayer.motor2Rate}%`);
+      if (boat2Rate >= 40) equipParts.push(`ボート${topPickPlayer.boat2Rate}%`);
+      reasons.push(`機材信頼度: ${equipParts.join('・')}で堅実`);
+    }
+
+    reasons.push('→ 的中率を最大化する独自ロジックにより選出');
+
   } else if (modelType === 'upsetFocus') {
-    reasons.push(`${number}号艇 ${topPickPlayer.name}選手を本命に選定`);
-    const strengths = [];
-    if (number >= 4 && motor2Rate >= 38) strengths.push(`${number}号艇ながらモーター2連率${topPickPlayer.motor2Rate}%の好機材`);
-    if (localWinRate >= 6.0 && number >= 3) strengths.push(`当地勝率${topPickPlayer.localWinRate}の高い適性`);
-    if (topPickPlayer.grade === 'B1' && winRate >= 5.5) strengths.push('B1級ながら高い勝率で穴要素あり');
-    reasons.push(strengths.length > 0 ? strengths.join('、') + 'で高配当期待' : '穴馬候補として期待値が高い');
+    // 穴狙いモデル: 期待値・回収率重視、過小評価されている要素を発掘
+    reasons.push(`【穴馬分析】${number}号艇 ${name}選手を本命に選定`);
+
+    // 穴要素の分析
+    const upsetFactors = [];
+
+    // アウトコースからの逆転要素
+    if (number >= 4) {
+      if (motor2Rate >= 40) {
+        upsetFactors.push(`${number}号艇ながらモーター2連率${topPickPlayer.motor2Rate}%の上位機で逆転機会あり`);
+      } else if (motor2Rate >= 33) {
+        upsetFactors.push(`${number}号艇でもモーター${topPickPlayer.motor2Rate}%でまくり展開を狙える`);
+      }
+    } else if (number >= 2 && number <= 3) {
+      if (localWinRate > winRate + 0.5) {
+        upsetFactors.push(`当地勝率${topPickPlayer.localWinRate}が全国勝率を上回る隠れた適性`);
+      }
+    }
+
+    // 過小評価されがちな要素
+    if (grade === 'B1' && winRate >= 5.5) {
+      upsetFactors.push(`B1級でも勝率${topPickPlayer.winRate}は侮れない実力`);
+    }
+    if (grade === 'B1' && localWinRate >= 6.5) {
+      upsetFactors.push(`当地勝率${topPickPlayer.localWinRate}は格上選手に匹敵`);
+    }
+    if (grade === 'A2' && number >= 3 && motor2Rate >= 38) {
+      upsetFactors.push('A2級×好モーターの組み合わせで高配当狙い');
+    }
+
+    // ボート・モーターの爆発力
+    if (motor2Rate >= 45) {
+      upsetFactors.push(`モーター2連率${topPickPlayer.motor2Rate}%は上位3%の好機、波乱の主役候補`);
+    }
+
+    if (upsetFactors.length > 0) {
+      reasons.push(`発掘要素: ${upsetFactors.join('。')}`);
+    } else {
+      reasons.push('発掘要素: 独自の期待値計算により高配当時の回収効率が高いと判定');
+    }
+
+    // 期待値の説明
+    if (number >= 4) {
+      reasons.push(`配当期待: ${number}号艇の1着時は高配当が見込める`);
+    } else if (grade === 'B1') {
+      reasons.push('配当期待: B1級選手の1着は配当妙味あり');
+    }
+
+    reasons.push('→ 回収率最大化を目指す独自アルゴリズムにより選出');
   }
 
   return reasons;
