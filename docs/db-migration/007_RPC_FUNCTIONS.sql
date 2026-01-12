@@ -1,0 +1,201 @@
+-- Phase 2: Supabase RPC関数
+-- このSQLをSupabase Dashboard > SQL Editorで実行してください
+
+-- ============================================
+-- 1. 本日のレース一覧（ホーム用）
+-- ============================================
+CREATE OR REPLACE FUNCTION get_today_races()
+RETURNS JSON
+LANGUAGE plpgsql
+STABLE
+AS $$
+DECLARE
+  result JSON;
+  today_date DATE;
+BEGIN
+  -- JSTで今日の日付を取得
+  today_date := (NOW() AT TIME ZONE 'Asia/Tokyo')::DATE;
+
+  SELECT json_build_object(
+    'success', true,
+    'scrapedAt', NOW(),
+    'data', COALESCE((
+      SELECT json_agg(venue_data ORDER BY place_cd)
+      FROM (
+        SELECT
+          r.venue_code AS place_cd,
+          CASE r.venue_code
+            WHEN 1 THEN '桐生' WHEN 2 THEN '戸田' WHEN 3 THEN '江戸川'
+            WHEN 4 THEN '平和島' WHEN 5 THEN '多摩川' WHEN 6 THEN '浜名湖'
+            WHEN 7 THEN '蒲郡' WHEN 8 THEN '常滑' WHEN 9 THEN '津'
+            WHEN 10 THEN '三国' WHEN 11 THEN 'びわこ' WHEN 12 THEN '住之江'
+            WHEN 13 THEN '尼崎' WHEN 14 THEN '鳴門' WHEN 15 THEN '丸亀'
+            WHEN 16 THEN '児島' WHEN 17 THEN '宮島' WHEN 18 THEN '徳山'
+            WHEN 19 THEN '下関' WHEN 20 THEN '若松' WHEN 21 THEN '芦屋'
+            WHEN 22 THEN '福岡' WHEN 23 THEN '唐津' WHEN 24 THEN '大村'
+          END AS place_name,
+          json_agg(
+            json_build_object(
+              'raceNo', r.race_number,
+              'startTime', SUBSTRING(r.start_time, 1, 5),
+              'date', r.race_date,
+              'placeCd', r.venue_code,
+              'racers', (
+                SELECT json_agg(
+                  json_build_object(
+                    'waku', e.boat_number,
+                    'name', e.player_name,
+                    'rank', e.grade,
+                    'age', e.age,
+                    'winRate', e.win_rate,
+                    'localWinRate', e.local_win_rate,
+                    'motorNo', e.motor_number,
+                    'motor2Rate', e.motor_2rate,
+                    'boatNo', e.boat_number_id,
+                    'boat2Rate', e.boat_2rate
+                  ) ORDER BY e.boat_number
+                )
+                FROM race_entries e
+                WHERE e.race_id = r.race_id
+              )
+            ) ORDER BY r.race_number
+          ) AS races
+        FROM races r
+        WHERE r.race_date = today_date
+        GROUP BY r.venue_code
+      ) AS venue_data
+    ), '[]'::json)
+  ) INTO result;
+
+  RETURN result;
+END;
+$$;
+
+-- ============================================
+-- 2. 指定日付の予測データ
+-- ============================================
+CREATE OR REPLACE FUNCTION get_predictions_by_date(target_date DATE)
+RETURNS JSON
+LANGUAGE plpgsql
+STABLE
+AS $$
+DECLARE
+  result JSON;
+BEGIN
+  SELECT json_build_object(
+    'date', target_date,
+    'generatedAt', NOW(),
+    'updatedAt', NOW(),
+    'races', COALESCE((
+      SELECT json_agg(race_data ORDER BY venue_code, race_number)
+      FROM (
+        SELECT
+          r.venue_code,
+          r.race_number,
+          json_build_object(
+            'raceId', r.race_id,
+            'venue', CASE r.venue_code
+              WHEN 1 THEN '桐生' WHEN 2 THEN '戸田' WHEN 3 THEN '江戸川'
+              WHEN 4 THEN '平和島' WHEN 5 THEN '多摩川' WHEN 6 THEN '浜名湖'
+              WHEN 7 THEN '蒲郡' WHEN 8 THEN '常滑' WHEN 9 THEN '津'
+              WHEN 10 THEN '三国' WHEN 11 THEN 'びわこ' WHEN 12 THEN '住之江'
+              WHEN 13 THEN '尼崎' WHEN 14 THEN '鳴門' WHEN 15 THEN '丸亀'
+              WHEN 16 THEN '児島' WHEN 17 THEN '宮島' WHEN 18 THEN '徳山'
+              WHEN 19 THEN '下関' WHEN 20 THEN '若松' WHEN 21 THEN '芦屋'
+              WHEN 22 THEN '福岡' WHEN 23 THEN '唐津' WHEN 24 THEN '大村'
+            END,
+            'venueCode', r.venue_code,
+            'raceNumber', r.race_number,
+            'startTime', SUBSTRING(r.start_time, 1, 5),
+            'volatility', CASE WHEN r.volatility_score IS NOT NULL THEN
+              json_build_object(
+                'score', r.volatility_score,
+                'level', r.volatility_level,
+                'recommendedModel', r.recommended_model,
+                'reasons', COALESCE(r.volatility_reasons, '[]'::jsonb)
+              )
+            ELSE NULL END,
+            'entries', (
+              SELECT json_agg(
+                json_build_object(
+                  'number', e.boat_number,
+                  'name', e.player_name,
+                  'grade', e.grade,
+                  'age', e.age,
+                  'winRate', e.win_rate::text,
+                  'localWinRate', e.local_win_rate::text,
+                  'motorNumber', e.motor_number,
+                  'motor2Rate', e.motor_2rate::text,
+                  'boatNumber', e.boat_number_id,
+                  'boat2Rate', e.boat_2rate::text,
+                  'aiScoreStandard', e.ai_score_standard,
+                  'aiScoreSafeBet', e.ai_score_safe_bet,
+                  'aiScoreUpsetFocus', e.ai_score_upset_focus
+                ) ORDER BY e.boat_number
+              )
+              FROM race_entries e
+              WHERE e.race_id = r.race_id
+            ),
+            'predictions', (
+              SELECT json_object_agg(
+                p.model_id,
+                json_build_object(
+                  'topPick', p.top_pick,
+                  'top3', ARRAY[p.top_pick, p.top_2nd, p.top_3rd],
+                  'confidence', p.confidence,
+                  'isHitWin', p.is_hit_win,
+                  'isHitPlace', p.is_hit_place,
+                  'isHitTrifecta', p.is_hit_trifecta,
+                  'isHitTrio', p.is_hit_trio,
+                  'payoutWin', p.payout_win,
+                  'payoutPlace', p.payout_place,
+                  'payoutTrifecta', p.payout_trifecta,
+                  'payoutTrio', p.payout_trio
+                )
+              )
+              FROM predictions p
+              WHERE p.race_id = r.race_id
+            ),
+            'result', (
+              SELECT json_build_object(
+                'finished', true,
+                'rank1', res.rank1,
+                'rank2', res.rank2,
+                'rank3', res.rank3,
+                'payoutWin', res.payout_win,
+                'payoutPlace1', res.payout_place_1,
+                'payoutPlace2', res.payout_place_2,
+                'payoutTrifecta', res.payout_trifecta,
+                'payoutTrio', res.payout_trio
+              )
+              FROM race_results res
+              WHERE res.race_id = r.race_id
+              LIMIT 1
+            )
+          ) AS race_data
+        FROM races r
+        WHERE r.race_date = target_date
+      ) subq
+    ), '[]'::json)
+  ) INTO result;
+
+  RETURN result;
+END;
+$$;
+
+-- ============================================
+-- 3. RLS (Row Level Security) ポリシー設定
+-- 公開関数として誰でも実行可能にする
+-- ============================================
+-- 注意: これらの関数は public スキーマに作成され、
+-- Supabase の anon キーで実行可能です
+
+-- 実行権限を付与
+GRANT EXECUTE ON FUNCTION get_today_races() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_predictions_by_date(DATE) TO anon, authenticated;
+
+-- ============================================
+-- 動作確認クエリ
+-- ============================================
+-- SELECT get_today_races();
+-- SELECT get_predictions_by_date('2026-01-12');

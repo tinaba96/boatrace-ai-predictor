@@ -2,9 +2,13 @@
  * Supabase データサービス
  *
  * Supabaseからデータを取得し、既存のJSON形式に変換して返す
+ * Phase 2: Edge API経由でCDNキャッシュを活用
  */
 
 import { supabase } from './supabaseClient';
+
+// Edge API のベースURL（本番環境では同一オリジン）
+const EDGE_API_BASE = '';
 
 /**
  * 2層キャッシュ機構（メモリ + localStorage）
@@ -335,6 +339,7 @@ function generateReasoning(topPickPlayer, modelType) {
 export const supabaseDataService = {
   /**
    * レースデータを取得（races.json形式で返す）
+   * Phase 2: Edge API経由でCDNキャッシュを活用
    */
   async getRaces() {
     // 今日の日付（JST）
@@ -344,6 +349,30 @@ export const supabaseDataService = {
     const today = jstNow.toISOString().split('T')[0];
 
     return withCache(`races-${today}`, async () => {
+      // Phase 2: まずEdge APIを試行（CDNキャッシュ活用）
+      try {
+        const edgeResponse = await fetch(`${EDGE_API_BASE}/api/races/today`);
+        if (edgeResponse.ok) {
+          const data = await edgeResponse.json();
+          if (data.success && data.data) {
+            console.log('[getRaces] Edge API success');
+            // Edge APIのレスポンスを既存形式に変換
+            return {
+              success: true,
+              data: data.data.map(venue => ({
+                placeCd: venue.place_cd || venue.placeCd,
+                placeName: venue.place_name || venue.placeName || VENUE_NAMES[venue.place_cd || venue.placeCd],
+                races: venue.races
+              })),
+              scrapedAt: data.scrapedAt || new Date().toISOString()
+            };
+          }
+        }
+      } catch (edgeError) {
+        console.log('[getRaces] Edge API failed, falling back to direct query:', edgeError.message);
+      }
+
+      // フォールバック: 従来のSupabase直接クエリ
       if (!supabase) {
         console.error('Supabase client not initialized');
         return { success: false, data: [], scrapedAt: null };
