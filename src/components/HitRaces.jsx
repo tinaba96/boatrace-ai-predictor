@@ -146,7 +146,8 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
     }
 
     fetchHitRaces()
-  }, [selectedModel, todayStr, yesterdayStr, jstNow])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedModel, todayStr, yesterdayStr]) // jstNowを除外（Date objectは毎回新規生成されるため無限ループになる）
 
   const handleCardClick = (hitRace) => {
     const venueData = (allVenuesData || []).find(v => v.placeCd === hitRace.placeCode)
