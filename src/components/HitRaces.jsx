@@ -124,15 +124,19 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
         setHitRacesToday(extractHitRaces(todayPredictions, selectedModel))
         setHitRacesYesterday(extractHitRaces(yesterdayPredictions, selectedModel))
 
-        // 全期間のデータを読み込む（過去14日分）
-        const allHitRaces = []
-        for (let i = 0; i < 14; i++) {
+        // 全期間のデータを読み込む（過去14日分）- 並列取得で高速化
+        const dateList = Array.from({ length: 14 }, (_, i) => {
           const date = new Date(jstNow.getTime() - i * 24 * 60 * 60 * 1000)
-          const dateStr = date.toISOString().split('T')[0]
-          const predictions = await loadDayPredictions(dateStr)
-          const hits = extractHitRaces(predictions, selectedModel)
-          allHitRaces.push(...hits)
-        }
+          return date.toISOString().split('T')[0]
+        })
+
+        const allPredictions = await Promise.all(
+          dateList.map(dateStr => loadDayPredictions(dateStr))
+        )
+
+        const allHitRaces = allPredictions.flatMap((predictions, i) =>
+          extractHitRaces(predictions, selectedModel)
+        )
         setHitRacesAll(allHitRaces)
       } catch (error) {
         console.error('的中レース読み込みエラー:', error)
