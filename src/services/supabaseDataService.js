@@ -7,36 +7,153 @@
 import { supabase } from './supabaseClient';
 
 /**
- * キャッシュ機構
+ * 2層キャッシュ機構（メモリ + localStorage）
+ * - メモリ: 最速、セッション中のみ有効
+ * - localStorage: ページリロード後も有効
  * スクレイピングは1時間に1回なので、30分間キャッシュを保持
  */
-const cache = new Map();
 const CACHE_TTL = 30 * 60 * 1000; // 30分
+const CACHE_PREFIX = 'boatai:';
 
+const cache = {
+  memory: new Map(),
+
+  /**
+   * キャッシュからデータを取得
+   * 1. メモリキャッシュ（最速）
+   * 2. localStorageキャッシュ（リロード後も有効）
+   */
+  get(key) {
+    // 1. メモリから
+    const memCached = this.memory.get(key);
+    if (memCached && Date.now() - memCached.timestamp < CACHE_TTL) {
+      const remaining = Math.round((CACHE_TTL - (Date.now() - memCached.timestamp)) / 1000);
+      console.log(`[Cache HIT] Memory: ${key} (${remaining}s remaining)`);
+      return memCached.data;
+    }
+
+    // 2. localStorageから
+    try {
+      const stored = localStorage.getItem(CACHE_PREFIX + key);
+      if (stored) {
+        const { data, timestamp } = JSON.parse(stored);
+        if (Date.now() - timestamp < CACHE_TTL) {
+          const remaining = Math.round((CACHE_TTL - (Date.now() - timestamp)) / 1000);
+          console.log(`[Cache HIT] localStorage: ${key} (${remaining}s remaining)`);
+          // メモリにも復元
+          this.memory.set(key, { data, timestamp });
+          return data;
+        } else {
+          // 期限切れは削除
+          localStorage.removeItem(CACHE_PREFIX + key);
+        }
+      }
+    } catch (e) {
+      console.warn('[Cache] localStorage read error:', e);
+    }
+
+    return null;
+  },
+
+  /**
+   * キャッシュにデータを保存（メモリ + localStorage両方）
+   */
+  set(key, data) {
+    const timestamp = Date.now();
+
+    // メモリに保存
+    this.memory.set(key, { data, timestamp });
+
+    // localStorageに保存
+    try {
+      localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ data, timestamp }));
+      console.log(`[Cache SET] ${key}`);
+    } catch (e) {
+      // localStorage容量超過時は古いキャッシュを削除
+      if (e.name === 'QuotaExceededError') {
+        this._cleanupOldCache();
+        try {
+          localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ data, timestamp }));
+        } catch (e2) {
+          console.warn('[Cache] localStorage write error after cleanup:', e2);
+        }
+      } else {
+        console.warn('[Cache] localStorage write error:', e);
+      }
+    }
+  },
+
+  /**
+   * キャッシュをクリア
+   */
+  clear(key = null) {
+    if (key) {
+      this.memory.delete(key);
+      try {
+        localStorage.removeItem(CACHE_PREFIX + key);
+      } catch (e) {}
+      console.log(`[Cache CLEAR] ${key}`);
+    } else {
+      this.memory.clear();
+      this._clearAllLocalStorage();
+      console.log('[Cache CLEAR] All');
+    }
+  },
+
+  /**
+   * localStorage内のBoatAIキャッシュを全削除
+   */
+  _clearAllLocalStorage() {
+    try {
+      const keys = Object.keys(localStorage).filter(k => k.startsWith(CACHE_PREFIX));
+      keys.forEach(k => localStorage.removeItem(k));
+    } catch (e) {}
+  },
+
+  /**
+   * 古いキャッシュを削除（容量超過時）
+   */
+  _cleanupOldCache() {
+    try {
+      const entries = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(CACHE_PREFIX)) {
+          const stored = localStorage.getItem(key);
+          if (stored) {
+            const { timestamp } = JSON.parse(stored);
+            entries.push({ key, timestamp });
+          }
+        }
+      }
+      // 古い順にソートして半分削除
+      entries.sort((a, b) => a.timestamp - b.timestamp);
+      const toDelete = entries.slice(0, Math.ceil(entries.length / 2));
+      toDelete.forEach(e => localStorage.removeItem(e.key));
+      console.log(`[Cache CLEANUP] Removed ${toDelete.length} old entries`);
+    } catch (e) {}
+  }
+};
+
+/**
+ * キャッシュ付きデータ取得
+ */
 function withCache(key, fetcher) {
   const cached = cache.get(key);
-
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    console.log(`[Cache HIT] ${key} (${Math.round((CACHE_TTL - (Date.now() - cached.timestamp)) / 1000)}s remaining)`);
-    return Promise.resolve(cached.data);
+  if (cached !== null) {
+    return Promise.resolve(cached);
   }
 
   console.log(`[Cache MISS] ${key}`);
   return fetcher().then(data => {
-    cache.set(key, { data, timestamp: Date.now() });
+    cache.set(key, data);
     return data;
   });
 }
 
 // キャッシュクリア（手動更新時に使用）
 export function clearCache(key = null) {
-  if (key) {
-    cache.delete(key);
-    console.log(`[Cache CLEAR] ${key}`);
-  } else {
-    cache.clear();
-    console.log('[Cache CLEAR] All');
-  }
+  cache.clear(key);
 }
 
 /**
