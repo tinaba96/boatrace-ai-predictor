@@ -29,8 +29,11 @@ export const supabaseDataService = {
       return { success: false, data: [], scrapedAt: null };
     }
 
-    // 今日の日付
-    const today = new Date().toISOString().split('T')[0];
+    // 今日の日付（JST）
+    const now = new Date();
+    const jstOffset = 9 * 60;
+    const jstNow = new Date(now.getTime() + jstOffset * 60 * 1000);
+    const today = jstNow.toISOString().split('T')[0];
 
     // 今日のレースを取得
     const { data: races, error: racesError } = await supabase
