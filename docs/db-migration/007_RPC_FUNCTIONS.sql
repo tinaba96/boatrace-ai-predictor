@@ -37,7 +37,7 @@ BEGIN
           json_agg(
             json_build_object(
               'raceNo', r.race_number,
-              'startTime', SUBSTRING(r.start_time, 1, 5),
+              'startTime', TO_CHAR(r.start_time, 'HH24:MI'),
               'date', r.race_date,
               'placeCd', r.venue_code,
               'racers', (
@@ -106,7 +106,7 @@ BEGIN
             END,
             'venueCode', r.venue_code,
             'raceNumber', r.race_number,
-            'startTime', SUBSTRING(r.start_time, 1, 5),
+            'startTime', TO_CHAR(r.start_time, 'HH24:MI'),
             'volatility', CASE WHEN r.volatility_score IS NOT NULL THEN
               json_build_object(
                 'score', r.volatility_score,
