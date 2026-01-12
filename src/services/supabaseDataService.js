@@ -61,21 +61,30 @@ const cache = {
   set(key, data) {
     const timestamp = Date.now();
 
-    // メモリに保存
+    // メモリに保存（サイズ制限なし）
     this.memory.set(key, { data, timestamp });
 
-    // localStorageに保存
+    // localStorageに保存（サイズ制限あり: 500KB以下のみ）
     try {
-      localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ data, timestamp }));
-      console.log(`[Cache SET] ${key}`);
+      const serialized = JSON.stringify({ data, timestamp });
+      const sizeKB = serialized.length / 1024;
+
+      if (sizeKB > 500) {
+        // 500KB超はlocalStorageに保存しない（メモリキャッシュのみ）
+        console.log(`[Cache SET] ${key} (memory only, ${sizeKB.toFixed(0)}KB exceeds localStorage limit)`);
+        return;
+      }
+
+      localStorage.setItem(CACHE_PREFIX + key, serialized);
+      console.log(`[Cache SET] ${key} (${sizeKB.toFixed(0)}KB)`);
     } catch (e) {
-      // localStorage容量超過時は古いキャッシュを削除
+      // localStorage容量超過時は古いキャッシュを削除して再試行
       if (e.name === 'QuotaExceededError') {
         this._cleanupOldCache();
         try {
           localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ data, timestamp }));
         } catch (e2) {
-          console.warn('[Cache] localStorage write error after cleanup:', e2);
+          console.log(`[Cache SET] ${key} (memory only, localStorage full)`);
         }
       } else {
         console.warn('[Cache] localStorage write error:', e);
