@@ -14,6 +14,96 @@ const VENUE_NAMES = {
   '19': '下関', '20': '若松', '21': '芦屋', '22': '福岡', '23': '唐津', '24': '大村'
 }
 
+// 浜名湖（06）のルール定義
+// 発掘データ: スタンダードモデル 474レース分析に基づく（2025年12月〜2026年1月）
+const HAMANAKO_RULES = [
+  // === 3連複ルール ===
+  {
+    id: 'H06-T001',
+    patternName: 'HAMANAKO-TRIO-INC3-MC',
+    description: '3号艇含む×conf60-74',
+    betType: 'trio',
+    stats: { samples: 10, hits: 2, recovery: 405 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.top3.includes(3) && conf >= 60 && conf < 75
+  },
+  {
+    id: 'H06-T002',
+    patternName: 'HAMANAKO-TRIO-INC3-LC',
+    description: '3号艇含む×conf80未満',
+    betType: 'trio',
+    stats: { samples: 30, hits: 8, recovery: 205 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.top3.includes(3) && conf < 80
+  },
+  {
+    id: 'H06-T003',
+    patternName: 'HAMANAKO-TRIO-35X',
+    description: '3,5号艇含む',
+    betType: 'trio',
+    stats: { samples: 10, hits: 2, recovery: 100 },
+    reliability: 'medium',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.top3.includes(3) && pred.top3.includes(5)
+  },
+
+  // === 複勝ルール ===
+  {
+    id: 'H06-P001',
+    patternName: 'HAMANAKO-PLACE-TOP1-14',
+    description: '1号艇1着+4号艇含む',
+    betType: 'place',
+    stats: { samples: 53, hits: 39, recovery: 114 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1 && pred.top3.includes(4)
+  },
+  {
+    id: 'H06-P002',
+    patternName: 'HAMANAKO-PLACE-TOP1-12',
+    description: '1号艇1着+2号艇含む',
+    betType: 'place',
+    stats: { samples: 68, hits: 49, recovery: 104 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1 && pred.top3.includes(2)
+  },
+  {
+    id: 'H06-P003',
+    patternName: 'HAMANAKO-PLACE-TOP1-15',
+    description: '1号艇1着+5号艇含む',
+    betType: 'place',
+    stats: { samples: 22, hits: 15, recovery: 102 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1 && pred.top3.includes(5)
+  },
+
+  // === 単勝ルール ===
+  {
+    id: 'H06-W001',
+    patternName: 'HAMANAKO-WIN-TOP1-MC',
+    description: '1号艇1着×conf60-74',
+    betType: 'win',
+    stats: { samples: 13, hits: 7, recovery: 122 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1 && conf >= 60 && conf < 75
+  },
+  {
+    id: 'H06-W002',
+    patternName: 'HAMANAKO-WIN-TOP1-HC',
+    description: '1号艇1着×conf80+',
+    betType: 'win',
+    stats: { samples: 185, hits: 124, recovery: 102 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1 && conf >= 80
+  }
+]
+
 // 三国（10）のルール定義
 // 発掘データ: スタンダードモデル 454レース分析に基づく（2025年12月〜2026年1月）
 const MIKUNI_RULES = [
@@ -197,6 +287,7 @@ const EDOGAWA_RULES = [
 // 会場コードごとのルール
 const VENUE_RULES = {
   '03': EDOGAWA_RULES,
+  '06': HAMANAKO_RULES,
   '10': MIKUNI_RULES
   // 他の会場は分析完了後に追加
 }
