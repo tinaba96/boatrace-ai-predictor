@@ -1,0 +1,1176 @@
+{
+  "generated_at": "2026-01-15T10:05:43.274Z",
+  "total_venues": 1,
+  "total_races": 406,
+  "venues": [
+    {
+      "venue_code": 22,
+      "venue_name": "福岡",
+      "data_period": {
+        "start": "2025-12-05",
+        "end": "2026-01-08"
+      },
+      "sample_size": 406,
+      "basic": {
+        "first_boat_win_rate": "53.9",
+        "upset_rate": "46.1"
+      },
+      "bet_types": {
+        "win": {
+          "total": 406,
+          "hits": 186,
+          "hit_rate": "45.8",
+          "hit_rate_ci95": {
+            "lower": "41.0",
+            "upper": "50.7"
+          },
+          "payout_sum": 38650,
+          "recovery_rate": "95.2",
+          "avg_payout": "208",
+          "expected_value": "-4.8",
+          "kelly_fraction": "0.00",
+          "p_value": "0.0000",
+          "is_significant": true
+        },
+        "place": {
+          "total": 406,
+          "hits": 265,
+          "hit_rate": "65.3",
+          "hit_rate_ci95": {
+            "lower": "60.6",
+            "upper": "69.9"
+          },
+          "payout_sum": 40860,
+          "recovery_rate": "100.6",
+          "avg_payout": "154",
+          "expected_value": "0.6",
+          "kelly_fraction": "1.18",
+          "p_value": "0.0000",
+          "is_significant": true
+        },
+        "trio": {
+          "total": 406,
+          "hits": 93,
+          "hit_rate": "22.9",
+          "hit_rate_ci95": {
+            "lower": "18.8",
+            "upper": "27.0"
+          },
+          "payout_sum": 172810,
+          "recovery_rate": "425.6",
+          "avg_payout": "1858",
+          "expected_value": "325.6",
+          "kelly_fraction": "18.52",
+          "p_value": "0.0000",
+          "is_significant": true
+        },
+        "trifecta": {
+          "total": 406,
+          "hits": 32,
+          "hit_rate": "7.9",
+          "hit_rate_ci95": {
+            "lower": "5.3",
+            "upper": "10.5"
+          },
+          "payout_sum": 12380,
+          "recovery_rate": "30.5",
+          "avg_payout": "387",
+          "expected_value": "-69.5",
+          "kelly_fraction": "0.00",
+          "p_value": "0.0000",
+          "is_significant": true
+        }
+      },
+      "conditions": {
+        "by_first_boat_grade": {
+          "A1": {
+            "total": 53,
+            "hit_rate": "35.8",
+            "recovery_rate": "66.0"
+          },
+          "B1": {
+            "total": 58,
+            "hit_rate": "34.5",
+            "recovery_rate": "130.2"
+          },
+          "A2": {
+            "total": 39,
+            "hit_rate": "28.2",
+            "recovery_rate": "70.0"
+          },
+          "B2": {
+            "total": 5,
+            "hit_rate": "60.0",
+            "recovery_rate": "84.0"
+          },
+          "Unknown": {
+            "total": 251,
+            "hit_rate": "53.0",
+            "recovery_rate": "97.4"
+          }
+        },
+        "by_first_boat_motor": {
+          "high": {
+            "total": 35,
+            "hit_rate": "45.7",
+            "recovery_rate": "151.4"
+          },
+          "mid": {
+            "total": 86,
+            "hit_rate": "32.6",
+            "recovery_rate": "83.0"
+          },
+          "low": {
+            "total": 285,
+            "hit_rate": "49.8",
+            "recovery_rate": "92.0"
+          }
+        },
+        "by_confidence": {
+          "high": {
+            "total": 406,
+            "hit_rate": "45.8",
+            "recovery_rate": "95.2"
+          }
+        }
+      },
+      "combinations": {
+        "by_pick_grade_motor": {
+          "1号艇_A1_M30↓": {
+            "total": 7,
+            "hits": 4,
+            "hit_rate": "57.1",
+            "recovery_rate": "70.0"
+          },
+          "5号艇_A2_M30↓": {
+            "total": 5,
+            "hits": 1,
+            "hit_rate": "20.0",
+            "recovery_rate": "108.0"
+          },
+          "6号艇_A1_M30-34": {
+            "total": 5,
+            "hits": 0,
+            "hit_rate": "0.0",
+            "recovery_rate": "0.0"
+          },
+          "1号艇_A1_M30-34": {
+            "total": 9,
+            "hits": 6,
+            "hit_rate": "66.7",
+            "recovery_rate": "72.2"
+          },
+          "2号艇_A1_M30-34": {
+            "total": 5,
+            "hits": 0,
+            "hit_rate": "0.0",
+            "recovery_rate": "0.0"
+          },
+          "1号艇_Unknown_M30↓": {
+            "total": 180,
+            "hits": 108,
+            "hit_rate": "60.0",
+            "recovery_rate": "87.8"
+          },
+          "4号艇_Unknown_M30↓": {
+            "total": 12,
+            "hits": 5,
+            "hit_rate": "41.7",
+            "recovery_rate": "203.3"
+          },
+          "2号艇_Unknown_M30↓": {
+            "total": 20,
+            "hits": 8,
+            "hit_rate": "40.0",
+            "recovery_rate": "138.0"
+          },
+          "5号艇_Unknown_M30↓": {
+            "total": 14,
+            "hits": 4,
+            "hit_rate": "28.6",
+            "recovery_rate": "76.4"
+          },
+          "3号艇_Unknown_M30↓": {
+            "total": 19,
+            "hits": 7,
+            "hit_rate": "36.8",
+            "recovery_rate": "108.9"
+          },
+          "6号艇_Unknown_M30↓": {
+            "total": 6,
+            "hits": 1,
+            "hit_rate": "16.7",
+            "recovery_rate": "51.7"
+          }
+        },
+        "by_pick_grade": {
+          "1号艇_A1": {
+            "total": 25,
+            "hits": 17,
+            "hit_rate": "68.0",
+            "recovery_rate": "79.6"
+          },
+          "5号艇_A2": {
+            "total": 12,
+            "hits": 2,
+            "hit_rate": "16.7",
+            "recovery_rate": "140.8"
+          },
+          "2号艇_A2": {
+            "total": 6,
+            "hits": 3,
+            "hit_rate": "50.0",
+            "recovery_rate": "91.7"
+          },
+          "4号艇_A1": {
+            "total": 8,
+            "hits": 3,
+            "hit_rate": "37.5",
+            "recovery_rate": "370.0"
+          },
+          "6号艇_A1": {
+            "total": 13,
+            "hits": 2,
+            "hit_rate": "15.4",
+            "recovery_rate": "61.5"
+          },
+          "2号艇_A1": {
+            "total": 10,
+            "hits": 2,
+            "hit_rate": "20.0",
+            "recovery_rate": "29.0"
+          },
+          "3号艇_A1": {
+            "total": 13,
+            "hits": 5,
+            "hit_rate": "38.5",
+            "recovery_rate": "66.2"
+          },
+          "5号艇_B1": {
+            "total": 5,
+            "hits": 1,
+            "hit_rate": "20.0",
+            "recovery_rate": "160.0"
+          },
+          "1号艇_A2": {
+            "total": 12,
+            "hits": 8,
+            "hit_rate": "66.7",
+            "recovery_rate": "89.2"
+          },
+          "3号艇_A2": {
+            "total": 14,
+            "hits": 4,
+            "hit_rate": "28.6",
+            "recovery_rate": "100.0"
+          },
+          "5号艇_A1": {
+            "total": 10,
+            "hits": 0,
+            "hit_rate": "0.0",
+            "recovery_rate": "0.0"
+          },
+          "6号艇_A2": {
+            "total": 5,
+            "hits": 0,
+            "hit_rate": "0.0",
+            "recovery_rate": "0.0"
+          },
+          "4号艇_A2": {
+            "total": 5,
+            "hits": 2,
+            "hit_rate": "40.0",
+            "recovery_rate": "126.0"
+          },
+          "1号艇_Unknown": {
+            "total": 180,
+            "hits": 108,
+            "hit_rate": "60.0",
+            "recovery_rate": "87.8"
+          },
+          "3号艇_B1": {
+            "total": 5,
+            "hits": 0,
+            "hit_rate": "0.0",
+            "recovery_rate": "0.0"
+          },
+          "4号艇_Unknown": {
+            "total": 12,
+            "hits": 5,
+            "hit_rate": "41.7",
+            "recovery_rate": "203.3"
+          },
+          "2号艇_Unknown": {
+            "total": 20,
+            "hits": 8,
+            "hit_rate": "40.0",
+            "recovery_rate": "138.0"
+          },
+          "5号艇_Unknown": {
+            "total": 14,
+            "hits": 4,
+            "hit_rate": "28.6",
+            "recovery_rate": "76.4"
+          },
+          "3号艇_Unknown": {
+            "total": 19,
+            "hits": 7,
+            "hit_rate": "36.8",
+            "recovery_rate": "108.9"
+          },
+          "6号艇_Unknown": {
+            "total": 6,
+            "hits": 1,
+            "hit_rate": "16.7",
+            "recovery_rate": "51.7"
+          }
+        },
+        "by_pick_winrate": {
+          "1号艇_勝率6.0-6.9": {
+            "total": 22,
+            "hits": 17,
+            "hit_rate": "77.3",
+            "recovery_rate": "95.5"
+          },
+          "5号艇_勝率5.0-5.9": {
+            "total": 9,
+            "hits": 2,
+            "hit_rate": "22.2",
+            "recovery_rate": "216.7"
+          },
+          "2号艇_勝率6.0-6.9": {
+            "total": 14,
+            "hits": 5,
+            "hit_rate": "35.7",
+            "recovery_rate": "60.0"
+          },
+          "4号艇_勝率6.0-6.9": {
+            "total": 12,
+            "hits": 5,
+            "hit_rate": "41.7",
+            "recovery_rate": "299.2"
+          },
+          "6号艇_勝率6.0-6.9": {
+            "total": 12,
+            "hits": 2,
+            "hit_rate": "16.7",
+            "recovery_rate": "66.7"
+          },
+          "3号艇_勝率6.0-6.9": {
+            "total": 18,
+            "hits": 7,
+            "hit_rate": "38.9",
+            "recovery_rate": "107.8"
+          },
+          "3号艇_勝率5.0-5.9": {
+            "total": 12,
+            "hits": 1,
+            "hit_rate": "8.3",
+            "recovery_rate": "18.3"
+          },
+          "5号艇_勝率6.0-6.9": {
+            "total": 13,
+            "hits": 0,
+            "hit_rate": "0.0",
+            "recovery_rate": "0.0"
+          },
+          "1号艇_勝率5.0-5.9": {
+            "total": 9,
+            "hits": 5,
+            "hit_rate": "55.6",
+            "recovery_rate": "78.9"
+          },
+          "6号艇_勝率5.0-5.9": {
+            "total": 5,
+            "hits": 0,
+            "hit_rate": "0.0",
+            "recovery_rate": "0.0"
+          },
+          "1号艇_勝率7.0↑": {
+            "total": 7,
+            "hits": 5,
+            "hit_rate": "71.4",
+            "recovery_rate": "71.4"
+          },
+          "1号艇_勝率4.0↓": {
+            "total": 181,
+            "hits": 108,
+            "hit_rate": "59.7",
+            "recovery_rate": "87.3"
+          },
+          "4号艇_勝率4.0↓": {
+            "total": 12,
+            "hits": 5,
+            "hit_rate": "41.7",
+            "recovery_rate": "203.3"
+          },
+          "2号艇_勝率4.0↓": {
+            "total": 20,
+            "hits": 8,
+            "hit_rate": "40.0",
+            "recovery_rate": "138.0"
+          },
+          "5号艇_勝率4.0↓": {
+            "total": 14,
+            "hits": 4,
+            "hit_rate": "28.6",
+            "recovery_rate": "76.4"
+          },
+          "3号艇_勝率4.0↓": {
+            "total": 19,
+            "hits": 7,
+            "hit_rate": "36.8",
+            "recovery_rate": "108.9"
+          },
+          "6号艇_勝率4.0↓": {
+            "total": 6,
+            "hits": 1,
+            "hit_rate": "16.7",
+            "recovery_rate": "51.7"
+          }
+        },
+        "by_pick_confidence": {
+          "1号艇_信頼度75↑": {
+            "total": 211,
+            "hits": 131,
+            "hit_rate": "62.1",
+            "recovery_rate": "84.9"
+          },
+          "5号艇_信頼度75↑": {
+            "total": 36,
+            "hits": 6,
+            "hit_rate": "16.7",
+            "recovery_rate": "89.4"
+          },
+          "4号艇_信頼度75↑": {
+            "total": 23,
+            "hits": 9,
+            "hit_rate": "39.1",
+            "recovery_rate": "201.7"
+          },
+          "2号艇_信頼度75↑": {
+            "total": 35,
+            "hits": 14,
+            "hit_rate": "40.0",
+            "recovery_rate": "108.9"
+          },
+          "6号艇_信頼度75↑": {
+            "total": 25,
+            "hits": 3,
+            "hit_rate": "12.0",
+            "recovery_rate": "44.4"
+          },
+          "3号艇_信頼度75↑": {
+            "total": 45,
+            "hits": 15,
+            "hit_rate": "33.3",
+            "recovery_rate": "78.9"
+          },
+          "1号艇_信頼度60-74": {
+            "total": 10,
+            "hits": 4,
+            "hit_rate": "40.0",
+            "recovery_rate": "119.0"
+          },
+          "3号艇_信頼度60-74": {
+            "total": 6,
+            "hits": 1,
+            "hit_rate": "16.7",
+            "recovery_rate": "130.0"
+          },
+          "5号艇_信頼度60-74": {
+            "total": 5,
+            "hits": 1,
+            "hit_rate": "20.0",
+            "recovery_rate": "68.0"
+          }
+        },
+        "by_pick_1_2": {
+          "1-4": {
+            "total": 43,
+            "hits": 27,
+            "hit_rate": "62.8",
+            "recovery_rate": "85.3"
+          },
+          "5-4": {
+            "total": 12,
+            "hits": 3,
+            "hit_rate": "25.0",
+            "recovery_rate": "207.5"
+          },
+          "4-2": {
+            "total": 8,
+            "hits": 2,
+            "hit_rate": "25.0",
+            "recovery_rate": "355.0"
+          },
+          "2-6": {
+            "total": 8,
+            "hits": 3,
+            "hit_rate": "37.5",
+            "recovery_rate": "130.0"
+          },
+          "6-2": {
+            "total": 6,
+            "hits": 0,
+            "hit_rate": "0.0",
+            "recovery_rate": "0.0"
+          },
+          "1-3": {
+            "total": 44,
+            "hits": 28,
+            "hit_rate": "63.6",
+            "recovery_rate": "102.0"
+          },
+          "2-1": {
+            "total": 18,
+            "hits": 7,
+            "hit_rate": "38.9",
+            "recovery_rate": "143.3"
+          },
+          "6-1": {
+            "total": 12,
+            "hits": 2,
+            "hit_rate": "16.7",
+            "recovery_rate": "66.7"
+          },
+          "3-6": {
+            "total": 5,
+            "hits": 1,
+            "hit_rate": "20.0",
+            "recovery_rate": "42.0"
+          },
+          "1-5": {
+            "total": 18,
+            "hits": 11,
+            "hit_rate": "61.1",
+            "recovery_rate": "81.1"
+          },
+          "3-1": {
+            "total": 24,
+            "hits": 8,
+            "hit_rate": "33.3",
+            "recovery_rate": "90.8"
+          },
+          "2-5": {
+            "total": 5,
+            "hits": 1,
+            "hit_rate": "20.0",
+            "recovery_rate": "36.0"
+          },
+          "5-2": {
+            "total": 11,
+            "hits": 1,
+            "hit_rate": "9.1",
+            "recovery_rate": "28.2"
+          },
+          "5-1": {
+            "total": 13,
+            "hits": 3,
+            "hit_rate": "23.1",
+            "recovery_rate": "58.5"
+          },
+          "3-4": {
+            "total": 9,
+            "hits": 3,
+            "hit_rate": "33.3",
+            "recovery_rate": "86.7"
+          },
+          "3-2": {
+            "total": 7,
+            "hits": 2,
+            "hit_rate": "28.6",
+            "recovery_rate": "32.9"
+          },
+          "1-6": {
+            "total": 31,
+            "hits": 20,
+            "hit_rate": "64.5",
+            "recovery_rate": "95.5"
+          },
+          "1-2": {
+            "total": 85,
+            "hits": 49,
+            "hit_rate": "57.6",
+            "recovery_rate": "76.8"
+          },
+          "3-5": {
+            "total": 6,
+            "hits": 2,
+            "hit_rate": "33.3",
+            "recovery_rate": "155.0"
+          },
+          "4-1": {
+            "total": 12,
+            "hits": 6,
+            "hit_rate": "50.0",
+            "recovery_rate": "225.0"
+          }
+        }
+      },
+      "profitable_rules": [
+        {
+          "type": "艇番×勝率帯",
+          "condition": "4号艇_勝率6.0-6.9",
+          "total": 12,
+          "hits": 5,
+          "hit_rate": "41.7",
+          "recovery_rate": "299.2",
+          "profit_per_race": "199"
+        },
+        {
+          "type": "1-2着予測",
+          "condition": "4-1",
+          "total": 12,
+          "hits": 6,
+          "hit_rate": "50.0",
+          "recovery_rate": "225.0",
+          "profit_per_race": "125"
+        },
+        {
+          "type": "1-2着予測",
+          "condition": "5-4",
+          "total": 12,
+          "hits": 3,
+          "hit_rate": "25.0",
+          "recovery_rate": "207.5",
+          "profit_per_race": "108"
+        },
+        {
+          "type": "艇番×級別×モーター",
+          "condition": "4号艇_Unknown_M30↓",
+          "total": 12,
+          "hits": 5,
+          "hit_rate": "41.7",
+          "recovery_rate": "203.3",
+          "profit_per_race": "103"
+        },
+        {
+          "type": "艇番×級別",
+          "condition": "4号艇_Unknown",
+          "total": 12,
+          "hits": 5,
+          "hit_rate": "41.7",
+          "recovery_rate": "203.3",
+          "profit_per_race": "103"
+        },
+        {
+          "type": "艇番×勝率帯",
+          "condition": "4号艇_勝率4.0↓",
+          "total": 12,
+          "hits": 5,
+          "hit_rate": "41.7",
+          "recovery_rate": "203.3",
+          "profit_per_race": "103"
+        },
+        {
+          "type": "艇番×信頼度",
+          "condition": "4号艇_信頼度75↑",
+          "total": 23,
+          "hits": 9,
+          "hit_rate": "39.1",
+          "recovery_rate": "201.7",
+          "profit_per_race": "102"
+        },
+        {
+          "type": "1-2着予測",
+          "condition": "2-1",
+          "total": 18,
+          "hits": 7,
+          "hit_rate": "38.9",
+          "recovery_rate": "143.3",
+          "profit_per_race": "43"
+        },
+        {
+          "type": "艇番×級別",
+          "condition": "5号艇_A2",
+          "total": 12,
+          "hits": 2,
+          "hit_rate": "16.7",
+          "recovery_rate": "140.8",
+          "profit_per_race": "41"
+        },
+        {
+          "type": "艇番×級別×モーター",
+          "condition": "2号艇_Unknown_M30↓",
+          "total": 20,
+          "hits": 8,
+          "hit_rate": "40.0",
+          "recovery_rate": "138.0",
+          "profit_per_race": "38"
+        },
+        {
+          "type": "艇番×級別",
+          "condition": "2号艇_Unknown",
+          "total": 20,
+          "hits": 8,
+          "hit_rate": "40.0",
+          "recovery_rate": "138.0",
+          "profit_per_race": "38"
+        },
+        {
+          "type": "艇番×勝率帯",
+          "condition": "2号艇_勝率4.0↓",
+          "total": 20,
+          "hits": 8,
+          "hit_rate": "40.0",
+          "recovery_rate": "138.0",
+          "profit_per_race": "38"
+        },
+        {
+          "type": "艇番×信頼度",
+          "condition": "1号艇_信頼度60-74",
+          "total": 10,
+          "hits": 4,
+          "hit_rate": "40.0",
+          "recovery_rate": "119.0",
+          "profit_per_race": "19"
+        },
+        {
+          "type": "艇番×級別×モーター",
+          "condition": "3号艇_Unknown_M30↓",
+          "total": 19,
+          "hits": 7,
+          "hit_rate": "36.8",
+          "recovery_rate": "108.9",
+          "profit_per_race": "9"
+        },
+        {
+          "type": "艇番×級別",
+          "condition": "3号艇_Unknown",
+          "total": 19,
+          "hits": 7,
+          "hit_rate": "36.8",
+          "recovery_rate": "108.9",
+          "profit_per_race": "9"
+        },
+        {
+          "type": "艇番×勝率帯",
+          "condition": "3号艇_勝率4.0↓",
+          "total": 19,
+          "hits": 7,
+          "hit_rate": "36.8",
+          "recovery_rate": "108.9",
+          "profit_per_race": "9"
+        },
+        {
+          "type": "艇番×信頼度",
+          "condition": "2号艇_信頼度75↑",
+          "total": 35,
+          "hits": 14,
+          "hit_rate": "40.0",
+          "recovery_rate": "108.9",
+          "profit_per_race": "9"
+        },
+        {
+          "type": "艇番×勝率帯",
+          "condition": "3号艇_勝率6.0-6.9",
+          "total": 18,
+          "hits": 7,
+          "hit_rate": "38.9",
+          "recovery_rate": "107.8",
+          "profit_per_race": "8"
+        },
+        {
+          "type": "1-2着予測",
+          "condition": "1-3",
+          "total": 44,
+          "hits": 28,
+          "hit_rate": "63.6",
+          "recovery_rate": "102.0",
+          "profit_per_race": "2"
+        },
+        {
+          "type": "艇番×級別",
+          "condition": "3号艇_A2",
+          "total": 14,
+          "hits": 4,
+          "hit_rate": "28.6",
+          "recovery_rate": "100.0",
+          "profit_per_race": "0"
+        }
+      ],
+      "risk": {
+        "sharpe_ratio": "-0.028",
+        "max_drawdown": "3700",
+        "volatility": "173.0"
+      },
+      "streaks": {
+        "win": {
+          "max_win": 10,
+          "max_lose": 10,
+          "current": -10
+        }
+      },
+      "recommendation": {
+        "score": 85,
+        "grade": "A",
+        "reasons": [
+          "十分なサンプル数（406レース）",
+          "統計的に有意（p<0.05）",
+          "B1級で回収率130.2%"
+        ]
+      }
+    }
+  ],
+  "rankings": {
+    "by_recovery": [
+      {
+        "code": 22,
+        "name": "福岡",
+        "recovery": "95.2"
+      }
+    ],
+    "by_recommendation": [
+      {
+        "code": 22,
+        "name": "福岡",
+        "score": 85,
+        "grade": "A"
+      }
+    ]
+  },
+  "profitable_rules": [
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "艇番×勝率帯",
+      "condition": "4号艇_勝率6.0-6.9",
+      "total": 12,
+      "hits": 5,
+      "hit_rate": "41.7",
+      "recovery_rate": "299.2",
+      "profit_per_race": "199"
+    },
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "1-2着予測",
+      "condition": "4-1",
+      "total": 12,
+      "hits": 6,
+      "hit_rate": "50.0",
+      "recovery_rate": "225.0",
+      "profit_per_race": "125"
+    },
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "1-2着予測",
+      "condition": "5-4",
+      "total": 12,
+      "hits": 3,
+      "hit_rate": "25.0",
+      "recovery_rate": "207.5",
+      "profit_per_race": "108"
+    },
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "艇番×級別×モーター",
+      "condition": "4号艇_Unknown_M30↓",
+      "total": 12,
+      "hits": 5,
+      "hit_rate": "41.7",
+      "recovery_rate": "203.3",
+      "profit_per_race": "103"
+    },
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "艇番×級別",
+      "condition": "4号艇_Unknown",
+      "total": 12,
+      "hits": 5,
+      "hit_rate": "41.7",
+      "recovery_rate": "203.3",
+      "profit_per_race": "103"
+    },
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "艇番×勝率帯",
+      "condition": "4号艇_勝率4.0↓",
+      "total": 12,
+      "hits": 5,
+      "hit_rate": "41.7",
+      "recovery_rate": "203.3",
+      "profit_per_race": "103"
+    },
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "艇番×信頼度",
+      "condition": "4号艇_信頼度75↑",
+      "total": 23,
+      "hits": 9,
+      "hit_rate": "39.1",
+      "recovery_rate": "201.7",
+      "profit_per_race": "102"
+    },
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "1-2着予測",
+      "condition": "2-1",
+      "total": 18,
+      "hits": 7,
+      "hit_rate": "38.9",
+      "recovery_rate": "143.3",
+      "profit_per_race": "43"
+    },
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "艇番×級別",
+      "condition": "5号艇_A2",
+      "total": 12,
+      "hits": 2,
+      "hit_rate": "16.7",
+      "recovery_rate": "140.8",
+      "profit_per_race": "41"
+    },
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "艇番×級別×モーター",
+      "condition": "2号艇_Unknown_M30↓",
+      "total": 20,
+      "hits": 8,
+      "hit_rate": "40.0",
+      "recovery_rate": "138.0",
+      "profit_per_race": "38"
+    },
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "艇番×級別",
+      "condition": "2号艇_Unknown",
+      "total": 20,
+      "hits": 8,
+      "hit_rate": "40.0",
+      "recovery_rate": "138.0",
+      "profit_per_race": "38"
+    },
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "艇番×勝率帯",
+      "condition": "2号艇_勝率4.0↓",
+      "total": 20,
+      "hits": 8,
+      "hit_rate": "40.0",
+      "recovery_rate": "138.0",
+      "profit_per_race": "38"
+    },
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "艇番×信頼度",
+      "condition": "1号艇_信頼度60-74",
+      "total": 10,
+      "hits": 4,
+      "hit_rate": "40.0",
+      "recovery_rate": "119.0",
+      "profit_per_race": "19"
+    },
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "艇番×級別×モーター",
+      "condition": "3号艇_Unknown_M30↓",
+      "total": 19,
+      "hits": 7,
+      "hit_rate": "36.8",
+      "recovery_rate": "108.9",
+      "profit_per_race": "9"
+    },
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "艇番×級別",
+      "condition": "3号艇_Unknown",
+      "total": 19,
+      "hits": 7,
+      "hit_rate": "36.8",
+      "recovery_rate": "108.9",
+      "profit_per_race": "9"
+    },
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "艇番×勝率帯",
+      "condition": "3号艇_勝率4.0↓",
+      "total": 19,
+      "hits": 7,
+      "hit_rate": "36.8",
+      "recovery_rate": "108.9",
+      "profit_per_race": "9"
+    },
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "艇番×信頼度",
+      "condition": "2号艇_信頼度75↑",
+      "total": 35,
+      "hits": 14,
+      "hit_rate": "40.0",
+      "recovery_rate": "108.9",
+      "profit_per_race": "9"
+    },
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "艇番×勝率帯",
+      "condition": "3号艇_勝率6.0-6.9",
+      "total": 18,
+      "hits": 7,
+      "hit_rate": "38.9",
+      "recovery_rate": "107.8",
+      "profit_per_race": "8"
+    },
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "1-2着予測",
+      "condition": "1-3",
+      "total": 44,
+      "hits": 28,
+      "hit_rate": "63.6",
+      "recovery_rate": "102.0",
+      "profit_per_race": "2"
+    },
+    {
+      "venue": "福岡",
+      "venue_code": 22,
+      "type": "艇番×級別",
+      "condition": "3号艇_A2",
+      "total": 14,
+      "hits": 4,
+      "hit_rate": "28.6",
+      "recovery_rate": "100.0",
+      "profit_per_race": "0"
+    }
+  ],
+  "profitable_rules_summary": {
+    "total_count": 20,
+    "by_venue": [
+      {
+        "venue": "福岡",
+        "count": 20
+      }
+    ],
+    "top_10": [
+      {
+        "venue": "福岡",
+        "venue_code": 22,
+        "type": "艇番×勝率帯",
+        "condition": "4号艇_勝率6.0-6.9",
+        "total": 12,
+        "hits": 5,
+        "hit_rate": "41.7",
+        "recovery_rate": "299.2",
+        "profit_per_race": "199"
+      },
+      {
+        "venue": "福岡",
+        "venue_code": 22,
+        "type": "1-2着予測",
+        "condition": "4-1",
+        "total": 12,
+        "hits": 6,
+        "hit_rate": "50.0",
+        "recovery_rate": "225.0",
+        "profit_per_race": "125"
+      },
+      {
+        "venue": "福岡",
+        "venue_code": 22,
+        "type": "1-2着予測",
+        "condition": "5-4",
+        "total": 12,
+        "hits": 3,
+        "hit_rate": "25.0",
+        "recovery_rate": "207.5",
+        "profit_per_race": "108"
+      },
+      {
+        "venue": "福岡",
+        "venue_code": 22,
+        "type": "艇番×級別×モーター",
+        "condition": "4号艇_Unknown_M30↓",
+        "total": 12,
+        "hits": 5,
+        "hit_rate": "41.7",
+        "recovery_rate": "203.3",
+        "profit_per_race": "103"
+      },
+      {
+        "venue": "福岡",
+        "venue_code": 22,
+        "type": "艇番×級別",
+        "condition": "4号艇_Unknown",
+        "total": 12,
+        "hits": 5,
+        "hit_rate": "41.7",
+        "recovery_rate": "203.3",
+        "profit_per_race": "103"
+      },
+      {
+        "venue": "福岡",
+        "venue_code": 22,
+        "type": "艇番×勝率帯",
+        "condition": "4号艇_勝率4.0↓",
+        "total": 12,
+        "hits": 5,
+        "hit_rate": "41.7",
+        "recovery_rate": "203.3",
+        "profit_per_race": "103"
+      },
+      {
+        "venue": "福岡",
+        "venue_code": 22,
+        "type": "艇番×信頼度",
+        "condition": "4号艇_信頼度75↑",
+        "total": 23,
+        "hits": 9,
+        "hit_rate": "39.1",
+        "recovery_rate": "201.7",
+        "profit_per_race": "102"
+      },
+      {
+        "venue": "福岡",
+        "venue_code": 22,
+        "type": "1-2着予測",
+        "condition": "2-1",
+        "total": 18,
+        "hits": 7,
+        "hit_rate": "38.9",
+        "recovery_rate": "143.3",
+        "profit_per_race": "43"
+      },
+      {
+        "venue": "福岡",
+        "venue_code": 22,
+        "type": "艇番×級別",
+        "condition": "5号艇_A2",
+        "total": 12,
+        "hits": 2,
+        "hit_rate": "16.7",
+        "recovery_rate": "140.8",
+        "profit_per_race": "41"
+      },
+      {
+        "venue": "福岡",
+        "venue_code": 22,
+        "type": "艇番×級別×モーター",
+        "condition": "2号艇_Unknown_M30↓",
+        "total": 20,
+        "hits": 8,
+        "hit_rate": "40.0",
+        "recovery_rate": "138.0",
+        "profit_per_race": "38"
+      }
+    ]
+  }
+}

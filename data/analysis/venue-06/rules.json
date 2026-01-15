@@ -1,0 +1,140 @@
+{
+  "venue_code": 6,
+  "venue_name": "浜名湖",
+  "analysis_date": "2026-01-15",
+  "status": "active",
+  "win_rules": [
+    {
+      "id": "H06-W001",
+      "name": "1号艇1着×信頼度60-74",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 1,
+        "confidence": { "min": 60, "max": 74 }
+      },
+      "stats": {
+        "sample_size": 13,
+        "hit_rate": "53.8%",
+        "recovery_rate": "122%"
+      },
+      "reliability": "very_high",
+      "notes": "中程度の信頼度が有効"
+    },
+    {
+      "id": "H06-W002",
+      "name": "1号艇1着×信頼度80以上",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 1,
+        "confidence": { "min": 80 }
+      },
+      "stats": {
+        "sample_size": 185,
+        "hit_rate": "67.0%",
+        "recovery_rate": "102%"
+      },
+      "reliability": "high",
+      "notes": "安定した大サンプル"
+    }
+  ],
+  "place_rules": [
+    {
+      "id": "H06-P001",
+      "name": "1号艇1着+4号艇含む",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 1,
+        "includes_boat_4": true
+      },
+      "stats": {
+        "sample_size": 53,
+        "hit_rate": "73.6%",
+        "recovery_rate": "114%"
+      },
+      "reliability": "very_high",
+      "notes": "1-4の組み合わせが有効"
+    },
+    {
+      "id": "H06-P002",
+      "name": "1号艇1着+2号艇含む",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 1,
+        "includes_boat_2": true
+      },
+      "stats": {
+        "sample_size": 68,
+        "hit_rate": "72.1%",
+        "recovery_rate": "104%"
+      },
+      "reliability": "high",
+      "notes": "1-2の組み合わせ"
+    },
+    {
+      "id": "H06-P003",
+      "name": "1号艇1着+5号艇含む",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 1,
+        "includes_boat_5": true
+      },
+      "stats": {
+        "sample_size": 22,
+        "hit_rate": "68.2%",
+        "recovery_rate": "102%"
+      },
+      "reliability": "high",
+      "notes": "1-5の組み合わせ"
+    }
+  ],
+  "trio_rules": [
+    {
+      "id": "H06-T001",
+      "name": "3号艇含む×信頼度60-74",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boat_3": true,
+        "confidence": { "min": 60, "max": 74 }
+      },
+      "stats": {
+        "sample_size": 10,
+        "hit_rate": "20.0%",
+        "recovery_rate": "405%"
+      },
+      "reliability": "very_high",
+      "notes": "最高回収率ルール"
+    },
+    {
+      "id": "H06-T002",
+      "name": "3号艇含む×信頼度80未満",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boat_3": true,
+        "confidence": { "max": 79 }
+      },
+      "stats": {
+        "sample_size": 30,
+        "hit_rate": "26.7%",
+        "recovery_rate": "205%"
+      },
+      "reliability": "high",
+      "notes": "3号艇関連が有効"
+    },
+    {
+      "id": "H06-T003",
+      "name": "3,5号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boat_3": true,
+        "includes_boat_5": true
+      },
+      "stats": {
+        "sample_size": 10,
+        "hit_rate": "20.0%",
+        "recovery_rate": "100%"
+      },
+      "reliability": "medium",
+      "notes": "3-5の組み合わせ"
+    }
+  ]
+}

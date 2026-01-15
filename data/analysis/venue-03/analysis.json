@@ -1,0 +1,315 @@
+{
+  "venue_code": 3,
+  "venue_name": "江戸川",
+  "analysis_date": "2026-01-13",
+  "data_period": {
+    "start": "2025-12-08",
+    "end": "2026-01-12"
+  },
+  "sample_size": 540,
+  "overall_stats": {
+    "win": {
+      "hit_rate": "45.9%",
+      "recovery_rate": "94.6%"
+    },
+    "place": {
+      "hit_rate": "66.2%",
+      "recovery_rate": "100.5%"
+    },
+    "trio": {
+      "hit_rate": "17.6%",
+      "recovery_rate": "397.5%"
+    }
+  },
+  "win_analysis": {
+    "by_pick_boat": {
+      "1号艇": { "total": 286, "hit_rate": "57.3%", "recovery_rate": "93.0%" },
+      "2号艇": { "total": 62, "hit_rate": "38.7%", "recovery_rate": "105.3%" },
+      "3号艇": { "total": 50, "hit_rate": "32.0%", "recovery_rate": "111.0%" },
+      "4号艇": { "total": 31, "hit_rate": "19.4%", "recovery_rate": "61.9%" },
+      "5号艇": { "total": 30, "hit_rate": "20.0%", "recovery_rate": "95.0%" },
+      "6号艇": { "total": 21, "hit_rate": "19.0%", "recovery_rate": "92.4%" }
+    },
+    "key_findings": [
+      {
+        "condition": "2号艇_信頼度70-79_M35↓",
+        "recovery_rate": "236.9%",
+        "sample": 13,
+        "profit": 1780
+      },
+      {
+        "condition": "2号艇_信頼度70-79",
+        "recovery_rate": "220.0%",
+        "sample": 14,
+        "profit": 1680
+      },
+      {
+        "condition": "3-1予測_信頼度70↑",
+        "recovery_rate": "181.9%",
+        "sample": 21,
+        "profit": 1720
+      },
+      {
+        "condition": "2号艇_前半(1-4R)",
+        "recovery_rate": "147.7%",
+        "sample": 22,
+        "profit": 1050
+      },
+      {
+        "condition": "3号艇_当地勝率5↓",
+        "recovery_rate": "146.7%",
+        "sample": 24,
+        "profit": 1120
+      },
+      {
+        "condition": "1号艇=B級_予測2号艇",
+        "recovery_rate": "140.4%",
+        "sample": 24,
+        "profit": 970
+      },
+      {
+        "condition": "3号艇_ボート2連率30↓",
+        "recovery_rate": "140.8%",
+        "sample": 25,
+        "profit": 1020
+      },
+      {
+        "condition": "1号艇≠A1_信頼度70-79",
+        "recovery_rate": "112.9%",
+        "sample": 77,
+        "profit": 990
+      }
+    ]
+  },
+  "place_analysis": {
+    "key_findings": [
+      {
+        "condition": "1号艇_M35↓",
+        "recovery_rate": "111.7%",
+        "sample": 266,
+        "profit": 3120
+      },
+      {
+        "condition": "1号艇_信頼度80↑",
+        "recovery_rate": "112.4%",
+        "sample": 249,
+        "profit": 3080
+      },
+      {
+        "condition": "1号艇_後半(9-12R)",
+        "recovery_rate": "113.9%",
+        "sample": 118,
+        "profit": 1640
+      }
+    ]
+  },
+  "trio_analysis": {
+    "pending": false,
+    "overall": {
+      "hit_rate": "17.6%",
+      "recovery_rate": "397.5%"
+    },
+    "key_findings": [
+      {
+        "condition": "1-2-4組み合わせ",
+        "recovery_rate": "610.7%",
+        "sample": 73,
+        "avg_payout": 3431
+      },
+      {
+        "condition": "1-2-3組み合わせ",
+        "recovery_rate": "494.9%",
+        "sample": 84,
+        "avg_payout": 2313
+      },
+      {
+        "condition": "1-5-6組み合わせ",
+        "recovery_rate": "717.6%",
+        "sample": 21,
+        "avg_payout": 5023
+      },
+      {
+        "condition": "1-2-4_後半(9-12R)",
+        "recovery_rate": "1107.6%",
+        "sample": 21,
+        "avg_payout": 4652
+      },
+      {
+        "condition": "1号艇含む予測",
+        "recovery_rate": "383.5%",
+        "sample": 409,
+        "avg_payout": 2010
+      },
+      {
+        "condition": "1号艇含まない予測",
+        "recovery_rate": "455.4%",
+        "sample": 131,
+        "avg_payout": 2586
+      }
+    ],
+    "insights": [
+      "1-2-4組み合わせが最も安定して高回収率（610.7%）",
+      "後半レース（9-12R）で更に回収率UP（1107.6%）",
+      "1号艇含む予測が汎用的に有効（383.5%、409R）",
+      "3連複は全体的に非常に高回収率（397.5%）"
+    ]
+  },
+  "trifecta_analysis": {
+    "overall": {
+      "hit_rate": "5.8%",
+      "recovery_rate": "19.8%",
+      "avg_payout": 339
+    },
+    "verdict": "非推奨",
+    "reason": [
+      "3連複的中時の3連単的中率: 32.9%（順番一致が難しい）",
+      "1着的中時の2-3着順番的中率: 12.7%",
+      "高配当(3000円↑)的中: 0件",
+      "3連複(397.5%)と比較して大幅に劣る"
+    ],
+    "only_viable_condition": {
+      "condition": "1-3-2×信頼度80↑×後半(9-12R)",
+      "recovery_rate": "105.4%",
+      "sample": 13,
+      "reliability": "low"
+    }
+  },
+  "period_validation": {
+    "method": "100レースずつ6期間に分割",
+    "periods": [
+      { "period": 1, "range": "2025-12-08 〜 2025-12-18", "races": 100 },
+      { "period": 2, "range": "2025-12-18 〜 2025-12-29", "races": 100 },
+      { "period": 3, "range": "2025-12-29 〜 2026-01-03", "races": 100 },
+      { "period": 4, "range": "2026-01-03 〜 2026-01-03", "races": 100 },
+      { "period": 5, "range": "2026-01-03 〜 2026-01-10", "races": 100 },
+      { "period": 6, "range": "2026-01-10 〜 2026-01-13", "races": 40 }
+    ],
+    "reliable_rules": [
+      {
+        "rule_id": "E03-T001",
+        "name": "1-2-4組み合わせ（3連複）",
+        "overall_recovery": "610.7%",
+        "consistency": "100%",
+        "periods_profitable": "6/6",
+        "period_recoveries": [174.3, 316.7, 303.8, 523.3, 1174.2, 1125.0]
+      },
+      {
+        "rule_id": "E03-T004",
+        "name": "1号艇含む（3連複）",
+        "overall_recovery": "383.5%",
+        "consistency": "100%",
+        "periods_profitable": "6/6",
+        "period_recoveries": [235.2, 183.9, 382.0, 466.8, 502.4, 720.8]
+      },
+      {
+        "rule_id": "E03-T002",
+        "name": "1-2-3組み合わせ（3連複）",
+        "overall_recovery": "494.9%",
+        "consistency": "83%",
+        "periods_profitable": "5/6",
+        "period_recoveries": [380.0, 257.8, 438.6, 885.9, 531.1, 0.0]
+      },
+      {
+        "rule_id": "E03-P002",
+        "name": "1号艇×後半（複勝）",
+        "overall_recovery": "113.9%",
+        "consistency": "83%",
+        "periods_profitable": "5/6",
+        "period_recoveries": [65.0, 109.5, 122.5, 127.8, 106.3, 102.5]
+      },
+      {
+        "rule_id": "E03-W002",
+        "name": "2号艇×前半（単勝）",
+        "overall_recovery": "147.7%",
+        "consistency": "67%",
+        "periods_profitable": "4/6",
+        "period_recoveries": [228.6, 176.7, 140.0, 130.0, 42.5, 0.0]
+      },
+      {
+        "rule_id": "E03-W003",
+        "name": "3-1×信頼度70↑（単勝）",
+        "overall_recovery": "181.9%",
+        "consistency": "67%",
+        "periods_profitable": "4/6",
+        "period_recoveries": [86.7, 161.4, 227.5, 303.3, 152.5]
+      },
+      {
+        "rule_id": "E03-P001",
+        "name": "1号艇予測（複勝）",
+        "overall_recovery": "110.5%",
+        "consistency": "67%",
+        "periods_profitable": "4/6",
+        "period_recoveries": [87.1, 93.9, 112.5, 116.7, 115.2, 141.3]
+      }
+    ],
+    "unreliable_rules": [
+      {
+        "rule_id": "E03-T003",
+        "name": "1-2-4×後半（3連複）",
+        "reason": "再現率50%、ばらつき大"
+      },
+      {
+        "rule_id": "E03-W006",
+        "name": "非A1×信頼度中（単勝）",
+        "reason": "再現率50%、ばらつき大"
+      },
+      {
+        "rule_id": "E03-W001",
+        "name": "2号艇×信頼度70-79×M35↓",
+        "reason": "一部期間のみデータあり"
+      },
+      {
+        "rule_id": "E03-W004",
+        "name": "1号艇B級×2号艇予測",
+        "reason": "一部期間のみデータあり（grade欠落）"
+      }
+    ]
+  },
+  "final_recommendations": {
+    "best_strategy": "3連複（1-2-4または1号艇含む）",
+    "low_risk_strategy": "複勝（1号艇×後半レース）",
+    "avoid": "3連単（回収率19.8%）"
+  },
+  "race_selection": {
+    "summary": "レース厳選で回収率を大幅向上可能",
+    "best_selections": [
+      {
+        "name": "1-2-4 × 後半 × 信頼度80↑",
+        "recovery_rate": "1224.2%",
+        "races": 19,
+        "improvement": "+613.5% vs baseline",
+        "recommendation": "最高効率"
+      },
+      {
+        "name": "(1-2-4 or 1-2-3) × 後半 × 信頼度80↑",
+        "recovery_rate": "748.4%",
+        "races": 49,
+        "improvement": "バランス良",
+        "recommendation": "推奨"
+      },
+      {
+        "name": "1号艇含む × 中盤後半 × 信頼度85↑",
+        "recovery_rate": "450.2%",
+        "races": 221,
+        "improvement": "+66.7% vs baseline",
+        "recommendation": "大量型"
+      },
+      {
+        "name": "1号艇含む × 信頼度90↑",
+        "recovery_rate": "419.7%",
+        "races": 286,
+        "improvement": "シンプル",
+        "recommendation": "初心者向け"
+      }
+    ],
+    "unexpected_finding": {
+      "description": "中盤(5-8R)が後半(9-12R)より高回収率",
+      "detail": "1号艇含む: 中盤548.5% vs 後半338.4%",
+      "reason": "後半は人気集中で配当低下の可能性"
+    },
+    "trade_off": {
+      "strict_selection": "回収率UP、レース数DOWN",
+      "loose_selection": "回収率DOWN、レース数UP"
+    }
+  }
+}
