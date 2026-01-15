@@ -14,6 +14,76 @@ const VENUE_NAMES = {
   '19': '下関', '20': '若松', '21': '芦屋', '22': '福岡', '23': '唐津', '24': '大村'
 }
 
+// 三国（10）のルール定義
+// 発掘データ: スタンダードモデル 454レース分析に基づく（2025年12月〜2026年1月）
+const MIKUNI_RULES = [
+  // === 3連複ルール ===
+  {
+    id: 'M10-T001',
+    patternName: 'MIKUNI-TRIO-INC5-HC',
+    description: '5号艇含む×conf75+',
+    betType: 'trio',
+    stats: { samples: 45, hits: 7, recovery: 134 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.top3.includes(5) && conf >= 75
+  },
+  {
+    id: 'M10-T002',
+    patternName: 'MIKUNI-TRIO-13X-LATE',
+    description: '1,3号艇含む×7R以降',
+    betType: 'trio',
+    stats: { samples: 50, hits: 33, recovery: 102 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      has1 && pred.top3.includes(3) && raceNo >= 7
+  },
+
+  // === 複勝ルール ===
+  {
+    id: 'M10-P001',
+    patternName: 'MIKUNI-PLACE-TOP1-HC',
+    description: '1号艇1着予測×conf80+',
+    betType: 'place',
+    stats: { samples: 180, hits: 110, recovery: 110 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1 && conf >= 80
+  },
+  {
+    id: 'M10-P002',
+    patternName: 'MIKUNI-PLACE-TOP1-LATE',
+    description: '1号艇1着予測×9R以降',
+    betType: 'place',
+    stats: { samples: 90, hits: 55, recovery: 112 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1 && raceNo >= 9
+  },
+
+  // === 単勝ルール ===
+  {
+    id: 'M10-W001',
+    patternName: 'MIKUNI-WIN-TOP2-SUB1',
+    description: '2号艇1着+1号艇2着予測',
+    betType: 'win',
+    stats: { samples: 26, hits: 10, recovery: 105 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 2 && pred.top3?.[1] === 1
+  },
+  {
+    id: 'M10-W002',
+    patternName: 'MIKUNI-WIN-TOP1-MID-HC',
+    description: '1号艇1着予測×5R以降×conf75+',
+    betType: 'win',
+    stats: { samples: 120, hits: 65, recovery: 113 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1 && raceNo >= 5 && conf >= 75
+  }
+]
+
 // 江戸川（03）のルール定義
 // 発掘データ: スタンダードモデル 492レース分析に基づく（2025年12月〜2026年1月）
 const EDOGAWA_RULES = [
@@ -126,7 +196,8 @@ const EDOGAWA_RULES = [
 
 // 会場コードごとのルール
 const VENUE_RULES = {
-  '03': EDOGAWA_RULES
+  '03': EDOGAWA_RULES,
+  '10': MIKUNI_RULES
   // 他の会場は分析完了後に追加
 }
 
