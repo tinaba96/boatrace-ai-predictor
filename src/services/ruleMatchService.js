@@ -14,6 +14,96 @@ const VENUE_NAMES = {
   '19': '下関', '20': '若松', '21': '芦屋', '22': '福岡', '23': '唐津', '24': '大村'
 }
 
+// びわこ（11）のルール定義
+// 発掘データ: スタンダードモデル 429レース分析に基づく（2025年12月〜2026年1月）
+const BIWAKO_RULES = [
+  // === 3連複ルール ===
+  {
+    id: 'B11-T001',
+    patternName: 'BIWAKO-TRIO-23X',
+    description: '2,3号艇含む',
+    betType: 'trio',
+    stats: { samples: 16, hits: 7, recovery: 187 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.top3.includes(2) && pred.top3.includes(3)
+  },
+  {
+    id: 'B11-T002',
+    patternName: 'BIWAKO-TRIO-INC5-HC',
+    description: '5号艇含む×conf75+',
+    betType: 'trio',
+    stats: { samples: 23, hits: 6, recovery: 157 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.top3.includes(5) && conf >= 75
+  },
+  {
+    id: 'B11-T003',
+    patternName: 'BIWAKO-TRIO-24X',
+    description: '2,4号艇含む',
+    betType: 'trio',
+    stats: { samples: 10, hits: 5, recovery: 155 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.top3.includes(2) && pred.top3.includes(4)
+  },
+
+  // === 複勝ルール ===
+  {
+    id: 'B11-P001',
+    patternName: 'BIWAKO-PLACE-TOP2-HC',
+    description: '2号艇1着×conf75+',
+    betType: 'place',
+    stats: { samples: 64, hits: 22, recovery: 111 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 2 && conf >= 75
+  },
+  {
+    id: 'B11-P002',
+    patternName: 'BIWAKO-PLACE-TOP1-16',
+    description: '1号艇1着+6号艇含む',
+    betType: 'place',
+    stats: { samples: 24, hits: 17, recovery: 103 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1 && pred.top3.includes(6)
+  },
+
+  // === 単勝ルール ===
+  {
+    id: 'B11-W001',
+    patternName: 'BIWAKO-WIN-TOP1-MC',
+    description: '1号艇1着×conf60-74',
+    betType: 'win',
+    stats: { samples: 12, hits: 5, recovery: 129 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1 && conf >= 60 && conf < 75
+  },
+  {
+    id: 'B11-W002',
+    patternName: 'BIWAKO-WIN-TOP1-13',
+    description: '1号艇1着+3号艇含む',
+    betType: 'win',
+    stats: { samples: 38, hits: 28, recovery: 117 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1 && pred.top3.includes(3)
+  },
+  {
+    id: 'B11-W003',
+    patternName: 'BIWAKO-WIN-TOP1-HC',
+    description: '1号艇1着×conf80+',
+    betType: 'win',
+    stats: { samples: 150, hits: 100, recovery: 102 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1 && conf >= 80
+  }
+]
+
 // 浜名湖（06）のルール定義
 // 発掘データ: スタンダードモデル 474レース分析に基づく（2025年12月〜2026年1月）
 const HAMANAKO_RULES = [
@@ -288,7 +378,8 @@ const EDOGAWA_RULES = [
 const VENUE_RULES = {
   '03': EDOGAWA_RULES,
   '06': HAMANAKO_RULES,
-  '10': MIKUNI_RULES
+  '10': MIKUNI_RULES,
+  '11': BIWAKO_RULES
   // 他の会場は分析完了後に追加
 }
 
