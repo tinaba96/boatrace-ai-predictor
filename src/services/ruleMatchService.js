@@ -14,6 +14,76 @@ const VENUE_NAMES = {
   '19': '下関', '20': '若松', '21': '芦屋', '22': '福岡', '23': '唐津', '24': '大村'
 }
 
+// 福岡（22）のルール定義
+// 発掘データ: スタンダードモデル 406レース分析に基づく（2025年12月〜2026年1月）
+const FUKUOKA_RULES = [
+  // === 3連複ルール ===
+  {
+    id: 'F22-T001',
+    patternName: 'FUKUOKA-TRIO-INC4-HC',
+    description: '4号艇含む×conf75+',
+    betType: 'trio',
+    stats: { samples: 23, hits: 9, recovery: 202 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.top3.includes(4) && conf >= 75
+  },
+  {
+    id: 'F22-T002',
+    patternName: 'FUKUOKA-TRIO-45X',
+    description: '4,5号艇含む',
+    betType: 'trio',
+    stats: { samples: 12, hits: 3, recovery: 208 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.top3.includes(4) && pred.top3.includes(5)
+  },
+  {
+    id: 'F22-T003',
+    patternName: 'FUKUOKA-TRIO-INC2-HC',
+    description: '2号艇含む×conf75+',
+    betType: 'trio',
+    stats: { samples: 35, hits: 14, recovery: 109 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.top3.includes(2) && conf >= 75
+  },
+
+  // === 複勝ルール ===
+  {
+    id: 'F22-P001',
+    patternName: 'FUKUOKA-PLACE-TOP2-INC1',
+    description: '2号艇1着+1号艇含む',
+    betType: 'place',
+    stats: { samples: 18, hits: 7, recovery: 143 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 2 && has1
+  },
+
+  // === 単勝ルール ===
+  {
+    id: 'F22-W001',
+    patternName: 'FUKUOKA-WIN-TOP1-MC',
+    description: '1号艇1着×conf60-74',
+    betType: 'win',
+    stats: { samples: 10, hits: 4, recovery: 119 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1 && conf >= 60 && conf < 75
+  },
+  {
+    id: 'F22-W002',
+    patternName: 'FUKUOKA-WIN-TOP1-13',
+    description: '1号艇1着+3号艇含む',
+    betType: 'win',
+    stats: { samples: 44, hits: 28, recovery: 102 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1 && pred.top3.includes(3)
+  }
+]
+
 // 丸亀（15）のルール定義
 // 発掘データ: スタンダードモデル 486レース分析に基づく（2025年12月〜2026年1月）
 const MARUGAME_RULES = [
@@ -450,7 +520,8 @@ const VENUE_RULES = {
   '06': HAMANAKO_RULES,
   '10': MIKUNI_RULES,
   '11': BIWAKO_RULES,
-  '15': MARUGAME_RULES
+  '15': MARUGAME_RULES,
+  '22': FUKUOKA_RULES
   // 他の会場は分析完了後に追加
 }
 
