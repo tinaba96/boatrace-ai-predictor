@@ -14,6 +14,76 @@ const VENUE_NAMES = {
   '19': '下関', '20': '若松', '21': '芦屋', '22': '福岡', '23': '唐津', '24': '大村'
 }
 
+// 丸亀（15）のルール定義
+// 発掘データ: スタンダードモデル 486レース分析に基づく（2025年12月〜2026年1月）
+const MARUGAME_RULES = [
+  // === 3連複ルール ===
+  {
+    id: 'R15-T001',
+    patternName: 'MARUGAME-TRIO-INC6',
+    description: '6号艇含む',
+    betType: 'trio',
+    stats: { samples: 27, hits: 3, recovery: 171 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.top3.includes(6)
+  },
+  {
+    id: 'R15-T002',
+    patternName: 'MARUGAME-TRIO-INC5-HC',
+    description: '5号艇含む×conf75+',
+    betType: 'trio',
+    stats: { samples: 49, hits: 10, recovery: 130 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.top3.includes(5) && conf >= 75
+  },
+  {
+    id: 'R15-T003',
+    patternName: 'MARUGAME-TRIO-24X',
+    description: '2,4号艇含む',
+    betType: 'trio',
+    stats: { samples: 12, hits: 6, recovery: 139 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.top3.includes(2) && pred.top3.includes(4)
+  },
+
+  // === 複勝ルール ===
+  {
+    id: 'R15-P001',
+    patternName: 'MARUGAME-PLACE-TOP1-16',
+    description: '1号艇1着+6号艇含む',
+    betType: 'place',
+    stats: { samples: 30, hits: 22, recovery: 111 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1 && pred.top3.includes(6)
+  },
+
+  // === 単勝ルール ===
+  {
+    id: 'R15-W001',
+    patternName: 'MARUGAME-WIN-TOP2-INC1',
+    description: '2号艇1着+1号艇含む',
+    betType: 'win',
+    stats: { samples: 19, hits: 8, recovery: 106 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 2 && has1
+  },
+  {
+    id: 'R15-W002',
+    patternName: 'MARUGAME-WIN-TOP1-HC',
+    description: '1号艇1着×conf85+',
+    betType: 'win',
+    stats: { samples: 120, hits: 75, recovery: 101 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1 && conf >= 85
+  }
+]
+
 // びわこ（11）のルール定義
 // 発掘データ: スタンダードモデル 429レース分析に基づく（2025年12月〜2026年1月）
 const BIWAKO_RULES = [
@@ -379,7 +449,8 @@ const VENUE_RULES = {
   '03': EDOGAWA_RULES,
   '06': HAMANAKO_RULES,
   '10': MIKUNI_RULES,
-  '11': BIWAKO_RULES
+  '11': BIWAKO_RULES,
+  '15': MARUGAME_RULES
   // 他の会場は分析完了後に追加
 }
 
