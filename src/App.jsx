@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import './App.css'
 import AccuracyDashboard from './components/AccuracyDashboard'
 import PrivacyPolicy from './components/PrivacyPolicy'
 import Terms from './components/Terms'
 import Contact from './components/Contact'
 import HitRaces from './components/HitRaces'
+import TodaysPicks from './components/TodaysPicks'
 import UpdateStatus from './components/UpdateStatus'
 import { ShareButton } from './components/ShareButton'
 import { SocialShareButtons } from './components/SocialShareButtons'
@@ -16,6 +17,7 @@ import { getTodayJST } from './utils/dateUtils'
 
 function App({ tab = 'races' }) {
     const navigate = useNavigate()
+    const location = useLocation()
     const [activeTab, setActiveTab] = useState(tab)
     const [selectedRace, setSelectedRace] = useState(null)
     const [prediction, setPrediction] = useState(null)
@@ -47,6 +49,35 @@ function App({ tab = 'races' }) {
     useEffect(() => {
         setActiveTab(tab)
     }, [tab])
+
+    // おすすめページからの自動レース選択
+    useEffect(() => {
+        if (location.state?.autoSelectRace && allVenuesData.length > 0) {
+            const { venueCode, raceNo, venueName } = location.state.autoSelectRace
+
+            // 該当レースを検索
+            for (const venue of allVenuesData) {
+                const venueId = String(venue.placeCd || venue.venueId || '').padStart(2, '0')
+                if (venueId === venueCode) {
+                    const race = venue.races?.find(r => r.raceNo === raceNo)
+                    if (race) {
+                        // フォーマットしてanalyzeRaceを呼び出す
+                        const formattedRace = {
+                            venue: venueName,
+                            venueId: venueCode,
+                            raceNumber: raceNo,
+                            rawData: race
+                        }
+                        analyzeRace(formattedRace)
+                        break
+                    }
+                }
+            }
+
+            // stateをクリアして再選択を防ぐ
+            navigate('/', { replace: true, state: {} })
+        }
+    }, [location.state, allVenuesData])
 
     // Google Analytics初期化
     useEffect(() => {
@@ -536,6 +567,13 @@ function App({ tab = 'races' }) {
                             <span aria-hidden="true">📊</span> 成績
                         </button>
                         <button
+                            className={`nav-btn ${activeTab === 'picks' ? 'active' : ''}`}
+                            onClick={() => handleTabChange('picks')}
+                            aria-current={activeTab === 'picks' ? 'page' : undefined}
+                        >
+                            <span aria-hidden="true">🎯</span> おすすめ
+                        </button>
+                        <button
                             className="nav-btn menu-toggle-btn"
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
                             aria-label="その他のメニュー"
@@ -591,6 +629,8 @@ function App({ tab = 'races' }) {
                             onRefresh={handleRefresh}
                             isRefreshing={isRefreshing}
                         />
+                    ) : activeTab === 'picks' ? (
+                        <TodaysPicks />
                     ) : (
                         <>
                             <section className="race-list-section">

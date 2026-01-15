@@ -19,7 +19,7 @@ function HashRedirect() {
     // ハッシュがある場合、対応するパスにリダイレクト
     if (location.hash) {
       const hash = location.hash.slice(1); // '#' を除去
-      const validPaths = ['races', 'hit-races', 'accuracy', 'privacy', 'terms', 'contact'];
+      const validPaths = ['races', 'hit-races', 'accuracy', 'picks', 'privacy', 'terms', 'contact'];
       if (validPaths.includes(hash)) {
         // ハッシュを削除してパスに変換
         const newPath = hash === 'races' ? '/' : `/${hash}`;
@@ -43,6 +43,7 @@ export default function AppRouter() {
         {/* タブページ（SEO対応: 個別URL） */}
         <Route path="/hit-races" element={<App tab="hit-races" />} />
         <Route path="/accuracy" element={<App tab="accuracy" />} />
+        <Route path="/picks" element={<App tab="picks" />} />
         <Route path="/accuracy/history" element={<AccuracyHistory />} />
         <Route path="/privacy" element={<App tab="privacy" />} />
         <Route path="/terms" element={<App tab="terms" />} />
