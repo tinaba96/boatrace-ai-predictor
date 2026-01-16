@@ -14,6 +14,74 @@ const VENUE_NAMES = {
   '19': '下関', '20': '若松', '21': '芦屋', '22': '福岡', '23': '唐津', '24': '大村'
 }
 
+// 蒲郡（07）のルール定義
+// 発掘データ: スタンダードモデル 655レース分析に基づく（2025年12月〜2026年1月）
+const GAMAGORI_RULES = [
+  // === 単勝ルール ===
+  {
+    id: 'G07-W001',
+    patternName: 'GAMAGORI-WIN-TOP3-HC',
+    description: '3号艇1着×conf75+',
+    betType: 'win',
+    stats: { samples: 55, hits: 12, recovery: 136 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 3 && conf >= 75
+  },
+  {
+    id: 'G07-W002',
+    patternName: 'GAMAGORI-WIN-TOP3-INC4',
+    description: '3号艇1着+4号艇含む',
+    betType: 'win',
+    stats: { samples: 29, hits: 7, recovery: 199 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 3 && pred.top3.includes(4)
+  },
+  {
+    id: 'G07-W003',
+    patternName: 'GAMAGORI-WIN-TOP5-INC1',
+    description: '5号艇1着+1号艇含む',
+    betType: 'win',
+    stats: { samples: 25, hits: 7, recovery: 190 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 5 && has1
+  },
+
+  // === 複勝ルール ===
+  {
+    id: 'G07-P001',
+    patternName: 'GAMAGORI-PLACE-TOP4-HC',
+    description: '4号艇1着×conf75+',
+    betType: 'place',
+    stats: { samples: 41, hits: 19, recovery: 135 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 4 && conf >= 75
+  },
+  {
+    id: 'G07-P002',
+    patternName: 'GAMAGORI-PLACE-TOP2-INC1',
+    description: '2号艇1着+1号艇含む',
+    betType: 'place',
+    stats: { samples: 70, hits: 39, recovery: 113 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 2 && has1
+  },
+  {
+    id: 'G07-P003',
+    patternName: 'GAMAGORI-PLACE-TOP5-INC1',
+    description: '5号艇1着+1号艇含む',
+    betType: 'place',
+    stats: { samples: 25, hits: 17, recovery: 134 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 5 && has1
+  }
+]
+
 // 福岡（22）のルール定義
 // 発掘データ: スタンダードモデル 406レース分析に基づく（2025年12月〜2026年1月）
 const FUKUOKA_RULES = [
@@ -518,6 +586,7 @@ const EDOGAWA_RULES = [
 const VENUE_RULES = {
   '03': EDOGAWA_RULES,
   '06': HAMANAKO_RULES,
+  '07': GAMAGORI_RULES,
   '10': MIKUNI_RULES,
   '11': BIWAKO_RULES,
   '15': MARUGAME_RULES,

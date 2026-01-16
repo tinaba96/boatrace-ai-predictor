@@ -1,0 +1,101 @@
+{
+  "venue_code": 7,
+  "venue_name": "蒲郡",
+  "analysis_date": "2026-01-16",
+  "status": "active",
+  "win_rules": [
+    {
+      "id": "G07-W001",
+      "name": "3号艇1着×信頼度75以上",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 3,
+        "confidence": { "min": 75 }
+      },
+      "stats": {
+        "sample_size": 55,
+        "hit_rate": "21.8%",
+        "recovery_rate": "136%"
+      },
+      "reliability": "high"
+    },
+    {
+      "id": "G07-W002",
+      "name": "3号艇1着+4号艇含む",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 3,
+        "includes_boat_4": true
+      },
+      "stats": {
+        "sample_size": 29,
+        "hit_rate": "24.1%",
+        "recovery_rate": "199%"
+      },
+      "reliability": "very_high"
+    },
+    {
+      "id": "G07-W003",
+      "name": "5号艇1着+1号艇含む",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 5,
+        "includes_boat_1": true
+      },
+      "stats": {
+        "sample_size": 25,
+        "hit_rate": "28.0%",
+        "recovery_rate": "190%"
+      },
+      "reliability": "very_high"
+    }
+  ],
+  "place_rules": [
+    {
+      "id": "G07-P001",
+      "name": "4号艇1着×信頼度75以上",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 4,
+        "confidence": { "min": 75 }
+      },
+      "stats": {
+        "sample_size": 41,
+        "hit_rate": "46.3%",
+        "recovery_rate": "135%"
+      },
+      "reliability": "high"
+    },
+    {
+      "id": "G07-P002",
+      "name": "2号艇1着+1号艇含む",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 2,
+        "includes_boat_1": true
+      },
+      "stats": {
+        "sample_size": 70,
+        "hit_rate": "55.7%",
+        "recovery_rate": "113%"
+      },
+      "reliability": "high"
+    },
+    {
+      "id": "G07-P003",
+      "name": "5号艇1着+1号艇含む",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 5,
+        "includes_boat_1": true
+      },
+      "stats": {
+        "sample_size": 25,
+        "hit_rate": "68.0%",
+        "recovery_rate": "134%"
+      },
+      "reliability": "high"
+    }
+  ],
+  "trio_rules": []
+}
