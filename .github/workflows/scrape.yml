@@ -38,14 +38,14 @@ jobs:
           TZ: 'Asia/Tokyo'
 
       - name: Generate predictions
-        run: node scripts/generate-predictions.js
+        run: node scripts/daily/generate-predictions.js
         env:
           TZ: 'Asia/Tokyo'
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
 
       - name: Scrape race results
-        run: node scripts/scrape-results.js
+        run: node scripts/daily/scrape-results.js
         env:
           TZ: 'Asia/Tokyo'
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -53,7 +53,7 @@ jobs:
         continue-on-error: true
 
       - name: Calculate accuracy
-        run: node scripts/calculate-accuracy.js
+        run: node scripts/daily/calculate-accuracy.js
         env:
           TZ: 'Asia/Tokyo'
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

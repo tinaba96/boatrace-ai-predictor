@@ -2,9 +2,9 @@
 // Supabaseからレース一覧を取得し、結果をスクレイピングしてSupabaseに書き込む
 
 import * as cheerio from 'cheerio';
-import { supabase, isSupabaseEnabled, VENUE_NAMES } from './lib/supabaseClient.js';
-import { getTodayDateJST, formatDateForUrl, parseDateArg } from './lib/dateUtils.js';
-import { calculateHits } from './lib/hitCalculator.js';
+import { supabase, isSupabaseEnabled, VENUE_NAMES } from '../lib/supabaseClient.js';
+import { getTodayDateJST, formatDateForUrl, parseDateArg } from '../lib/dateUtils.js';
+import { calculateHits } from '../lib/hitCalculator.js';
 
 // Generate race result page URL
 function getRaceResultUrl(venueCode, raceNo, dateStr) {

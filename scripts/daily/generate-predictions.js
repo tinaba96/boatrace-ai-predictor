@@ -5,8 +5,8 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { supabase, isSupabaseEnabled, VENUE_CODES } from './lib/supabaseClient.js';
-import { getTodayDateJST } from './lib/dateUtils.js';
+import { supabase, isSupabaseEnabled, VENUE_CODES } from '../lib/supabaseClient.js';
+import { getTodayDateJST } from '../lib/dateUtils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -653,7 +653,7 @@ async function main() {
         console.log('🚀 AI予想生成を開始します...');
 
         // data/races.json を読み込み
-        const racesPath = path.join(__dirname, '..', 'data', 'races.json');
+        const racesPath = path.join(__dirname, '..', '..', 'data', 'races.json');
         console.log(`📖 レースデータを読み込み中: ${racesPath}`);
 
         const racesData = JSON.parse(await fs.readFile(racesPath, 'utf-8'));

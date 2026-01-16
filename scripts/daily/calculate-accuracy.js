@@ -1,8 +1,8 @@
 // Accuracy Calculation Script
 // Supabaseから予測結果を集計し、models統計を更新する
 
-import { supabase, isSupabaseEnabled } from './lib/supabaseClient.js';
-import { getTodayDateJST } from './lib/dateUtils.js';
+import { supabase, isSupabaseEnabled } from '../lib/supabaseClient.js';
+import { getTodayDateJST } from '../lib/dateUtils.js';
 
 // Calculate statistics for a model
 async function calculateModelStats(modelId) {
