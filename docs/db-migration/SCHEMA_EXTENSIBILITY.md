@@ -483,3 +483,4 @@ WHERE metadata @> '{"humidity": 65.5}'::jsonb;
 
 
 
+

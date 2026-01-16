@@ -1,11 +1,45 @@
 {
   "venue_code": 11,
   "venue_name": "びわこ",
-  "analysis_date": "2026-01-15",
+  "analysis_date": "2026-01-16",
+  "analysis_type": "detailed",
   "status": "active",
+  "sample_size": 534,
   "win_rules": [
     {
       "id": "B11-W001",
+      "name": "6号艇1着+2号艇含む",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 6,
+        "includes_boat_2": true
+      },
+      "stats": {
+        "sample_size": 22,
+        "hits": 5,
+        "hit_rate": "22.7%",
+        "recovery_rate": "162%"
+      },
+      "reliability": "very_high"
+    },
+    {
+      "id": "B11-W002",
+      "name": "2号艇1着+4号艇含む",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 2,
+        "includes_boat_4": true
+      },
+      "stats": {
+        "sample_size": 25,
+        "hits": 12,
+        "hit_rate": "48.0%",
+        "recovery_rate": "160%"
+      },
+      "reliability": "very_high"
+    },
+    {
+      "id": "B11-W003",
       "name": "1号艇1着×信頼度60-74",
       "bet_type": "win",
       "conditions": {
@@ -13,39 +47,10 @@
         "confidence": { "min": 60, "max": 74 }
       },
       "stats": {
-        "sample_size": 12,
-        "hit_rate": "41.7%",
-        "recovery_rate": "129%"
-      },
-      "reliability": "very_high"
-    },
-    {
-      "id": "B11-W002",
-      "name": "1号艇1着+3号艇含む",
-      "bet_type": "win",
-      "conditions": {
-        "top_pick": 1,
-        "includes_boat_3": true
-      },
-      "stats": {
-        "sample_size": 38,
-        "hit_rate": "73.7%",
-        "recovery_rate": "117%"
-      },
-      "reliability": "high"
-    },
-    {
-      "id": "B11-W003",
-      "name": "1号艇1着×信頼度80以上",
-      "bet_type": "win",
-      "conditions": {
-        "top_pick": 1,
-        "confidence": { "min": 80 }
-      },
-      "stats": {
-        "sample_size": 150,
-        "hit_rate": "66.7%",
-        "recovery_rate": "102%"
+        "sample_size": 13,
+        "hits": 6,
+        "hit_rate": "46.2%",
+        "recovery_rate": "132%"
       },
       "reliability": "high"
     }
@@ -53,31 +58,49 @@
   "place_rules": [
     {
       "id": "B11-P001",
-      "name": "2号艇1着×信頼度75以上",
+      "name": "2号艇1着+4号艇含む",
       "bet_type": "place",
       "conditions": {
         "top_pick": 2,
-        "confidence": { "min": 75 }
+        "includes_boat_4": true
       },
       "stats": {
-        "sample_size": 64,
-        "hit_rate": "34.4%",
-        "recovery_rate": "111%"
+        "sample_size": 25,
+        "hits": 17,
+        "hit_rate": "68.0%",
+        "recovery_rate": "127%"
       },
       "reliability": "very_high"
     },
     {
       "id": "B11-P002",
-      "name": "1号艇1着+6号艇含む",
+      "name": "4号艇1着+5号艇含む",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 4,
+        "includes_boat_5": true
+      },
+      "stats": {
+        "sample_size": 17,
+        "hits": 11,
+        "hit_rate": "64.7%",
+        "recovery_rate": "122%"
+      },
+      "reliability": "high"
+    },
+    {
+      "id": "B11-P003",
+      "name": "1号艇1着+2号艇含む",
       "bet_type": "place",
       "conditions": {
         "top_pick": 1,
-        "includes_boat_6": true
+        "includes_boat_2": true
       },
       "stats": {
-        "sample_size": 24,
-        "hit_rate": "70.8%",
-        "recovery_rate": "103%"
+        "sample_size": 124,
+        "hits": 105,
+        "hit_rate": "84.7%",
+        "recovery_rate": "116%"
       },
       "reliability": "high"
     }
@@ -85,46 +108,49 @@
   "trio_rules": [
     {
       "id": "B11-T001",
-      "name": "2,3号艇含む",
+      "name": "5,6号艇含む",
       "bet_type": "trio",
       "conditions": {
-        "includes_boat_2": true,
-        "includes_boat_3": true
+        "includes_boat_5": true,
+        "includes_boat_6": true
       },
       "stats": {
-        "sample_size": 16,
-        "hit_rate": "43.8%",
-        "recovery_rate": "187%"
+        "sample_size": 59,
+        "hits": 4,
+        "hit_rate": "6.8%",
+        "recovery_rate": "185%"
       },
       "reliability": "very_high"
     },
     {
       "id": "B11-T002",
-      "name": "5号艇含む×信頼度75以上",
+      "name": "4,6号艇含む",
       "bet_type": "trio",
       "conditions": {
-        "includes_boat_5": true,
-        "confidence": { "min": 75 }
+        "includes_boat_4": true,
+        "includes_boat_6": true
       },
       "stats": {
-        "sample_size": 23,
-        "hit_rate": "26.1%",
-        "recovery_rate": "157%"
+        "sample_size": 67,
+        "hits": 5,
+        "hit_rate": "7.5%",
+        "recovery_rate": "174%"
       },
-      "reliability": "high"
+      "reliability": "very_high"
     },
     {
       "id": "B11-T003",
-      "name": "2,4号艇含む",
+      "name": "1,6号艇含む",
       "bet_type": "trio",
       "conditions": {
-        "includes_boat_2": true,
-        "includes_boat_4": true
+        "includes_boat_1": true,
+        "includes_boat_6": true
       },
       "stats": {
-        "sample_size": 10,
-        "hit_rate": "50.0%",
-        "recovery_rate": "155%"
+        "sample_size": 127,
+        "hits": 8,
+        "hit_rate": "6.3%",
+        "recovery_rate": "131%"
       },
       "reliability": "high"
     }

@@ -1,0 +1,174 @@
+{
+  "venue_code": 19,
+  "venue_name": "下関",
+  "analysis_date": "2026-01-16",
+  "analysis_type": "detailed",
+  "status": "active",
+  "sample_size": 480,
+  "win_rules": [
+    {
+      "id": "S19-W001",
+      "name": "3号艇1着+2号艇含む",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 3,
+        "includes_boat_2": true
+      },
+      "stats": {
+        "sample_size": 20,
+        "hits": 5,
+        "hit_rate": "25.0%",
+        "recovery_rate": "217%"
+      },
+      "reliability": "very_high"
+    },
+    {
+      "id": "S19-W002",
+      "name": "5号艇1着+3号艇含む",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 5,
+        "includes_boat_3": true
+      },
+      "stats": {
+        "sample_size": 15,
+        "hits": 3,
+        "hit_rate": "20.0%",
+        "recovery_rate": "207%"
+      },
+      "reliability": "very_high"
+    },
+    {
+      "id": "S19-W003",
+      "name": "5号艇1着+2号艇含む",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 5,
+        "includes_boat_2": true
+      },
+      "stats": {
+        "sample_size": 18,
+        "hits": 3,
+        "hit_rate": "16.7%",
+        "recovery_rate": "178%"
+      },
+      "reliability": "very_high"
+    },
+    {
+      "id": "S19-W004",
+      "name": "2号艇1着+3号艇含む",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 2,
+        "includes_boat_3": true
+      },
+      "stats": {
+        "sample_size": 22,
+        "hits": 9,
+        "hit_rate": "40.9%",
+        "recovery_rate": "166%"
+      },
+      "reliability": "high"
+    }
+  ],
+  "place_rules": [
+    {
+      "id": "S19-P001",
+      "name": "4号艇1着+5号艇含む",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 4,
+        "includes_boat_5": true
+      },
+      "stats": {
+        "sample_size": 11,
+        "hits": 6,
+        "hit_rate": "54.5%",
+        "recovery_rate": "215%"
+      },
+      "reliability": "very_high"
+    },
+    {
+      "id": "S19-P002",
+      "name": "2号艇1着+5号艇含む",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 2,
+        "includes_boat_5": true
+      },
+      "stats": {
+        "sample_size": 16,
+        "hits": 5,
+        "hit_rate": "31.3%",
+        "recovery_rate": "168%"
+      },
+      "reliability": "very_high"
+    },
+    {
+      "id": "S19-P003",
+      "name": "4号艇1着+6号艇含む",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 4,
+        "includes_boat_6": true
+      },
+      "stats": {
+        "sample_size": 14,
+        "hits": 6,
+        "hit_rate": "42.9%",
+        "recovery_rate": "151%"
+      },
+      "reliability": "high"
+    },
+    {
+      "id": "S19-P004",
+      "name": "2号艇1着×信頼度80以上",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 2,
+        "confidence": { "min": 80 }
+      },
+      "stats": {
+        "sample_size": 47,
+        "hits": 24,
+        "hit_rate": "51.1%",
+        "recovery_rate": "126%"
+      },
+      "reliability": "high"
+    }
+  ],
+  "trio_rules": [
+    {
+      "id": "S19-T001",
+      "name": "3,5号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boat_3": true,
+        "includes_boat_5": true
+      },
+      "stats": {
+        "sample_size": 57,
+        "hits": 4,
+        "hit_rate": "7.0%",
+        "recovery_rate": "122%"
+      },
+      "reliability": "high"
+    },
+    {
+      "id": "S19-T002",
+      "name": "2,3号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boat_2": true,
+        "includes_boat_3": true
+      },
+      "stats": {
+        "sample_size": 117,
+        "hits": 15,
+        "hit_rate": "12.8%",
+        "recovery_rate": "107%"
+      },
+      "reliability": "medium"
+    }
+  ]
+}

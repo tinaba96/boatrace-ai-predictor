@@ -83,392 +83,461 @@ const GAMAGORI_RULES = [
 ]
 
 // 福岡（22）のルール定義
-// 発掘データ: スタンダードモデル 406レース分析に基づく（2025年12月〜2026年1月）
+// 発掘データ: スタンダードモデル 444レース詳細分析に基づく（2025年12月〜2026年1月）
 const FUKUOKA_RULES = [
+  // === 単勝ルール ===
+  {
+    id: 'F22-W001',
+    patternName: 'FUKUOKA-WIN-TOP4-INC2',
+    description: '4号艇1着+2号艇含む',
+    betType: 'win',
+    stats: { samples: 13, hits: 5, recovery: 324 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 4 && pred.top3.includes(2)
+  },
+  {
+    id: 'F22-W002',
+    patternName: 'FUKUOKA-WIN-TOP4',
+    description: '4号艇1着',
+    betType: 'win',
+    stats: { samples: 27, hits: 11, recovery: 227 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 4
+  },
+  {
+    id: 'F22-W003',
+    patternName: 'FUKUOKA-WIN-TOP2-INC1',
+    description: '2号艇1着+1号艇含む',
+    betType: 'win',
+    stats: { samples: 29, hits: 14, recovery: 156 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 2 && has1
+  },
+
   // === 3連複ルール ===
   {
     id: 'F22-T001',
-    patternName: 'FUKUOKA-TRIO-INC4-HC',
-    description: '4号艇含む×conf75+',
-    betType: 'trio',
-    stats: { samples: 23, hits: 9, recovery: 202 },
-    reliability: 'highest',
-    check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.top3.includes(4) && conf >= 75
-  },
-  {
-    id: 'F22-T002',
     patternName: 'FUKUOKA-TRIO-45X',
     description: '4,5号艇含む',
     betType: 'trio',
-    stats: { samples: 12, hits: 3, recovery: 208 },
+    stats: { samples: 44, hits: 4, recovery: 222 },
     reliability: 'highest',
     check: (pred, raceNo, conf, predSorted, has1) =>
       pred.top3.includes(4) && pred.top3.includes(5)
   },
   {
-    id: 'F22-T003',
-    patternName: 'FUKUOKA-TRIO-INC2-HC',
-    description: '2号艇含む×conf75+',
+    id: 'F22-T002',
+    patternName: 'FUKUOKA-TRIO-NO1-HC',
+    description: '1号艇含まない×conf80+',
     betType: 'trio',
-    stats: { samples: 35, hits: 14, recovery: 109 },
+    stats: { samples: 56, hits: 4, recovery: 193 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      !has1 && conf >= 80
+  },
+  {
+    id: 'F22-T003',
+    patternName: 'FUKUOKA-TRIO-24X',
+    description: '2,4号艇含む',
+    betType: 'trio',
+    stats: { samples: 70, hits: 6, recovery: 178 },
     reliability: 'high',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.top3.includes(2) && conf >= 75
+      pred.top3.includes(2) && pred.top3.includes(4)
   },
 
   // === 複勝ルール ===
   {
     id: 'F22-P001',
-    patternName: 'FUKUOKA-PLACE-TOP2-INC1',
-    description: '2号艇1着+1号艇含む',
+    patternName: 'FUKUOKA-PLACE-TOP5-INC4',
+    description: '5号艇1着+4号艇含む',
     betType: 'place',
-    stats: { samples: 18, hits: 7, recovery: 143 },
-    reliability: 'highest',
-    check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.topPick === 2 && has1
-  },
-
-  // === 単勝ルール ===
-  {
-    id: 'F22-W001',
-    patternName: 'FUKUOKA-WIN-TOP1-MC',
-    description: '1号艇1着×conf60-74',
-    betType: 'win',
-    stats: { samples: 10, hits: 4, recovery: 119 },
-    reliability: 'highest',
-    check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.topPick === 1 && conf >= 60 && conf < 75
-  },
-  {
-    id: 'F22-W002',
-    patternName: 'FUKUOKA-WIN-TOP1-13',
-    description: '1号艇1着+3号艇含む',
-    betType: 'win',
-    stats: { samples: 44, hits: 28, recovery: 102 },
+    stats: { samples: 20, hits: 11, recovery: 131 },
     reliability: 'high',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.topPick === 1 && pred.top3.includes(3)
+      pred.topPick === 5 && pred.top3.includes(4)
+  },
+  {
+    id: 'F22-P002',
+    patternName: 'FUKUOKA-PLACE-TOP6-INC1',
+    description: '6号艇1着+1号艇含む',
+    betType: 'place',
+    stats: { samples: 19, hits: 8, recovery: 124 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 6 && has1
+  },
+  {
+    id: 'F22-P003',
+    patternName: 'FUKUOKA-PLACE-TOP4-INC1',
+    description: '4号艇1着+1号艇含む',
+    betType: 'place',
+    stats: { samples: 17, hits: 11, recovery: 120 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 4 && has1
   }
 ]
 
 // 丸亀（15）のルール定義
-// 発掘データ: スタンダードモデル 486レース分析に基づく（2025年12月〜2026年1月）
+// 発掘データ: スタンダードモデル 649レース詳細分析に基づく（2025年12月〜2026年1月）
+// 注: 3連複は回収率100%超のルールがサンプル10以上で見つからなかった
 const MARUGAME_RULES = [
-  // === 3連複ルール ===
+  // === 単勝ルール ===
   {
-    id: 'R15-T001',
-    patternName: 'MARUGAME-TRIO-INC6',
-    description: '6号艇含む',
-    betType: 'trio',
-    stats: { samples: 27, hits: 3, recovery: 171 },
+    id: 'R15-W001',
+    patternName: 'MARUGAME-WIN-TOP6-INC3',
+    description: '6号艇1着+3号艇含む',
+    betType: 'win',
+    stats: { samples: 22, hits: 3, recovery: 236 },
     reliability: 'highest',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.top3.includes(6)
+      pred.topPick === 6 && pred.top3.includes(3)
   },
   {
-    id: 'R15-T002',
-    patternName: 'MARUGAME-TRIO-INC5-HC',
-    description: '5号艇含む×conf75+',
-    betType: 'trio',
-    stats: { samples: 49, hits: 10, recovery: 130 },
-    reliability: 'high',
+    id: 'R15-W002',
+    patternName: 'MARUGAME-WIN-TOP5-INC1',
+    description: '5号艇1着+1号艇含む',
+    betType: 'win',
+    stats: { samples: 30, hits: 9, recovery: 205 },
+    reliability: 'highest',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.top3.includes(5) && conf >= 75
+      pred.topPick === 5 && has1
   },
   {
-    id: 'R15-T003',
-    patternName: 'MARUGAME-TRIO-24X',
-    description: '2,4号艇含む',
-    betType: 'trio',
-    stats: { samples: 12, hits: 6, recovery: 139 },
+    id: 'R15-W003',
+    patternName: 'MARUGAME-WIN-TOP6-INC1',
+    description: '6号艇1着+1号艇含む',
+    betType: 'win',
+    stats: { samples: 35, hits: 4, recovery: 153 },
     reliability: 'high',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.top3.includes(2) && pred.top3.includes(4)
+      pred.topPick === 6 && has1
   },
 
   // === 複勝ルール ===
   {
     id: 'R15-P001',
-    patternName: 'MARUGAME-PLACE-TOP1-16',
-    description: '1号艇1着+6号艇含む',
+    patternName: 'MARUGAME-PLACE-TOP5-INC2',
+    description: '5号艇1着+2号艇含む',
     betType: 'place',
-    stats: { samples: 30, hits: 22, recovery: 111 },
+    stats: { samples: 25, hits: 12, recovery: 222 },
     reliability: 'highest',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.topPick === 1 && pred.top3.includes(6)
-  },
-
-  // === 単勝ルール ===
-  {
-    id: 'R15-W001',
-    patternName: 'MARUGAME-WIN-TOP2-INC1',
-    description: '2号艇1着+1号艇含む',
-    betType: 'win',
-    stats: { samples: 19, hits: 8, recovery: 106 },
-    reliability: 'high',
-    check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.topPick === 2 && has1
+      pred.topPick === 5 && pred.top3.includes(2)
   },
   {
-    id: 'R15-W002',
-    patternName: 'MARUGAME-WIN-TOP1-HC',
-    description: '1号艇1着×conf85+',
-    betType: 'win',
-    stats: { samples: 120, hits: 75, recovery: 101 },
+    id: 'R15-P002',
+    patternName: 'MARUGAME-PLACE-TOP5-INC1',
+    description: '5号艇1着+1号艇含む',
+    betType: 'place',
+    stats: { samples: 30, hits: 15, recovery: 193 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 5 && has1
+  },
+  {
+    id: 'R15-P003',
+    patternName: 'MARUGAME-PLACE-TOP3-INC2',
+    description: '3号艇1着+2号艇含む',
+    betType: 'place',
+    stats: { samples: 33, hits: 25, recovery: 165 },
     reliability: 'high',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.topPick === 1 && conf >= 85
+      pred.topPick === 3 && pred.top3.includes(2)
+  },
+  {
+    id: 'R15-P004',
+    patternName: 'MARUGAME-PLACE-TOP5',
+    description: '5号艇1着',
+    betType: 'place',
+    stats: { samples: 56, hits: 24, recovery: 147 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 5
   }
 ]
 
 // びわこ（11）のルール定義
-// 発掘データ: スタンダードモデル 429レース分析に基づく（2025年12月〜2026年1月）
+// 発掘データ: スタンダードモデル 534レース詳細分析に基づく（2025年12月〜2026年1月）
 const BIWAKO_RULES = [
   // === 3連複ルール ===
   {
     id: 'B11-T001',
-    patternName: 'BIWAKO-TRIO-23X',
-    description: '2,3号艇含む',
+    patternName: 'BIWAKO-TRIO-56X',
+    description: '5,6号艇含む',
     betType: 'trio',
-    stats: { samples: 16, hits: 7, recovery: 187 },
+    stats: { samples: 59, hits: 4, recovery: 185 },
     reliability: 'highest',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.top3.includes(2) && pred.top3.includes(3)
+      pred.top3.includes(5) && pred.top3.includes(6)
   },
   {
     id: 'B11-T002',
-    patternName: 'BIWAKO-TRIO-INC5-HC',
-    description: '5号艇含む×conf75+',
+    patternName: 'BIWAKO-TRIO-46X',
+    description: '4,6号艇含む',
     betType: 'trio',
-    stats: { samples: 23, hits: 6, recovery: 157 },
-    reliability: 'high',
+    stats: { samples: 67, hits: 5, recovery: 174 },
+    reliability: 'highest',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.top3.includes(5) && conf >= 75
+      pred.top3.includes(4) && pred.top3.includes(6)
   },
   {
     id: 'B11-T003',
-    patternName: 'BIWAKO-TRIO-24X',
-    description: '2,4号艇含む',
+    patternName: 'BIWAKO-TRIO-16X',
+    description: '1,6号艇含む',
     betType: 'trio',
-    stats: { samples: 10, hits: 5, recovery: 155 },
+    stats: { samples: 127, hits: 8, recovery: 131 },
     reliability: 'high',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.top3.includes(2) && pred.top3.includes(4)
-  },
-
-  // === 複勝ルール ===
-  {
-    id: 'B11-P001',
-    patternName: 'BIWAKO-PLACE-TOP2-HC',
-    description: '2号艇1着×conf75+',
-    betType: 'place',
-    stats: { samples: 64, hits: 22, recovery: 111 },
-    reliability: 'highest',
-    check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.topPick === 2 && conf >= 75
-  },
-  {
-    id: 'B11-P002',
-    patternName: 'BIWAKO-PLACE-TOP1-16',
-    description: '1号艇1着+6号艇含む',
-    betType: 'place',
-    stats: { samples: 24, hits: 17, recovery: 103 },
-    reliability: 'high',
-    check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.topPick === 1 && pred.top3.includes(6)
+      has1 && pred.top3.includes(6)
   },
 
   // === 単勝ルール ===
   {
     id: 'B11-W001',
-    patternName: 'BIWAKO-WIN-TOP1-MC',
-    description: '1号艇1着×conf60-74',
+    patternName: 'BIWAKO-WIN-TOP6-INC2',
+    description: '6号艇1着+2号艇含む',
     betType: 'win',
-    stats: { samples: 12, hits: 5, recovery: 129 },
+    stats: { samples: 22, hits: 5, recovery: 162 },
     reliability: 'highest',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.topPick === 1 && conf >= 60 && conf < 75
+      pred.topPick === 6 && pred.top3.includes(2)
   },
   {
     id: 'B11-W002',
-    patternName: 'BIWAKO-WIN-TOP1-13',
-    description: '1号艇1着+3号艇含む',
+    patternName: 'BIWAKO-WIN-TOP2-INC4',
+    description: '2号艇1着+4号艇含む',
     betType: 'win',
-    stats: { samples: 38, hits: 28, recovery: 117 },
-    reliability: 'high',
+    stats: { samples: 25, hits: 12, recovery: 160 },
+    reliability: 'highest',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.topPick === 1 && pred.top3.includes(3)
+      pred.topPick === 2 && pred.top3.includes(4)
   },
   {
     id: 'B11-W003',
-    patternName: 'BIWAKO-WIN-TOP1-HC',
-    description: '1号艇1着×conf80+',
+    patternName: 'BIWAKO-WIN-TOP1-MC',
+    description: '1号艇1着×conf60-74',
     betType: 'win',
-    stats: { samples: 150, hits: 100, recovery: 102 },
+    stats: { samples: 13, hits: 6, recovery: 132 },
     reliability: 'high',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.topPick === 1 && conf >= 80
-  }
-]
-
-// 浜名湖（06）のルール定義
-// 発掘データ: スタンダードモデル 474レース分析に基づく（2025年12月〜2026年1月）
-const HAMANAKO_RULES = [
-  // === 3連複ルール ===
-  {
-    id: 'H06-T001',
-    patternName: 'HAMANAKO-TRIO-INC3-MC',
-    description: '3号艇含む×conf60-74',
-    betType: 'trio',
-    stats: { samples: 10, hits: 2, recovery: 405 },
-    reliability: 'highest',
-    check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.top3.includes(3) && conf >= 60 && conf < 75
-  },
-  {
-    id: 'H06-T002',
-    patternName: 'HAMANAKO-TRIO-INC3-LC',
-    description: '3号艇含む×conf80未満',
-    betType: 'trio',
-    stats: { samples: 30, hits: 8, recovery: 205 },
-    reliability: 'high',
-    check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.top3.includes(3) && conf < 80
-  },
-  {
-    id: 'H06-T003',
-    patternName: 'HAMANAKO-TRIO-35X',
-    description: '3,5号艇含む',
-    betType: 'trio',
-    stats: { samples: 10, hits: 2, recovery: 100 },
-    reliability: 'medium',
-    check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.top3.includes(3) && pred.top3.includes(5)
+      pred.topPick === 1 && conf >= 60 && conf < 75
   },
 
   // === 複勝ルール ===
   {
-    id: 'H06-P001',
-    patternName: 'HAMANAKO-PLACE-TOP1-14',
-    description: '1号艇1着+4号艇含む',
+    id: 'B11-P001',
+    patternName: 'BIWAKO-PLACE-TOP2-INC4',
+    description: '2号艇1着+4号艇含む',
     betType: 'place',
-    stats: { samples: 53, hits: 39, recovery: 114 },
+    stats: { samples: 25, hits: 17, recovery: 127 },
     reliability: 'highest',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.topPick === 1 && pred.top3.includes(4)
+      pred.topPick === 2 && pred.top3.includes(4)
   },
   {
-    id: 'H06-P002',
-    patternName: 'HAMANAKO-PLACE-TOP1-12',
+    id: 'B11-P002',
+    patternName: 'BIWAKO-PLACE-TOP4-INC5',
+    description: '4号艇1着+5号艇含む',
+    betType: 'place',
+    stats: { samples: 17, hits: 11, recovery: 122 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 4 && pred.top3.includes(5)
+  },
+  {
+    id: 'B11-P003',
+    patternName: 'BIWAKO-PLACE-TOP1-INC2',
     description: '1号艇1着+2号艇含む',
     betType: 'place',
-    stats: { samples: 68, hits: 49, recovery: 104 },
+    stats: { samples: 124, hits: 105, recovery: 116 },
     reliability: 'high',
     check: (pred, raceNo, conf, predSorted, has1) =>
       pred.topPick === 1 && pred.top3.includes(2)
+  }
+]
+
+// 浜名湖（06）のルール定義
+// 発掘データ: スタンダードモデル 624レース詳細分析に基づく（2025年12月〜2026年1月）
+const HAMANAKO_RULES = [
+  // === 3連複ルール ===
+  {
+    id: 'H06-T001',
+    patternName: 'HAMANAKO-TRIO-26X',
+    description: '2,6号艇含む',
+    betType: 'trio',
+    stats: { samples: 94, hits: 6, recovery: 485 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.top3.includes(2) && pred.top3.includes(6)
   },
   {
-    id: 'H06-P003',
-    patternName: 'HAMANAKO-PLACE-TOP1-15',
-    description: '1号艇1着+5号艇含む',
-    betType: 'place',
-    stats: { samples: 22, hits: 15, recovery: 102 },
-    reliability: 'high',
+    id: 'H06-T002',
+    patternName: 'HAMANAKO-TRIO-36X',
+    description: '3,6号艇含む',
+    betType: 'trio',
+    stats: { samples: 87, hits: 2, recovery: 475 },
+    reliability: 'highest',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.topPick === 1 && pred.top3.includes(5)
+      pred.top3.includes(3) && pred.top3.includes(6)
+  },
+  {
+    id: 'H06-T003',
+    patternName: 'HAMANAKO-TRIO-23X',
+    description: '2,3号艇含む',
+    betType: 'trio',
+    stats: { samples: 140, hits: 14, recovery: 396 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.top3.includes(2) && pred.top3.includes(3)
   },
 
   // === 単勝ルール ===
   {
     id: 'H06-W001',
-    patternName: 'HAMANAKO-WIN-TOP1-MC',
-    description: '1号艇1着×conf60-74',
+    patternName: 'HAMANAKO-WIN-TOP3-INC2',
+    description: '3号艇1着+2号艇含む',
     betType: 'win',
-    stats: { samples: 13, hits: 7, recovery: 122 },
+    stats: { samples: 33, hits: 10, recovery: 231 },
     reliability: 'highest',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.topPick === 1 && conf >= 60 && conf < 75
+      pred.topPick === 3 && pred.top3.includes(2)
   },
   {
     id: 'H06-W002',
-    patternName: 'HAMANAKO-WIN-TOP1-HC',
-    description: '1号艇1着×conf80+',
+    patternName: 'HAMANAKO-WIN-TOP3-INC1',
+    description: '3号艇1着+1号艇含む',
     betType: 'win',
-    stats: { samples: 185, hits: 124, recovery: 102 },
+    stats: { samples: 46, hits: 12, recovery: 181 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 3 && has1
+  },
+  {
+    id: 'H06-W003',
+    patternName: 'HAMANAKO-WIN-TOP3',
+    description: '3号艇1着',
+    betType: 'win',
+    stats: { samples: 78, hits: 20, recovery: 139 },
     reliability: 'high',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.topPick === 1 && conf >= 80
+      pred.topPick === 3
+  },
+
+  // === 複勝ルール ===
+  {
+    id: 'H06-P001',
+    patternName: 'HAMANAKO-PLACE-TOP4-INC5',
+    description: '4号艇1着+5号艇含む',
+    betType: 'place',
+    stats: { samples: 15, hits: 8, recovery: 215 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 4 && pred.top3.includes(5)
+  },
+  {
+    id: 'H06-P002',
+    patternName: 'HAMANAKO-PLACE-TOP3-INC6',
+    description: '3号艇1着+6号艇含む',
+    betType: 'place',
+    stats: { samples: 27, hits: 18, recovery: 186 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 3 && pred.top3.includes(6)
+  },
+  {
+    id: 'H06-P003',
+    patternName: 'HAMANAKO-PLACE-TOP3-HC',
+    description: '3号艇1着×conf75+',
+    betType: 'place',
+    stats: { samples: 64, hits: 40, recovery: 141 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 3 && conf >= 75
   }
 ]
 
 // 三国（10）のルール定義
-// 発掘データ: スタンダードモデル 454レース分析に基づく（2025年12月〜2026年1月）
+// 発掘データ: スタンダードモデル 511レース詳細分析に基づく（2025年12月〜2026年1月）
 const MIKUNI_RULES = [
   // === 3連複ルール ===
   {
     id: 'M10-T001',
-    patternName: 'MIKUNI-TRIO-INC5-HC',
-    description: '5号艇含む×conf75+',
+    patternName: 'MIKUNI-TRIO-24X',
+    description: '2,4号艇含む',
     betType: 'trio',
-    stats: { samples: 45, hits: 7, recovery: 134 },
+    stats: { samples: 96, hits: 3, recovery: 1865 },
     reliability: 'highest',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.top3.includes(5) && conf >= 75
+      pred.top3.includes(2) && pred.top3.includes(4)
   },
   {
     id: 'M10-T002',
-    patternName: 'MIKUNI-TRIO-13X-LATE',
-    description: '1,3号艇含む×7R以降',
+    patternName: 'MIKUNI-TRIO-15X',
+    description: '1,5号艇含む',
     betType: 'trio',
-    stats: { samples: 50, hits: 33, recovery: 102 },
+    stats: { samples: 129, hits: 6, recovery: 144 },
     reliability: 'high',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      has1 && pred.top3.includes(3) && raceNo >= 7
+      has1 && pred.top3.includes(5)
   },
 
   // === 複勝ルール ===
   {
     id: 'M10-P001',
-    patternName: 'MIKUNI-PLACE-TOP1-HC',
-    description: '1号艇1着予測×conf80+',
+    patternName: 'MIKUNI-PLACE-TOP3-INC5',
+    description: '3号艇1着+5号艇含む',
     betType: 'place',
-    stats: { samples: 180, hits: 110, recovery: 110 },
+    stats: { samples: 18, hits: 11, recovery: 391 },
     reliability: 'highest',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.topPick === 1 && conf >= 80
+      pred.topPick === 3 && pred.top3.includes(5)
   },
   {
     id: 'M10-P002',
-    patternName: 'MIKUNI-PLACE-TOP1-LATE',
-    description: '1号艇1着予測×9R以降',
+    patternName: 'MIKUNI-PLACE-TOP3-HC',
+    description: '3号艇1着×conf75+',
     betType: 'place',
-    stats: { samples: 90, hits: 55, recovery: 112 },
+    stats: { samples: 46, hits: 30, recovery: 214 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 3 && conf >= 75
+  },
+  {
+    id: 'M10-P003',
+    patternName: 'MIKUNI-PLACE-TOP2-HC',
+    description: '2号艇1着×conf75+',
+    betType: 'place',
+    stats: { samples: 64, hits: 43, recovery: 134 },
     reliability: 'high',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.topPick === 1 && raceNo >= 9
+      pred.topPick === 2 && conf >= 75
   },
 
   // === 単勝ルール ===
   {
     id: 'M10-W001',
-    patternName: 'MIKUNI-WIN-TOP2-SUB1',
-    description: '2号艇1着+1号艇2着予測',
+    patternName: 'MIKUNI-WIN-TOP5-INC4',
+    description: '5号艇1着+4号艇含む',
     betType: 'win',
-    stats: { samples: 26, hits: 10, recovery: 105 },
-    reliability: 'high',
+    stats: { samples: 22, hits: 4, recovery: 181 },
+    reliability: 'highest',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.topPick === 2 && pred.top3?.[1] === 1
+      pred.topPick === 5 && pred.top3.includes(4)
   },
   {
     id: 'M10-W002',
-    patternName: 'MIKUNI-WIN-TOP1-MID-HC',
-    description: '1号艇1着予測×5R以降×conf75+',
+    patternName: 'MIKUNI-WIN-TOP5-HC',
+    description: '5号艇1着×conf80+',
     betType: 'win',
-    stats: { samples: 120, hits: 65, recovery: 113 },
+    stats: { samples: 43, hits: 7, recovery: 140 },
     reliability: 'high',
     check: (pred, raceNo, conf, predSorted, has1) =>
-      pred.topPick === 1 && raceNo >= 5 && conf >= 75
+      pred.topPick === 5 && conf >= 80
   }
 ]
 
@@ -582,6 +651,116 @@ const EDOGAWA_RULES = [
   }
 ]
 
+// 下関（19）のルール定義
+// 発掘データ: スタンダードモデル 480レース詳細分析に基づく（2025年12月〜2026年1月）
+const SHIMONOSEKI_RULES = [
+  // === 単勝ルール ===
+  {
+    id: 'S19-W001',
+    patternName: 'SHIMONOSEKI-WIN-TOP3-INC2',
+    description: '3号艇1着+2号艇含む',
+    betType: 'win',
+    stats: { samples: 20, hits: 5, recovery: 217 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 3 && pred.top3.includes(2)
+  },
+  {
+    id: 'S19-W002',
+    patternName: 'SHIMONOSEKI-WIN-TOP5-INC3',
+    description: '5号艇1着+3号艇含む',
+    betType: 'win',
+    stats: { samples: 15, hits: 3, recovery: 207 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 5 && pred.top3.includes(3)
+  },
+  {
+    id: 'S19-W003',
+    patternName: 'SHIMONOSEKI-WIN-TOP5-INC2',
+    description: '5号艇1着+2号艇含む',
+    betType: 'win',
+    stats: { samples: 18, hits: 3, recovery: 178 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 5 && pred.top3.includes(2)
+  },
+  {
+    id: 'S19-W004',
+    patternName: 'SHIMONOSEKI-WIN-TOP2-INC3',
+    description: '2号艇1着+3号艇含む',
+    betType: 'win',
+    stats: { samples: 22, hits: 9, recovery: 166 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 2 && pred.top3.includes(3)
+  },
+
+  // === 複勝ルール ===
+  {
+    id: 'S19-P001',
+    patternName: 'SHIMONOSEKI-PLACE-TOP4-INC5',
+    description: '4号艇1着+5号艇含む',
+    betType: 'place',
+    stats: { samples: 11, hits: 6, recovery: 215 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 4 && pred.top3.includes(5)
+  },
+  {
+    id: 'S19-P002',
+    patternName: 'SHIMONOSEKI-PLACE-TOP2-INC5',
+    description: '2号艇1着+5号艇含む',
+    betType: 'place',
+    stats: { samples: 16, hits: 5, recovery: 168 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 2 && pred.top3.includes(5)
+  },
+  {
+    id: 'S19-P003',
+    patternName: 'SHIMONOSEKI-PLACE-TOP4-INC6',
+    description: '4号艇1着+6号艇含む',
+    betType: 'place',
+    stats: { samples: 14, hits: 6, recovery: 151 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 4 && pred.top3.includes(6)
+  },
+  {
+    id: 'S19-P004',
+    patternName: 'SHIMONOSEKI-PLACE-TOP2-HC',
+    description: '2号艇1着×conf80+',
+    betType: 'place',
+    stats: { samples: 47, hits: 24, recovery: 126 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 2 && conf >= 80
+  },
+
+  // === 3連複ルール ===
+  {
+    id: 'S19-T001',
+    patternName: 'SHIMONOSEKI-TRIO-35X',
+    description: '3,5号艇含む',
+    betType: 'trio',
+    stats: { samples: 57, hits: 4, recovery: 122 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.top3.includes(3) && pred.top3.includes(5)
+  },
+  {
+    id: 'S19-T002',
+    patternName: 'SHIMONOSEKI-TRIO-23X',
+    description: '2,3号艇含む',
+    betType: 'trio',
+    stats: { samples: 117, hits: 15, recovery: 107 },
+    reliability: 'medium',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.top3.includes(2) && pred.top3.includes(3)
+  }
+]
+
 // 会場コードごとのルール
 const VENUE_RULES = {
   '03': EDOGAWA_RULES,
@@ -590,6 +769,7 @@ const VENUE_RULES = {
   '10': MIKUNI_RULES,
   '11': BIWAKO_RULES,
   '15': MARUGAME_RULES,
+  '19': SHIMONOSEKI_RULES,
   '22': FUKUOKA_RULES
   // 他の会場は分析完了後に追加
 }

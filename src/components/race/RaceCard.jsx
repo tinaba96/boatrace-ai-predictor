@@ -12,33 +12,31 @@ function RaceCard({ race, selectedModel, onAnalyzeRace }) {
   const hasNewFormat = !!racePrediction?.predictions
   const hasOldFormat = !!racePrediction?.prediction
 
-  if (isFinished && (hasNewFormat || hasOldFormat)) {
-    // モデルキーを変換
-    const modelKey = selectedModel === 'safe-bet' ? 'safeBet' :
-      selectedModel === 'upset-focus' ? 'upsetFocus' : 'standard'
+  // モデルキーを変換
+  const modelKey = selectedModel === 'safe-bet' ? 'safeBet' :
+    selectedModel === 'upset-focus' ? 'upsetFocus' : 'standard'
 
-    // 旧形式の場合はstandardモデルのみ
-    let prediction
-    if (hasNewFormat) {
-      prediction = racePrediction.predictions[modelKey]
-    } else if (modelKey === 'standard') {
-      prediction = racePrediction.prediction
-    }
+  // 予測データを取得
+  let prediction
+  if (hasNewFormat) {
+    prediction = racePrediction.predictions[modelKey]
+  } else if (modelKey === 'standard' && hasOldFormat) {
+    prediction = racePrediction.prediction
+  }
 
-    if (prediction) {
-      const topPick = prediction.topPick
-      const top3 = prediction.top3
+  if (isFinished && prediction) {
+    const topPick = prediction.topPick
+    const top3 = prediction.top3
 
-      const isWinHit = topPick === result.rank1
-      const isPlaceHit = topPick === result.rank1 || topPick === result.rank2
-      const is3FukuHit = top3.includes(result.rank1) && top3.includes(result.rank2) && top3.includes(result.rank3)
-      const is3TanHit = top3[0] === result.rank1 && top3[1] === result.rank2 && top3[2] === result.rank3
+    const isWinHit = topPick === result.rank1
+    const isPlaceHit = topPick === result.rank1 || topPick === result.rank2
+    const is3FukuHit = top3.includes(result.rank1) && top3.includes(result.rank2) && top3.includes(result.rank3)
+    const is3TanHit = top3[0] === result.rank1 && top3[1] === result.rank2 && top3[2] === result.rank3
 
-      if (isWinHit) hitBadges.push({ label: '単', type: 'win' })
-      if (isPlaceHit) hitBadges.push({ label: '複', type: 'place' })
-      if (is3FukuHit) hitBadges.push({ label: '3複', type: 'trifecta' })
-      if (is3TanHit) hitBadges.push({ label: '3単', type: 'trio' })
-    }
+    if (isWinHit) hitBadges.push({ label: '単', type: 'win' })
+    if (isPlaceHit) hitBadges.push({ label: '複', type: 'place' })
+    if (is3FukuHit) hitBadges.push({ label: '3複', type: 'trifecta' })
+    if (is3TanHit) hitBadges.push({ label: '3単', type: 'trio' })
   }
 
   return (
