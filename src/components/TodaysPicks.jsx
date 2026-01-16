@@ -305,7 +305,6 @@ function TodaysPicks() {
                       <th>賭式</th>
                       <th>的中率</th>
                       <th>回収率</th>
-                      <th>適用数</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -317,11 +316,10 @@ function TodaysPicks() {
                       >
                         <td className="rule-id-cell">{rule.ruleId}</td>
                         <td>{getBetTypeName(rule.betType)}</td>
-                        <td>{rule.hitRate}%</td>
+                        <td>{rule.hitRate}% ({Math.round(rule.hitRate * rule.samples / 100)}/{rule.samples})</td>
                         <td className={rule.recovery >= 100 ? 'positive' : rule.recovery > 0 ? 'negative' : ''}>
                           {rule.recovery}%
                         </td>
-                        <td>{rule.samples}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -329,8 +327,7 @@ function TodaysPicks() {
               </div>
 
               <div className="total-summary">
-                全体: {performance.total.samples}件適用 |
-                的中率 {performance.total.hitRate}% |
+                全体: 的中率 {performance.total.hitRate}% ({Math.round(performance.total.hitRate * performance.total.samples / 100)}/{performance.total.samples}) |
                 回収率 <span className={performance.total.recovery >= 100 ? 'positive' : 'negative'}>
                   {performance.total.recovery}%
                 </span>
