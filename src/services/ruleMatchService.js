@@ -1815,18 +1815,24 @@ export async function getRulePerformanceByVenue(venueCode, startDate) {
     return { byRule: [], total: { samples: 0, hits: 0, hitRate: 0, recovery: 0 }, startDate }
   }
 
-  // startDate以降の予測データを取得（指定会場のみ）
-  const { data: predictions, error: predError } = await supabase
+  // startDate以降の予測データを取得
+  const { data: allPredictions, error: predError } = await supabase
     .from('predictions')
     .select('*')
     .gte('predicted_at', startDate)
-    .like('race_id', `%-${venueCode}-%`)
     .eq('model_id', 'standard')
 
-  if (predError || !predictions) {
+  if (predError || !allPredictions) {
     console.error('予測取得エラー:', predError?.message)
     return { byRule: [], total: { samples: 0, hits: 0, hitRate: 0, recovery: 0 }, startDate }
   }
+
+  // 指定会場のみフィルタ（race_idからvenueCodeを正確に抽出）
+  // race_id形式: YYYY-MM-DD-VV-RR（VVが会場コード）
+  const predictions = allPredictions.filter(p => {
+    const parts = p.race_id.split('-')
+    return parts[3] === venueCode
+  })
 
   // 結果データを取得
   const raceIds = predictions.map(p => p.race_id)
