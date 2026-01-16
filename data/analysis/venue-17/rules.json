@@ -1,0 +1,708 @@
+{
+  "venue_code": "17",
+  "venue_name": "宮島",
+  "analysis_date": "2026-01-16",
+  "status": "draft",
+  "sample_size": 462,
+  "period": {
+    "start": "2025-12-04",
+    "end": "2026-01-13"
+  },
+  "win_rules": [
+    {
+      "id": "MY17-W001",
+      "name": "1号艇1着×後半R",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 1,
+        "race_number": {
+          "min": 10,
+          "max": 12
+        }
+      },
+      "stats": {
+        "sample_size": 56,
+        "hit_rate": "76.8%",
+        "recovery_rate": "121%",
+        "profit": 1176
+      },
+      "reliability": "very_high",
+      "notes": "大サンプル、高的中率"
+    },
+    {
+      "id": "MY17-W002",
+      "name": "5号艇1着+2号艇含む",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 5,
+        "includes_boat": 2
+      },
+      "stats": {
+        "sample_size": 17,
+        "hit_rate": "17.6%",
+        "recovery_rate": "109%",
+        "profit": 153
+      },
+      "reliability": "medium",
+      "notes": "要検証"
+    },
+    {
+      "id": "MY17-W003",
+      "name": "3号艇1着+5号艇含む",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 3,
+        "includes_boat": 5
+      },
+      "stats": {
+        "sample_size": 27,
+        "hit_rate": "33.3%",
+        "recovery_rate": "108%",
+        "profit": 216
+      },
+      "reliability": "medium",
+      "notes": "サンプルやや少なめ"
+    },
+    {
+      "id": "MY17-W004",
+      "name": "1号艇1着+3号艇含む",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 1,
+        "includes_boat": 3
+      },
+      "stats": {
+        "sample_size": 95,
+        "hit_rate": "65.3%",
+        "recovery_rate": "105%",
+        "profit": 475
+      },
+      "reliability": "very_high",
+      "notes": "大サンプル、高的中率"
+    },
+    {
+      "id": "MY17-W005",
+      "name": "3号艇1着+1号艇含む",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 3,
+        "includes_boat": 1
+      },
+      "stats": {
+        "sample_size": 44,
+        "hit_rate": "25.0%",
+        "recovery_rate": "101%",
+        "profit": 44
+      },
+      "reliability": "high",
+      "notes": "サンプル十分"
+    }
+  ],
+  "place_rules": [
+    {
+      "id": "MY17-P001",
+      "name": "4号艇1着+6号艇含む(複勝)",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 4,
+        "includes_boat": 6
+      },
+      "stats": {
+        "sample_size": 11,
+        "hit_rate": "63.6%",
+        "recovery_rate": "129%",
+        "profit": 319
+      },
+      "reliability": "low",
+      "notes": "要検証、高的中率"
+    },
+    {
+      "id": "MY17-P002",
+      "name": "3号艇1着+1号艇含む(複勝)",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 3,
+        "includes_boat": 1
+      },
+      "stats": {
+        "sample_size": 44,
+        "hit_rate": "84.1%",
+        "recovery_rate": "125%",
+        "profit": 1100
+      },
+      "reliability": "high",
+      "notes": "サンプル十分、高的中率"
+    },
+    {
+      "id": "MY17-P003",
+      "name": "1号艇1着(複勝)",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 1
+      },
+      "stats": {
+        "sample_size": 190,
+        "hit_rate": "85.8%",
+        "recovery_rate": "114%",
+        "profit": 2660
+      },
+      "reliability": "very_high",
+      "notes": "大サンプル、高的中率"
+    },
+    {
+      "id": "MY17-P004",
+      "name": "5号艇1着+6号艇含む(複勝)",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 5,
+        "includes_boat": 6
+      },
+      "stats": {
+        "sample_size": 18,
+        "hit_rate": "55.6%",
+        "recovery_rate": "105%",
+        "profit": 90
+      },
+      "reliability": "medium",
+      "notes": "要検証、高的中率"
+    },
+    {
+      "id": "MY17-P005",
+      "name": "6号艇1着+1号艇含む(複勝)",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 6,
+        "includes_boat": 1
+      },
+      "stats": {
+        "sample_size": 16,
+        "hit_rate": "62.5%",
+        "recovery_rate": "104%",
+        "profit": 64
+      },
+      "reliability": "medium",
+      "notes": "要検証、高的中率"
+    },
+    {
+      "id": "MY17-P006",
+      "name": "3号艇1着(複勝)",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 3
+      },
+      "stats": {
+        "sample_size": 73,
+        "hit_rate": "74.0%",
+        "recovery_rate": "101%",
+        "profit": 73
+      },
+      "reliability": "very_high",
+      "notes": "大サンプル、高的中率"
+    },
+    {
+      "id": "MY17-P007",
+      "name": "3号艇1着×conf80+(複勝)",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 3,
+        "confidence": {
+          "min": 80
+        }
+      },
+      "stats": {
+        "sample_size": 61,
+        "hit_rate": "72.1%",
+        "recovery_rate": "100%",
+        "profit": 0
+      },
+      "reliability": "very_high",
+      "notes": "大サンプル、高的中率"
+    }
+  ],
+  "trio_rules": [
+    {
+      "id": "MY17-T001",
+      "name": "1,5,6号艇",
+      "bet_type": "trio",
+      "conditions": {
+        "prediction_sorted": "1-5-6"
+      },
+      "stats": {
+        "sample_size": 21,
+        "hit_rate": "23.8%",
+        "recovery_rate": "1710%",
+        "profit": 33810
+      },
+      "reliability": "medium",
+      "notes": "高回収率、サンプルやや少なめ"
+    },
+    {
+      "id": "MY17-T002",
+      "name": "1,2,6号艇",
+      "bet_type": "trio",
+      "conditions": {
+        "prediction_sorted": "1-2-6"
+      },
+      "stats": {
+        "sample_size": 30,
+        "hit_rate": "26.7%",
+        "recovery_rate": "1129%",
+        "profit": 30870
+      },
+      "reliability": "high",
+      "notes": "高回収率、サンプル十分"
+    },
+    {
+      "id": "MY17-T003",
+      "name": "1,6号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          1,
+          6
+        ]
+      },
+      "stats": {
+        "sample_size": 101,
+        "hit_rate": "19.8%",
+        "recovery_rate": "780%",
+        "profit": 68680
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "MY17-T004",
+      "name": "5,6号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          5,
+          6
+        ]
+      },
+      "stats": {
+        "sample_size": 55,
+        "hit_rate": "12.7%",
+        "recovery_rate": "779%",
+        "profit": 37345
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "MY17-T005",
+      "name": "4,5,6号艇",
+      "bet_type": "trio",
+      "conditions": {
+        "prediction_sorted": "4-5-6"
+      },
+      "stats": {
+        "sample_size": 10,
+        "hit_rate": "20.0%",
+        "recovery_rate": "697%",
+        "profit": 5970
+      },
+      "reliability": "low",
+      "notes": "高回収率、要検証"
+    },
+    {
+      "id": "MY17-T006",
+      "name": "1,2,5号艇",
+      "bet_type": "trio",
+      "conditions": {
+        "prediction_sorted": "1-2-5"
+      },
+      "stats": {
+        "sample_size": 39,
+        "hit_rate": "28.2%",
+        "recovery_rate": "652%",
+        "profit": 21528
+      },
+      "reliability": "high",
+      "notes": "高回収率、サンプル十分"
+    },
+    {
+      "id": "MY17-T007",
+      "name": "1,5号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          1,
+          5
+        ]
+      },
+      "stats": {
+        "sample_size": 116,
+        "hit_rate": "17.2%",
+        "recovery_rate": "576%",
+        "profit": 55216
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "MY17-T008",
+      "name": "1,2号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          1,
+          2
+        ]
+      },
+      "stats": {
+        "sample_size": 184,
+        "hit_rate": "25.0%",
+        "recovery_rate": "575%",
+        "profit": 87400
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "MY17-T009",
+      "name": "2,6号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          2,
+          6
+        ]
+      },
+      "stats": {
+        "sample_size": 60,
+        "hit_rate": "13.3%",
+        "recovery_rate": "564%",
+        "profit": 27840
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "MY17-T010",
+      "name": "1,2,3号艇",
+      "bet_type": "trio",
+      "conditions": {
+        "prediction_sorted": "1-2-3"
+      },
+      "stats": {
+        "sample_size": 68,
+        "hit_rate": "23.5%",
+        "recovery_rate": "484%",
+        "profit": 26112
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "MY17-T011",
+      "name": "1号艇含む×conf80+",
+      "bet_type": "trio",
+      "conditions": {
+        "confidence": {
+          "min": 80
+        },
+        "includes_boat_1": true
+      },
+      "stats": {
+        "sample_size": 292,
+        "hit_rate": "20.2%",
+        "recovery_rate": "461%",
+        "profit": 105412
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "MY17-T012",
+      "name": "2,5号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          2,
+          5
+        ]
+      },
+      "stats": {
+        "sample_size": 73,
+        "hit_rate": "17.8%",
+        "recovery_rate": "403%",
+        "profit": 22119
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "MY17-T013",
+      "name": "2,3号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          2,
+          3
+        ]
+      },
+      "stats": {
+        "sample_size": 103,
+        "hit_rate": "18.4%",
+        "recovery_rate": "367%",
+        "profit": 27501
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "MY17-T014",
+      "name": "1,2,4号艇",
+      "bet_type": "trio",
+      "conditions": {
+        "prediction_sorted": "1-2-4"
+      },
+      "stats": {
+        "sample_size": 47,
+        "hit_rate": "23.4%",
+        "recovery_rate": "289%",
+        "profit": 8883
+      },
+      "reliability": "high",
+      "notes": "高回収率、サンプル十分"
+    },
+    {
+      "id": "MY17-T015",
+      "name": "2,3,5号艇",
+      "bet_type": "trio",
+      "conditions": {
+        "prediction_sorted": "2-3-5"
+      },
+      "stats": {
+        "sample_size": 14,
+        "hit_rate": "14.3%",
+        "recovery_rate": "285%",
+        "profit": 2590
+      },
+      "reliability": "low",
+      "notes": "高回収率、要検証"
+    },
+    {
+      "id": "MY17-T016",
+      "name": "1,3号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          1,
+          3
+        ]
+      },
+      "stats": {
+        "sample_size": 172,
+        "hit_rate": "18.6%",
+        "recovery_rate": "283%",
+        "profit": 31476
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "MY17-T017",
+      "name": "1,3,6号艇",
+      "bet_type": "trio",
+      "conditions": {
+        "prediction_sorted": "1-3-6"
+      },
+      "stats": {
+        "sample_size": 29,
+        "hit_rate": "20.7%",
+        "recovery_rate": "279%",
+        "profit": 5191
+      },
+      "reliability": "medium",
+      "notes": "高回収率、サンプルやや少なめ"
+    },
+    {
+      "id": "MY17-T018",
+      "name": "後半R×1号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "race_number": {
+          "min": 10,
+          "max": 12
+        },
+        "includes_boat_1": true
+      },
+      "stats": {
+        "sample_size": 88,
+        "hit_rate": "14.8%",
+        "recovery_rate": "257%",
+        "profit": 13816
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "MY17-T019",
+      "name": "後半R(10R〜)",
+      "bet_type": "trio",
+      "conditions": {
+        "race_number": {
+          "min": 10,
+          "max": 12
+        }
+      },
+      "stats": {
+        "sample_size": 113,
+        "hit_rate": "11.5%",
+        "recovery_rate": "200%",
+        "profit": 11300
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "MY17-T020",
+      "name": "4,5号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          4,
+          5
+        ]
+      },
+      "stats": {
+        "sample_size": 46,
+        "hit_rate": "6.5%",
+        "recovery_rate": "186%",
+        "profit": 3956
+      },
+      "reliability": "high",
+      "notes": "好回収率、サンプル十分"
+    },
+    {
+      "id": "MY17-T021",
+      "name": "2,4号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          2,
+          4
+        ]
+      },
+      "stats": {
+        "sample_size": 82,
+        "hit_rate": "14.6%",
+        "recovery_rate": "176%",
+        "profit": 6232
+      },
+      "reliability": "very_high",
+      "notes": "好回収率、大サンプル"
+    },
+    {
+      "id": "MY17-T022",
+      "name": "1,4号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          1,
+          4
+        ]
+      },
+      "stats": {
+        "sample_size": 121,
+        "hit_rate": "16.5%",
+        "recovery_rate": "164%",
+        "profit": 7744
+      },
+      "reliability": "very_high",
+      "notes": "好回収率、大サンプル"
+    },
+    {
+      "id": "MY17-T023",
+      "name": "4,6号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          4,
+          6
+        ]
+      },
+      "stats": {
+        "sample_size": 58,
+        "hit_rate": "5.2%",
+        "recovery_rate": "137%",
+        "profit": 2146
+      },
+      "reliability": "very_high",
+      "notes": "大サンプル"
+    },
+    {
+      "id": "MY17-T024",
+      "name": "3,6号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          3,
+          6
+        ]
+      },
+      "stats": {
+        "sample_size": 62,
+        "hit_rate": "9.7%",
+        "recovery_rate": "130%",
+        "profit": 1860
+      },
+      "reliability": "very_high",
+      "notes": "大サンプル"
+    },
+    {
+      "id": "MY17-T025",
+      "name": "3,5号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          3,
+          5
+        ]
+      },
+      "stats": {
+        "sample_size": 76,
+        "hit_rate": "6.6%",
+        "recovery_rate": "104%",
+        "profit": 304
+      },
+      "reliability": "very_high",
+      "notes": "大サンプル"
+    },
+    {
+      "id": "MY17-T026",
+      "name": "1,3,4号艇",
+      "bet_type": "trio",
+      "conditions": {
+        "prediction_sorted": "1-3-4"
+      },
+      "stats": {
+        "sample_size": 36,
+        "hit_rate": "19.4%",
+        "recovery_rate": "103%",
+        "profit": 108
+      },
+      "reliability": "high",
+      "notes": "サンプル十分"
+    },
+    {
+      "id": "MY17-T027",
+      "name": "1号艇含まない",
+      "bet_type": "trio",
+      "conditions": {
+        "excludes_boat_1": true
+      },
+      "stats": {
+        "sample_size": 115,
+        "hit_rate": "4.3%",
+        "recovery_rate": "103%",
+        "profit": 345
+      },
+      "reliability": "very_high",
+      "notes": "大サンプル"
+    }
+  ]
+}

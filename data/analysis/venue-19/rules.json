@@ -1,174 +1,985 @@
 {
-  "venue_code": 19,
+  "venue_code": "19",
   "venue_name": "下関",
   "analysis_date": "2026-01-16",
-  "analysis_type": "detailed",
-  "status": "active",
-  "sample_size": 480,
+  "status": "draft",
+  "sample_size": 384,
+  "period": {
+    "start": "2025-12-07",
+    "end": "2026-01-13"
+  },
   "win_rules": [
     {
-      "id": "S19-W001",
-      "name": "3号艇1着+2号艇含む",
-      "bet_type": "win",
-      "conditions": {
-        "top_pick": 3,
-        "includes_boat_2": true
-      },
-      "stats": {
-        "sample_size": 20,
-        "hits": 5,
-        "hit_rate": "25.0%",
-        "recovery_rate": "217%"
-      },
-      "reliability": "very_high"
-    },
-    {
-      "id": "S19-W002",
-      "name": "5号艇1着+3号艇含む",
-      "bet_type": "win",
-      "conditions": {
-        "top_pick": 5,
-        "includes_boat_3": true
-      },
-      "stats": {
-        "sample_size": 15,
-        "hits": 3,
-        "hit_rate": "20.0%",
-        "recovery_rate": "207%"
-      },
-      "reliability": "very_high"
-    },
-    {
-      "id": "S19-W003",
+      "id": "SK19-W001",
       "name": "5号艇1着+2号艇含む",
       "bet_type": "win",
       "conditions": {
         "top_pick": 5,
-        "includes_boat_2": true
+        "includes_boat": 2
       },
       "stats": {
-        "sample_size": 18,
-        "hits": 3,
-        "hit_rate": "16.7%",
-        "recovery_rate": "178%"
+        "sample_size": 10,
+        "hit_rate": "30.0%",
+        "recovery_rate": "320%",
+        "profit": 2200
       },
-      "reliability": "very_high"
+      "reliability": "low",
+      "notes": "高回収率、要検証"
     },
     {
-      "id": "S19-W004",
+      "id": "SK19-W002",
+      "name": "3号艇1着+2号艇含む",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 3,
+        "includes_boat": 2
+      },
+      "stats": {
+        "sample_size": 17,
+        "hit_rate": "29.4%",
+        "recovery_rate": "255%",
+        "profit": 2635
+      },
+      "reliability": "medium",
+      "notes": "高回収率、要検証"
+    },
+    {
+      "id": "SK19-W003",
       "name": "2号艇1着+3号艇含む",
       "bet_type": "win",
       "conditions": {
         "top_pick": 2,
-        "includes_boat_3": true
+        "includes_boat": 3
       },
       "stats": {
-        "sample_size": 22,
-        "hits": 9,
-        "hit_rate": "40.9%",
-        "recovery_rate": "166%"
+        "sample_size": 17,
+        "hit_rate": "47.1%",
+        "recovery_rate": "202%",
+        "profit": 1734
       },
-      "reliability": "high"
+      "reliability": "medium",
+      "notes": "高回収率、要検証"
+    },
+    {
+      "id": "SK19-W004",
+      "name": "3号艇1着+5号艇含む",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 3,
+        "includes_boat": 5
+      },
+      "stats": {
+        "sample_size": 15,
+        "hit_rate": "20.0%",
+        "recovery_rate": "166%",
+        "profit": 990
+      },
+      "reliability": "medium",
+      "notes": "好回収率、要検証"
+    },
+    {
+      "id": "SK19-W005",
+      "name": "3号艇1着+1号艇含む",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 3,
+        "includes_boat": 1
+      },
+      "stats": {
+        "sample_size": 27,
+        "hit_rate": "29.6%",
+        "recovery_rate": "148%",
+        "profit": 1296
+      },
+      "reliability": "medium",
+      "notes": "サンプルやや少なめ"
+    },
+    {
+      "id": "SK19-W006",
+      "name": "5号艇1着",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 5
+      },
+      "stats": {
+        "sample_size": 29,
+        "hit_rate": "17.2%",
+        "recovery_rate": "144%",
+        "profit": 1276
+      },
+      "reliability": "medium",
+      "notes": "サンプルやや少なめ"
+    },
+    {
+      "id": "SK19-W007",
+      "name": "2号艇1着+1号艇含む",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 2,
+        "includes_boat": 1
+      },
+      "stats": {
+        "sample_size": 28,
+        "hit_rate": "39.3%",
+        "recovery_rate": "144%",
+        "profit": 1232
+      },
+      "reliability": "medium",
+      "notes": "サンプルやや少なめ"
+    },
+    {
+      "id": "SK19-W008",
+      "name": "5号艇1着×conf80+",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 5,
+        "confidence": {
+          "min": 80
+        }
+      },
+      "stats": {
+        "sample_size": 23,
+        "hit_rate": "17.4%",
+        "recovery_rate": "140%",
+        "profit": 920
+      },
+      "reliability": "medium",
+      "notes": "サンプルやや少なめ"
+    },
+    {
+      "id": "SK19-W009",
+      "name": "3号艇1着",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 3
+      },
+      "stats": {
+        "sample_size": 45,
+        "hit_rate": "22.2%",
+        "recovery_rate": "132%",
+        "profit": 1440
+      },
+      "reliability": "high",
+      "notes": "サンプル十分"
+    },
+    {
+      "id": "SK19-W010",
+      "name": "2号艇1着×conf80+",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 2,
+        "confidence": {
+          "min": 80
+        }
+      },
+      "stats": {
+        "sample_size": 43,
+        "hit_rate": "30.2%",
+        "recovery_rate": "120%",
+        "profit": 860
+      },
+      "reliability": "high",
+      "notes": "サンプル十分"
+    },
+    {
+      "id": "SK19-W011",
+      "name": "2号艇1着",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 2
+      },
+      "stats": {
+        "sample_size": 53,
+        "hit_rate": "30.2%",
+        "recovery_rate": "113%",
+        "profit": 689
+      },
+      "reliability": "very_high",
+      "notes": "大サンプル"
+    },
+    {
+      "id": "SK19-W012",
+      "name": "後半R(10R〜)単勝",
+      "bet_type": "win",
+      "conditions": {
+        "race_number": {
+          "min": 10,
+          "max": 12
+        }
+      },
+      "stats": {
+        "sample_size": 103,
+        "hit_rate": "49.5%",
+        "recovery_rate": "109%",
+        "profit": 927
+      },
+      "reliability": "very_high",
+      "notes": "大サンプル"
+    },
+    {
+      "id": "SK19-W013",
+      "name": "1号艇1着+4号艇含む",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 1,
+        "includes_boat": 4
+      },
+      "stats": {
+        "sample_size": 75,
+        "hit_rate": "72.0%",
+        "recovery_rate": "101%",
+        "profit": 75
+      },
+      "reliability": "very_high",
+      "notes": "大サンプル、高的中率"
+    },
+    {
+      "id": "SK19-W014",
+      "name": "3号艇1着×conf80+",
+      "bet_type": "win",
+      "conditions": {
+        "top_pick": 3,
+        "confidence": {
+          "min": 80
+        }
+      },
+      "stats": {
+        "sample_size": 32,
+        "hit_rate": "15.6%",
+        "recovery_rate": "100%",
+        "profit": 0
+      },
+      "reliability": "high",
+      "notes": "サンプル十分"
     }
   ],
   "place_rules": [
     {
-      "id": "S19-P001",
-      "name": "4号艇1着+5号艇含む",
+      "id": "SK19-P001",
+      "name": "4号艇1着+6号艇含む(複勝)",
       "bet_type": "place",
       "conditions": {
         "top_pick": 4,
-        "includes_boat_5": true
+        "includes_boat": 6
       },
       "stats": {
-        "sample_size": 11,
-        "hits": 6,
-        "hit_rate": "54.5%",
-        "recovery_rate": "215%"
+        "sample_size": 12,
+        "hit_rate": "50.0%",
+        "recovery_rate": "138%",
+        "profit": 456
       },
-      "reliability": "very_high"
+      "reliability": "low",
+      "notes": "要検証、高的中率"
     },
     {
-      "id": "S19-P002",
-      "name": "2号艇1着+5号艇含む",
+      "id": "SK19-P002",
+      "name": "2号艇1着×conf80+(複勝)",
       "bet_type": "place",
       "conditions": {
         "top_pick": 2,
-        "includes_boat_5": true
+        "confidence": {
+          "min": 80
+        }
       },
       "stats": {
-        "sample_size": 16,
-        "hits": 5,
-        "hit_rate": "31.3%",
-        "recovery_rate": "168%"
+        "sample_size": 43,
+        "hit_rate": "62.8%",
+        "recovery_rate": "128%",
+        "profit": 1204
       },
-      "reliability": "very_high"
+      "reliability": "high",
+      "notes": "サンプル十分、高的中率"
     },
     {
-      "id": "S19-P003",
-      "name": "4号艇1着+6号艇含む",
+      "id": "SK19-P003",
+      "name": "6号艇1着+1号艇含む(複勝)",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 6,
+        "includes_boat": 1
+      },
+      "stats": {
+        "sample_size": 17,
+        "hit_rate": "47.1%",
+        "recovery_rate": "124%",
+        "profit": 408
+      },
+      "reliability": "medium",
+      "notes": "要検証"
+    },
+    {
+      "id": "SK19-P004",
+      "name": "2号艇1着(複勝)",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 2
+      },
+      "stats": {
+        "sample_size": 53,
+        "hit_rate": "60.4%",
+        "recovery_rate": "119%",
+        "profit": 1007
+      },
+      "reliability": "very_high",
+      "notes": "大サンプル、高的中率"
+    },
+    {
+      "id": "SK19-P005",
+      "name": "3号艇1着+1号艇含む(複勝)",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 3,
+        "includes_boat": 1
+      },
+      "stats": {
+        "sample_size": 27,
+        "hit_rate": "74.1%",
+        "recovery_rate": "115%",
+        "profit": 405
+      },
+      "reliability": "medium",
+      "notes": "サンプルやや少なめ、高的中率"
+    },
+    {
+      "id": "SK19-P006",
+      "name": "4号艇1着+1号艇含む(複勝)",
       "bet_type": "place",
       "conditions": {
         "top_pick": 4,
-        "includes_boat_6": true
+        "includes_boat": 1
       },
       "stats": {
-        "sample_size": 14,
-        "hits": 6,
-        "hit_rate": "42.9%",
-        "recovery_rate": "151%"
+        "sample_size": 15,
+        "hit_rate": "73.3%",
+        "recovery_rate": "108%",
+        "profit": 120
       },
-      "reliability": "high"
+      "reliability": "medium",
+      "notes": "要検証、高的中率"
     },
     {
-      "id": "S19-P004",
-      "name": "2号艇1着×信頼度80以上",
+      "id": "SK19-P007",
+      "name": "1号艇1着(複勝)",
       "bet_type": "place",
       "conditions": {
-        "top_pick": 2,
-        "confidence": { "min": 80 }
+        "top_pick": 1
       },
       "stats": {
-        "sample_size": 47,
-        "hits": 24,
-        "hit_rate": "51.1%",
-        "recovery_rate": "126%"
+        "sample_size": 187,
+        "hit_rate": "87.7%",
+        "recovery_rate": "105%",
+        "profit": 935
       },
-      "reliability": "high"
+      "reliability": "very_high",
+      "notes": "大サンプル、高的中率"
+    },
+    {
+      "id": "SK19-P008",
+      "name": "4号艇1着(複勝)",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 4
+      },
+      "stats": {
+        "sample_size": 33,
+        "hit_rate": "60.6%",
+        "recovery_rate": "105%",
+        "profit": 165
+      },
+      "reliability": "high",
+      "notes": "サンプル十分、高的中率"
+    },
+    {
+      "id": "SK19-P009",
+      "name": "4号艇1着×conf80+(複勝)",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 4,
+        "confidence": {
+          "min": 80
+        }
+      },
+      "stats": {
+        "sample_size": 28,
+        "hit_rate": "60.7%",
+        "recovery_rate": "104%",
+        "profit": 112
+      },
+      "reliability": "medium",
+      "notes": "サンプルやや少なめ、高的中率"
+    },
+    {
+      "id": "SK19-P010",
+      "name": "6号艇1着+4号艇含む(複勝)",
+      "bet_type": "place",
+      "conditions": {
+        "top_pick": 6,
+        "includes_boat": 4
+      },
+      "stats": {
+        "sample_size": 15,
+        "hit_rate": "40.0%",
+        "recovery_rate": "101%",
+        "profit": 15
+      },
+      "reliability": "medium",
+      "notes": "要検証"
     }
   ],
   "trio_rules": [
     {
-      "id": "S19-T001",
-      "name": "3,5号艇含む",
+      "id": "SK19-T001",
+      "name": "1,5,6号艇",
       "bet_type": "trio",
       "conditions": {
-        "includes_boat_3": true,
-        "includes_boat_5": true
+        "prediction_sorted": "1-5-6"
       },
       "stats": {
-        "sample_size": 57,
-        "hits": 4,
-        "hit_rate": "7.0%",
-        "recovery_rate": "122%"
+        "sample_size": 20,
+        "hit_rate": "30.0%",
+        "recovery_rate": "1734%",
+        "profit": 32680
       },
-      "reliability": "high"
+      "reliability": "medium",
+      "notes": "高回収率、サンプルやや少なめ"
     },
     {
-      "id": "S19-T002",
-      "name": "2,3号艇含む",
+      "id": "SK19-T002",
+      "name": "1,4,5号艇",
       "bet_type": "trio",
       "conditions": {
-        "includes_boat_2": true,
-        "includes_boat_3": true
+        "prediction_sorted": "1-4-5"
+      },
+      "stats": {
+        "sample_size": 18,
+        "hit_rate": "38.9%",
+        "recovery_rate": "1309%",
+        "profit": 21762
+      },
+      "reliability": "medium",
+      "notes": "高回収率、要検証"
+    },
+    {
+      "id": "SK19-T003",
+      "name": "5,6号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          5,
+          6
+        ]
+      },
+      "stats": {
+        "sample_size": 39,
+        "hit_rate": "17.9%",
+        "recovery_rate": "1007%",
+        "profit": 35373
+      },
+      "reliability": "high",
+      "notes": "高回収率、サンプル十分"
+    },
+    {
+      "id": "SK19-T004",
+      "name": "1,5号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          1,
+          5
+        ]
+      },
+      "stats": {
+        "sample_size": 77,
+        "hit_rate": "26.0%",
+        "recovery_rate": "909%",
+        "profit": 62293
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "SK19-T005",
+      "name": "1,2,3号艇",
+      "bet_type": "trio",
+      "conditions": {
+        "prediction_sorted": "1-2-3"
+      },
+      "stats": {
+        "sample_size": 64,
+        "hit_rate": "43.8%",
+        "recovery_rate": "709%",
+        "profit": 38976
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "SK19-T006",
+      "name": "1,6号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          1,
+          6
+        ]
+      },
+      "stats": {
+        "sample_size": 89,
+        "hit_rate": "19.1%",
+        "recovery_rate": "654%",
+        "profit": 49306
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "SK19-T007",
+      "name": "1,2,4号艇",
+      "bet_type": "trio",
+      "conditions": {
+        "prediction_sorted": "1-2-4"
+      },
+      "stats": {
+        "sample_size": 52,
+        "hit_rate": "30.8%",
+        "recovery_rate": "651%",
+        "profit": 28652
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "SK19-T008",
+      "name": "1,2号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          1,
+          2
+        ]
+      },
+      "stats": {
+        "sample_size": 161,
+        "hit_rate": "32.3%",
+        "recovery_rate": "593%",
+        "profit": 79373
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "SK19-T009",
+      "name": "1,4号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          1,
+          4
+        ]
       },
       "stats": {
         "sample_size": 117,
-        "hits": 15,
-        "hit_rate": "12.8%",
-        "recovery_rate": "107%"
+        "hit_rate": "27.4%",
+        "recovery_rate": "579%",
+        "profit": 56043
       },
-      "reliability": "medium"
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "SK19-T010",
+      "name": "1号艇含む×conf80+",
+      "bet_type": "trio",
+      "conditions": {
+        "confidence": {
+          "min": 80
+        },
+        "includes_boat_1": true
+      },
+      "stats": {
+        "sample_size": 249,
+        "hit_rate": "28.1%",
+        "recovery_rate": "572%",
+        "profit": 117528
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "SK19-T011",
+      "name": "4,5号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          4,
+          5
+        ]
+      },
+      "stats": {
+        "sample_size": 43,
+        "hit_rate": "18.6%",
+        "recovery_rate": "567%",
+        "profit": 20081
+      },
+      "reliability": "high",
+      "notes": "高回収率、サンプル十分"
+    },
+    {
+      "id": "SK19-T012",
+      "name": "2,3号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          2,
+          3
+        ]
+      },
+      "stats": {
+        "sample_size": 89,
+        "hit_rate": "32.6%",
+        "recovery_rate": "556%",
+        "profit": 40584
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "SK19-T013",
+      "name": "1,3号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          1,
+          3
+        ]
+      },
+      "stats": {
+        "sample_size": 144,
+        "hit_rate": "29.9%",
+        "recovery_rate": "464%",
+        "profit": 52416
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "SK19-T014",
+      "name": "2,3,5号艇",
+      "bet_type": "trio",
+      "conditions": {
+        "prediction_sorted": "2-3-5"
+      },
+      "stats": {
+        "sample_size": 10,
+        "hit_rate": "10.0%",
+        "recovery_rate": "411%",
+        "profit": 3110
+      },
+      "reliability": "low",
+      "notes": "高回収率、要検証"
+    },
+    {
+      "id": "SK19-T015",
+      "name": "3,6号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          3,
+          6
+        ]
+      },
+      "stats": {
+        "sample_size": 52,
+        "hit_rate": "13.5%",
+        "recovery_rate": "406%",
+        "profit": 15912
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "SK19-T016",
+      "name": "2,4号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          2,
+          4
+        ]
+      },
+      "stats": {
+        "sample_size": 88,
+        "hit_rate": "18.2%",
+        "recovery_rate": "385%",
+        "profit": 25080
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "SK19-T017",
+      "name": "1,2,6号艇",
+      "bet_type": "trio",
+      "conditions": {
+        "prediction_sorted": "1-2-6"
+      },
+      "stats": {
+        "sample_size": 25,
+        "hit_rate": "16.0%",
+        "recovery_rate": "361%",
+        "profit": 6525
+      },
+      "reliability": "medium",
+      "notes": "高回収率、サンプルやや少なめ"
+    },
+    {
+      "id": "SK19-T018",
+      "name": "1,3,6号艇",
+      "bet_type": "trio",
+      "conditions": {
+        "prediction_sorted": "1-3-6"
+      },
+      "stats": {
+        "sample_size": 29,
+        "hit_rate": "17.2%",
+        "recovery_rate": "361%",
+        "profit": 7569
+      },
+      "reliability": "medium",
+      "notes": "高回収率、サンプルやや少なめ"
+    },
+    {
+      "id": "SK19-T019",
+      "name": "1,2,5号艇",
+      "bet_type": "trio",
+      "conditions": {
+        "prediction_sorted": "1-2-5"
+      },
+      "stats": {
+        "sample_size": 20,
+        "hit_rate": "20.0%",
+        "recovery_rate": "358%",
+        "profit": 5160
+      },
+      "reliability": "medium",
+      "notes": "高回収率、サンプルやや少なめ"
+    },
+    {
+      "id": "SK19-T020",
+      "name": "後半R×1号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "race_number": {
+          "min": 10,
+          "max": 12
+        },
+        "includes_boat_1": true
+      },
+      "stats": {
+        "sample_size": 80,
+        "hit_rate": "18.8%",
+        "recovery_rate": "349%",
+        "profit": 19920
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "SK19-T021",
+      "name": "3,5号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          3,
+          5
+        ]
+      },
+      "stats": {
+        "sample_size": 45,
+        "hit_rate": "13.3%",
+        "recovery_rate": "314%",
+        "profit": 9630
+      },
+      "reliability": "high",
+      "notes": "高回収率、サンプル十分"
+    },
+    {
+      "id": "SK19-T022",
+      "name": "後半R(10R〜)",
+      "bet_type": "trio",
+      "conditions": {
+        "race_number": {
+          "min": 10,
+          "max": 12
+        }
+      },
+      "stats": {
+        "sample_size": 103,
+        "hit_rate": "14.6%",
+        "recovery_rate": "271%",
+        "profit": 17613
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "SK19-T023",
+      "name": "1,4,6号艇",
+      "bet_type": "trio",
+      "conditions": {
+        "prediction_sorted": "1-4-6"
+      },
+      "stats": {
+        "sample_size": 15,
+        "hit_rate": "13.3%",
+        "recovery_rate": "268%",
+        "profit": 2520
+      },
+      "reliability": "medium",
+      "notes": "高回収率、要検証"
+    },
+    {
+      "id": "SK19-T024",
+      "name": "2,5号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          2,
+          5
+        ]
+      },
+      "stats": {
+        "sample_size": 46,
+        "hit_rate": "10.9%",
+        "recovery_rate": "245%",
+        "profit": 6670
+      },
+      "reliability": "high",
+      "notes": "高回収率、サンプル十分"
+    },
+    {
+      "id": "SK19-T025",
+      "name": "1,3,5号艇",
+      "bet_type": "trio",
+      "conditions": {
+        "prediction_sorted": "1-3-5"
+      },
+      "stats": {
+        "sample_size": 19,
+        "hit_rate": "15.8%",
+        "recovery_rate": "242%",
+        "profit": 2698
+      },
+      "reliability": "medium",
+      "notes": "高回収率、要検証"
+    },
+    {
+      "id": "SK19-T026",
+      "name": "3,4号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          3,
+          4
+        ]
+      },
+      "stats": {
+        "sample_size": 58,
+        "hit_rate": "15.5%",
+        "recovery_rate": "227%",
+        "profit": 7366
+      },
+      "reliability": "very_high",
+      "notes": "高回収率、大サンプル"
+    },
+    {
+      "id": "SK19-T027",
+      "name": "4,6号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          4,
+          6
+        ]
+      },
+      "stats": {
+        "sample_size": 48,
+        "hit_rate": "6.3%",
+        "recovery_rate": "210%",
+        "profit": 5280
+      },
+      "reliability": "high",
+      "notes": "高回収率、サンプル十分"
+    },
+    {
+      "id": "SK19-T028",
+      "name": "1,3,4号艇",
+      "bet_type": "trio",
+      "conditions": {
+        "prediction_sorted": "1-3-4"
+      },
+      "stats": {
+        "sample_size": 32,
+        "hit_rate": "21.9%",
+        "recovery_rate": "197%",
+        "profit": 3104
+      },
+      "reliability": "high",
+      "notes": "好回収率、サンプル十分"
+    },
+    {
+      "id": "SK19-T029",
+      "name": "1号艇含まない",
+      "bet_type": "trio",
+      "conditions": {
+        "excludes_boat_1": true
+      },
+      "stats": {
+        "sample_size": 90,
+        "hit_rate": "4.4%",
+        "recovery_rate": "173%",
+        "profit": 6570
+      },
+      "reliability": "very_high",
+      "notes": "好回収率、大サンプル"
+    },
+    {
+      "id": "SK19-T030",
+      "name": "2,6号艇含む",
+      "bet_type": "trio",
+      "conditions": {
+        "includes_boats": [
+          2,
+          6
+        ]
+      },
+      "stats": {
+        "sample_size": 56,
+        "hit_rate": "7.1%",
+        "recovery_rate": "161%",
+        "profit": 3416
+      },
+      "reliability": "very_high",
+      "notes": "好回収率、大サンプル"
+    },
+    {
+      "id": "SK19-T031",
+      "name": "1号艇含まない×conf80+",
+      "bet_type": "trio",
+      "conditions": {
+        "confidence": {
+          "min": 80
+        },
+        "excludes_boat_1": true
+      },
+      "stats": {
+        "sample_size": 76,
+        "hit_rate": "3.9%",
+        "recovery_rate": "151%",
+        "profit": 3876
+      },
+      "reliability": "very_high",
+      "notes": "好回収率、大サンプル"
     }
   ]
 }
