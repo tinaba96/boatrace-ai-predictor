@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import './Header.css'
 
@@ -15,6 +15,9 @@ function Header() {
       return hash || 'races'
     }
     // その他のページ
+    if (location.pathname === '/hit-races') return 'hit-races'
+    if (location.pathname === '/accuracy') return 'accuracy'
+    if (location.pathname === '/picks') return 'picks'
     if (location.pathname.startsWith('/races')) return 'past-races'
     if (location.pathname === '/how-to-use') return 'how-to-use'
     if (location.pathname.startsWith('/blog')) return 'blog'
@@ -25,18 +28,6 @@ function Header() {
   }
 
   const activeTab = getActiveTab()
-
-  // メニュー外クリックで閉じる
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (isMenuOpen && !event.target.closest('.menu-container')) {
-        setIsMenuOpen(false)
-      }
-    }
-
-    document.addEventListener('click', handleClickOutside)
-    return () => document.removeEventListener('click', handleClickOutside)
-  }, [isMenuOpen])
 
   // ロゴクリック時の処理
   const handleLogoClick = () => {
@@ -76,61 +67,68 @@ function Header() {
           >
             📊 成績
           </button>
-          <div className="menu-container">
-            <button
-              className="nav-btn menu-btn"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-            >
-              ⋮
-            </button>
-            {isMenuOpen && (
-              <div className="submenu">
-                <Link
-                  to="/races"
-                  className={`submenu-item ${activeTab === 'past-races' ? 'active' : ''}`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  📅 過去の予想
-                </Link>
-                <Link
-                  to="/how-to-use"
-                  className={`submenu-item ${activeTab === 'how-to-use' ? 'active' : ''}`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  📚 使い方
-                </Link>
-                <Link
-                  to="/blog"
-                  className={`submenu-item ${activeTab === 'blog' ? 'active' : ''}`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  📝 ブログ
-                </Link>
-                <Link
-                  to="/faq"
-                  className={`submenu-item ${activeTab === 'faq' ? 'active' : ''}`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  ❓ よくある質問
-                </Link>
-                <Link
-                  to="/about"
-                  className={`submenu-item ${activeTab === 'about' ? 'active' : ''}`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  ℹ️ サービスについて
-                </Link>
-                <Link
-                  to="/profile"
-                  className={`submenu-item ${activeTab === 'profile' ? 'active' : ''}`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  👤 運営者プロフィール
-                </Link>
-              </div>
-            )}
-          </div>
+          <button
+            className={`nav-btn ${activeTab === 'picks' ? 'active' : ''}`}
+            onClick={() => handleTabClick('picks')}
+          >
+            🎯 おすすめ
+          </button>
+          <button
+            className="nav-btn menu-btn"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label="その他のメニュー"
+            aria-expanded={isMenuOpen}
+          >
+            ☰
+          </button>
         </nav>
+        {/* サブメニュー - navの外に配置してoverflowの影響を受けないようにする */}
+        {isMenuOpen && (
+          <div className="submenu">
+            <Link
+              to="/races"
+              className={`submenu-item ${activeTab === 'past-races' ? 'active' : ''}`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              📅 過去の予想
+            </Link>
+            <Link
+              to="/how-to-use"
+              className={`submenu-item ${activeTab === 'how-to-use' ? 'active' : ''}`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              📚 使い方
+            </Link>
+            <Link
+              to="/blog"
+              className={`submenu-item ${activeTab === 'blog' ? 'active' : ''}`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              📝 ブログ
+            </Link>
+            <Link
+              to="/faq"
+              className={`submenu-item ${activeTab === 'faq' ? 'active' : ''}`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              ❓ よくある質問
+            </Link>
+            <Link
+              to="/about"
+              className={`submenu-item ${activeTab === 'about' ? 'active' : ''}`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              ℹ️ サービスについて
+            </Link>
+            <Link
+              to="/profile"
+              className={`submenu-item ${activeTab === 'profile' ? 'active' : ''}`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              👤 運営者プロフィール
+            </Link>
+          </div>
+        )}
       </div>
     </header>
   )

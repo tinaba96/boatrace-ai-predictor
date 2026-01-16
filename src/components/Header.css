@@ -17,6 +17,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  position: relative;
 }
 
 .logo {
@@ -87,23 +88,18 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-/* メニューコンテナ */
-.menu-container {
-  position: relative;
-  display: inline-block;
-}
-
 .menu-btn {
   font-size: 1.5rem;
   padding: 0.5rem 1rem;
   line-height: 1;
 }
 
-/* サブメニュー */
+/* サブメニュー - header-content基準で配置 */
 .submenu {
   position: absolute;
-  top: calc(100% + 0.5rem);
+  top: 100%;
   right: 0;
+  margin-top: 0.5rem;
   background: white;
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);

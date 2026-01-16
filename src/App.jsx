@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import './App.css'
+import Header from './components/Header'
 import AccuracyDashboard from './components/AccuracyDashboard'
 import PrivacyPolicy from './components/PrivacyPolicy'
 import Terms from './components/Terms'
@@ -31,7 +32,6 @@ function App({ tab = 'races' }) {
     const [selectedModel, setSelectedModel] = useState('standard') // 予想モデル選択
     const [volatility, setVolatility] = useState(null) // 荒れ度情報
     const [lastUpdated, setLastUpdated] = useState(null) // データ更新時刻
-    const [isMenuOpen, setIsMenuOpen] = useState(false) // サブメニュー開閉状態
     const [isRefreshing, setIsRefreshing] = useState(false) // 手動更新中フラグ
     const predictionRef = useRef(null)
     const raceCardRefs = useRef({}) // 各レースカードへの参照を保持
@@ -118,26 +118,6 @@ function App({ tab = 'races' }) {
         }
     }, [activeTab])
 
-    // タブ切り替え関数（react-routerでナビゲート）
-    const handleTabChange = (newTab) => {
-        setIsMenuOpen(false) // タブ切り替え時にメニューを閉じる
-        // パスベースのナビゲーション
-        const path = newTab === 'races' ? '/' : `/${newTab}`
-        navigate(path)
-    }
-
-    // メニュー外クリック/タッチで閉じる（オーバーレイ方式）
-    // 外側クリック検出を削除し、明示的なオーバーレイで処理
-
-    // ロゴクリック時の処理
-    const handleLogoClick = () => {
-        // 予想タブに移動
-        handleTabChange('races')
-        // データをリフレッシュ
-        handleRefresh()
-        // ページトップにスクロール
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-    }
 
     // リトライ機能付きfetch関数
     const fetchWithRetry = async (url, maxRetries = 3, retryDelay = 2000) => {
@@ -530,81 +510,7 @@ function App({ tab = 'races' }) {
 
     return (
         <div className="app">
-            <header className="header" role="banner">
-                <div>
-                    <div
-                        className="logo"
-                        onClick={handleLogoClick}
-                        style={{ cursor: 'pointer' }}
-                        role="button"
-                        tabIndex={0}
-                        aria-label="BoatAI ホームに戻る"
-                        onKeyDown={(e) => e.key === 'Enter' && handleLogoClick()}
-                    >
-                        <span className="logo-icon" aria-hidden="true">🚤</span>
-                        <h1>BoatAI</h1>
-                    </div>
-                    <nav className="nav" role="navigation" aria-label="メインナビゲーション">
-                        <button
-                            className={`nav-btn ${activeTab === 'races' ? 'active' : ''}`}
-                            onClick={() => handleTabChange('races')}
-                            aria-current={activeTab === 'races' ? 'page' : undefined}
-                        >
-                            <span aria-hidden="true">🏁</span> 予想
-                        </button>
-                        <button
-                            className={`nav-btn ${activeTab === 'hit-races' ? 'active' : ''}`}
-                            onClick={() => handleTabChange('hit-races')}
-                            aria-current={activeTab === 'hit-races' ? 'page' : undefined}
-                        >
-                            <span aria-hidden="true">✅</span> 的中
-                        </button>
-                        <button
-                            className={`nav-btn ${activeTab === 'accuracy' ? 'active' : ''}`}
-                            onClick={() => handleTabChange('accuracy')}
-                            aria-current={activeTab === 'accuracy' ? 'page' : undefined}
-                        >
-                            <span aria-hidden="true">📊</span> 成績
-                        </button>
-                        <button
-                            className={`nav-btn ${activeTab === 'picks' ? 'active' : ''}`}
-                            onClick={() => handleTabChange('picks')}
-                            aria-current={activeTab === 'picks' ? 'page' : undefined}
-                        >
-                            <span aria-hidden="true">🎯</span> おすすめ
-                        </button>
-                        <button
-                            className="nav-btn menu-toggle-btn"
-                            onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            aria-label="その他のメニュー"
-                            aria-expanded={isMenuOpen}
-                            aria-haspopup="true"
-                        >
-                            <span aria-hidden="true">☰</span>
-                        </button>
-                    </nav>
-                    {/* ドロップダウンメニュー - navの外に配置 */}
-                    {isMenuOpen && (
-                        <div className="mobile-menu-dropdown" role="menu" aria-label="サブメニュー">
-                            <Link to="/races" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)} role="menuitem">
-                                <span aria-hidden="true">📅</span> 過去の予想
-                            </Link>
-                            <Link to="/how-to-use" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)} role="menuitem">
-                                <span aria-hidden="true">📚</span> 使い方
-                            </Link>
-                            <Link to="/blog" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)} role="menuitem">
-                                <span aria-hidden="true">📝</span> ブログ
-                            </Link>
-                            <Link to="/faq" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)} role="menuitem">
-                                <span aria-hidden="true">❓</span> よくある質問
-                            </Link>
-                            <Link to="/about" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)} role="menuitem">
-                                <span aria-hidden="true">ℹ️</span> サービスについて
-                            </Link>
-                        </div>
-                    )}
-                </div>
-            </header>
+            <Header />
 
             <div className="container">
                 <main className="main-content">

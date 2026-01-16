@@ -121,17 +121,22 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
     if (!modelComparison) return null
 
     const getThisMonthDateRange = () => {
-      if (!summary.models || !summary.models.standard?.dailyHistory) return ''
       if (!modelData.thisMonth) return ''
-      const history = summary.models.standard.dailyHistory
-      const thisMonthHistory = history.filter(day => {
-        const { year, month } = parseDateInfo(day.date)
-        return year === modelData.thisMonth.year && month === modelData.thisMonth.month
-      })
-      if (thisMonthHistory.length === 0) return ''
-      const startDate = thisMonthHistory[0].date.substring(5)
-      const endDate = thisMonthHistory[thisMonthHistory.length - 1].date.substring(5)
-      return `${startDate} - ${endDate}`
+      const { year, month } = modelData.thisMonth
+      // 今日の日付を取得（JST）
+      const now = new Date()
+      const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000)
+      const todayYear = jstNow.getUTCFullYear()
+      const todayMonth = jstNow.getUTCMonth() + 1
+      const todayDay = jstNow.getUTCDate()
+
+      // 今月の場合は今日まで、過去の月の場合は月末まで
+      const endDay = (year === todayYear && month === todayMonth)
+        ? todayDay
+        : new Date(year, month, 0).getDate()
+
+      const monthStr = String(month).padStart(2, '0')
+      return `${monthStr}-01 - ${monthStr}-${String(endDay).padStart(2, '0')}`
     }
 
     const dateRange = getThisMonthDateRange()
