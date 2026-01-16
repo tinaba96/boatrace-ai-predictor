@@ -18,9 +18,6 @@ import {
 import { getTodayJST } from '../utils/dateUtils'
 import './TodaysPicks.css'
 
-// 運用開始日（この日以降のデータを集計）
-const OPERATION_START_DATE = '2026-01-15'
-
 function TodaysPicks() {
   const navigate = useNavigate()
   const [selectedVenue, setSelectedVenue] = useState('03') // 江戸川デフォルト
@@ -48,7 +45,7 @@ function TodaysPicks() {
       // 今日のマッチレースと運用成績を並行取得
       const [races, perf] = await Promise.all([
         getTodaysMatchingRaces(today),
-        getRulePerformanceByVenue(selectedVenue, OPERATION_START_DATE)
+        getRulePerformanceByVenue(selectedVenue)
       ])
 
       // 選択会場のレースのみフィルタ
@@ -291,7 +288,7 @@ function TodaysPicks() {
             className="performance-toggle"
             onClick={() => setIsPerformanceOpen(!isPerformanceOpen)}
           >
-            ルール運用成績（{formatStartDate(OPERATION_START_DATE)}〜）
+            ルール運用成績（{formatStartDate(performance.startDate)}〜）
             <span className="toggle-icon">{isPerformanceOpen ? '▲' : '▼'}</span>
           </button>
 

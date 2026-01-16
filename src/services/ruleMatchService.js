@@ -1804,7 +1804,7 @@ export function getAvailableVenues() {
  * @param {string} startDate - 運用開始日（YYYY-MM-DD形式）
  * @returns {Promise<Object>} ルール別成績と全体成績
  */
-export async function getRulePerformanceByVenue(venueCode, startDate) {
+export async function getRulePerformanceByVenue(venueCode, startDate = '2026-01-16') {
   if (!supabase) {
     console.warn('Supabaseが設定されていません')
     return { byRule: [], total: { samples: 0, hits: 0, hitRate: 0, recovery: 0 }, startDate }
@@ -1815,7 +1815,7 @@ export async function getRulePerformanceByVenue(venueCode, startDate) {
     return { byRule: [], total: { samples: 0, hits: 0, hitRate: 0, recovery: 0 }, startDate }
   }
 
-  // startDate以降の予測データを取得
+  // 予測データを取得（startDateはクエリ最適化用、実際のフィルタはルール別addedDateで行う）
   const { data: allPredictions, error: predError } = await supabase
     .from('predictions')
     .select('*')
@@ -1876,9 +1876,13 @@ export async function getRulePerformanceByVenue(venueCode, startDate) {
     }
   })
 
+  // デフォルトの運用開始日（既存ルールはこの日以降から集計）
+  const DEFAULT_ADDED_DATE = '2026-01-16'
+
   for (const pred of predictions) {
     const parts = pred.race_id.split('-')
     const raceNo = parseInt(parts[4])
+    const raceDate = parts.slice(0, 3).join('-') // YYYY-MM-DD
 
     const prediction = {
       confidence: pred.confidence,
@@ -1895,6 +1899,10 @@ export async function getRulePerformanceByVenue(venueCode, startDate) {
 
     for (const rule of rules) {
       try {
+        // ルールの運用開始日より前のデータはスキップ
+        const ruleAddedDate = rule.addedDate || DEFAULT_ADDED_DATE
+        if (raceDate < ruleAddedDate) continue
+
         if (rule.check(prediction, raceNo, conf, predSorted, has1)) {
           // 結果確定分のみカウント
           if (result) {
