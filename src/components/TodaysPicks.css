@@ -456,3 +456,116 @@
     padding: 0.7rem 0.75rem;
   }
 }
+
+/* ====================================
+   スマートフォン向け最適化 (480px以下)
+   ==================================== */
+@media (max-width: 480px) {
+  /* 全体のパディング調整 */
+  .todays-picks {
+    padding: 0.5rem;
+  }
+
+  /* ヘッダー */
+  .picks-header h2 {
+    font-size: 1.1rem;
+  }
+
+  .picks-description {
+    font-size: 0.75rem;
+  }
+
+  /* 会場セレクター - 全幅化 */
+  .venue-selector {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+  }
+
+  .venue-selector label {
+    font-size: 0.85rem;
+  }
+
+  .venue-selector select {
+    width: 100%;
+    min-width: auto;
+    padding: 0.6rem 0.75rem;
+    font-size: 1rem;
+  }
+
+  /* ピックカード */
+  .pick-card {
+    padding: 0.5rem;
+  }
+
+  .pick-card-header {
+    margin-bottom: 0.35rem;
+  }
+
+  /* パターン名・ルールタグの文字サイズ改善 */
+  .pattern-name {
+    font-size: 0.8rem;
+  }
+
+  .rule-tag {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.35rem;
+  }
+
+  /* 統計情報 - 縦並びに変更 */
+  .pick-stats {
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.35rem;
+    align-items: flex-start;
+  }
+
+  .stats-recovery {
+    margin-left: 0;
+  }
+
+  /* 結果表示 */
+  .pick-result {
+    gap: 0.25rem;
+    padding: 0.3rem 0.4rem;
+    font-size: 0.75rem;
+  }
+
+  /* テーブル最適化 */
+  .performance-table {
+    min-width: 340px;
+    font-size: 0.8rem;
+  }
+
+  .performance-table th {
+    padding: 0.5rem 0.25rem;
+    font-size: 0.75rem;
+  }
+
+  .performance-table td {
+    padding: 0.6rem 0.25rem;
+  }
+
+  /* 折りたたみボタン */
+  .performance-toggle {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  /* 合計サマリー */
+  .total-summary {
+    padding: 0.5rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* タッチターゲットの改善 (768px以下) */
+@media (max-width: 768px) {
+  .performance-table tbody tr {
+    min-height: 44px;
+  }
+
+  .performance-table td {
+    padding: 0.75rem 0.4rem;
+  }
+}
