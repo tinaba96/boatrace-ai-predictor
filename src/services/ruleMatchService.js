@@ -1966,6 +1966,149 @@ export async function getRulePerformanceByVenue(venueCode, startDate = '2026-01-
   }
 }
 
+/**
+ * 全会場のルールを横断して、運用成績（回収率）トップN件を取得
+ * @param {number} limit - 取得件数（デフォルト10）
+ * @returns {Promise<Array>} 回収率順のルール一覧
+ */
+export async function getTopPerformingRules(limit = 10) {
+  if (!supabase) {
+    console.warn('Supabaseが設定されていません')
+    return []
+  }
+
+  const DEFAULT_ADDED_DATE = '2026-01-16'
+
+  // 全予測データを取得
+  const { data: allPredictions, error: predError } = await supabase
+    .from('predictions')
+    .select('*')
+    .gte('predicted_at', DEFAULT_ADDED_DATE)
+    .eq('model_id', 'standard')
+
+  if (predError || !allPredictions) {
+    console.error('予測取得エラー:', predError?.message)
+    return []
+  }
+
+  // 全結果データを取得
+  const raceIds = allPredictions.map(p => p.race_id)
+  if (raceIds.length === 0) return []
+
+  const { data: results } = await supabase
+    .from('race_results')
+    .select('*')
+    .in('race_id', raceIds)
+
+  const resultsMap = {}
+  if (results) {
+    results.forEach(r => { resultsMap[r.race_id] = r })
+  }
+
+  // 全会場・全ルールを集計
+  const ruleStats = {}
+
+  for (const [venueCode, rules] of Object.entries(VENUE_RULES)) {
+    const venueName = VENUE_NAMES[venueCode]
+
+    // 該当会場の予測のみフィルタ
+    const venuePredictions = allPredictions.filter(p => {
+      const parts = p.race_id.split('-')
+      return parts[3] === venueCode
+    })
+
+    for (const rule of rules) {
+      const ruleAddedDate = rule.addedDate || DEFAULT_ADDED_DATE
+
+      ruleStats[rule.id] = {
+        ruleId: rule.id,
+        venueName,
+        venueCode,
+        description: rule.description,
+        betType: rule.betType,
+        samples: 0,
+        hits: 0,
+        totalPayout: 0
+      }
+
+      for (const pred of venuePredictions) {
+        const parts = pred.race_id.split('-')
+        const raceNo = parseInt(parts[4])
+        const raceDate = parts.slice(0, 3).join('-')
+
+        // ルールの運用開始日より前のデータはスキップ
+        if (raceDate < ruleAddedDate) continue
+
+        const prediction = {
+          confidence: pred.confidence,
+          topPick: pred.top_pick,
+          top3: [pred.top_pick, pred.top_2nd, pred.top_3rd]
+        }
+
+        const conf = prediction.confidence || 0
+        const top3 = prediction.top3
+        const predSorted = [...top3].sort((a, b) => a - b).join('-')
+        const has1 = top3.includes(1)
+
+        const result = resultsMap[pred.race_id]
+
+        try {
+          if (rule.check(prediction, raceNo, conf, predSorted, has1)) {
+            if (result) {
+              ruleStats[rule.id].samples++
+
+              let isHit = false
+              let payout = 0
+
+              if (rule.betType === 'trio') {
+                const resultSorted = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b).join('-')
+                isHit = predSorted === resultSorted
+                payout = result.payout_trio || 0
+              } else if (rule.betType === 'win') {
+                isHit = prediction.topPick === result.rank1
+                payout = result.payout_win || 0
+              } else if (rule.betType === 'place') {
+                isHit = prediction.topPick === result.rank1 || prediction.topPick === result.rank2
+                payout = prediction.topPick === result.rank1
+                  ? (result.payout_place_1 || 0)
+                  : (result.payout_place_2 || 0)
+              }
+
+              if (isHit) {
+                ruleStats[rule.id].hits++
+                ruleStats[rule.id].totalPayout += payout
+              }
+            }
+          }
+        } catch (e) {
+          // ルールチェック中のエラーは無視
+        }
+      }
+    }
+  }
+
+  // 回収率を計算してソート
+  return Object.values(ruleStats)
+    .map(stat => ({
+      ruleId: stat.ruleId,
+      venueName: stat.venueName,
+      venueCode: stat.venueCode,
+      description: stat.description,
+      betType: stat.betType,
+      samples: stat.samples,
+      hits: stat.hits,
+      hitRate: stat.samples > 0 ? Math.round((stat.hits / stat.samples) * 100) : 0,
+      recovery: stat.samples > 0 ? Math.round((stat.totalPayout / (stat.samples * 100)) * 100) : 0
+    }))
+    .filter(r => r.samples >= 1) // サンプル1件以上
+    .sort((a, b) => {
+      // 回収率で降順、同じなら的中数で降順
+      if (b.recovery !== a.recovery) return b.recovery - a.recovery
+      return b.hits - a.hits
+    })
+    .slice(0, limit)
+}
+
 export default {
   getMatchingRules,
   getBetTypeName,
@@ -1975,5 +2118,6 @@ export default {
   getVenueName,
   getAvailableVenues,
   getTodaysMatchingRaces,
-  getRulePerformanceByVenue
+  getRulePerformanceByVenue,
+  getTopPerformingRules
 }

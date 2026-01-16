@@ -13,7 +13,8 @@ import {
   getTodaysMatchingRaces,
   getBetTypeName,
   getAvailableVenues,
-  getRulePerformanceByVenue
+  getRulePerformanceByVenue,
+  getTopPerformingRules
 } from '../services/ruleMatchService'
 import { getTodayJST } from '../utils/dateUtils'
 import './TodaysPicks.css'
@@ -27,12 +28,28 @@ function TodaysPicks() {
   const [error, setError] = useState(null)
   const [isPerformanceOpen, setIsPerformanceOpen] = useState(false)
   const [highlightedRule, setHighlightedRule] = useState(null)
+  const [topRules, setTopRules] = useState([])
+  const [isTopRulesOpen, setIsTopRulesOpen] = useState(false)
 
   const availableVenues = getAvailableVenues()
 
   useEffect(() => {
     loadData()
   }, [selectedVenue])
+
+  // 全会場トップ10をマウント時に1回だけ読み込み
+  useEffect(() => {
+    loadTopRules()
+  }, [])
+
+  async function loadTopRules() {
+    try {
+      const rules = await getTopPerformingRules(10)
+      setTopRules(rules)
+    } catch (e) {
+      console.error('トップルール取得エラー:', e)
+    }
+  }
 
   async function loadData() {
     setLoading(true)
@@ -328,6 +345,52 @@ function TodaysPicks() {
                 回収率 <span className={performance.total.recovery >= 100 ? 'positive' : 'negative'}>
                   {performance.total.recovery}%
                 </span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 全会場トップ10ルール（折りたたみ） */}
+      {topRules.length > 0 && (
+        <div className="rule-performance-section top-rules-section">
+          <button
+            className="performance-toggle"
+            onClick={() => setIsTopRulesOpen(!isTopRulesOpen)}
+          >
+            全会場トップ10ルール（実績ベース）
+            <span className="toggle-icon">{isTopRulesOpen ? '▲' : '▼'}</span>
+          </button>
+
+          {isTopRulesOpen && (
+            <div className="performance-content">
+              <div className="performance-table-wrapper">
+                <table className="performance-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>会場</th>
+                      <th>ルールID</th>
+                      <th>賭式</th>
+                      <th>的中率</th>
+                      <th>回収率</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topRules.map((rule, idx) => (
+                      <tr key={rule.ruleId}>
+                        <td className="rank-cell">{idx + 1}</td>
+                        <td>{rule.venueName}</td>
+                        <td className="rule-id-cell">{rule.ruleId}</td>
+                        <td>{getBetTypeName(rule.betType)}</td>
+                        <td>{rule.hitRate}% ({rule.hits}/{rule.samples})</td>
+                        <td className={rule.recovery >= 100 ? 'positive' : 'negative'}>
+                          {rule.recovery}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
