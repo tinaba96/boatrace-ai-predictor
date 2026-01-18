@@ -44,7 +44,7 @@ function TodaysPicks() {
 
   async function loadTopRules() {
     try {
-      const rules = await getTopPerformingRules(30)
+      const rules = await getTopPerformingRules({ minRecovery: 100 })
       setTopRules(rules)
     } catch (e) {
       console.error('トップルール取得エラー:', e)
@@ -351,14 +351,14 @@ function TodaysPicks() {
         </div>
       )}
 
-      {/* 全会場トップ30ルール（折りたたみ） */}
+      {/* 回収率100%超えルール一覧（折りたたみ） */}
       {topRules.length > 0 && (
         <div className="rule-performance-section top-rules-section">
           <button
             className="performance-toggle"
             onClick={() => setIsTopRulesOpen(!isTopRulesOpen)}
           >
-            全会場トップ30ルール（実績ベース）
+            回収率100%超えルール一覧（{topRules.length}件）
             <span className="toggle-icon">{isTopRulesOpen ? '▲' : '▼'}</span>
           </button>
 
