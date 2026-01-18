@@ -2,45 +2,72 @@
  * TodaysPicks - 今日のおすすめレース
  *
  * 会場別ルールにマッチするレースを表示
- * - 会場選択ドロップダウン
- * - レースカード一覧
- * - ルール運用成績表（折りたたみ可能）
+ * - 全会場をアコーディオン形式で表示
+ * - 「全て展開」「全て閉じる」ボタン
+ * - 回収率100%超えルール一覧
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   getTodaysMatchingRaces,
   getBetTypeName,
-  getAvailableVenues,
-  getRulePerformanceByVenue,
-  getTopPerformingRules
+  getTopPerformingRules,
+  getRulePerformanceByVenue
 } from '../services/ruleMatchService'
 import { getTodayJST } from '../utils/dateUtils'
 import './TodaysPicks.css'
 
 function TodaysPicks() {
   const navigate = useNavigate()
-  const [selectedVenue, setSelectedVenue] = useState('03') // 江戸川デフォルト
   const [matchedRaces, setMatchedRaces] = useState([])
-  const [performance, setPerformance] = useState(null)
+  const [expandedVenues, setExpandedVenues] = useState({}) // { '03': true, '10': true, ... }
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [isPerformanceOpen, setIsPerformanceOpen] = useState(false)
-  const [highlightedRule, setHighlightedRule] = useState(null)
   const [topRules, setTopRules] = useState([])
   const [isTopRulesOpen, setIsTopRulesOpen] = useState(false)
+  const [venuePerformances, setVenuePerformances] = useState({}) // { '03': { startDate: '...', byRule: [...], total: {...} }, ... }
 
-  const availableVenues = getAvailableVenues()
-
+  // マウント時にデータ読み込み
   useEffect(() => {
     loadData()
-  }, [selectedVenue])
-
-  // 全会場トップ30をマウント時に1回だけ読み込み
-  useEffect(() => {
     loadTopRules()
   }, [])
+
+  // データ読み込み後、全会場を展開状態に設定
+  useEffect(() => {
+    if (matchedRaces.length > 0) {
+      const venueCodes = [...new Set(matchedRaces.map(r => r.venueCode))]
+      const initialExpanded = {}
+      venueCodes.forEach(code => { initialExpanded[code] = true })
+      setExpandedVenues(initialExpanded)
+    }
+  }, [matchedRaces])
+
+  // データ読み込み後、各会場のパフォーマンスを取得
+  useEffect(() => {
+    if (matchedRaces.length > 0) {
+      loadVenuePerformances()
+    }
+  }, [matchedRaces])
+
+  async function loadVenuePerformances() {
+    const venueCodes = [...new Set(matchedRaces.map(r => r.venueCode))]
+    const performances = {}
+
+    await Promise.all(
+      venueCodes.map(async (code) => {
+        try {
+          const perf = await getRulePerformanceByVenue(code)
+          performances[code] = perf
+        } catch (e) {
+          console.error(`会場${code}のパフォーマンス取得エラー:`, e)
+        }
+      })
+    )
+
+    setVenuePerformances(performances)
+  }
 
   async function loadTopRules() {
     try {
@@ -54,27 +81,54 @@ function TodaysPicks() {
   async function loadData() {
     setLoading(true)
     setError(null)
-    setHighlightedRule(null)
 
     try {
       const today = getTodayJST()
-
-      // 今日のマッチレースと運用成績を並行取得
-      const [races, perf] = await Promise.all([
-        getTodaysMatchingRaces(today),
-        getRulePerformanceByVenue(selectedVenue)
-      ])
-
-      // 選択会場のレースのみフィルタ
-      const filteredRaces = races.filter(r => r.venueCode === selectedVenue)
-      setMatchedRaces(filteredRaces)
-      setPerformance(perf)
+      const races = await getTodaysMatchingRaces(today)
+      // フィルタせず全会場のデータを保存
+      setMatchedRaces(races)
     } catch (e) {
       console.error('データ取得エラー:', e)
       setError('データの取得に失敗しました')
     } finally {
       setLoading(false)
     }
+  }
+
+  // 会場ごとにグループ化
+  const racesByVenue = useMemo(() => {
+    const grouped = {}
+    matchedRaces.forEach(race => {
+      if (!grouped[race.venueCode]) {
+        grouped[race.venueCode] = {
+          venueCode: race.venueCode,
+          venueName: race.venueName,
+          races: []
+        }
+      }
+      grouped[race.venueCode].races.push(race)
+    })
+    return Object.values(grouped)
+  }, [matchedRaces])
+
+  // 会場展開切り替え
+  function toggleVenue(venueCode) {
+    setExpandedVenues(prev => ({
+      ...prev,
+      [venueCode]: !prev[venueCode]
+    }))
+  }
+
+  // 全て展開
+  function expandAll() {
+    const allExpanded = {}
+    racesByVenue.forEach(venue => { allExpanded[venue.venueCode] = true })
+    setExpandedVenues(allExpanded)
+  }
+
+  // 全て閉じる
+  function collapseAll() {
+    setExpandedVenues({})
   }
 
   // 締切時刻をフォーマット（HH:MM形式）
@@ -85,6 +139,12 @@ function TodaysPicks() {
       return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
     }
     return startTime.slice(0, 5)
+  }
+
+  // 開始日をフォーマット（M/D形式）
+  function formatStartDate(dateStr) {
+    const [, month, day] = dateStr.split('-')
+    return `${parseInt(month)}/${parseInt(day)}`
   }
 
   // 予測の組み合わせを表示（ソート済み）
@@ -111,17 +171,6 @@ function TodaysPicks() {
         }
       }
     })
-  }
-
-  // ルール行クリック時の処理
-  function handleRuleClick(ruleId) {
-    setHighlightedRule(highlightedRule === ruleId ? null : ruleId)
-  }
-
-  // 運用開始日をフォーマット
-  function formatStartDate(dateStr) {
-    const [, month, day] = dateStr.split('-')
-    return `${parseInt(month)}/${parseInt(day)}`
   }
 
   // ルールごとの的中判定
@@ -188,27 +237,14 @@ function TodaysPicks() {
     )
   }
 
+  // 総ルール数を計算
+  const totalRules = matchedRaces.reduce((sum, r) => sum + r.rules.length, 0)
+
   return (
     <div className="todays-picks">
       <div className="picks-header">
         <h2>今日のおすすめ</h2>
         <p className="picks-description">データマイニングで発掘した高回収率パターン</p>
-      </div>
-
-      {/* 会場選択 */}
-      <div className="venue-selector">
-        <label htmlFor="venue-select">会場:</label>
-        <select
-          id="venue-select"
-          value={selectedVenue}
-          onChange={(e) => setSelectedVenue(e.target.value)}
-        >
-          {availableVenues.map(venue => (
-            <option key={venue.code} value={venue.code}>
-              {venue.name}
-            </option>
-          ))}
-        </select>
       </div>
 
       {matchedRaces.length === 0 ? (
@@ -219,136 +255,142 @@ function TodaysPicks() {
       ) : (
         <>
           <div className="picks-summary">
-            <span>対象: {matchedRaces.length}レース / {matchedRaces.reduce((sum, r) => sum + r.rules.length, 0)}ルール</span>
+            <span>対象: {racesByVenue.length}会場 / {matchedRaces.length}レース / {totalRules}ルール</span>
           </div>
 
-          <div className="picks-list">
-            {matchedRaces.flatMap((race) =>
-              race.rules.map((rule) => {
-                const isFinished = race.result?.finished
-                const isHighlighted = highlightedRule === rule.id
+          {/* 展開/閉じるボタン */}
+          <div className="accordion-controls">
+            <button onClick={expandAll} className="accordion-btn">全て展開</button>
+            <button onClick={collapseAll} className="accordion-btn">全て閉じる</button>
+          </div>
 
-                // ルールごとの的中判定
-                const hitInfo = getHitInfoForRule(race, rule)
+          {/* 会場ごとのアコーディオン */}
+          <div className="venue-accordion-list">
+            {racesByVenue.map(venue => (
+              <div className="venue-accordion" key={venue.venueCode}>
+                <button
+                  className={`venue-header ${expandedVenues[venue.venueCode] ? 'expanded' : ''}`}
+                  onClick={() => toggleVenue(venue.venueCode)}
+                >
+                  <span className="venue-header-name">{venue.venueName}</span>
+                  <span className="venue-header-count">{venue.races.reduce((sum, r) => sum + r.rules.length, 0)}件</span>
+                  <span className="toggle-icon">{expandedVenues[venue.venueCode] ? '▲' : '▼'}</span>
+                </button>
 
-                return (
-                  <div
-                    key={`${race.raceId}-${rule.id}`}
-                    className={`pick-card ${isFinished ? 'finished' : ''} ${hitInfo?.hit ? 'hit' : ''} ${isHighlighted ? 'highlighted' : ''}`}
-                    data-bet-type={rule.betType}
-                    data-rule-id={rule.id}
-                    onClick={() => handleCardClick(race)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && handleCardClick(race)}
-                  >
-                    <div className="pick-card-header">
-                      <div className="pick-venue-info">
-                        <span className="pick-venue">{race.venueName}</span>
-                        <span className="pick-race-no">{race.raceNo}R</span>
-                      </div>
-                      <span className="pick-time">{formatTime(race.startTime)}</span>
-                    </div>
+                {expandedVenues[venue.venueCode] && (
+                  <div className="venue-races">
+                    {venue.races.flatMap(race =>
+                      race.rules.map(rule => {
+                        const isFinished = race.result?.finished
+                        const hitInfo = getHitInfoForRule(race, rule)
 
-                    <div className="pick-pattern">
-                      <span className="pattern-name">{rule.patternName}</span>
-                      <span className="rule-tag">{rule.id}</span>
-                    </div>
+                        return (
+                          <div
+                            key={`${race.raceId}-${rule.id}`}
+                            className={`pick-card ${isFinished ? 'finished' : ''} ${hitInfo?.hit ? 'hit' : ''}`}
+                            data-bet-type={rule.betType}
+                            data-rule-id={rule.id}
+                            onClick={() => handleCardClick(race)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => e.key === 'Enter' && handleCardClick(race)}
+                          >
+                            <div className="pick-card-header">
+                              <div className="pick-venue-info">
+                                <span className="pick-race-no">{race.raceNo}R</span>
+                              </div>
+                              <span className="pick-time">{formatTime(race.startTime)}</span>
+                            </div>
 
-                    <div className="pick-card-body">
-                      <span className={`pick-bet-type bet-${rule.betType}`}>
-                        {getBetTypeName(rule.betType)}
-                      </span>
-                      <span className="pick-prediction">
-                        {formatPrediction(race.prediction, rule.betType)}
-                      </span>
-                    </div>
+                            <div className="pick-pattern">
+                              <span className="pattern-name">{rule.patternName}</span>
+                              <span className="rule-tag">{rule.id}</span>
+                            </div>
 
-                    <div className="pick-stats">
-                      <span className="stats-label">発掘実績:</span>
-                      <span className="stats-record">
-                        {rule.stats.samples}戦{rule.stats.hits}勝
-                      </span>
-                      <span className="stats-recovery">
-                        回収率 {rule.stats.recovery}%
-                      </span>
-                    </div>
+                            <div className="pick-card-body">
+                              <span className={`pick-bet-type bet-${rule.betType}`}>
+                                {getBetTypeName(rule.betType)}
+                              </span>
+                              <span className="pick-prediction">
+                                {formatPrediction(race.prediction, rule.betType)}
+                              </span>
+                            </div>
 
-                    {isFinished && hitInfo && (
-                      <div className={`pick-result ${hitInfo.hit ? 'hit' : 'miss'}`}>
-                        {hitInfo.hit ? (
-                          <>
-                            <span className="result-icon">&#x2705;</span>
-                            <span className="result-text">的中</span>
-                            <span className="result-payout">+{hitInfo.payout.toLocaleString()}円</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="result-icon">&#x274C;</span>
-                            <span className="result-text">外れ</span>
-                          </>
-                        )}
+                            <div className="pick-stats">
+                              <span className="stats-label">発掘実績:</span>
+                              <span className="stats-record">
+                                {rule.stats.samples}戦{rule.stats.hits}勝
+                              </span>
+                              <span className="stats-recovery">
+                                回収率 {rule.stats.recovery}%
+                              </span>
+                            </div>
+
+                            {isFinished && hitInfo && (
+                              <div className={`pick-result ${hitInfo.hit ? 'hit' : 'miss'}`}>
+                                {hitInfo.hit ? (
+                                  <>
+                                    <span className="result-icon">&#x2705;</span>
+                                    <span className="result-text">的中</span>
+                                    <span className="result-payout">+{hitInfo.payout.toLocaleString()}円</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="result-icon">&#x274C;</span>
+                                    <span className="result-text">外れ</span>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })
+                    )}
+
+                    {/* ルール運用成績表 */}
+                    {venuePerformances[venue.venueCode] && venuePerformances[venue.venueCode].byRule.length > 0 && (
+                      <div className="venue-performance">
+                        <div className="venue-performance-header">
+                          ルール運用成績（{formatStartDate(venuePerformances[venue.venueCode].startDate)}〜）
+                        </div>
+                        <div className="performance-table-wrapper">
+                          <table className="performance-table">
+                            <thead>
+                              <tr>
+                                <th>ルールID</th>
+                                <th>賭式</th>
+                                <th>的中率</th>
+                                <th>回収率</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {venuePerformances[venue.venueCode].byRule.map(rule => (
+                                <tr key={rule.ruleId}>
+                                  <td className="rule-id-cell">{rule.ruleId}</td>
+                                  <td>{getBetTypeName(rule.betType)}</td>
+                                  <td>{rule.hitRate}% ({Math.round(rule.hitRate * rule.samples / 100)}/{rule.samples})</td>
+                                  <td className={rule.recovery >= 100 ? 'positive' : 'negative'}>
+                                    {rule.recovery}%
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="total-summary">
+                          全体: 的中率 {venuePerformances[venue.venueCode].total.hitRate}% |
+                          回収率 <span className={venuePerformances[venue.venueCode].total.recovery >= 100 ? 'positive' : 'negative'}>
+                            {venuePerformances[venue.venueCode].total.recovery}%
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
-                )
-              })
-            )}
+                )}
+              </div>
+            ))}
           </div>
         </>
-      )}
-
-      {/* ルール運用成績（折りたたみ） */}
-      {performance && (
-        <div className="rule-performance-section">
-          <button
-            className="performance-toggle"
-            onClick={() => setIsPerformanceOpen(!isPerformanceOpen)}
-          >
-            ルール運用成績（{formatStartDate(performance.startDate)}〜）
-            <span className="toggle-icon">{isPerformanceOpen ? '▲' : '▼'}</span>
-          </button>
-
-          {isPerformanceOpen && (
-            <div className="performance-content">
-              <div className="performance-table-wrapper">
-                <table className="performance-table">
-                  <thead>
-                    <tr>
-                      <th>ルールID</th>
-                      <th>賭式</th>
-                      <th>的中率</th>
-                      <th>回収率</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {performance.byRule.map(rule => (
-                      <tr
-                        key={rule.ruleId}
-                        onClick={() => handleRuleClick(rule.ruleId)}
-                        className={highlightedRule === rule.ruleId ? 'selected' : ''}
-                      >
-                        <td className="rule-id-cell">{rule.ruleId}</td>
-                        <td>{getBetTypeName(rule.betType)}</td>
-                        <td>{rule.hitRate}% ({Math.round(rule.hitRate * rule.samples / 100)}/{rule.samples})</td>
-                        <td className={rule.recovery >= 100 ? 'positive' : rule.recovery > 0 ? 'negative' : ''}>
-                          {rule.recovery}%
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="total-summary">
-                全体: 的中率 {performance.total.hitRate}% ({Math.round(performance.total.hitRate * performance.total.samples / 100)}/{performance.total.samples}) |
-                回収率 <span className={performance.total.recovery >= 100 ? 'positive' : 'negative'}>
-                  {performance.total.recovery}%
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
       )}
 
       {/* 回収率100%超えルール一覧（折りたたみ） */}

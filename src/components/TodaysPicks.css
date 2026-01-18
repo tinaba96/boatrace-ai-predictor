@@ -22,34 +22,103 @@
   color: #6b7280;
 }
 
-/* 会場選択 */
-.venue-selector {
+/* アコーディオンコントロール */
+.accordion-controls {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.accordion-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.accordion-btn:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+/* 会場アコーディオン */
+.venue-accordion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.venue-accordion {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.venue-header {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
+  border: none;
+  color: white;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 1rem;
-  justify-content: center;
-}
-
-.venue-selector label {
-  font-size: 0.9rem;
-  color: #374151;
-}
-
-.venue-selector select {
-  padding: 0.5rem 1rem;
   font-size: 1rem;
-  border-radius: 8px;
-  border: 1px solid #d1d5db;
-  background: white;
-  cursor: pointer;
-  min-width: 120px;
+  font-weight: 700;
+  transition: all 0.2s;
 }
 
-.venue-selector select:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+.venue-header:hover {
+  opacity: 0.95;
+}
+
+.venue-header.expanded {
+  border-radius: 12px 12px 0 0;
+}
+
+.venue-header-name {
+  flex: 1;
+  text-align: left;
+}
+
+.venue-header-count {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.venue-header .toggle-icon {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.venue-races {
+  background: #f8fafc;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* 会場別ルール運用成績 */
+.venue-performance {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.venue-performance-header {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0.5rem;
 }
 
 .picks-loading,
@@ -104,18 +173,20 @@
 
 /* カード */
 .pick-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #ffffff;
   border-radius: 12px;
   padding: 0.75rem;
-  color: white;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #7c3aed;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   cursor: pointer;
   transition: transform 0.15s, box-shadow 0.15s;
 }
 
 .pick-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .pick-card:active {
@@ -123,15 +194,15 @@
 }
 
 .pick-card[data-bet-type="trio"] {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-left-color: #7c3aed;
 }
 
 .pick-card[data-bet-type="win"] {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  border-left-color: #0284c7;
 }
 
 .pick-card[data-bet-type="place"] {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border-left-color: #db2777;
 }
 
 .pick-card.finished {
@@ -168,12 +239,12 @@
 
 .pick-race-no {
   font-size: 0.85rem;
-  opacity: 0.9;
+  color: #64748b;
 }
 
 .pick-time {
   font-size: 0.85rem;
-  opacity: 0.9;
+  color: #64748b;
 }
 
 /* カードボディ */
@@ -186,10 +257,11 @@
 
 .pick-bet-type {
   padding: 0.2rem 0.5rem;
-  background: rgba(255, 255, 255, 0.25);
+  background: #f1f5f9;
   border-radius: 4px;
   font-size: 0.75rem;
   font-weight: 600;
+  color: #475569;
 }
 
 .pick-prediction {
@@ -205,7 +277,7 @@
 .pattern-name {
   font-family: 'Courier New', monospace;
   font-size: 0.7rem;
-  opacity: 0.85;
+  color: #64748b;
   letter-spacing: 0.5px;
 }
 
@@ -213,7 +285,8 @@
   display: inline-block;
   margin-left: 0.5rem;
   padding: 0.1rem 0.4rem;
-  background: rgba(255, 255, 255, 0.3);
+  background: #e0e7ff;
+  color: #4338ca;
   border-radius: 4px;
   font-size: 0.65rem;
   font-weight: 600;
@@ -226,14 +299,15 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.35rem 0.5rem;
-  background: rgba(255, 255, 255, 0.15);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 4px;
   font-size: 0.75rem;
   margin-bottom: 0.5rem;
 }
 
 .stats-label {
-  opacity: 0.8;
+  color: #64748b;
 }
 
 .stats-record {
@@ -258,11 +332,13 @@
 }
 
 .pick-result.hit {
-  background: rgba(16, 185, 129, 0.3);
+  background: #d1fae5;
+  color: #065f46;
 }
 
 .pick-result.miss {
-  background: rgba(239, 68, 68, 0.3);
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .result-icon {
@@ -475,22 +551,24 @@
     font-size: 0.75rem;
   }
 
-  /* 会場セレクター - 全幅化 */
-  .venue-selector {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.25rem;
+  /* アコーディオン */
+  .accordion-controls {
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
   }
 
-  .venue-selector label {
-    font-size: 0.85rem;
+  .accordion-btn {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
   }
 
-  .venue-selector select {
-    width: 100%;
-    min-width: auto;
+  .venue-header {
     padding: 0.6rem 0.75rem;
-    font-size: 1rem;
+    font-size: 0.9rem;
+  }
+
+  .venue-races {
+    padding: 0.5rem;
   }
 
   /* ピックカード */
