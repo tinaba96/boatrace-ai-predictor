@@ -37,14 +37,14 @@ function TodaysPicks() {
     loadData()
   }, [selectedVenue])
 
-  // 全会場トップ10をマウント時に1回だけ読み込み
+  // 全会場トップ30をマウント時に1回だけ読み込み
   useEffect(() => {
     loadTopRules()
   }, [])
 
   async function loadTopRules() {
     try {
-      const rules = await getTopPerformingRules(10)
+      const rules = await getTopPerformingRules(30)
       setTopRules(rules)
     } catch (e) {
       console.error('トップルール取得エラー:', e)
@@ -351,14 +351,14 @@ function TodaysPicks() {
         </div>
       )}
 
-      {/* 全会場トップ10ルール（折りたたみ） */}
+      {/* 全会場トップ30ルール（折りたたみ） */}
       {topRules.length > 0 && (
         <div className="rule-performance-section top-rules-section">
           <button
             className="performance-toggle"
             onClick={() => setIsTopRulesOpen(!isTopRulesOpen)}
           >
-            全会場トップ10ルール（実績ベース）
+            全会場トップ30ルール（実績ベース）
             <span className="toggle-icon">{isTopRulesOpen ? '▲' : '▼'}</span>
           </button>
 
