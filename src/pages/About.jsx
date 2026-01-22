@@ -210,11 +210,11 @@ export default function About() {
                     </div>
                     <div className="stat-card">
                         <div className="stat-value">85.3%</div>
-                        <div className="stat-label">複勝効率性</div>
+                        <div className="stat-label">複勝回収率</div>
                     </div>
                     <div className="stat-card">
                         <div className="stat-value">134.3%</div>
-                        <div className="stat-label">3連単効率性</div>
+                        <div className="stat-label">3連単回収率</div>
                     </div>
                 </div>
                 <p className="stats-note">

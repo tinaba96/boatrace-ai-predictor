@@ -90,7 +90,7 @@ export default function HowToUse() {
                                 <ul>
                                     <li>外枠の好モーターや展開の妙を重視</li>
                                     <li>荒れるレースで力を発揮</li>
-                                    <li>3連複効率性 333%（高パフォーマンス型）</li>
+                                    <li>3連複回収率 333%（高配当型）</li>
                                 </ul>
                             </div>
                         </div>
@@ -124,8 +124,8 @@ export default function HowToUse() {
                         <h4>💡 予測データの種別について</h4>
                         <ul>
                             <li><strong>複勝</strong>: 予測精度49.5%（2着以内予測）- 初心者向け</li>
-                            <li><strong>3連複</strong>: 正解率12.8%、効率性80.6%（順不同で1-2-3着）- 中級者向け</li>
-                            <li><strong>3連単</strong>: 正解率2.8%、効率性134.3%（着順一致）- 上級者向け</li>
+                            <li><strong>3連複</strong>: 正解率12.8%、回収率80.6%（順不同で1-2-3着）- 中級者向け</li>
+                            <li><strong>3連単</strong>: 正解率2.8%、回収率134.3%（着順一致）- 上級者向け</li>
                         </ul>
                     </div>
                 </>
@@ -173,7 +173,7 @@ export default function HowToUse() {
                         <h4>💡 実績の確認方法</h4>
                         <ul>
                             <li><strong>「正解レース」タブ</strong>: 過去14日間の正解レースを表示</li>
-                            <li><strong>「成績」タブ</strong>: 予測精度・効率性の統計データを表示</li>
+                            <li><strong>「成績」タブ</strong>: 予測精度・回収率の統計データを表示</li>
                             <li>期間別（今日、昨日、全期間）に絞り込み可能</li>
                             <li>モデル別（スタンダード、本命狙い、穴狙い）に切り替え可能</li>
                         </ul>
@@ -182,7 +182,7 @@ export default function HowToUse() {
                         <h4>📊 実績の見方</h4>
                         <ul>
                             <li><strong>予測精度</strong>: どれくらいの確率で正解するか</li>
-                            <li><strong>効率性指標</strong>: 予測のパフォーマンスを示す指標
+                            <li><strong>回収率</strong>: 予測のパフォーマンスを示す指標
                                 <ul>
                                     <li>100%以上: 高パフォーマンス</li>
                                     <li>100%未満: 標準以下</li>
