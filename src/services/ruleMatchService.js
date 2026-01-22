@@ -2110,6 +2110,393 @@ export async function getTopPerformingRules({ limit = null, minRecovery = null }
     .slice(0, limit || Infinity) // limitがnullなら全件
 }
 
+/**
+ * 回収率トップNルールの週別パフォーマンスを取得
+ * @param {number} topN - 上位N件のルールに絞る（デフォルト10）
+ * @returns {Promise<Object>} { rules: [...], weeklyData: [...], currentWeek: number }
+ */
+export async function getTopRulesWeeklyPerformance(topN = 10) {
+  if (!supabase) {
+    console.warn('Supabaseが設定されていません')
+    return { rules: [], weeklyData: [], currentWeek: 1 }
+  }
+
+  const DEFAULT_ADDED_DATE = '2026-01-16'
+
+  // 週の開始日（2026-01-16を週1の開始とする）
+  const WEEK_START = new Date('2026-01-16')
+
+  // 日付を週番号に変換
+  function getWeekNumber(dateStr) {
+    const date = new Date(dateStr)
+    const diffTime = date - WEEK_START
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+    return Math.floor(diffDays / 7) + 1
+  }
+
+  // 週番号をラベルに変換
+  function getWeekLabel(weekNum) {
+    return `Week${weekNum}`
+  }
+
+  // 全予測データを取得
+  const { data: allPredictions, error: predError } = await supabase
+    .from('predictions')
+    .select('*')
+    .gte('predicted_at', DEFAULT_ADDED_DATE)
+    .eq('model_id', 'standard')
+
+  if (predError || !allPredictions) {
+    console.error('予測取得エラー:', predError?.message)
+    return { rules: [], weeklyData: [], currentWeek: 1 }
+  }
+
+  // 全結果データを取得
+  const raceIds = allPredictions.map(p => p.race_id)
+  if (raceIds.length === 0) return { rules: [], weeklyData: [], currentWeek: 1 }
+
+  const { data: results } = await supabase
+    .from('race_results')
+    .select('*')
+    .in('race_id', raceIds)
+
+  const resultsMap = {}
+  if (results) {
+    results.forEach(r => { resultsMap[r.race_id] = r })
+  }
+
+  // 現在の週番号を計算
+  const today = new Date()
+  const currentWeek = getWeekNumber(today.toISOString().slice(0, 10))
+
+  // 週の範囲を決定（Week1から現在週まで）
+  const weeks = []
+  for (let w = 1; w <= currentWeek; w++) {
+    weeks.push(w)
+  }
+
+  // ルールごと・週ごとの統計を集計
+  // { [ruleId]: { [weekNum]: { samples, hits, totalPayout } } }
+  const ruleWeeklyStats = {}
+  const ruleTotalStats = {} // 全期間の集計（トップN抽出用）
+
+  for (const [venueCode, rules] of Object.entries(VENUE_RULES)) {
+    const venueName = VENUE_NAMES[venueCode]
+    const venuePredictions = allPredictions.filter(p => {
+      const parts = p.race_id.split('-')
+      return parts[3] === venueCode
+    })
+
+    for (const rule of rules) {
+      const ruleAddedDate = rule.addedDate || DEFAULT_ADDED_DATE
+
+      ruleWeeklyStats[rule.id] = {}
+      ruleTotalStats[rule.id] = {
+        ruleId: rule.id,
+        venueName,
+        venueCode,
+        betType: rule.betType,
+        samples: 0,
+        hits: 0,
+        totalPayout: 0
+      }
+
+      for (const pred of venuePredictions) {
+        const parts = pred.race_id.split('-')
+        const raceNo = parseInt(parts[4])
+        const raceDate = parts.slice(0, 3).join('-')
+
+        if (raceDate < ruleAddedDate) continue
+
+        const prediction = {
+          confidence: pred.confidence,
+          topPick: pred.top_pick,
+          top3: [pred.top_pick, pred.top_2nd, pred.top_3rd]
+        }
+
+        const conf = prediction.confidence || 0
+        const top3 = prediction.top3
+        const predSorted = [...top3].sort((a, b) => a - b).join('-')
+        const has1 = top3.includes(1)
+        const result = resultsMap[pred.race_id]
+
+        try {
+          if (rule.check(prediction, raceNo, conf, predSorted, has1)) {
+            if (result) {
+              const weekNum = getWeekNumber(raceDate)
+
+              // 週別統計を初期化
+              if (!ruleWeeklyStats[rule.id][weekNum]) {
+                ruleWeeklyStats[rule.id][weekNum] = { samples: 0, hits: 0, totalPayout: 0 }
+              }
+
+              let isHit = false
+              let payout = 0
+
+              if (rule.betType === 'trio') {
+                const resultSorted = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b).join('-')
+                isHit = predSorted === resultSorted
+                payout = result.payout_trio || 0
+              } else if (rule.betType === 'win') {
+                isHit = prediction.topPick === result.rank1
+                payout = result.payout_win || 0
+              } else if (rule.betType === 'place') {
+                isHit = prediction.topPick === result.rank1 || prediction.topPick === result.rank2
+                payout = prediction.topPick === result.rank1
+                  ? (result.payout_place_1 || 0)
+                  : (result.payout_place_2 || 0)
+              }
+
+              // 週別統計を更新
+              ruleWeeklyStats[rule.id][weekNum].samples++
+              if (isHit) {
+                ruleWeeklyStats[rule.id][weekNum].hits++
+                ruleWeeklyStats[rule.id][weekNum].totalPayout += payout
+              }
+
+              // 全期間統計を更新
+              ruleTotalStats[rule.id].samples++
+              if (isHit) {
+                ruleTotalStats[rule.id].hits++
+                ruleTotalStats[rule.id].totalPayout += payout
+              }
+            }
+          }
+        } catch (e) {
+          // ルールチェック中のエラーは無視
+        }
+      }
+    }
+  }
+
+  // 回収率でソートしてトップNを抽出
+  const topRules = Object.values(ruleTotalStats)
+    .map(stat => ({
+      ...stat,
+      recovery: stat.samples > 0 ? Math.round((stat.totalPayout / (stat.samples * 100)) * 100) : 0
+    }))
+    .filter(r => r.samples >= 1 && r.recovery >= 100) // 回収率100%以上
+    .sort((a, b) => b.recovery - a.recovery)
+    .slice(0, topN)
+
+  const topRuleIds = topRules.map(r => r.ruleId)
+
+  // 週別データを生成
+  const weeklyData = weeks.map(weekNum => {
+    const weekData = { week: getWeekLabel(weekNum) }
+    for (const ruleId of topRuleIds) {
+      const weekStats = ruleWeeklyStats[ruleId]?.[weekNum]
+      if (weekStats && weekStats.samples > 0) {
+        weekData[ruleId] = Math.round((weekStats.totalPayout / (weekStats.samples * 100)) * 100)
+      } else {
+        weekData[ruleId] = null // データなし
+      }
+    }
+    return weekData
+  })
+
+  return {
+    rules: topRuleIds,
+    ruleDetails: topRules,
+    weeklyData,
+    currentWeek
+  }
+}
+
+/**
+ * 特定会場のトップルール週別パフォーマンスを取得
+ * @param {string} venueCode - 会場コード
+ * @param {number} topN - 上位何件を取得するか
+ * @returns {Object} { rules, ruleDetails, weeklyData, currentWeek }
+ */
+export async function getVenueTopRulesWeeklyPerformance(venueCode, topN = 10) {
+  if (!supabase) {
+    console.warn('Supabaseが設定されていません')
+    return { rules: [], ruleDetails: [], weeklyData: [], currentWeek: 1 }
+  }
+
+  const DEFAULT_ADDED_DATE = '2026-01-16'
+  const WEEK_START = new Date('2026-01-16')
+
+  function getWeekNumber(dateStr) {
+    const date = new Date(dateStr)
+    const diffTime = date - WEEK_START
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+    return Math.floor(diffDays / 7) + 1
+  }
+
+  function getWeekLabel(weekNum) {
+    return `Week${weekNum}`
+  }
+
+  // 会場のルールを取得
+  const venueRules = VENUE_RULES[venueCode]
+  if (!venueRules || venueRules.length === 0) {
+    return { rules: [], ruleDetails: [], weeklyData: [], currentWeek: 1 }
+  }
+
+  const venueName = VENUE_NAMES[venueCode]
+
+  // 対象会場の予測データを取得
+  const { data: allPredictions, error: predError } = await supabase
+    .from('predictions')
+    .select('*')
+    .gte('predicted_at', DEFAULT_ADDED_DATE)
+    .eq('model_id', 'standard')
+
+  if (predError || !allPredictions) {
+    console.error('予測取得エラー:', predError?.message)
+    return { rules: [], ruleDetails: [], weeklyData: [], currentWeek: 1 }
+  }
+
+  // 会場コードでフィルタリング
+  const venuePredictions = allPredictions.filter(p => {
+    const parts = p.race_id.split('-')
+    return parts[3] === venueCode
+  })
+
+  if (venuePredictions.length === 0) {
+    return { rules: [], ruleDetails: [], weeklyData: [], currentWeek: 1 }
+  }
+
+  // 結果データを取得
+  const raceIds = venuePredictions.map(p => p.race_id)
+  const { data: results } = await supabase
+    .from('race_results')
+    .select('*')
+    .in('race_id', raceIds)
+
+  const resultsMap = {}
+  if (results) {
+    results.forEach(r => { resultsMap[r.race_id] = r })
+  }
+
+  // 現在の週番号を計算
+  const today = new Date()
+  const currentWeek = getWeekNumber(today.toISOString().slice(0, 10))
+
+  // 週の範囲を決定
+  const weeks = []
+  for (let w = 1; w <= currentWeek; w++) {
+    weeks.push(w)
+  }
+
+  // ルールごと・週ごとの統計を集計
+  const ruleWeeklyStats = {}
+  const ruleTotalStats = {}
+
+  for (const rule of venueRules) {
+    const ruleAddedDate = rule.addedDate || DEFAULT_ADDED_DATE
+
+    ruleWeeklyStats[rule.id] = {}
+    ruleTotalStats[rule.id] = {
+      ruleId: rule.id,
+      venueName,
+      venueCode,
+      betType: rule.betType,
+      samples: 0,
+      hits: 0,
+      totalPayout: 0
+    }
+
+    for (const pred of venuePredictions) {
+      const parts = pred.race_id.split('-')
+      const raceNo = parseInt(parts[4])
+      const raceDate = parts.slice(0, 3).join('-')
+
+      if (raceDate < ruleAddedDate) continue
+
+      const prediction = {
+        confidence: pred.confidence,
+        topPick: pred.top_pick,
+        top3: [pred.top_pick, pred.top_2nd, pred.top_3rd]
+      }
+
+      const conf = prediction.confidence || 0
+      const top3 = prediction.top3
+      const predSorted = [...top3].sort((a, b) => a - b).join('-')
+      const has1 = top3.includes(1)
+      const result = resultsMap[pred.race_id]
+
+      try {
+        if (rule.check(prediction, raceNo, conf, predSorted, has1)) {
+          if (result) {
+            const weekNum = getWeekNumber(raceDate)
+
+            if (!ruleWeeklyStats[rule.id][weekNum]) {
+              ruleWeeklyStats[rule.id][weekNum] = { samples: 0, hits: 0, totalPayout: 0 }
+            }
+
+            let isHit = false
+            let payout = 0
+
+            if (rule.betType === 'trio') {
+              const resultSorted = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b).join('-')
+              isHit = predSorted === resultSorted
+              payout = result.payout_trio || 0
+            } else if (rule.betType === 'win') {
+              isHit = prediction.topPick === result.rank1
+              payout = result.payout_win || 0
+            } else if (rule.betType === 'place') {
+              isHit = prediction.topPick === result.rank1 || prediction.topPick === result.rank2
+              payout = prediction.topPick === result.rank1
+                ? (result.payout_place_1 || 0)
+                : (result.payout_place_2 || 0)
+            }
+
+            ruleWeeklyStats[rule.id][weekNum].samples++
+            if (isHit) {
+              ruleWeeklyStats[rule.id][weekNum].hits++
+              ruleWeeklyStats[rule.id][weekNum].totalPayout += payout
+            }
+
+            ruleTotalStats[rule.id].samples++
+            if (isHit) {
+              ruleTotalStats[rule.id].hits++
+              ruleTotalStats[rule.id].totalPayout += payout
+            }
+          }
+        }
+      } catch (e) {
+        // ルールチェック中のエラーは無視
+      }
+    }
+  }
+
+  // 回収率でソートしてトップNを抽出
+  const topRules = Object.values(ruleTotalStats)
+    .map(stat => ({
+      ...stat,
+      recovery: stat.samples > 0 ? Math.round((stat.totalPayout / (stat.samples * 100)) * 100) : 0
+    }))
+    .filter(r => r.samples >= 1)
+    .sort((a, b) => b.recovery - a.recovery)
+    .slice(0, topN)
+
+  const topRuleIds = topRules.map(r => r.ruleId)
+
+  // 週別データを生成
+  const weeklyData = weeks.map(weekNum => {
+    const weekData = { week: getWeekLabel(weekNum) }
+    for (const ruleId of topRuleIds) {
+      const weekStats = ruleWeeklyStats[ruleId]?.[weekNum]
+      if (weekStats && weekStats.samples > 0) {
+        weekData[ruleId] = Math.round((weekStats.totalPayout / (weekStats.samples * 100)) * 100)
+      } else {
+        weekData[ruleId] = null
+      }
+    }
+    return weekData
+  })
+
+  return {
+    rules: topRuleIds,
+    ruleDetails: topRules,
+    weeklyData,
+    currentWeek
+  }
+}
+
 export default {
   getMatchingRules,
   getBetTypeName,
@@ -2120,5 +2507,7 @@ export default {
   getAvailableVenues,
   getTodaysMatchingRaces,
   getRulePerformanceByVenue,
-  getTopPerformingRules
+  getTopPerformingRules,
+  getTopRulesWeeklyPerformance,
+  getVenueTopRulesWeeklyPerformance
 }

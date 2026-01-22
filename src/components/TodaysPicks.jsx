@@ -13,8 +13,11 @@ import {
   getTodaysMatchingRaces,
   getBetTypeName,
   getTopPerformingRules,
-  getRulePerformanceByVenue
+  getRulePerformanceByVenue,
+  getTopRulesWeeklyPerformance,
+  getVenueTopRulesWeeklyPerformance
 } from '../services/ruleMatchService'
+import RuleTrendChart from './RuleTrendChart'
 import { getTodayJST } from '../utils/dateUtils'
 import './TodaysPicks.css'
 
@@ -27,6 +30,7 @@ function TodaysPicks() {
   const [topRules, setTopRules] = useState([])
   const [isTopRulesOpen, setIsTopRulesOpen] = useState(false)
   const [venuePerformances, setVenuePerformances] = useState({}) // { '03': { startDate: '...', byRule: [...], total: {...} }, ... }
+  const [weeklyPerformance, setWeeklyPerformance] = useState(null) // 週別パフォーマンスデータ
 
   // マウント時にデータ読み込み
   useEffect(() => {
@@ -51,6 +55,13 @@ function TodaysPicks() {
     }
   }, [matchedRaces])
 
+  // 回収率100%超えルール一覧を開いたときに週別データを取得
+  useEffect(() => {
+    if (isTopRulesOpen && !weeklyPerformance) {
+      loadWeeklyPerformance()
+    }
+  }, [isTopRulesOpen])
+
   async function loadVenuePerformances() {
     const venueCodes = [...new Set(matchedRaces.map(r => r.venueCode))]
     const performances = {}
@@ -58,8 +69,18 @@ function TodaysPicks() {
     await Promise.all(
       venueCodes.map(async (code) => {
         try {
-          const perf = await getRulePerformanceByVenue(code)
-          performances[code] = perf
+          // ルール別パフォーマンスと週別データを並列取得
+          const [perf, weeklyData] = await Promise.all([
+            getRulePerformanceByVenue(code),
+            getVenueTopRulesWeeklyPerformance(code, 10)
+          ])
+          performances[code] = {
+            ...perf,
+            weeklyData: weeklyData.weeklyData,
+            topRules: weeklyData.rules,
+            ruleDetails: weeklyData.ruleDetails,
+            currentWeek: weeklyData.currentWeek
+          }
         } catch (e) {
           console.error(`会場${code}のパフォーマンス取得エラー:`, e)
         }
@@ -75,6 +96,15 @@ function TodaysPicks() {
       setTopRules(rules)
     } catch (e) {
       console.error('トップルール取得エラー:', e)
+    }
+  }
+
+  async function loadWeeklyPerformance() {
+    try {
+      const data = await getTopRulesWeeklyPerformance(10)
+      setWeeklyPerformance(data)
+    } catch (e) {
+      console.error('週別パフォーマンス取得エラー:', e)
     }
   }
 
@@ -129,6 +159,20 @@ function TodaysPicks() {
   // 全て閉じる
   function collapseAll() {
     setExpandedVenues({})
+  }
+
+  // ルールIDクリック時に該当レースカードへスクロール
+  function scrollToRuleCard(ruleId) {
+    const cards = document.querySelectorAll(`[data-rule-id="${ruleId}"]`)
+    if (cards.length > 0) {
+      // 最初の1件にスクロール
+      cards[0].scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // 全件をハイライト
+      cards.forEach(card => {
+        card.classList.add('highlighted')
+        setTimeout(() => card.classList.remove('highlighted'), 2000)
+      })
+    }
   }
 
   // 締切時刻をフォーマット（HH:MM形式）
@@ -279,6 +323,19 @@ function TodaysPicks() {
 
                 {expandedVenues[venue.venueCode] && (
                   <div className="venue-races">
+                    {/* 会場別週別推移グラフ（アコーディオン直下） */}
+                    {venuePerformances[venue.venueCode]?.weeklyData?.length > 0 && venuePerformances[venue.venueCode]?.topRules?.length > 0 && (
+                      <div className="venue-chart-container">
+                        <h4 className="venue-chart-title">回収率トップ 週別推移</h4>
+                        <RuleTrendChart
+                          weeklyData={venuePerformances[venue.venueCode].weeklyData}
+                          rules={venuePerformances[venue.venueCode].topRules}
+                          ruleDetails={venuePerformances[venue.venueCode].ruleDetails}
+                          currentWeek={venuePerformances[venue.venueCode].currentWeek}
+                        />
+                      </div>
+                    )}
+
                     {venue.races.flatMap(race =>
                       race.rules.map(rule => {
                         const isFinished = race.result?.finished
@@ -366,7 +423,17 @@ function TodaysPicks() {
                             <tbody>
                               {venuePerformances[venue.venueCode].byRule.map(rule => (
                                 <tr key={rule.ruleId}>
-                                  <td className="rule-id-cell">{rule.ruleId}</td>
+                                  <td className="rule-id-cell">
+                                    <button
+                                      className="rule-id-link"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        scrollToRuleCard(rule.ruleId)
+                                      }}
+                                    >
+                                      {rule.ruleId}
+                                    </button>
+                                  </td>
                                   <td>{getBetTypeName(rule.betType)}</td>
                                   <td>{rule.hitRate}% ({Math.round(rule.hitRate * rule.samples / 100)}/{rule.samples})</td>
                                   <td className={rule.recovery >= 100 ? 'positive' : 'negative'}>
@@ -406,6 +473,21 @@ function TodaysPicks() {
 
           {isTopRulesOpen && (
             <div className="performance-content">
+              {/* 週別推移グラフ */}
+              <div className="rule-trend-chart-container">
+                <h4 className="chart-title">回収率トップ10 週別推移</h4>
+                {weeklyPerformance ? (
+                  <RuleTrendChart
+                    weeklyData={weeklyPerformance.weeklyData}
+                    rules={weeklyPerformance.rules}
+                    ruleDetails={weeklyPerformance.ruleDetails}
+                    currentWeek={weeklyPerformance.currentWeek}
+                  />
+                ) : (
+                  <div className="chart-loading">読み込み中...</div>
+                )}
+              </div>
+
               <div className="performance-table-wrapper">
                 <table className="performance-table">
                   <thead>

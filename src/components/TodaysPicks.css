@@ -105,6 +105,35 @@
   gap: 0.5rem;
 }
 
+/* 会場別週別推移グラフ */
+.venue-chart-container {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.venue-chart-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  margin: 0 0 0.5rem 0;
+}
+
+/* RuleTrendChartの高さを会場内で小さくする */
+.venue-chart-container .rule-trend-section h3 {
+  display: none;
+}
+
+.venue-chart-container .recharts-responsive-container {
+  height: 200px !important;
+}
+
+.venue-chart-container .chart-note {
+  font-size: 0.7rem;
+}
+
 /* 会場別ルール運用成績 */
 .venue-performance {
   margin-top: 0.75rem;
@@ -474,6 +503,22 @@
   font-weight: 700;
   color: #0ea5e9;
   text-align: left;
+}
+
+.rule-id-link {
+  background: none;
+  border: none;
+  color: #0ea5e9;
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  font-size: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.rule-id-link:hover {
+  color: #0284c7;
 }
 
 .rank-cell {
