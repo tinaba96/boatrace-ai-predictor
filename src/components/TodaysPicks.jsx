@@ -39,15 +39,6 @@ function TodaysPicks() {
     loadTopRules()
   }, [])
 
-  // データ読み込み後、全会場を展開状態に設定
-  useEffect(() => {
-    if (matchedRaces.length > 0) {
-      const venueCodes = [...new Set(matchedRaces.map(r => r.venueCode))]
-      const initialExpanded = {}
-      venueCodes.forEach(code => { initialExpanded[code] = true })
-      setExpandedVenues(initialExpanded)
-    }
-  }, [matchedRaces])
 
   // データ読み込み後、各会場のパフォーマンスを取得
   useEffect(() => {
