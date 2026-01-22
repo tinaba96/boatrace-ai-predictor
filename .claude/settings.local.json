@@ -28,7 +28,10 @@
       "WebFetch(domain:boat-ai.jp)",
       "WebSearch",
       "Skill(collect-stats)",
-      "Skill(analyze-venue)"
+      "Skill(analyze-venue)",
+      "WebFetch(domain:github.com)",
+      "Bash(source .env.local)",
+      "Bash(npx vercel:*)"
     ],
     "deny": [
       "Bash(rm -rf:*)",

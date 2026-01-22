@@ -1971,7 +1971,7 @@ export async function getRulePerformanceByVenue(venueCode, startDate = '2026-01-
  * @param {number} limit - 取得件数（デフォルト10）
  * @returns {Promise<Array>} 回収率順のルール一覧
  */
-export async function getTopPerformingRules({ limit = null, minRecovery = null } = {}) {
+export async function getTopPerformingRules({ limit = null, minRecovery = null, minSamples = 1 } = {}) {
   if (!supabase) {
     console.warn('Supabaseが設定されていません')
     return []
@@ -2100,7 +2100,7 @@ export async function getTopPerformingRules({ limit = null, minRecovery = null }
       hitRate: stat.samples > 0 ? Math.round((stat.hits / stat.samples) * 100) : 0,
       recovery: stat.samples > 0 ? Math.round((stat.totalPayout / (stat.samples * 100)) * 100) : 0
     }))
-    .filter(r => r.samples >= 1) // サンプル1件以上
+    .filter(r => r.samples >= minSamples) // サンプルminSamples件以上
     .filter(r => minRecovery === null || r.recovery >= minRecovery) // 回収率フィルタ
     .sort((a, b) => {
       // 回収率で降順、同じなら的中数で降順
@@ -2275,7 +2275,7 @@ export async function getTopRulesWeeklyPerformance(topN = 10) {
       ...stat,
       recovery: stat.samples > 0 ? Math.round((stat.totalPayout / (stat.samples * 100)) * 100) : 0
     }))
-    .filter(r => r.samples >= 1 && r.recovery >= 100) // 回収率100%以上
+    .filter(r => r.samples >= 10 && r.recovery >= 100) // 回収率100%以上、10件以上
     .sort((a, b) => b.recovery - a.recovery)
     .slice(0, topN)
 
@@ -2469,7 +2469,7 @@ export async function getVenueTopRulesWeeklyPerformance(venueCode, topN = 10) {
       ...stat,
       recovery: stat.samples > 0 ? Math.round((stat.totalPayout / (stat.samples * 100)) * 100) : 0
     }))
-    .filter(r => r.samples >= 1)
+    .filter(r => r.samples >= 10) // 10件以上
     .sort((a, b) => b.recovery - a.recovery)
     .slice(0, topN)
 
