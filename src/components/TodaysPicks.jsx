@@ -31,6 +31,7 @@ function TodaysPicks() {
   const [isTopRulesOpen, setIsTopRulesOpen] = useState(false)
   const [venuePerformances, setVenuePerformances] = useState({}) // { '03': { startDate: '...', byRule: [...], total: {...} }, ... }
   const [weeklyPerformance, setWeeklyPerformance] = useState(null) // 週別パフォーマンスデータ
+  const [showAllFeatured, setShowAllFeatured] = useState(false)
 
   // マウント時にデータ読み込み
   useEffect(() => {
@@ -92,7 +93,7 @@ function TodaysPicks() {
 
   async function loadTopRules() {
     try {
-      const rules = await getTopPerformingRules({ minRecovery: 100 })
+      const rules = await getTopPerformingRules({ minRecovery: 100, minSamples: 10 })
       setTopRules(rules)
     } catch (e) {
       console.error('トップルール取得エラー:', e)
@@ -140,6 +141,37 @@ function TodaysPicks() {
     })
     return Object.values(grouped)
   }, [matchedRaces])
+
+  // topRulesからruleIdのSetを作成（10件以上適用 & 回収率100%超え）
+  const highPerformingRuleIds = useMemo(() => {
+    return new Set(topRules.map(r => r.ruleId))
+  }, [topRules])
+
+  // 注目レース: 高パフォーマンスルールに該当するレースのみ抽出
+  const featuredRaces = useMemo(() => {
+    if (highPerformingRuleIds.size === 0) return []
+
+    return matchedRaces
+      .map(race => ({
+        ...race,
+        // 高パフォーマンスルールのみに絞り込み
+        rules: race.rules.filter(rule => highPerformingRuleIds.has(rule.id))
+      }))
+      .filter(race => race.rules.length > 0) // ルールがあるレースのみ
+  }, [matchedRaces, highPerformingRuleIds])
+
+  // 注目レースをフラット化（レース×ルールの組み合わせ）
+  const featuredItems = useMemo(() => {
+    return featuredRaces.flatMap(race =>
+      race.rules.map(rule => ({ race, rule }))
+    )
+  }, [featuredRaces])
+
+  // 表示件数制限
+  const FEATURED_LIMIT = 5
+  const visibleFeaturedItems = showAllFeatured
+    ? featuredItems
+    : featuredItems.slice(0, FEATURED_LIMIT)
 
   // 会場展開切り替え
   function toggleVenue(venueCode) {
@@ -301,6 +333,96 @@ function TodaysPicks() {
           <div className="picks-summary">
             <span>対象: {racesByVenue.length}会場 / {matchedRaces.length}レース / {totalRules}ルール</span>
           </div>
+
+          {/* 注目レース（10件以上適用 & 回収率100%超え） */}
+          {featuredItems.length > 0 && (
+            <div className="featured-races-section">
+              <div className="featured-header">
+                <h3>⭐ 注目レース</h3>
+                <span className="featured-badge">{featuredItems.length}件</span>
+              </div>
+              <div className="featured-races-list">
+                {visibleFeaturedItems.map(({ race, rule }) => {
+                  const ruleStats = topRules.find(r => r.ruleId === rule.id)
+                  const isFinished = race.result?.finished
+                  const hitInfo = getHitInfoForRule(race, rule)
+
+                  return (
+                    <div
+                      key={`featured-${race.raceId}-${rule.id}`}
+                      className={`pick-card ${isFinished ? 'finished' : ''} ${hitInfo?.hit ? 'hit' : ''}`}
+                      data-bet-type={rule.betType}
+                      onClick={() => handleCardClick(race)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === 'Enter' && handleCardClick(race)}
+                    >
+                      <div className="pick-card-header">
+                        <div className="pick-venue-info">
+                          <span className="pick-venue">{race.venueName}</span>
+                          <span className="pick-race-no">{race.raceNo}R</span>
+                        </div>
+                        <span className="pick-time">{formatTime(race.startTime)}</span>
+                      </div>
+
+                      <div className="pick-pattern">
+                        <span className="pattern-name">{rule.patternName}</span>
+                        <span className="rule-tag">{rule.id}</span>
+                      </div>
+
+                      <div className="pick-card-body">
+                        <span className={`pick-bet-type bet-${rule.betType}`}>
+                          {getBetTypeName(rule.betType)}
+                        </span>
+                        <span className="pick-prediction">
+                          {formatPrediction(race.prediction, rule.betType)}
+                        </span>
+                      </div>
+
+                      <div className="pick-stats">
+                        <span className="stats-label">運用実績:</span>
+                        <span className="stats-record">
+                          {ruleStats?.samples || rule.stats.samples}戦
+                        </span>
+                        <span className="stats-recovery">
+                          回収率 {ruleStats?.recovery || rule.stats.recovery}%
+                        </span>
+                      </div>
+
+                      {isFinished && hitInfo && (
+                        <div className={`pick-result ${hitInfo.hit ? 'hit' : 'miss'}`}>
+                          {hitInfo.hit ? (
+                            <>
+                              <span className="result-icon">&#x2705;</span>
+                              <span className="result-text">的中</span>
+                              <span className="result-payout">+{hitInfo.payout.toLocaleString()}円</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="result-icon">&#x274C;</span>
+                              <span className="result-text">外れ</span>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* もっと見るボタン */}
+              {featuredItems.length > FEATURED_LIMIT && (
+                <button
+                  className="featured-more-btn"
+                  onClick={() => setShowAllFeatured(!showAllFeatured)}
+                >
+                  {showAllFeatured
+                    ? '閉じる'
+                    : `もっと見る（残り${featuredItems.length - FEATURED_LIMIT}件）`}
+                </button>
+              )}
+            </div>
+          )}
 
           {/* 展開/閉じるボタン */}
           <div className="accordion-controls">

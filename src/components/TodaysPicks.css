@@ -194,6 +194,61 @@
   color: #6b7280;
 }
 
+/* 注目レースセクション */
+.featured-races-section {
+  margin: 1rem 0 1.5rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+  border-radius: 12px;
+  border: 2px solid #ffc107;
+}
+
+.featured-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.featured-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #f57c00;
+}
+
+.featured-badge {
+  font-size: 0.7rem;
+  background: #ff9800;
+  color: white;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.featured-races-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* もっと見るボタン */
+.featured-more-btn {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.6rem;
+  background: white;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  color: #f57c00;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.featured-more-btn:hover {
+  background: #fff8e1;
+}
+
 .picks-list {
   display: flex;
   flex-direction: column;
@@ -594,6 +649,25 @@
 
   .picks-description {
     font-size: 0.75rem;
+  }
+
+  /* 注目レースセクション */
+  .featured-races-section {
+    margin: 0.75rem 0 1rem;
+    padding: 0.75rem;
+  }
+
+  .featured-header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .featured-header h3 {
+    font-size: 1rem;
+  }
+
+  .featured-badge {
+    font-size: 0.65rem;
   }
 
   /* アコーディオン */
