@@ -6,7 +6,7 @@ import matter from 'gray-matter';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const SITE_URL = 'https://boat-ai.jp';
+const SITE_URL = 'https://www.boat-ai.jp';
 const PUBLIC_DIR = path.join(__dirname, '../public');
 const BLOG_DIR = path.join(PUBLIC_DIR, 'blog');
 const PREDICTIONS_DIR = path.join(PUBLIC_DIR, 'data/predictions');
@@ -75,6 +75,12 @@ const staticPages = [
   },
   {
     loc: '/races',
+    lastmod: new Date().toISOString().split('T')[0],
+    changefreq: 'daily',
+    priority: '0.9'
+  },
+  {
+    loc: '/picks',
     lastmod: new Date().toISOString().split('T')[0],
     changefreq: 'daily',
     priority: '0.9'
