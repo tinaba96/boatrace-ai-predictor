@@ -11,8 +11,8 @@ export default function About() {
         <>
             <Helmet>
                 <title>BoatAIについて | AIボートレース予想サービスの詳細</title>
-                <meta name="description" content="BoatAIは45項目以上のデータをAIが分析するボートレース予想サービス。完全無料・登録不要で、複勝的中率49.5%、3連単回収率134.3%の実績を誇ります。" />
-                <meta name="keywords" content="BoatAI,ボートレース,AI予想,機械学習,データ分析,的中率,無料" />
+                <meta name="description" content="BoatAIは45項目以上のデータをAIが分析するボートレース予測サービス。データサイエンスに基づく高精度分析を完全無料・登録不要で提供します。" />
+                <meta name="keywords" content="BoatAI,ボートレース,AI分析,機械学習,データ分析,データサイエンス,無料" />
                 <link rel="canonical" href="https://boat-ai.jp/about" />
 
                 {/* OGP Tags */}
@@ -134,13 +134,13 @@ export default function About() {
                     </div>
                     <div className="feature-card">
                         <div className="feature-icon">🎯</div>
-                        <h3>高精度予想</h3>
-                        <p>複勝的中率49.5%、3連単回収率134.3%の実績（2025年12月実績）</p>
+                        <h3>高精度分析</h3>
+                        <p>複勝予測精度49.5%、高精度な分析実績（2025年12月実績）</p>
                     </div>
                     <div className="feature-card">
                         <div className="feature-icon">📈</div>
                         <h3>実績公開</h3>
-                        <p>的中率・回収率をすべて公開。透明性を重視しています。</p>
+                        <p>予測精度・分析パフォーマンスをすべて公開。透明性を重視しています。</p>
                     </div>
                     <div className="feature-card">
                         <div className="feature-icon">🔄</div>
@@ -198,27 +198,27 @@ export default function About() {
             </section>
 
             <section className="about-section">
-                <h2>📊 実績データ（2025年12月）</h2>
+                <h2>📊 AI分析の精度（2025年12月）</h2>
                 <div className="stats-grid">
                     <div className="stat-card">
                         <div className="stat-value">49.5%</div>
-                        <div className="stat-label">複勝的中率</div>
+                        <div className="stat-label">複勝予測精度</div>
                     </div>
                     <div className="stat-card">
                         <div className="stat-value">12.8%</div>
-                        <div className="stat-label">3連複的中率</div>
+                        <div className="stat-label">3連複正解率</div>
                     </div>
                     <div className="stat-card">
                         <div className="stat-value">85.3%</div>
-                        <div className="stat-label">複勝回収率</div>
+                        <div className="stat-label">複勝効率性</div>
                     </div>
                     <div className="stat-card">
                         <div className="stat-value">134.3%</div>
-                        <div className="stat-label">3連単回収率</div>
+                        <div className="stat-label">3連単効率性</div>
                     </div>
                 </div>
                 <p className="stats-note">
-                    ※ 2025年12月1日〜18日の実績データ（全1,951レース）
+                    ※ 2025年12月1日〜18日の分析データ（全1,951レース）
                 </p>
             </section>
 

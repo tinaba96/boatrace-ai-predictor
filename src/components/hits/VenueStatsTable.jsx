@@ -6,7 +6,7 @@ function VenueStatsTable({ venueStats }) {
   if (venueStats.length === 0) {
     return (
       <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
-        <p>選択期間に的中レースがありません</p>
+        <p>選択期間に正解レースがありません</p>
       </div>
     )
   }
@@ -18,7 +18,7 @@ function VenueStatsTable({ venueStats }) {
           <tr>
             <th>順位</th>
             <th>ボートレース場</th>
-            <th className="text-right">的中数</th>
+            <th className="text-right">正解数</th>
             <th className="text-right">総配当</th>
           </tr>
         </thead>

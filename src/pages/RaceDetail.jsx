@@ -410,7 +410,7 @@ function RaceDetail() {
                         </div>
 
                         <div className="top-pick">
-                          <h3>🥇 本命予想</h3>
+                          <h3>🥇 AI推奨</h3>
                           <div className="player-card featured">
                             <div className="player-number">{prediction.topPick.number}</div>
                             <div className="player-details">

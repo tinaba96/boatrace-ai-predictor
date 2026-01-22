@@ -68,29 +68,29 @@ export default function HowToUse() {
                         <div className="model-comparison">
                             <div className="model-card standard">
                                 <h5>🎯 スタンダード（推奨）</h5>
-                                <p><strong>的中率と配当のバランス重視</strong></p>
+                                <p><strong>予測精度とパフォーマンスのバランス重視</strong></p>
                                 <ul>
                                     <li>全国勝率・当地成績・モーター性能を総合評価</li>
                                     <li>迷ったらまずこれ</li>
-                                    <li>単勝的中率 27%、3連単回収率 136%</li>
+                                    <li>単勝予測精度 27%、高効率な分析</li>
                                 </ul>
                             </div>
                             <div className="model-card safe-bet">
                                 <h5>🛡️ 本命狙い</h5>
-                                <p><strong>的中率を最重視（安全志向）</strong></p>
+                                <p><strong>予測精度を最重視（安全志向）</strong></p>
                                 <ul>
                                     <li>1号艇とA級選手を優先</li>
                                     <li>堅いレースで力を発揮</li>
-                                    <li>単勝的中率 53%（高的中率）</li>
+                                    <li>単勝予測精度 53%（高精度）</li>
                                 </ul>
                             </div>
                             <div className="model-card upset-focus">
                                 <h5>💎 穴狙い</h5>
-                                <p><strong>高配当を狙う（攻撃型）</strong></p>
+                                <p><strong>高倍率予測を狙う（攻撃型）</strong></p>
                                 <ul>
                                     <li>外枠の好モーターや展開の妙を重視</li>
                                     <li>荒れるレースで力を発揮</li>
-                                    <li>3連複回収率 333%（高配当型）</li>
+                                    <li>3連複効率性 333%（高パフォーマンス型）</li>
                                 </ul>
                             </div>
                         </div>
@@ -121,60 +121,59 @@ export default function HowToUse() {
                         </ul>
                     </div>
                     <div className="tip-box">
-                        <h4>💡 初心者におすすめの舟券種別</h4>
+                        <h4>💡 予測データの種別について</h4>
                         <ul>
-                            <li><strong>複勝</strong>: 的中率49.5%（2着以内に入れば的中）- 初心者向け</li>
-                            <li><strong>3連複</strong>: 的中率12.8%、回収率80.6%（順不同で1-2-3着）- 中級者向け</li>
-                            <li><strong>3連単</strong>: 的中率2.8%、回収率134.3%（着順一致）- 上級者向け</li>
+                            <li><strong>複勝</strong>: 予測精度49.5%（2着以内予測）- 初心者向け</li>
+                            <li><strong>3連複</strong>: 正解率12.8%、効率性80.6%（順不同で1-2-3着）- 中級者向け</li>
+                            <li><strong>3連単</strong>: 正解率2.8%、効率性134.3%（着順一致）- 上級者向け</li>
                         </ul>
                     </div>
                 </>
             )
         },
         {
-            title: 'ステップ5: 舟券を購入する',
+            title: 'ステップ5: 予測を活用する',
             icon: '🎫',
             content: (
                 <>
-                    <p>AI予想を参考に、舟券を購入しましょう。</p>
+                    <p>AI予測データを参考に、レース展開を予測しましょう。</p>
                     <div className="step-detail">
                         <h4>⚠️ 重要な注意事項</h4>
                         <div className="warning-box">
-                            <p><strong>BoatAIでは舟券を購入できません</strong></p>
-                            <p>舟券の購入は、<a href="https://www.boatrace.jp/" target="_blank" rel="noopener noreferrer">テレボート</a>などの公式サービスをご利用ください。</p>
+                            <p><strong>BoatAIは予測情報のみを提供しています</strong></p>
+                            <p>詳細は<a href="https://www.boatrace.jp/" target="_blank" rel="noopener noreferrer">公式サイト</a>でご確認ください。</p>
                         </div>
                     </div>
                     <div className="step-detail">
-                        <h4>💰 資金管理のコツ</h4>
+                        <h4>💡 予測データ活用のポイント</h4>
                         <ul>
-                            <li><strong>余剰資金の範囲内</strong>で楽しむ（生活費には手をつけない）</li>
-                            <li>1日の予算を決める（例: 1,000円〜3,000円）</li>
-                            <li>負けを取り戻そうと熱くならない</li>
-                            <li>AI予想は<strong>参考情報</strong>として活用する</li>
+                            <li><strong>余裕のある範囲で</strong>楽しむ</li>
+                            <li>AI予測は<strong>参考情報</strong>として活用する</li>
+                            <li>レース展開の分析に役立てる</li>
                         </ul>
                     </div>
                     <div className="tip-box">
-                        <h4>📝 購入のヒント</h4>
+                        <h4>📝 活用のヒント</h4>
                         <ul>
-                            <li>本命の<strong>複勝</strong>から始めるのが安全</li>
-                            <li>自信があるレースで<strong>3連複</strong>に挑戦</li>
-                            <li>大穴を狙うなら<strong>少額で3連単</strong></li>
+                            <li>AIスコアの高い艇を中心にレース展開を予測</li>
+                            <li>予測根拠を参考に、自分なりの分析を加える</li>
+                            <li>モデル別の特性を理解して活用する</li>
                         </ul>
                     </div>
                 </>
             )
         },
         {
-            title: 'ステップ6: 的中実績を確認する',
+            title: 'ステップ6: 予測実績を確認する',
             icon: '📈',
             content: (
                 <>
-                    <p>レース終了後、AIの予想が当たったかを確認できます。</p>
+                    <p>レース終了後、AIの予測が正解だったかを確認できます。</p>
                     <div className="step-detail">
                         <h4>💡 実績の確認方法</h4>
                         <ul>
-                            <li><strong>「的中レース」タブ</strong>: 過去14日間の的中レースを表示</li>
-                            <li><strong>「成績」タブ</strong>: 的中率・回収率の統計データを表示</li>
+                            <li><strong>「正解レース」タブ</strong>: 過去14日間の正解レースを表示</li>
+                            <li><strong>「成績」タブ</strong>: 予測精度・効率性の統計データを表示</li>
                             <li>期間別（今日、昨日、全期間）に絞り込み可能</li>
                             <li>モデル別（スタンダード、本命狙い、穴狙い）に切り替え可能</li>
                         </ul>
@@ -182,14 +181,14 @@ export default function HowToUse() {
                     <div className="tip-box">
                         <h4>📊 実績の見方</h4>
                         <ul>
-                            <li><strong>的中率</strong>: どれくらいの確率で当たるか</li>
-                            <li><strong>回収率</strong>: 投資額に対してどれだけ払戻があるか
+                            <li><strong>予測精度</strong>: どれくらいの確率で正解するか</li>
+                            <li><strong>効率性指標</strong>: 予測のパフォーマンスを示す指標
                                 <ul>
-                                    <li>100%以上: プラス収支</li>
-                                    <li>100%未満: マイナス収支</li>
+                                    <li>100%以上: 高パフォーマンス</li>
+                                    <li>100%未満: 標準以下</li>
                                 </ul>
                             </li>
-                            <li>自分の購入結果と比較して、戦略を見直しましょう</li>
+                            <li>予測精度を参考に、分析戦略を見直しましょう</li>
                         </ul>
                     </div>
                 </>
@@ -201,8 +200,8 @@ export default function HowToUse() {
         <>
             <Helmet>
                 <title>使い方ガイド | BoatAI - 初心者でもわかる利用方法</title>
-                <meta name="description" content="BoatAIの使い方を6つのステップで解説。レース場の選び方、AI予想モデルの選択、舟券購入のコツまで、初心者にもわかりやすく説明します。" />
-                <meta name="keywords" content="BoatAI使い方,ボートレース予想方法,初心者ガイド,舟券購入,AI予想モデル" />
+                <meta name="description" content="BoatAIの使い方を6つのステップで解説。レース場の選び方、AI予測モデルの選択、予測データの活用方法まで、初心者にもわかりやすく説明します。" />
+                <meta name="keywords" content="BoatAI使い方,ボートレース分析方法,初心者ガイド,AI予測モデル,データ分析" />
                 <link rel="canonical" href="https://boat-ai.jp/how-to-use" />
 
                 {/* OGP Tags */}

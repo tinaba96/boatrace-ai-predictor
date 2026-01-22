@@ -59,7 +59,7 @@ function Header() {
             className={`nav-btn ${activeTab === 'hit-races' ? 'active' : ''}`}
             onClick={() => handleTabClick('hit-races')}
           >
-            ✅ 的中
+            ✅ 正解
           </button>
           <button
             className={`nav-btn ${activeTab === 'accuracy' ? 'active' : ''}`}

@@ -4,7 +4,7 @@
  * 会場別ルールにマッチするレースを表示
  * - 全会場をアコーディオン形式で表示
  * - 「全て展開」「全て閉じる」ボタン
- * - 回収率100%超えルール一覧
+ * - 高効率ルール一覧（効率性100%超え）
  */
 
 import { useState, useEffect, useMemo } from 'react'
@@ -47,7 +47,7 @@ function TodaysPicks() {
     }
   }, [matchedRaces])
 
-  // 回収率100%超えルール一覧を開いたときに週別データを取得
+  // 高効率ルール一覧（効率性100%超え）を開いたときに週別データを取得
   useEffect(() => {
     if (isTopRulesOpen && !weeklyPerformance) {
       loadWeeklyPerformance()
@@ -280,7 +280,7 @@ function TodaysPicks() {
       <div className="todays-picks">
         <div className="picks-header">
           <h2>今日のおすすめ</h2>
-          <p className="picks-description">データマイニングで発掘した高回収率パターン</p>
+          <p className="picks-description">データマイニングで発掘した高精度パターン</p>
         </div>
         <div className="picks-loading">
           <div className="spinner"></div>
@@ -376,7 +376,7 @@ function TodaysPicks() {
                           {ruleStats?.samples || rule.stats.samples}戦
                         </span>
                         <span className="stats-recovery">
-                          回収率 {ruleStats?.recovery || rule.stats.recovery}%
+                          効率性 {ruleStats?.recovery || rule.stats.recovery}%
                         </span>
                       </div>
 
@@ -385,13 +385,13 @@ function TodaysPicks() {
                           {hitInfo.hit ? (
                             <>
                               <span className="result-icon">&#x2705;</span>
-                              <span className="result-text">的中</span>
+                              <span className="result-text">正解</span>
                               <span className="result-payout">+{hitInfo.payout.toLocaleString()}円</span>
                             </>
                           ) : (
                             <>
                               <span className="result-icon">&#x274C;</span>
-                              <span className="result-text">外れ</span>
+                              <span className="result-text">不正解</span>
                             </>
                           )}
                         </div>
@@ -439,7 +439,7 @@ function TodaysPicks() {
                     {/* 会場別週別推移グラフ（アコーディオン直下） */}
                     {venuePerformances[venue.venueCode]?.weeklyData?.length > 0 && venuePerformances[venue.venueCode]?.topRules?.length > 0 && (
                       <div className="venue-chart-container">
-                        <h4 className="venue-chart-title">回収率トップ 週別推移</h4>
+                        <h4 className="venue-chart-title">効率性トップ 週別推移</h4>
                         <RuleTrendChart
                           weeklyData={venuePerformances[venue.venueCode].weeklyData}
                           rules={venuePerformances[venue.venueCode].topRules}
@@ -492,7 +492,7 @@ function TodaysPicks() {
                                 {rule.stats.samples}戦{rule.stats.hits}勝
                               </span>
                               <span className="stats-recovery">
-                                回収率 {rule.stats.recovery}%
+                                効率性 {rule.stats.recovery}%
                               </span>
                             </div>
 
@@ -501,13 +501,13 @@ function TodaysPicks() {
                                 {hitInfo.hit ? (
                                   <>
                                     <span className="result-icon">&#x2705;</span>
-                                    <span className="result-text">的中</span>
+                                    <span className="result-text">正解</span>
                                     <span className="result-payout">+{hitInfo.payout.toLocaleString()}円</span>
                                   </>
                                 ) : (
                                   <>
                                     <span className="result-icon">&#x274C;</span>
-                                    <span className="result-text">外れ</span>
+                                    <span className="result-text">不正解</span>
                                   </>
                                 )}
                               </div>
@@ -529,8 +529,8 @@ function TodaysPicks() {
                               <tr>
                                 <th>ルールID</th>
                                 <th>賭式</th>
-                                <th>的中率</th>
-                                <th>回収率</th>
+                                <th>正解率</th>
+                                <th>効率性</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -558,8 +558,8 @@ function TodaysPicks() {
                           </table>
                         </div>
                         <div className="total-summary">
-                          全体: 的中率 {venuePerformances[venue.venueCode].total.hitRate}% |
-                          回収率 <span className={venuePerformances[venue.venueCode].total.recovery >= 100 ? 'positive' : 'negative'}>
+                          全体: 正解率 {venuePerformances[venue.venueCode].total.hitRate}% |
+                          効率性 <span className={venuePerformances[venue.venueCode].total.recovery >= 100 ? 'positive' : 'negative'}>
                             {venuePerformances[venue.venueCode].total.recovery}%
                           </span>
                         </div>
@@ -573,14 +573,14 @@ function TodaysPicks() {
         </>
       )}
 
-      {/* 回収率100%超えルール一覧（折りたたみ） */}
+      {/* 高効率ルール一覧（効率性100%超え）（折りたたみ） */}
       {topRules.length > 0 && (
         <div className="rule-performance-section top-rules-section">
           <button
             className="performance-toggle"
             onClick={() => setIsTopRulesOpen(!isTopRulesOpen)}
           >
-            回収率100%超えルール一覧（{topRules.length}件）
+            高効率ルール一覧（効率性100%超え）（{topRules.length}件）
             <span className="toggle-icon">{isTopRulesOpen ? '▲' : '▼'}</span>
           </button>
 
@@ -588,7 +588,7 @@ function TodaysPicks() {
             <div className="performance-content">
               {/* 週別推移グラフ */}
               <div className="rule-trend-chart-container">
-                <h4 className="chart-title">回収率トップ10 週別推移</h4>
+                <h4 className="chart-title">効率性トップ10 週別推移</h4>
                 {weeklyPerformance ? (
                   <RuleTrendChart
                     weeklyData={weeklyPerformance.weeklyData}
@@ -609,8 +609,8 @@ function TodaysPicks() {
                       <th>会場</th>
                       <th>ルールID</th>
                       <th>賭式</th>
-                      <th>的中率</th>
-                      <th>回収率</th>
+                      <th>正解率</th>
+                      <th>効率性</th>
                     </tr>
                   </thead>
                   <tbody>

@@ -23,7 +23,7 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
 
   const { todayStr, yesterdayStr } = getJSTDateInfo()
 
-  // 的中レースを読み込む
+  // 正解レースを読み込む
   useEffect(() => {
     const fetchHitRaces = async () => {
       try {
@@ -44,7 +44,7 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
           loadDayPredictions(yesterdayStr)
         ])
 
-        // 的中レースを抽出する関数（モデル対応）
+        // 正解レースを抽出する関数（モデル対応）
         const extractHitRaces = (predictions, modelKey) => {
           return predictions
             .filter(race => {
@@ -136,7 +136,7 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
         )
         setHitRacesAll(allHitRaces)
       } catch (error) {
-        console.error('的中レース読み込みエラー:', error)
+        console.error('正解レース読み込みエラー:', error)
       } finally {
         setLoading(false)
       }
@@ -189,7 +189,7 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
   if (loading) {
     return (
       <LoadingScreen
-        title="的中レースを読み込み中..."
+        title="正解レースを読み込み中..."
         description="過去14日分のデータを分析しています"
       />
     )
@@ -199,8 +199,8 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
     return (
       <div className="no-data-container">
         <div className="icon">🎯</div>
-        <h2>的中レースはまだありません</h2>
-        <p>レース結果が確定すると、ここに的中レースが表示されます。</p>
+        <h2>正解レースはまだありません</h2>
+        <p>レース結果が確定すると、ここに正解レースが表示されます。</p>
       </div>
     )
   }
@@ -236,7 +236,7 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
   return (
     <div>
       <section className="venue-stats-section">
-        <h2>📊 ボートレース場別の的中実績</h2>
+        <h2>📊 ボートレース場別の正解実績</h2>
         <UpdateStatus
           lastUpdated={lastUpdated}
           dataType="予想データ"
@@ -261,13 +261,13 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
         <VenueStatsTable venueStats={venueStats} />
       </section>
 
-      {/* 的中レースセクション */}
+      {/* 正解レースセクション */}
       {currentHitRaces.length > 0 && (
         <section className={`hit-races-section ${selectedPeriod}`}>
           <h2>
-            📅 {selectedPeriod === 'today' ? `今日の的中レース ${formatDateShort(todayStr)}` :
-               selectedPeriod === 'yesterday' ? `昨日の的中レース ${formatDateShort(yesterdayStr)}` :
-               '過去14日間の的中レース'}
+            📅 {selectedPeriod === 'today' ? `今日の正解レース ${formatDateShort(todayStr)}` :
+               selectedPeriod === 'yesterday' ? `昨日の正解レース ${formatDateShort(yesterdayStr)}` :
+               '過去14日間の正解レース'}
             {` (${currentHitRaces.length}レース)`}
           </h2>
           <div className="race-cards-grid">

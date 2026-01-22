@@ -1037,7 +1037,7 @@ function App({ tab = 'races' }) {
                                             </div>
 
                                             <div className="top-pick">
-                                                <h3>🥇 本命予想</h3>
+                                                <h3>🥇 AI推奨</h3>
                                                 <div className="player-card featured">
                                                     <div className="player-number">{prediction.topPick.number}</div>
                                                     <div className="player-details">
@@ -1149,7 +1149,7 @@ function App({ tab = 'races' }) {
                                                         <div className="check-item">
                                                             {prediction.topPick.number === prediction.result.rank1 ? (
                                                                 <div className="hit">
-                                                                    ✅ 単勝的中！
+                                                                    ✅ 単勝正解！
                                                                     {prediction.result.payouts?.win?.[prediction.topPick.number] && (
                                                                         <span style={{ marginLeft: '0.5rem', color: '#2196f3', fontWeight: 'bold' }}>
                                                                             配当: {prediction.result.payouts.win[prediction.topPick.number]}円
@@ -1157,7 +1157,7 @@ function App({ tab = 'races' }) {
                                                                     )}
                                                                 </div>
                                                             ) : (
-                                                                <div className="miss">❌ 単勝外れ（予想: {prediction.topPick.number}号艇 → 実際: {prediction.result.rank1}号艇）</div>
+                                                                <div className="miss">❌ 単勝不正解（予測: {prediction.topPick.number}号艇 → 実際: {prediction.result.rank1}号艇）</div>
                                                             )}
                                                         </div>
 
@@ -1166,7 +1166,7 @@ function App({ tab = 'races' }) {
                                                             {(prediction.topPick.number === prediction.result.rank1 ||
                                                                 prediction.topPick.number === prediction.result.rank2) ? (
                                                                 <div className="hit">
-                                                                    ✅ 複勝的中！
+                                                                    ✅ 複勝正解！
                                                                     {prediction.result.payouts?.place?.[prediction.topPick.number] && (
                                                                         <span style={{ marginLeft: '0.5rem', color: '#2196f3', fontWeight: 'bold' }}>
                                                                             配当: {prediction.result.payouts.place[prediction.topPick.number]}円
@@ -1174,7 +1174,7 @@ function App({ tab = 'races' }) {
                                                                     )}
                                                                 </div>
                                                             ) : (
-                                                                <div className="miss">❌ 複勝外れ</div>
+                                                                <div className="miss">❌ 複勝不正解</div>
                                                             )}
                                                         </div>
 
@@ -1184,7 +1184,7 @@ function App({ tab = 'races' }) {
                                                                 prediction.top3.includes(prediction.result.rank2) &&
                                                                 prediction.top3.includes(prediction.result.rank3) ? (
                                                                 <div className="hit">
-                                                                    ✅ 3連複的中！
+                                                                    ✅ 3連複正解！
                                                                     {(() => {
                                                                         const sorted = [prediction.result.rank1, prediction.result.rank2, prediction.result.rank3].sort((a, b) => a - b);
                                                                         const key = sorted.join('-');
@@ -1197,7 +1197,7 @@ function App({ tab = 'races' }) {
                                                                     })()}
                                                                 </div>
                                                             ) : (
-                                                                <div className="miss">❌ 3連複外れ</div>
+                                                                <div className="miss">❌ 3連複不正解</div>
                                                             )}
                                                         </div>
 
@@ -1207,7 +1207,7 @@ function App({ tab = 'races' }) {
                                                                 prediction.top3[1] === prediction.result.rank2 &&
                                                                 prediction.top3[2] === prediction.result.rank3 ? (
                                                                 <div className="hit">
-                                                                    ✅ 3連単的中！
+                                                                    ✅ 3連単正解！
                                                                     {(() => {
                                                                         const key = `${prediction.result.rank1}-${prediction.result.rank2}-${prediction.result.rank3}`;
                                                                         const payout = prediction.result.payouts?.trio?.[key];
@@ -1219,7 +1219,7 @@ function App({ tab = 'races' }) {
                                                                     })()}
                                                                 </div>
                                                             ) : (
-                                                                <div className="miss">❌ 3連単外れ</div>
+                                                                <div className="miss">❌ 3連単不正解</div>
                                                             )}
                                                         </div>
                                                     </div>
@@ -1336,7 +1336,7 @@ function App({ tab = 'races' }) {
             </div>
 
             <footer className="footer">
-                <p>※本サイトはAIによる予想を提供するものであり、的中を保証するものではありません</p>
+                <p>※本サイトはAIによる予測情報を提供するものであり、結果を保証するものではありません</p>
                 <div style={{
                     display: 'flex',
                     gap: '1.5rem',
