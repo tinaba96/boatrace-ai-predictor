@@ -85,7 +85,9 @@ function TodaysPicks() {
   async function loadTopRules() {
     try {
       const rules = await getTopPerformingRules({ minRecovery: 100, minSamples: 10 })
-      setTopRules(rules)
+      // 念のためクライアント側でも10件以上フィルタ
+      const filteredRules = rules.filter(r => r.samples >= 10)
+      setTopRules(filteredRules)
     } catch (e) {
       console.error('トップルール取得エラー:', e)
     }
