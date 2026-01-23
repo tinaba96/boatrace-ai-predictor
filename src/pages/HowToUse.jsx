@@ -202,14 +202,14 @@ export default function HowToUse() {
                 <title>使い方ガイド | BoatAI - 初心者でもわかる利用方法</title>
                 <meta name="description" content="BoatAIの使い方を6つのステップで解説。レース場の選び方、AI予測モデルの選択、予測データの活用方法まで、初心者にもわかりやすく説明します。" />
                 <meta name="keywords" content="BoatAI使い方,ボートレース分析方法,初心者ガイド,AI予測モデル,データ分析" />
-                <link rel="canonical" href="https://boat-ai.jp/how-to-use" />
+                <link rel="canonical" href="https://www.boat-ai.jp/how-to-use" />
 
                 {/* OGP Tags */}
                 <meta property="og:type" content="website" />
                 <meta property="og:title" content="使い方ガイド | BoatAI" />
                 <meta property="og:description" content="BoatAIの使い方を初心者にもわかりやすく6ステップで解説。" />
-                <meta property="og:url" content="https://boat-ai.jp/how-to-use" />
-                <meta property="og:image" content="https://boat-ai.jp/ogp-image.png" />
+                <meta property="og:url" content="https://www.boat-ai.jp/how-to-use" />
+                <meta property="og:image" content="https://www.boat-ai.jp/ogp-image.png" />
 
                 {/* HowTo Structured Data */}
                 <script type="application/ld+json">
@@ -237,13 +237,13 @@ export default function HowToUse() {
                                 "@type": "ListItem",
                                 "position": 1,
                                 "name": "ホーム",
-                                "item": "https://boat-ai.jp/"
+                                "item": "https://www.boat-ai.jp/"
                             },
                             {
                                 "@type": "ListItem",
                                 "position": 2,
                                 "name": "使い方ガイド",
-                                "item": "https://boat-ai.jp/how-to-use"
+                                "item": "https://www.boat-ai.jp/how-to-use"
                             }
                         ]
                     })}

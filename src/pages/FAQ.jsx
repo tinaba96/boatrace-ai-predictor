@@ -179,7 +179,7 @@ export default function FAQ() {
             <Helmet>
                 <title>よくある質問（FAQ） | BoatAI</title>
                 <meta name="description" content="BoatAIに関するよくある質問と回答。無料での利用方法、AI予測の精度、使い方、予測データの活用方法など、皆様の疑問にお答えします。" />
-                <link rel="canonical" href="https://boat-ai.jp/faq" />
+                <link rel="canonical" href="https://www.boat-ai.jp/faq" />
 
                 {/* FAQPage Structured Data */}
                 <script type="application/ld+json">
@@ -200,13 +200,13 @@ export default function FAQ() {
                                 "@type": "ListItem",
                                 "position": 1,
                                 "name": "ホーム",
-                                "item": "https://boat-ai.jp/"
+                                "item": "https://www.boat-ai.jp/"
                             },
                             {
                                 "@type": "ListItem",
                                 "position": 2,
                                 "name": "よくある質問",
-                                "item": "https://boat-ai.jp/faq"
+                                "item": "https://www.boat-ai.jp/faq"
                             }
                         ]
                     })}

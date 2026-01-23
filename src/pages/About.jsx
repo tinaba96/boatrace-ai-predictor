@@ -13,14 +13,14 @@ export default function About() {
                 <title>BoatAIについて | AIボートレース予想サービスの詳細</title>
                 <meta name="description" content="BoatAIは45項目以上のデータをAIが分析するボートレース予測サービス。データサイエンスに基づく高精度分析を完全無料・登録不要で提供します。" />
                 <meta name="keywords" content="BoatAI,ボートレース,AI分析,機械学習,データ分析,データサイエンス,無料" />
-                <link rel="canonical" href="https://boat-ai.jp/about" />
+                <link rel="canonical" href="https://www.boat-ai.jp/about" />
 
                 {/* OGP Tags */}
                 <meta property="og:type" content="website" />
                 <meta property="og:title" content="BoatAIについて | AIボートレース予想サービス" />
                 <meta property="og:description" content="45項目以上のデータをAIが分析。完全無料・登録不要のボートレース予想サービス。" />
-                <meta property="og:url" content="https://boat-ai.jp/about" />
-                <meta property="og:image" content="https://boat-ai.jp/ogp-image.png" />
+                <meta property="og:url" content="https://www.boat-ai.jp/about" />
+                <meta property="og:image" content="https://www.boat-ai.jp/ogp-image.png" />
 
                 {/* BreadcrumbList */}
                 <script type="application/ld+json">
@@ -32,13 +32,13 @@ export default function About() {
                                 "@type": "ListItem",
                                 "position": 1,
                                 "name": "ホーム",
-                                "item": "https://boat-ai.jp/"
+                                "item": "https://www.boat-ai.jp/"
                             },
                             {
                                 "@type": "ListItem",
                                 "position": 2,
                                 "name": "BoatAIについて",
-                                "item": "https://boat-ai.jp/about"
+                                "item": "https://www.boat-ai.jp/about"
                             }
                         ]
                     })}

@@ -94,7 +94,7 @@ AIの予想、参考にしてみてください！
     const randomIndex = Math.floor(Math.random() * messages.length);
     const text = messages[randomIndex];
 
-    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent('https://boat-ai.jp/')}`;
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent('https://www.boat-ai.jp/')}`;
     window.open(tweetUrl, '_blank', 'width=600,height=400');
 };
 
@@ -201,7 +201,7 @@ BoatAIで予想的中🎉
     const randomIndex = Math.floor(Math.random() * messages.length);
     const text = messages[randomIndex];
 
-    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent('https://boat-ai.jp/')}`;
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent('https://www.boat-ai.jp/')}`;
     window.open(tweetUrl, '_blank', 'width=600,height=400');
 };
 
@@ -226,7 +226,7 @@ BoatAIのAI予想で的中率UP📈
 
 #ボートレース #ボートレース #AI予想`;
 
-    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent('https://boat-ai.jp/')}`;
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent('https://www.boat-ai.jp/')}`;
     window.open(tweetUrl, '_blank', 'width=600,height=400');
 };
 

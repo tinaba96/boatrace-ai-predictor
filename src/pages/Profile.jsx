@@ -13,14 +13,14 @@ export default function Profile() {
                 <title>運営者プロフィール | BoatAI</title>
                 <meta name="description" content="BoatAI運営者「らぷそでぃ」のプロフィール。インフラエンジニアとしての経験を活かし、ボートレースAI予想サービスを開発した経緯と開発の裏話をご紹介します。" />
                 <meta name="keywords" content="BoatAI,運営者,プロフィール,らぷそでぃ,インフラエンジニア,AI開発" />
-                <link rel="canonical" href="https://boat-ai.jp/profile" />
+                <link rel="canonical" href="https://www.boat-ai.jp/profile" />
 
                 {/* OGP Tags */}
                 <meta property="og:type" content="profile" />
                 <meta property="og:title" content="運営者プロフィール | BoatAI" />
                 <meta property="og:description" content="BoatAI開発者「らぷそでぃ」のプロフィールと開発ストーリー" />
-                <meta property="og:url" content="https://boat-ai.jp/profile" />
-                <meta property="og:image" content="https://boat-ai.jp/ogp-image.png" />
+                <meta property="og:url" content="https://www.boat-ai.jp/profile" />
+                <meta property="og:image" content="https://www.boat-ai.jp/ogp-image.png" />
 
                 {/* Person Schema */}
                 <script type="application/ld+json">
@@ -32,7 +32,7 @@ export default function Profile() {
                             "name": "らぷそでぃ",
                             "jobTitle": "インフラエンジニア",
                             "description": "BoatAI開発者",
-                            "url": "https://boat-ai.jp/profile",
+                            "url": "https://www.boat-ai.jp/profile",
                             "sameAs": [
                                 "https://x.com/kyouteiboatai"
                             ]
@@ -50,13 +50,13 @@ export default function Profile() {
                                 "@type": "ListItem",
                                 "position": 1,
                                 "name": "ホーム",
-                                "item": "https://boat-ai.jp/"
+                                "item": "https://www.boat-ai.jp/"
                             },
                             {
                                 "@type": "ListItem",
                                 "position": 2,
                                 "name": "運営者プロフィール",
-                                "item": "https://boat-ai.jp/profile"
+                                "item": "https://www.boat-ai.jp/profile"
                             }
                         ]
                     })}

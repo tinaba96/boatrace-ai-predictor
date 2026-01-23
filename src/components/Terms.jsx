@@ -7,7 +7,7 @@ export default function Terms() {
             <Helmet>
                 <title>利用規約 | BoatAI</title>
                 <meta name="description" content="BoatAI（AIボートレース分析サービス）の利用規約。サービス内容、利用条件、禁止事項、免責事項についてご説明します。" />
-                <link rel="canonical" href="https://boat-ai.jp/terms" />
+                <link rel="canonical" href="https://www.boat-ai.jp/terms" />
             </Helmet>
             <div style={{
             maxWidth: '900px',

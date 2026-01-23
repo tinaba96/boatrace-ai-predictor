@@ -65,7 +65,7 @@ function HitRaceCard({ hitRace, selectedModel, variant = 'today', showDate = fal
       {/* SNSシェアボタン */}
       <div style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
         <SocialShareButtons
-          shareUrl="https://boat-ai.jp/"
+          shareUrl="https://www.boat-ai.jp/"
           title={generateHitRaceShareText({
             venue: hitRace.venue,
             raceNo: hitRace.raceNumber,

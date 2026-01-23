@@ -239,7 +239,7 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
       <Helmet>
         <title>正解レース一覧 | BoatAI</title>
         <meta name="description" content="BoatAIのAI予測が正解したレース一覧。今日・昨日・過去14日間の正解レースと会場別正解実績を公開。" />
-        <link rel="canonical" href="https://boat-ai.jp/hit-races" />
+        <link rel="canonical" href="https://www.boat-ai.jp/hit-races" />
       </Helmet>
       <div>
         <section className="venue-stats-section">

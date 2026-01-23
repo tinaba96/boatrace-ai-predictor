@@ -10,7 +10,7 @@ import {
 import './SocialShareButtons.css';
 
 export const SocialShareButtons = ({
-    shareUrl = 'https://boat-ai.jp/',
+    shareUrl = 'https://www.boat-ai.jp/',
     title,
     hashtags = ['ボートレース', 'AI予想', 'BoatAI'],
     size = 36,

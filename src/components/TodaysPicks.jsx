@@ -315,7 +315,7 @@ function TodaysPicks() {
       <Helmet>
         <title>今日のおすすめ | BoatAI</title>
         <meta name="description" content="本日の高回収率が期待できるおすすめレース。データマイニングで発掘した回収率100%超えパターンにマッチするレースを厳選紹介。" />
-        <link rel="canonical" href="https://boat-ai.jp/picks" />
+        <link rel="canonical" href="https://www.boat-ai.jp/picks" />
       </Helmet>
       <div className="todays-picks">
         <div className="picks-header">

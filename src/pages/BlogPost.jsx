@@ -72,8 +72,8 @@ export default function BlogPost() {
     );
   }
 
-  const url = `https://boat-ai.jp/blog/${id}`;
-  const imageUrl = post.image ? `https://boat-ai.jp${post.image}` : 'https://boat-ai.jp/ogp-image.png';
+  const url = `https://www.boat-ai.jp/blog/${id}`;
+  const imageUrl = post.image ? `https://www.boat-ai.jp${post.image}` : 'https://www.boat-ai.jp/ogp-image.png';
 
   return (
     <>
@@ -117,14 +117,14 @@ export default function BlogPost() {
             "author": {
               "@type": "Organization",
               "name": "BoatAI",
-              "url": "https://boat-ai.jp"
+              "url": "https://www.boat-ai.jp"
             },
             "publisher": {
               "@type": "Organization",
               "name": "BoatAI",
               "logo": {
                 "@type": "ImageObject",
-                "url": "https://boat-ai.jp/logo.png"
+                "url": "https://www.boat-ai.jp/logo.png"
               }
             },
             "mainEntityOfPage": {
@@ -147,13 +147,13 @@ export default function BlogPost() {
                 "@type": "ListItem",
                 "position": 1,
                 "name": "ホーム",
-                "item": "https://boat-ai.jp/"
+                "item": "https://www.boat-ai.jp/"
               },
               {
                 "@type": "ListItem",
                 "position": 2,
                 "name": "ブログ",
-                "item": "https://boat-ai.jp/blog"
+                "item": "https://www.boat-ai.jp/blog"
               },
               {
                 "@type": "ListItem",

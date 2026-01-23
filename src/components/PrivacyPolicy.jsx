@@ -7,7 +7,7 @@ export default function PrivacyPolicy() {
             <Helmet>
                 <title>プライバシーポリシー | BoatAI</title>
                 <meta name="description" content="BoatAI（AIボートレース分析サービス）のプライバシーポリシー。個人情報の取り扱い、Cookie使用、広告配信についてご説明します。" />
-                <link rel="canonical" href="https://boat-ai.jp/privacy" />
+                <link rel="canonical" href="https://www.boat-ai.jp/privacy" />
             </Helmet>
             <div style={{
             maxWidth: '900px',

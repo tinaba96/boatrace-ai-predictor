@@ -31,7 +31,9 @@
       "Skill(analyze-venue)",
       "WebFetch(domain:github.com)",
       "Bash(source .env.local)",
-      "Bash(npx vercel:*)"
+      "Bash(npx vercel:*)",
+      "Bash(sips:*)",
+      "Bash(xargs sed:*)"
     ],
     "deny": [
       "Bash(rm -rf:*)",

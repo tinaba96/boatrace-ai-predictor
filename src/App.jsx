@@ -1068,7 +1068,7 @@ function App({ tab = 'races' }) {
                                             {/* SNSシェアボタン */}
                                             <div className="social-share-wrapper">
                                                 <SocialShareButtons
-                                                    shareUrl="https://boat-ai.jp/"
+                                                    shareUrl="https://www.boat-ai.jp/"
                                                     title={(() => {
                                                         // レースIDから日付を抽出 (YYYY-MM-DD-PlaceCode-RaceNo)
                                                         const raceId = selectedRace?.id || '';
