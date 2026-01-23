@@ -1,0 +1,26 @@
+{
+  "name": "BoatAI - AIボートレース分析",
+  "short_name": "BoatAI",
+  "description": "完全無料のAIボートレース分析サービス。45項目のデータをAIが分析し、高精度なレース展開予測を提供。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e40af",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["sports", "utilities"],
+  "lang": "ja",
+  "orientation": "portrait-primary"
+}

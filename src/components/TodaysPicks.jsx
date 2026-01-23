@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import {
   getTodaysMatchingRaces,
   getBetTypeName,
@@ -310,11 +311,17 @@ function TodaysPicks() {
   const totalRules = matchedRaces.reduce((sum, r) => sum + r.rules.length, 0)
 
   return (
-    <div className="todays-picks">
-      <div className="picks-header">
-        <h2>今日のおすすめ</h2>
-        <p className="picks-description">データマイニングで発掘した高回収率パターン</p>
-      </div>
+    <>
+      <Helmet>
+        <title>今日のおすすめ | BoatAI</title>
+        <meta name="description" content="本日の高回収率が期待できるおすすめレース。データマイニングで発掘した回収率100%超えパターンにマッチするレースを厳選紹介。" />
+        <link rel="canonical" href="https://boat-ai.jp/picks" />
+      </Helmet>
+      <div className="todays-picks">
+        <div className="picks-header">
+          <h2>今日のおすすめ</h2>
+          <p className="picks-description">データマイニングで発掘した高回収率パターン</p>
+        </div>
 
       {matchedRaces.length === 0 ? (
         <div className="picks-empty">
@@ -635,7 +642,8 @@ function TodaysPicks() {
           )}
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }
 

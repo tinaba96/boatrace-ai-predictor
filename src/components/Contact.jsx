@@ -1,8 +1,15 @@
 import { Link } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 
 export default function Contact() {
     return (
-        <div style={{
+        <>
+            <Helmet>
+                <title>お問い合わせ | BoatAI</title>
+                <meta name="description" content="BoatAI（AIボートレース分析サービス）へのお問い合わせ。ご質問、ご意見、ご要望をお寄せください。" />
+                <link rel="canonical" href="https://boat-ai.jp/contact" />
+            </Helmet>
+            <div style={{
             maxWidth: '900px',
             margin: '0 auto',
             padding: '2rem',
@@ -171,6 +178,7 @@ export default function Contact() {
                     ← トップページに戻る
                 </Link>
             </div>
-        </div>
+            </div>
+        </>
     )
 }

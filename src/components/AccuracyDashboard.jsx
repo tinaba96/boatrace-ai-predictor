@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import UpdateStatus from './UpdateStatus'
 import { dataService } from '../services/dataService'
 import { STADIUM_NAMES, MODEL_NAMES, MODEL_KEYS } from '../constants'
@@ -199,12 +200,18 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
   }
 
   return (
-    <div className="accuracy-dashboard">
-      <div className="dashboard-header">
-        <h2>📊 成績</h2>
-        <p className="last-updated">{getTodayDate()}</p>
-      </div>
-      <UpdateStatus lastUpdated={summary.lastUpdated} dataType="成績データ" onRefresh={onRefresh} isRefreshing={isRefreshing} />
+    <>
+      <Helmet>
+        <title>成績ダッシュボード | BoatAI</title>
+        <meta name="description" content="BoatAIのAI予測成績ダッシュボード。単勝・複勝・3連複・3連単の的中率と回収率をモデル別・会場別に公開中。" />
+        <link rel="canonical" href="https://boat-ai.jp/accuracy" />
+      </Helmet>
+      <div className="accuracy-dashboard">
+        <div className="dashboard-header">
+          <h2>📊 成績</h2>
+          <p className="last-updated">{getTodayDate()}</p>
+        </div>
+        <UpdateStatus lastUpdated={summary.lastUpdated} dataType="成績データ" onRefresh={onRefresh} isRefreshing={isRefreshing} />
 
       {summary.models && (
         <ModelSelector
@@ -337,7 +344,8 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
           </div>
         </>
       )}
-    </div>
+      </div>
+    </>
   )
 }
 

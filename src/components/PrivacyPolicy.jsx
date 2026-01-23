@@ -1,8 +1,15 @@
 import { Link } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 
 export default function PrivacyPolicy() {
     return (
-        <div style={{
+        <>
+            <Helmet>
+                <title>プライバシーポリシー | BoatAI</title>
+                <meta name="description" content="BoatAI（AIボートレース分析サービス）のプライバシーポリシー。個人情報の取り扱い、Cookie使用、広告配信についてご説明します。" />
+                <link rel="canonical" href="https://boat-ai.jp/privacy" />
+            </Helmet>
+            <div style={{
             maxWidth: '900px',
             margin: '0 auto',
             padding: '2rem',
@@ -92,13 +99,13 @@ export default function PrivacyPolicy() {
                     borderLeft: '4px solid #0ea5e9',
                     paddingLeft: '0.75rem'
                 }}>
-                    4. Google AdSenseについて
+                    4. 広告配信について
                 </h2>
                 <p style={{ color: '#475569', lineHeight: '1.8', marginBottom: '0.75rem' }}>
-                    当サイトでは、第三者配信の広告サービス「Google AdSense（グーグルアドセンス）」を利用しています。
+                    当サイトでは、今後、第三者配信の広告サービス（Google AdSense等）を利用する可能性があります。
                 </p>
                 <p style={{ color: '#475569', lineHeight: '1.8', marginBottom: '0.75rem' }}>
-                    広告配信事業者は、ユーザーの興味に応じた広告を表示するためにCookieを使用することがあります。
+                    広告配信が開始された場合、広告配信事業者はユーザーの興味に応じた広告を表示するためにCookieを使用することがあります。
                     Cookieを使用することで、当サイトや他のサイトへのアクセス情報に基づいて広告が配信されます。
                 </p>
                 <p style={{ color: '#475569', lineHeight: '1.8' }}>
@@ -265,6 +272,7 @@ export default function PrivacyPolicy() {
                     ← トップページに戻る
                 </Link>
             </div>
-        </div>
+            </div>
+        </>
     )
 }

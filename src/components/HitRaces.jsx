@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import UpdateStatus from './UpdateStatus'
 import LoadingScreen from './LoadingScreen'
 import { dataService } from '../services/dataService'
@@ -234,9 +235,15 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
   const displayRaces = getDisplayRaces()
 
   return (
-    <div>
-      <section className="venue-stats-section">
-        <h2>📊 ボートレース場別の正解実績</h2>
+    <>
+      <Helmet>
+        <title>正解レース一覧 | BoatAI</title>
+        <meta name="description" content="BoatAIのAI予測が正解したレース一覧。今日・昨日・過去14日間の正解レースと会場別正解実績を公開。" />
+        <link rel="canonical" href="https://boat-ai.jp/hit-races" />
+      </Helmet>
+      <div>
+        <section className="venue-stats-section">
+          <h2>📊 ボートレース場別の正解実績</h2>
         <UpdateStatus
           lastUpdated={lastUpdated}
           dataType="予想データ"
@@ -299,7 +306,8 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
           <HitStats hitRaces={currentHitRaces} />
         </section>
       )}
-    </div>
+      </div>
+    </>
   )
 }
 
