@@ -1,6 +1,56 @@
 // Blog post metadata
 export const blogPosts = [
     {
+        id: 'start-exhibition-guide',
+        title: 'スタート展示の見方 - 本番結果を読み解く3つのポイント',
+        description: '展示タイムだけでなく、スタート展示の見方を徹底解説。STタイミング、進入、ターンの安定感から本番の結果を予測する方法をお伝えします。',
+        date: '2026-01-23',
+        category: '初心者向け',
+        tags: ['スタート展示', '展示タイム', '進入', 'ターン', '予想'],
+        readTime: '10分',
+        featured: false
+    },
+    {
+        id: 'sg-g1-race-strategy',
+        title: 'SGレース・G1レースで勝つための戦略【グレードレース攻略】',
+        description: 'SGやG1などのグレードレースは一般戦とは全く違います。予選と決勝の買い分け、得点率の活用法、ドリーム戦の狙い方を解説。',
+        date: '2026-01-23',
+        category: '上級者向け',
+        tags: ['SG', 'G1', 'グレードレース', '戦略', '得点率'],
+        readTime: '12分',
+        featured: true
+    },
+    {
+        id: 'course-prediction-tips',
+        title: '進入予想のコツ - 枠なり崩れを見抜く方法',
+        description: '枠番通りに進入するとは限らない。前付け選手の見抜き方、深インの影響、進入が変わった時のレース展開予測を徹底解説。',
+        date: '2026-01-23',
+        category: '戦略',
+        tags: ['進入', '前付け', '枠なり', 'コース取り', '予想'],
+        readTime: '11分',
+        featured: false
+    },
+    {
+        id: 'flying-late-start-strategy',
+        title: 'フライング・出遅れ後の選手を狙え【F/L持ち選手の攻略法】',
+        description: 'F/L持ちの選手は避けるべき？実はオッズが歪んで狙い目になることも。F持ち選手の心理と、狙い目パターンを解説。',
+        date: '2026-01-23',
+        category: '戦略',
+        tags: ['フライング', '出遅れ', 'F持ち', 'オッズ', '狙い目'],
+        readTime: '10分',
+        featured: false
+    },
+    {
+        id: 'special-planned-races',
+        title: '企画レースとは？初心者におすすめの理由【堅いレースの見つけ方】',
+        description: '1号艇A級固定などの企画レースは初心者でも当てやすい。企画レースの種類、見つけ方、活用法を詳しく解説します。',
+        date: '2026-01-23',
+        category: '初心者向け',
+        tags: ['企画レース', '初心者', '1号艇', 'A級', '堅いレース'],
+        readTime: '9分',
+        featured: true
+    },
+    {
         id: 'venue-monthly-202512',
         title: '【2025年12月】全国24ボートレース場 BoatAI成績まとめ',
         description: '2025年12月のBoatAI実績を全国24場ごとに徹底分析。芦屋3連単1259%、浜名湖515%など驚異の回収率TOP30を公開。見送り推奨5場も解説。',
