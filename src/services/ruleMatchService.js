@@ -2281,15 +2281,27 @@ export async function getTopRulesWeeklyPerformance(topN = 10) {
 
   const topRuleIds = topRules.map(r => r.ruleId)
 
-  // 週別データを生成
+  // 週別データを生成（累積値）
+  const cumulativeStats = {} // { [ruleId]: { samples, totalPayout } }
+  for (const ruleId of topRuleIds) {
+    cumulativeStats[ruleId] = { samples: 0, totalPayout: 0 }
+  }
+
   const weeklyData = weeks.map(weekNum => {
     const weekData = { week: getWeekLabel(weekNum) }
     for (const ruleId of topRuleIds) {
       const weekStats = ruleWeeklyStats[ruleId]?.[weekNum]
-      if (weekStats && weekStats.samples > 0) {
-        weekData[ruleId] = Math.round((weekStats.totalPayout / (weekStats.samples * 100)) * 100)
+      if (weekStats) {
+        // 累積値を更新
+        cumulativeStats[ruleId].samples += weekStats.samples
+        cumulativeStats[ruleId].totalPayout += weekStats.totalPayout
+      }
+      // 累積回収率を計算
+      const cumStats = cumulativeStats[ruleId]
+      if (cumStats.samples > 0) {
+        weekData[ruleId] = Math.round((cumStats.totalPayout / (cumStats.samples * 100)) * 100)
       } else {
-        weekData[ruleId] = null // データなし
+        weekData[ruleId] = null
       }
     }
     return weekData
@@ -2475,13 +2487,25 @@ export async function getVenueTopRulesWeeklyPerformance(venueCode, topN = 10) {
 
   const topRuleIds = topRules.map(r => r.ruleId)
 
-  // 週別データを生成
+  // 週別データを生成（累積値）
+  const cumulativeStats = {} // { [ruleId]: { samples, totalPayout } }
+  for (const ruleId of topRuleIds) {
+    cumulativeStats[ruleId] = { samples: 0, totalPayout: 0 }
+  }
+
   const weeklyData = weeks.map(weekNum => {
     const weekData = { week: getWeekLabel(weekNum) }
     for (const ruleId of topRuleIds) {
       const weekStats = ruleWeeklyStats[ruleId]?.[weekNum]
-      if (weekStats && weekStats.samples > 0) {
-        weekData[ruleId] = Math.round((weekStats.totalPayout / (weekStats.samples * 100)) * 100)
+      if (weekStats) {
+        // 累積値を更新
+        cumulativeStats[ruleId].samples += weekStats.samples
+        cumulativeStats[ruleId].totalPayout += weekStats.totalPayout
+      }
+      // 累積回収率を計算
+      const cumStats = cumulativeStats[ruleId]
+      if (cumStats.samples > 0) {
+        weekData[ruleId] = Math.round((cumStats.totalPayout / (cumStats.samples * 100)) * 100)
       } else {
         weekData[ruleId] = null
       }

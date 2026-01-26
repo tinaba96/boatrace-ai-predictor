@@ -35,7 +35,7 @@ function RuleTrendChart({ weeklyData, rules, ruleDetails, currentWeek }) {
   if (!weeklyData || weeklyData.length === 0) {
     return (
       <div className="rule-trend-section">
-        <h3>📈 回収率トップ10ルール 週別推移</h3>
+        <h3>📈 回収率トップ10ルール 累積推移</h3>
         <div className="chart-empty">
           データ蓄積中（現在Week {currentWeek}）
         </div>
@@ -80,7 +80,7 @@ function RuleTrendChart({ weeklyData, rules, ruleDetails, currentWeek }) {
 
   return (
     <div className="rule-trend-section">
-      <h3>📈 回収率トップ10ルール 週別推移</h3>
+      <h3>📈 回収率トップ10ルール 累積推移</h3>
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={weeklyData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" />
@@ -117,7 +117,7 @@ function RuleTrendChart({ weeklyData, rules, ruleDetails, currentWeek }) {
         </LineChart>
       </ResponsiveContainer>
       <div className="chart-note">
-        💡 100%を超えると黒字、下回ると赤字を意味します
+        💡 累積回収率：100%超で黒字、下回ると赤字
       </div>
     </div>
   )

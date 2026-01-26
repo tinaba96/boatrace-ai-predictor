@@ -448,7 +448,7 @@ function TodaysPicks() {
                     {/* 会場別週別推移グラフ（アコーディオン直下） */}
                     {venuePerformances[venue.venueCode]?.weeklyData?.length > 0 && venuePerformances[venue.venueCode]?.topRules?.length > 0 && (
                       <div className="venue-chart-container">
-                        <h4 className="venue-chart-title">回収率トップ 週別推移</h4>
+                        <h4 className="venue-chart-title">回収率トップ 累積推移</h4>
                         <RuleTrendChart
                           weeklyData={venuePerformances[venue.venueCode].weeklyData}
                           rules={venuePerformances[venue.venueCode].topRules}
@@ -597,7 +597,7 @@ function TodaysPicks() {
             <div className="performance-content">
               {/* 週別推移グラフ */}
               <div className="rule-trend-chart-container">
-                <h4 className="chart-title">回収率トップ10 週別推移</h4>
+                <h4 className="chart-title">回収率トップ10 累積推移</h4>
                 {weeklyPerformance ? (
                   <RuleTrendChart
                     weeklyData={weeklyPerformance.weeklyData}
