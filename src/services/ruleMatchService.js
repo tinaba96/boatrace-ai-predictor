@@ -1873,7 +1873,13 @@ export async function getRulePerformanceByVenue(venueCode, startDate = '2026-01-
   // デフォルトの運用開始日（既存ルールはこの日以降から集計）
   const DEFAULT_ADDED_DATE = '2026-01-16'
 
-  for (const pred of predictions) {
+  // LIKEクエリは日付にもマッチする可能性があるため、JS側で会場コードを再検証
+  const filteredPredictions = predictions.filter(pred => {
+    const parts = pred.race_id.split('-')
+    return parts[3] === venueCode
+  })
+
+  for (const pred of filteredPredictions) {
     const parts = pred.race_id.split('-')
     const raceNo = parseInt(parts[4])
     const raceDate = parts.slice(0, 3).join('-') // YYYY-MM-DD
@@ -2362,8 +2368,18 @@ export async function getVenueTopRulesWeeklyPerformance(venueCode, topN = 10) {
     return { rules: [], ruleDetails: [], weeklyData: [], currentWeek: 1 }
   }
 
+  // LIKEクエリは日付にもマッチする可能性があるため、JS側で会場コードを再検証
+  const filteredPredictions = venuePredictions.filter(pred => {
+    const parts = pred.race_id.split('-')
+    return parts[3] === venueCode
+  })
+
+  if (filteredPredictions.length === 0) {
+    return { rules: [], ruleDetails: [], weeklyData: [], currentWeek: 1 }
+  }
+
   // 結果データを取得
-  const raceIds = venuePredictions.map(p => p.race_id)
+  const raceIds = filteredPredictions.map(p => p.race_id)
   const { data: results } = await supabase
     .from('race_results')
     .select('*')
@@ -2402,7 +2418,7 @@ export async function getVenueTopRulesWeeklyPerformance(venueCode, topN = 10) {
       totalPayout: 0
     }
 
-    for (const pred of venuePredictions) {
+    for (const pred of filteredPredictions) {
       const parts = pred.race_id.split('-')
       const raceNo = parseInt(parts[4])
       const raceDate = parts.slice(0, 3).join('-')
