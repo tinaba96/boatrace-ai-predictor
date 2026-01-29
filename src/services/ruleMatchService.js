@@ -1815,24 +1815,18 @@ export async function getRulePerformanceByVenue(venueCode, startDate = '2026-01-
     return { byRule: [], total: { samples: 0, hits: 0, hitRate: 0, recovery: 0 }, startDate }
   }
 
-  // 予測データを取得（startDateはクエリ最適化用、実際のフィルタはルール別addedDateで行う）
-  const { data: allPredictions, error: predError } = await supabase
+  // 予測データを取得（クエリレベルで会場フィルタ）
+  const { data: predictions, error: predError } = await supabase
     .from('predictions')
     .select('*')
+    .like('race_id', `%-${venueCode}-%`)
     .gte('predicted_at', startDate)
     .eq('model_id', 'standard')
 
-  if (predError || !allPredictions) {
+  if (predError || !predictions) {
     console.error('予測取得エラー:', predError?.message)
     return { byRule: [], total: { samples: 0, hits: 0, hitRate: 0, recovery: 0 }, startDate }
   }
-
-  // 指定会場のみフィルタ（race_idからvenueCodeを正確に抽出）
-  // race_id形式: YYYY-MM-DD-VV-RR（VVが会場コード）
-  const predictions = allPredictions.filter(p => {
-    const parts = p.race_id.split('-')
-    return parts[3] === venueCode
-  })
 
   // 結果データを取得
   const raceIds = predictions.map(p => p.race_id)
@@ -1979,12 +1973,13 @@ export async function getTopPerformingRules({ limit = null, minRecovery = null, 
 
   const DEFAULT_ADDED_DATE = '2026-01-16'
 
-  // 全予測データを取得
+  // 全予測データを取得（Supabaseのデフォルト1000行制限を回避）
   const { data: allPredictions, error: predError } = await supabase
     .from('predictions')
     .select('*')
     .gte('predicted_at', DEFAULT_ADDED_DATE)
     .eq('model_id', 'standard')
+    .limit(10000)
 
   if (predError || !allPredictions) {
     console.error('予測取得エラー:', predError?.message)
@@ -2139,12 +2134,13 @@ export async function getTopRulesWeeklyPerformance(topN = 10) {
     return `Week${weekNum}`
   }
 
-  // 全予測データを取得
+  // 全予測データを取得（Supabaseのデフォルト1000行制限を回避）
   const { data: allPredictions, error: predError } = await supabase
     .from('predictions')
     .select('*')
     .gte('predicted_at', DEFAULT_ADDED_DATE)
     .eq('model_id', 'standard')
+    .limit(10000)
 
   if (predError || !allPredictions) {
     console.error('予測取得エラー:', predError?.message)
@@ -2349,23 +2345,18 @@ export async function getVenueTopRulesWeeklyPerformance(venueCode, topN = 10) {
 
   const venueName = VENUE_NAMES[venueCode]
 
-  // 対象会場の予測データを取得
-  const { data: allPredictions, error: predError } = await supabase
+  // 対象会場の予測データを取得（クエリレベルで会場フィルタ）
+  const { data: venuePredictions, error: predError } = await supabase
     .from('predictions')
     .select('*')
+    .like('race_id', `%-${venueCode}-%`)
     .gte('predicted_at', DEFAULT_ADDED_DATE)
     .eq('model_id', 'standard')
 
-  if (predError || !allPredictions) {
+  if (predError || !venuePredictions) {
     console.error('予測取得エラー:', predError?.message)
     return { rules: [], ruleDetails: [], weeklyData: [], currentWeek: 1 }
   }
-
-  // 会場コードでフィルタリング
-  const venuePredictions = allPredictions.filter(p => {
-    const parts = p.race_id.split('-')
-    return parts[3] === venueCode
-  })
 
   if (venuePredictions.length === 0) {
     return { rules: [], ruleDetails: [], weeklyData: [], currentWeek: 1 }
