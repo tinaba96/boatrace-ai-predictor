@@ -6,6 +6,67 @@
 
 import { supabase } from './supabaseClient'
 
+/**
+ * Supabaseのページネーションで全データを取得するヘルパー
+ * デフォルトの1000行制限を回避
+ */
+async function fetchAllPredictions(startDate, modelId = 'standard') {
+  const allData = []
+  let offset = 0
+  const pageSize = 1000
+
+  while (true) {
+    const { data: page, error } = await supabase
+      .from('predictions')
+      .select('*')
+      .gte('predicted_at', startDate)
+      .eq('model_id', modelId)
+      .range(offset, offset + pageSize - 1)
+
+    if (error) {
+      console.error('予測取得エラー:', error.message)
+      break
+    }
+    if (!page || page.length === 0) break
+
+    allData.push(...page)
+    offset += pageSize
+
+    if (page.length < pageSize) break
+  }
+
+  return allData
+}
+
+/**
+ * race_idリストから結果データをバッチ取得するヘルパー
+ * .in()クエリの1000件制限を回避
+ */
+async function fetchResultsByRaceIds(raceIds) {
+  if (!raceIds || raceIds.length === 0) return []
+
+  const allResults = []
+  const batchSize = 500 // .in()は安全に500件ずつ
+
+  for (let i = 0; i < raceIds.length; i += batchSize) {
+    const batch = raceIds.slice(i, i + batchSize)
+    const { data, error } = await supabase
+      .from('race_results')
+      .select('*')
+      .in('race_id', batch)
+
+    if (error) {
+      console.error('結果取得エラー:', error.message)
+      continue
+    }
+    if (data) {
+      allResults.push(...data)
+    }
+  }
+
+  return allResults
+}
+
 // 会場コードから会場名への変換
 const VENUE_NAMES = {
   '01': '桐生', '02': '戸田', '03': '江戸川', '04': '平和島', '05': '多摩川', '06': '浜名湖',
@@ -1979,32 +2040,21 @@ export async function getTopPerformingRules({ limit = null, minRecovery = null, 
 
   const DEFAULT_ADDED_DATE = '2026-01-16'
 
-  // 全予測データを取得（Supabaseのデフォルト1000行制限を回避）
-  const { data: allPredictions, error: predError } = await supabase
-    .from('predictions')
-    .select('*')
-    .gte('predicted_at', DEFAULT_ADDED_DATE)
-    .eq('model_id', 'standard')
-    .limit(10000)
+  // 全予測データを取得（ページネーションで1000行制限を回避）
+  const allPredictions = await fetchAllPredictions(DEFAULT_ADDED_DATE, 'standard')
 
-  if (predError || !allPredictions) {
-    console.error('予測取得エラー:', predError?.message)
+  if (!allPredictions || allPredictions.length === 0) {
     return []
   }
 
-  // 全結果データを取得
+  // 全結果データを取得（バッチ処理で1000件制限を回避）
   const raceIds = allPredictions.map(p => p.race_id)
   if (raceIds.length === 0) return []
 
-  const { data: results } = await supabase
-    .from('race_results')
-    .select('*')
-    .in('race_id', raceIds)
+  const results = await fetchResultsByRaceIds(raceIds)
 
   const resultsMap = {}
-  if (results) {
-    results.forEach(r => { resultsMap[r.race_id] = r })
-  }
+  results.forEach(r => { resultsMap[r.race_id] = r })
 
   // 全会場・全ルールを集計
   const ruleStats = {}
@@ -2140,32 +2190,21 @@ export async function getTopRulesWeeklyPerformance(topN = 10) {
     return `Week${weekNum}`
   }
 
-  // 全予測データを取得（Supabaseのデフォルト1000行制限を回避）
-  const { data: allPredictions, error: predError } = await supabase
-    .from('predictions')
-    .select('*')
-    .gte('predicted_at', DEFAULT_ADDED_DATE)
-    .eq('model_id', 'standard')
-    .limit(10000)
+  // 全予測データを取得（ページネーションで1000行制限を回避）
+  const allPredictions = await fetchAllPredictions(DEFAULT_ADDED_DATE, 'standard')
 
-  if (predError || !allPredictions) {
-    console.error('予測取得エラー:', predError?.message)
+  if (!allPredictions || allPredictions.length === 0) {
     return { rules: [], weeklyData: [], currentWeek: 1 }
   }
 
-  // 全結果データを取得
+  // 全結果データを取得（バッチ処理で1000件制限を回避）
   const raceIds = allPredictions.map(p => p.race_id)
   if (raceIds.length === 0) return { rules: [], weeklyData: [], currentWeek: 1 }
 
-  const { data: results } = await supabase
-    .from('race_results')
-    .select('*')
-    .in('race_id', raceIds)
+  const results = await fetchResultsByRaceIds(raceIds)
 
   const resultsMap = {}
-  if (results) {
-    results.forEach(r => { resultsMap[r.race_id] = r })
-  }
+  results.forEach(r => { resultsMap[r.race_id] = r })
 
   // 現在の週番号を計算
   const today = new Date()
