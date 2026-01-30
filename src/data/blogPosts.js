@@ -1,6 +1,16 @@
 // Blog post metadata
 export const blogPosts = [
     {
+        id: 'suji-funaken-guide',
+        title: 'スジ舟券とは？理論と実践で回収率を上げる買い方',
+        description: 'ボートレースの「スジ」を徹底解説。イン逃げ、まくり、差しの展開別スジパターン、逆スジの見分け方、会場別傾向まで。買い目を絞って回収率アップ。',
+        date: '2026-01-30',
+        category: '戦略',
+        tags: ['スジ舟券', '買い目', '展開予想', 'まくり', '差し', 'イン逃げ'],
+        readTime: '12分',
+        featured: true
+    },
+    {
         id: 'start-exhibition-guide',
         title: 'スタート展示の見方 - 本番結果を読み解く3つのポイント',
         description: '展示タイムだけでなく、スタート展示の見方を徹底解説。STタイミング、進入、ターンの安定感から本番の結果を予測する方法をお伝えします。',
