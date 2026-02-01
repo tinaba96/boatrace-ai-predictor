@@ -899,20 +899,33 @@ export const supabaseDataService = {
     const startDate = new Date(jstToday.getTime() - days * 24 * 60 * 60 * 1000);
     const startDateStr = startDate.toISOString().split('T')[0];
 
-    // 日付ごとのレース数を取得
-    const { data, error } = await supabase
-      .from('races')
-      .select('race_date')
-      .gte('race_date', startDateStr)
-      .order('race_date', { ascending: false });
+    // 日付ごとのレースを取得（ページネーションで1000行制限を回避）
+    const allData = [];
+    let offset = 0;
+    const pageSize = 1000;
 
-    if (error) {
-      console.error('Supabase getAvailableDates error:', error.message);
-      return [];
+    while (true) {
+      const { data, error } = await supabase
+        .from('races')
+        .select('race_date')
+        .gte('race_date', startDateStr)
+        .order('race_date', { ascending: false })
+        .range(offset, offset + pageSize - 1);
+
+      if (error) {
+        console.error('Supabase getAvailableDates error:', error.message);
+        break;
+      }
+      if (!data || data.length === 0) break;
+
+      allData.push(...data);
+      offset += pageSize;
+
+      if (data.length < pageSize) break;
     }
 
       // ユニークな日付を抽出
-      const uniqueDates = [...new Set(data.map(r => r.race_date))];
+      const uniqueDates = [...new Set(allData.map(r => r.race_date))];
       return uniqueDates;
     }); // withCache end
   }
