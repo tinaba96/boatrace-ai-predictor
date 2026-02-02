@@ -717,18 +717,47 @@ export const supabaseDataService = {
     // 今月の予測データを取得（is_hit_winがセットされているもの = 結果が出ているもの）
     const thisMonthPredictions = await fetchAllPredictions(thisMonthStart, thisMonthEnd);
 
-    // 先月の日付範囲を計算
-    let lastMonthYear = thisYear;
-    let lastMonthMonth = thisMonth - 1;
-    if (lastMonthMonth === 0) {
-      lastMonthMonth = 12;
-      lastMonthYear = thisYear - 1;
-    }
-    const lastMonthStart = `${lastMonthYear}-${String(lastMonthMonth).padStart(2, '0')}-01`;
-    const lastMonthEnd = `${lastMonthYear}-${String(lastMonthMonth).padStart(2, '0')}-31`;
+    // 過去6ヶ月分の月別データを取得するためのヘルパー
+    const getMonthRange = (year, month) => {
+      const start = `${year}-${String(month).padStart(2, '0')}-01`;
+      const end = `${year}-${String(month).padStart(2, '0')}-31`;
+      return { start, end, year, month };
+    };
 
-    // 先月の予測データを取得
-    const lastMonthPredictions = await fetchAllPredictions(lastMonthStart, lastMonthEnd);
+    const getPreviousMonth = (year, month) => {
+      if (month === 1) {
+        return { year: year - 1, month: 12 };
+      }
+      return { year, month: month - 1 };
+    };
+
+    // 過去6ヶ月分の月情報を生成
+    const monthsToFetch = [];
+    let currentYear = thisYear;
+    let currentMonth = thisMonth;
+
+    for (let i = 0; i < 6; i++) {
+      const prev = getPreviousMonth(currentYear, currentMonth);
+      currentYear = prev.year;
+      currentMonth = prev.month;
+      monthsToFetch.push(getMonthRange(currentYear, currentMonth));
+    }
+
+    // 各月の予測データを取得
+    const monthlyPredictionsMap = {};
+    for (const monthInfo of monthsToFetch) {
+      const predictions = await fetchAllPredictions(monthInfo.start, monthInfo.end);
+      const key = `${monthInfo.year}-${String(monthInfo.month).padStart(2, '0')}`;
+      monthlyPredictionsMap[key] = {
+        predictions,
+        year: monthInfo.year,
+        month: monthInfo.month
+      };
+    }
+
+    // 先月のデータ（互換性のため）
+    const lastMonthKey = `${monthsToFetch[0].year}-${String(monthsToFetch[0].month).padStart(2, '0')}`;
+    const lastMonthPredictions = monthlyPredictionsMap[lastMonthKey]?.predictions || [];
 
     // 過去7日分の日別データ取得
     const sevenDaysAgo = new Date(jstNow.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -848,6 +877,23 @@ export const supabaseDataService = {
       const dailyHistory = calculateDailyHistory(recentPredictions, modelId);
       const byVenue = calculateByVenue(allPredictions, modelId);
 
+      // 月別履歴を構築（過去6ヶ月分）
+      const monthlyHistory = Object.entries(monthlyPredictionsMap)
+        .map(([key, data]) => {
+          const monthPreds = data.predictions?.filter(p => p.model_id === modelId) || [];
+          const stats = calculateStats(monthPreds);
+          return {
+            year: data.year,
+            month: data.month,
+            ...stats
+          };
+        })
+        .filter(m => m.totalRaces > 0)
+        .sort((a, b) => {
+          if (a.year !== b.year) return b.year - a.year;
+          return b.month - a.month;
+        });
+
       modelStats[modelId] = {
         overall: {
           totalRaces: modelInfo?.total_predictions || 0,
@@ -865,10 +911,11 @@ export const supabaseDataService = {
           ...thisMonthStats
         },
         lastMonth: {
-          year: lastMonthYear,
-          month: lastMonthMonth,
+          year: monthsToFetch[0].year,
+          month: monthsToFetch[0].month,
           ...lastMonthStats
         },
+        monthlyHistory,
         dailyHistory,
         byVenue
       };
