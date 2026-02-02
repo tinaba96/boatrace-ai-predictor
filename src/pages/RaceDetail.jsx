@@ -17,6 +17,7 @@ import { dataService } from '../services/dataService'
 import { STADIUM_NAMES } from '../constants'
 import { formatDate, formatPercent } from '../utils/formatters'
 import { getRecoveryColor } from '../utils/colors'
+import { getVenueGuidePath } from '../utils/venueUtils'
 import './RaceDetail.css'
 
 function RaceDetail() {
@@ -440,6 +441,20 @@ function RaceDetail() {
 
                         <RaceResult prediction={prediction} />
                         <PlayerTable allPlayers={prediction.allPlayers} top3={prediction.top3} />
+
+                        {/* 会場攻略ガイドリンク */}
+                        {selectedRace?.rawData?.venueCode && getVenueGuidePath(selectedRace.rawData.venueCode) && (
+                          <div className="venue-guide-link">
+                            <Link to={getVenueGuidePath(selectedRace.rawData.venueCode)}>
+                              <span className="venue-guide-icon">📖</span>
+                              <div className="venue-guide-content">
+                                <span className="venue-guide-title">{selectedRace.venue}の攻略ガイドを見る</span>
+                                <span className="venue-guide-desc">会場の特徴と狙い目を詳しく解説</span>
+                              </div>
+                              <span className="venue-guide-arrow">→</span>
+                            </Link>
+                          </div>
+                        )}
                       </div>
                     </>
                   )}

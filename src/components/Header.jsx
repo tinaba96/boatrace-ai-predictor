@@ -20,6 +20,7 @@ function Header() {
     if (location.pathname === '/picks') return 'picks'
     if (location.pathname.startsWith('/races')) return 'past-races'
     if (location.pathname === '/how-to-use') return 'how-to-use'
+    if (location.pathname === '/guide') return 'guide'
     if (location.pathname.startsWith('/blog')) return 'blog'
     if (location.pathname === '/faq') return 'faq'
     if (location.pathname === '/about') return 'about'
@@ -98,6 +99,13 @@ function Header() {
               onClick={() => setIsMenuOpen(false)}
             >
               📚 使い方
+            </Link>
+            <Link
+              to="/guide"
+              className={`submenu-item ${activeTab === 'guide' ? 'active' : ''}`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              📖 完全ガイド
             </Link>
             <Link
               to="/blog"

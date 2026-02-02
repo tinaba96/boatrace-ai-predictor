@@ -10,6 +10,7 @@ import RaceHistory from './pages/RaceHistory';
 import RaceDetail from './pages/RaceDetail';
 import Profile from './pages/Profile';
 import AccuracyHistory from './pages/AccuracyHistory';
+import ContentHub from './pages/ContentHub';
 
 // 旧ハッシュURLからのリダイレクトを処理するコンポーネント
 function HashRedirect() {
@@ -62,6 +63,7 @@ export default function AppRouter() {
         <Route path="/faq" element={<FAQ />} />
         <Route path="/how-to-use" element={<HowToUse />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/guide" element={<ContentHub />} />
 
         {/* Fallback: 不明なパスはトップへ */}
         <Route path="*" element={<Navigate to="/" replace />} />

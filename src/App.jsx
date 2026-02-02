@@ -12,6 +12,8 @@ import UpdateStatus from './components/UpdateStatus'
 import { ShareButton } from './components/ShareButton'
 import { SocialShareButtons } from './components/SocialShareButtons'
 import { shareRacePredictionToX, generatePredictionShareText } from './utils/share'
+import { getVenueGuidePath } from './utils/venueUtils'
+import { getFeaturedPosts } from './data/blogPosts'
 import { dataService } from './services/dataService'
 import { STADIUM_NAMES, WEEKDAYS } from './constants'
 import { getTodayJST } from './utils/dateUtils'
@@ -1326,10 +1328,49 @@ function App({ tab = 'races' }) {
                                                     </div>
                                                 </div>
                                             </div>
+
+                                            {/* 会場攻略ガイドリンク */}
+                                            {selectedRace?.rawData?.placeCd && getVenueGuidePath(selectedRace.rawData.placeCd) && (
+                                                <div className="venue-guide-link">
+                                                    <Link to={getVenueGuidePath(selectedRace.rawData.placeCd)}>
+                                                        <span className="venue-guide-icon">📖</span>
+                                                        <div className="venue-guide-content">
+                                                            <span className="venue-guide-title">{selectedRace.venue}の攻略ガイドを見る</span>
+                                                            <span className="venue-guide-desc">会場の特徴と狙い目を詳しく解説</span>
+                                                        </div>
+                                                        <span className="venue-guide-arrow">→</span>
+                                                    </Link>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </section>
                             )}
+
+                            {/* ブログ記事セクション */}
+                            <section className="blog-preview-section">
+                                <h2>📝 ボートレース攻略ブログ</h2>
+                                <p className="blog-preview-lead">
+                                    予想のコツ、会場別攻略、データ分析手法など、勝率アップに役立つ情報をお届けします
+                                </p>
+                                <div className="blog-preview-grid">
+                                    {getFeaturedPosts().slice(0, 5).map(post => (
+                                        <Link to={`/blog/${post.id}`} key={post.id} className="blog-preview-card">
+                                            <span className="blog-preview-category">{post.category}</span>
+                                            <h3 className="blog-preview-title">{post.title}</h3>
+                                            <p className="blog-preview-desc">{post.description}</p>
+                                            <div className="blog-preview-meta">
+                                                <span>{post.readTime}</span>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                                <div className="blog-preview-cta">
+                                    <Link to="/blog" className="blog-preview-btn">
+                                        全てのブログ記事を見る →
+                                    </Link>
+                                </div>
+                            </section>
                         </>
                     )}
                 </main>
