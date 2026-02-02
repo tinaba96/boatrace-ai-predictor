@@ -1,35 +1,302 @@
-# BoatAI
+# BoatAI - ボートレースAI予想サービス
 
-AIを活用したボートレース予想サービスです。選手の過去データ、モーター性能、当地実績などを分析し、レースの予想を提供します。
+AIを活用したボートレース予想サービスです。選手の過去データ、モーター性能、当地実績などを分析し、3つの予想モデルで最適な舟券戦略を提案します。
 
-🔗 **公式サイト**: https://boat-ai.jp/ (DNS反映待ち)
+**公式サイト**: https://www.boat-ai.jp/
 
-## 機能
+---
 
-- **AI予想**: 選手データ、モーター性能、実績を分析した予想を提供
-- **リアルタイムデータ**: 公式サイトから最新のレース情報を自動取得
-- **的中率統計**:
-  - 単勝、複勝、3連複、3連単の的中率を表示
-  - 回収率の推定値を算出
-  - 日別・月別の統計
-- **レース結果確認**: レース終了後、予想と結果を比較
+## システム概要
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         ユーザー                                 │
+│                    (スマートフォン/PC)                           │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      Vercel (ホスティング)                       │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                   React SPA (PWA)                        │    │
+│  │  - レース一覧・AI予想表示・的中率統計・ブログ           │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                              │                                   │
+│                              ▼                                   │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │              Edge Functions (キャッシュ層)               │    │
+│  │  - /api/races/today      → get_today_races RPC呼出      │    │
+│  │  - /api/predictions/DATE → get_predictions_by_date RPC  │    │
+│  │  ※ CDNキャッシュ: 5分〜1時間（データ種別による）        │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                        Supabase                                  │
+│                                                                  │
+│  ┌──────────────────────┐  ┌────────────────────────────────┐  │
+│  │  PostgreSQL          │  │  RPC関数（クエリロジック）     │  │
+│  │  ・races             │  │  ・get_today_races()           │  │
+│  │  ・predictions       │  │  ・get_predictions_by_date()   │  │
+│  │  ・accuracy_summary  │  │  ・その他集計関数              │  │
+│  └──────────────────────┘  └────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+                              ▲
+                              │ データ書き込み
+┌─────────────────────────────────────────────────────────────────┐
+│                    GitHub Actions (自動化)                       │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ 毎朝 6:30 JST                                           │    │
+│  │ 1. scrape-to-json.js      → 公式サイトからレース取得    │    │
+│  │ 2. generate-predictions.js → AI予想生成（3モデル）      │    │
+│  │ 3. Supabaseへ保存                                       │    │
+│  ├─────────────────────────────────────────────────────────┤    │
+│  │ 毎晩 21:30 JST                                          │    │
+│  │ 1. scrape-results.js      → レース結果取得              │    │
+│  │ 2. calculate-accuracy.js  → 的中率・回収率計算          │    │
+│  │ 3. Supabaseへ保存                                       │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### データの流れ
+
+1. **GitHub Actions** が毎日、公式サイトからデータを取得し **Supabase** に保存
+2. ユーザーがサイトにアクセスすると **React SPA** が **Edge Functions** にリクエスト
+3. **Edge Functions** は **Supabase RPC関数** を呼び出し、結果をCDNキャッシュして返す
+4. 同じリクエストが来たらキャッシュから即座に返す（DBアクセス不要）
+
+---
+
+## 主な機能
+
+### 1. 3つの予想モデル
+
+| モデル | 特徴 | 適したレース |
+|-------|------|-------------|
+| **スタンダード** | 的中率と配当のバランス重視 | 標準的なレース |
+| **本命狙い** | 的中率最優先の堅実型 | 1号艇・A級選手が有力なレース |
+| **穴狙い** | 高配当を狙う攻撃型 | 混戦・荒れる展開のレース |
+
+### 2. 荒れ度スコア
+
+各レースの「荒れやすさ」を数値化し、最適なモデルを自動推奨します。
+
+### 3. 会場別ルールエンジン
+
+24会場それぞれの特徴を分析し、回収率100%超えの条件を統計的に発見。会場ごとに最適化されたルールを適用します。
+
+**実装済み会場**: 江戸川、浜名湖、蒲郡、三国、びわこ、丸亀、福岡（7会場・50ルール）
+
+### 4. 的中率統計
+
+- 単勝、複勝、3連複、3連単の的中率・回収率を表示
+- 日別・月別・会場別の統計
+- モデル別の成績比較
+
+### 5. ブログ
+
+- ボートレース攻略記事
+- 会場別攻略ガイド
+- 週間実績レポート
+
+---
 
 ## 技術スタック
 
-- **フロントエンド**: React + Vite
-- **スタイリング**: CSS（カスタム）
-- **データ取得**: Node.js + Cheerio（スクレイピング）
-- **デプロイ**: GitHub Pages
-- **自動化**: GitHub Actions（1時間ごとの自動データ更新）
+### フロントエンド
+- **React 19** + **Vite 7**
+- **react-router-dom** - ルーティング
+- **Recharts** - グラフ表示
+- **react-helmet-async** - SEO対応
+- **PWA対応** - オフライン対応、ホーム画面追加
 
-## セットアップ
+### バックエンド
+- **Vercel Edge Functions** - キャッシュ層（Supabase RPCを中継）
+- **Node.js** - バッチ処理スクリプト（GitHub Actionsで実行）
 
-### 必要な環境
+### データベース
+- **Supabase (PostgreSQL)**
+  - races: レース情報・選手データ
+  - predictions: AI予測結果
+  - accuracy_summary: 的中率統計
+  - RPC関数: クエリロジックをDB側に定義
 
-- Node.js 18以上
-- npm または yarn
+### インフラ
+- **Vercel** - ホスティング・CI/CD
+- **GitHub Actions** - 日次バッチ処理
 
-### インストール
+---
+
+## ディレクトリ構成
+
+```
+boatrace-ai-predictor/
+├── src/                      # フロントエンド
+│   ├── App.jsx               # メインアプリ
+│   ├── components/           # Reactコンポーネント
+│   │   ├── Header.jsx
+│   │   ├── AccuracyDashboard.jsx  # 的中率統計
+│   │   ├── TodaysPicks.jsx   # おすすめレース
+│   │   └── ...
+│   ├── pages/                # ページコンポーネント
+│   │   ├── Blog.jsx
+│   │   ├── BlogPost.jsx
+│   │   └── ...
+│   ├── services/             # サービス層
+│   │   ├── dataService.js    # データ取得抽象化
+│   │   ├── supabaseDataService.js  # Supabase連携
+│   │   └── ruleMatchService.js     # 会場別ルールエンジン
+│   ├── data/
+│   │   └── blogPosts.js      # ブログ記事メタデータ
+│   └── utils/
+│       └── dateUtils.js      # 日付ユーティリティ
+│
+├── api/                      # Vercel Edge Functions（キャッシュ層）
+│   ├── races/
+│   │   └── today.js          # GET /api/races/today → RPC中継
+│   └── predictions/
+│       └── [date].js         # GET /api/predictions/YYYY-MM-DD → RPC中継
+│
+├── scripts/
+│   ├── daily/                # 日次実行スクリプト
+│   │   ├── generate-predictions.js  # AI予想生成
+│   │   ├── scrape-results.js        # 結果取得
+│   │   └── calculate-accuracy.js    # 的中率計算
+│   ├── analysis/             # 分析用スクリプト
+│   │   ├── collect-venue-stats.js   # 会場別統計
+│   │   └── find-profitable-strategies.js
+│   ├── maintenance/          # メンテナンス用
+│   └── lib/                  # 共通ライブラリ
+│       └── supabase.js
+│
+├── data/
+│   ├── analysis/             # 分析結果JSON
+│   └── venue-params/         # 会場別パラメータ
+│
+├── content/
+│   └── blog/                 # ブログ記事 (Markdown)
+│
+├── .github/
+│   └── workflows/
+│       ├── daily-update.yml  # 日次データ更新
+│       └── deploy.yml        # デプロイ
+│
+└── docs/                     # ドキュメント
+    ├── db-migration/         # DBスキーマ・マイグレーション
+    └── setup/                # セットアップガイド
+```
+
+---
+
+## データフロー
+
+### 朝の処理 (6:30 JST)
+
+```
+1. scrape-to-json.js
+   ボートレース公式サイトから当日のレース情報を取得
+   ↓
+2. generate-predictions.js
+   ・選手データ（全国勝率、当地勝率、級別）
+   ・モーター性能（2連率）
+   ・ボート性能（2連率）
+   ・会場別ルール
+   → 3モデル分の予想を生成
+   ↓
+3. Supabase に保存
+   - races テーブル
+   - predictions テーブル
+```
+
+### 夜の処理 (21:30 JST)
+
+```
+1. scrape-results.js
+   レース結果を取得
+   ↓
+2. calculate-accuracy.js
+   予想と結果を照合し、的中率・回収率を計算
+   ↓
+3. Supabase に保存
+   - predictions テーブル（結果追記）
+   - accuracy_summary テーブル
+```
+
+---
+
+## AI予想アルゴリズム
+
+### スコア計算式
+
+```javascript
+// 基本スコア
+baseScore =
+  全国勝率 × 12 +
+  当地勝率 × 8 +
+  モーター2率 × 0.5 +
+  ボート2率 × 0.3 +
+  級別ボーナス  // A1=15, A2=10, B1=5, B2=0
+
+// 枠番補正
+lane1Bonus = 10  // 1号艇ボーナス
+
+// 会場別ルール補正
+venueRuleBonus = ruleMatchService.evaluate(prediction, venue)
+
+// 最終スコア
+finalScore = baseScore + lane1Bonus + venueRuleBonus
+```
+
+### 荒れ度スコア
+
+```javascript
+荒れ度 =
+  (1号艇の弱さ) +
+  (上位選手の差が小さい) +
+  (外枠にA級選手がいる) +
+  (モーター性能の逆転現象)
+
+→ 0-100で数値化し、low/medium/high に分類
+```
+
+---
+
+## 的中率の定義
+
+| 券種 | 的中条件 |
+|------|---------|
+| **単勝** | AI本命が1着 |
+| **複勝** | AI本命が2着以内 |
+| **3連複** | AIトップ3が1-2-3着を含む（順不同） |
+| **3連単** | AIトップ3が1-2-3着と順序も一致 |
+
+---
+
+## 環境変数
+
+### Vercel (本番)
+
+```
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=xxxxx
+VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+```
+
+### ローカル開発 (.env.local)
+
+```
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=xxxxx
+VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+```
+
+---
+
+## ローカル開発
 
 ```bash
 # リポジトリをクローン
@@ -38,202 +305,62 @@ cd boatrace-ai-predictor
 
 # 依存関係をインストール
 npm install
-```
 
-### 環境変数の設定
+# 環境変数を設定
+cp .env.example .env.local
+# .env.local を編集
 
-```bash
-# .envファイルを作成
-cp .env.example .env
-
-# .envファイルを編集してGoogle Analytics IDを設定
-# VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
-```
-
-### 開発サーバーの起動
-
-```bash
+# 開発サーバーを起動
 npm run dev
 ```
 
-ブラウザで http://localhost:5173/boatrace-ai-predictor/ を開きます。
+ブラウザで http://localhost:5173 を開きます。
 
-### Google Analyticsの設定
-
-1. [Google Analytics](https://analytics.google.com/)でアカウントを作成
-2. GA4プロパティを作成
-3. 測定ID（G-XXXXXXXXXXの形式）を取得
-4. Vercelの環境変数に設定:
-   - Environment Variable名: `VITE_GA_MEASUREMENT_ID`
-   - Value: 取得した測定ID
-5. デプロイ後、Google Analyticsでデータが確認できます
-
-## プロジェクト構成
-
-```
-boatrace-ai-predictor/
-├── src/
-│   ├── components/
-│   │   ├── AccuracyDashboard.jsx  # 的中率統計ダッシュボード
-│   │   └── AccuracyDashboard.css
-│   ├── App.jsx                     # メインアプリケーション
-│   ├── App.css
-│   └── main.jsx
-├── scripts/
-│   ├── scrape-to-json.js          # レースデータ取得スクリプト
-│   ├── scrape-results.js          # レース結果取得スクリプト
-│   ├── generate-predictions.js    # AI予想生成スクリプト
-│   └── calculate-accuracy.js      # 的中率計算スクリプト
-├── data/
-│   ├── races.json                 # 当日のレースデータ
-│   └── predictions/               # 予想データと結果
-│       ├── YYYY-MM-DD.json       # 日別予想データ
-│       └── summary.json          # 統計サマリー
-├── public/
-│   └── data/                     # ビルド時にコピーされるデータ
-├── .github/
-│   └── workflows/
-│       ├── scrape.yml           # 自動データ取得ワークフロー
-│       └── deploy.yml           # デプロイワークフロー
-└── ISSUES.md                    # 課題リスト
-
-```
-
-## スクリプト
-
-### レースデータ取得
-
-```bash
-# 本日のレースデータを取得
-node scripts/scrape-to-json.js
-
-# 特定の日付のレース結果を取得
-node scripts/scrape-results.js --date=2025-12-08
-```
-
-### AI予想生成
-
-```bash
-# 本日のレースのAI予想を生成
-node scripts/generate-predictions.js
-```
-
-### 的中率計算
-
-```bash
-# 全予想データの的中率を計算
-node scripts/calculate-accuracy.js
-```
+---
 
 ## デプロイ
+
+### 自動デプロイ
+
+- `master` ブランチへのpushで自動的にVercelにデプロイ
+- `develop` ブランチはプレビュー環境にデプロイ
 
 ### 手動デプロイ
 
 ```bash
-# ビルド
 npm run build
-
-# GitHub Pagesにデプロイ
-npm run deploy
+# Vercel CLIまたはダッシュボードからデプロイ
 ```
 
-### 自動デプロイ
+---
 
-- masterブランチへのpushで自動的にGitHub Pagesにデプロイされます
-- GitHub Actionsが1時間ごとにレースデータを自動更新します
+## 実績（参考）
 
-## データの仕組み
+> 実績は日々変動します。最新の数値はサイトの「的中率」ページでご確認ください。
 
-1. **レースデータ取得** (scrape-to-json.js)
-   - 公式サイトから当日のレース情報をスクレイピング
-   - 選手データ、モーター性能、オッズなどを取得
-   - `data/races.json`に保存
+- 単勝的中率: 約30-35%
+- 複勝的中率: 約50-55%
+- 3連複的中率: 約8-12%
+- 3連単的中率: 約2-4%
 
-2. **AI予想生成** (generate-predictions.js)
-   - レースデータを基にAI予想を生成
-   - 選手の全国勝率、当地勝率、モーター2率、ボート2率から総合スコアを算出
-   - `data/predictions/YYYY-MM-DD.json`に保存
-
-3. **レース結果取得** (scrape-results.js)
-   - レース終了後、結果を取得
-   - 予想データに結果を追記
-
-4. **的中率計算** (calculate-accuracy.js)
-   - 全予想データから的中率を計算
-   - 単勝、複勝、3連複、3連単の統計を算出
-   - `data/predictions/summary.json`に保存
-
-## 的中率の定義
-
-- **単勝的中**: AI予想の本命（1位予想）が1着になった
-- **複勝的中**: AI予想の本命が2着以内に入った
-- **3連複的中**: AI予想のトップ3が実際の1-2-3着を全て含んでいた（順序不問）
-- **3連単的中**: AI予想のトップ3が実際の1-2-3着と順序も完全一致した
+---
 
 ## 注意事項
 
 - 本サイトはAIによる予想を提供するものであり、的中を保証するものではありません
-- ボートレースの公式サイトからデータをスクレイピングしています。利用規約に従い、適切な間隔でアクセスしています
 - 投資は自己責任で行ってください
-
-## ライセンス
-
-このプロジェクトはMITライセンスの下で公開されています。
-
-## 課題・改善点
-
-プロジェクトの現在の課題と改善点については [ISSUES.md](./ISSUES.md) を参照してください。
-
-## Linear統合
-
-このプロジェクトはLinearとGitHubを統合して、タスク管理を自動化しています。
-
-### Claude Codeでのタスク管理（推奨）
-
-Claude Codeで壁打ちしながらタスクを整理し、実装中にLinearタスクを自動更新できます。
-
-**セットアップ:**
-```bash
-# Linear APIキーを設定
-export LINEAR_API_KEY="your-api-key"
-```
-
-**使用方法:**
-```bash
-# タスクを作成
-npm run linear:create "予測機能の実装" "AI予測ロジックを追加"
-
-# タスクを更新
-npm run linear:update BOAT-123 "進行中" "実装を開始"
-
-# コメントを追加
-npm run linear:comment BOAT-123 "進捗: 50%完了"
-
-# タスク一覧を表示
-npm run linear:list
-```
-
-詳細は [Claude Code統合ガイド](./docs/linear-claude-code-integration.md) を参照してください。
-
-### GitHub統合
-
-1. **LinearでGitHub統合を有効化**
-   - Linearアプリ → Settings → Integrations → GitHub
-   - GitHubアカウントを接続し、リポジトリを選択
-
-2. **コミットメッセージでタスクを参照**
-   ```bash
-   git commit -m "feat: 機能追加
-
-   Fixes BOAT-123"
-   ```
-
-詳細なセットアップ方法は [Linear統合ガイド](./docs/linear-quick-start.md) を参照してください。
-
-## 貢献
-
-Issue や Pull Request を歓迎します。
+- ギャンブル依存症にご注意ください
 
 ---
 
-© 2025 ボートレースAI予想
+## ライセンス
+
+MIT License
+
+---
+
+## 関連リンク
+
+- [公式サイト](https://www.boat-ai.jp/)
+- [ブログ](https://www.boat-ai.jp/blog)
+- [GitHub](https://github.com/rhapsody0919/boatrace-ai-predictor)
