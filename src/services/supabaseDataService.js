@@ -686,10 +686,14 @@ export const supabaseDataService = {
     }
 
     // ページネーション付きでデータを取得するヘルパー関数
+    // race_id形式: YYYY-MM-DD-VV-RR なので、endDateには末尾を追加して正しく比較
     const fetchAllPredictions = async (startDate, endDate) => {
       let allData = [];
       let from = 0;
       const pageSize = 1000;
+
+      // endDateをrace_id形式で比較できるよう調整（例: 2025-12-31 → 2025-12-31-99-99）
+      const adjustedEndDate = endDate ? `${endDate}-99-99` : null;
 
       while (true) {
         let query = supabase
@@ -699,8 +703,8 @@ export const supabaseDataService = {
           .not('is_hit_win', 'is', null)
           .range(from, from + pageSize - 1);
 
-        if (endDate) {
-          query = query.lte('race_id', endDate);
+        if (adjustedEndDate) {
+          query = query.lte('race_id', adjustedEndDate);
         }
 
         const { data: page, error } = await query;
