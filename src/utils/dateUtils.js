@@ -122,3 +122,29 @@ export const isToday = (dateStr) => {
 export const isYesterday = (dateStr) => {
   return dateStr === getYesterdayJST();
 };
+
+/**
+ * 日付文字列を日本語形式にフォーマット
+ * @param {string} dateStr - YYYY-MM-DD形式
+ * @returns {string} YYYY年M月D日形式
+ */
+export const formatDateJP = (dateStr) => {
+  if (!dateStr) return '';
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return `${year}年${month}月${day}日`;
+};
+
+/**
+ * 日付が指定日数以内かどうかを判定
+ * @param {string} dateStr - YYYY-MM-DD形式
+ * @param {number} days - 日数
+ * @returns {boolean}
+ */
+export const isWithinDays = (dateStr, days) => {
+  if (!dateStr) return false;
+  const postDate = new Date(dateStr);
+  const jstNow = getJSTNow();
+  const diffMs = jstNow.getTime() - postDate.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  return diffDays <= days && diffDays >= 0;
+};

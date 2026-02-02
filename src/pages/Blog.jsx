@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import Header from '../components/Header';
 import { blogPosts, categories, getFeaturedPosts } from '../data/blogPosts';
+import { isWithinDays } from '../utils/dateUtils';
 import './Blog.css';
 
 export default function Blog() {
@@ -74,6 +75,7 @@ export default function Blog() {
                                 to={`/blog/${post.id}`}
                                 className="featured-card"
                             >
+                                {isWithinDays(post.date, 7) && <span className="new-badge">NEW</span>}
                                 <div className="featured-content">
                                     <span className="category-badge">{post.category}</span>
                                     <h3>{post.title}</h3>
@@ -116,6 +118,7 @@ export default function Blog() {
                         to={`/blog/${post.id}`}
                         className="blog-card"
                     >
+                        {isWithinDays(post.date, 7) && <span className="new-badge">NEW</span>}
                         <div className="blog-card-content">
                             <span className="category-badge">{post.category}</span>
                             <h3>{post.title}</h3>

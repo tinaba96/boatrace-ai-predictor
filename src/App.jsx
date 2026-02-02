@@ -13,10 +13,10 @@ import { ShareButton } from './components/ShareButton'
 import { SocialShareButtons } from './components/SocialShareButtons'
 import { shareRacePredictionToX, generatePredictionShareText } from './utils/share'
 import { getVenueGuidePath } from './utils/venueUtils'
-import { getFeaturedPosts } from './data/blogPosts'
+import { getFeaturedPosts, getLatestPosts } from './data/blogPosts'
 import { dataService } from './services/dataService'
 import { STADIUM_NAMES, WEEKDAYS } from './constants'
-import { getTodayJST } from './utils/dateUtils'
+import { getTodayJST, formatDateJP } from './utils/dateUtils'
 
 function App({ tab = 'races' }) {
     const navigate = useNavigate()
@@ -1378,6 +1378,16 @@ function App({ tab = 'races' }) {
 
             <footer className="footer">
                 <p>※本サイトはAIによる予測情報を提供するものであり、結果を保証するものではありません</p>
+                <p className="last-updated" style={{
+                    fontSize: '0.9rem',
+                    color: '#94a3b8',
+                    marginTop: '0.5rem'
+                }}>
+                    {(() => {
+                        const latestPost = getLatestPosts(1)[0];
+                        return latestPost ? `ブログ最終更新: ${formatDateJP(latestPost.date)}` : '';
+                    })()}
+                </p>
                 <div style={{
                     display: 'flex',
                     gap: '1.5rem',
