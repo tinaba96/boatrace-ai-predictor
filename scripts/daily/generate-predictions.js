@@ -262,6 +262,8 @@ function processRacersWithScoreFn(racers, scoreFn) {
         age: racer.age,
         winRate: racer.globalWinRate.toFixed(3),
         localWinRate: racer.localWinRate.toFixed(3),
+        global2Rate: racer.global2Rate?.toFixed(1) || null,
+        local2Rate: racer.local2Rate?.toFixed(1) || null,
         motorNumber: racer.motorNumber,
         motor2Rate: racer.motor2Rate.toFixed(1),
         boatNumber: racer.boatNumber,
@@ -451,6 +453,8 @@ function generateRacePrediction(race, date) {
             windVelocity: race.windVelocity ?? null,
             waterTemp: race.waterTemp ?? null,
             waveHeight: race.waveHeight ?? null,
+            raceGrade: race.raceGrade || null,
+            raceTitle: race.raceTitle || null,
         },
 
         // 荒れ度情報
@@ -577,6 +581,8 @@ async function writeToSupabase(allPredictions, date) {
                     age: player.age,
                     win_rate: parseFloat(player.winRate),
                     local_win_rate: parseFloat(player.localWinRate),
+                    global_2rate: player.global2Rate ? parseFloat(player.global2Rate) : null,
+                    local_2rate: player.local2Rate ? parseFloat(player.local2Rate) : null,
                     motor_number: player.motorNumber,
                     motor_2rate: parseFloat(player.motor2Rate),
                     boat_number_id: player.boatNumber,
@@ -664,7 +670,7 @@ async function writeToSupabase(allPredictions, date) {
 
         // 4. race_conditionsテーブルにupsert
         const conditionsData = allPredictions
-            .filter(race => race.conditions?.weather || race.conditions?.airTemp != null)
+            .filter(race => race.conditions?.weather || race.conditions?.airTemp != null || race.conditions?.raceGrade)
             .map(race => ({
                 race_id: race.raceId,
                 weather: race.conditions.weather,
@@ -673,8 +679,8 @@ async function writeToSupabase(allPredictions, date) {
                 wave_height: race.conditions.waveHeight != null ? Math.round(race.conditions.waveHeight) : null,
                 temperature: race.conditions.airTemp,
                 water_temperature: race.conditions.waterTemp,
-                race_grade: null,  // 現在未取得
-                race_title: null,
+                race_grade: race.conditions.raceGrade,
+                race_title: race.conditions.raceTitle,
                 series_day: null,
                 is_final_day: null
             }));

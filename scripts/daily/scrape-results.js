@@ -13,6 +13,19 @@ function getRaceResultUrl(venueCode, raceNo, dateStr) {
   return `https://www.boatrace.jp/owpc/pc/race/raceresult?rno=${raceNo}&jcd=${jcd}&hd=${ymd}`;
 }
 
+// Scrape winning technique (決まり手)
+function scrapeWinningTechnique($) {
+  let winningTechnique = null;
+  // 決まり手は.is-w243テーブルに含まれる
+  $('.is-w243').each((i, table) => {
+    const header = $(table).find('th').first().text().trim();
+    if (header === '決まり手') {
+      winningTechnique = $(table).find('tbody td').first().text().trim();
+    }
+  });
+  return winningTechnique || null;
+}
+
 // Scrape payout data
 function scrapePayouts($) {
   const payouts = {
@@ -133,11 +146,15 @@ async function scrapeRaceResult(venueCode, raceNo, dateStr) {
     // Get payout data
     const payouts = scrapePayouts($);
 
+    // Get winning technique (決まり手)
+    const winningTechnique = scrapeWinningTechnique($);
+
     return {
       rank1: rankings[0],
       rank2: rankings[1],
       rank3: rankings[2],
       payouts: payouts,
+      winningTechnique: winningTechnique,
     };
 
   } catch (error) {
@@ -229,6 +246,7 @@ async function scrapeResults(dateStr = null) {
         payout_place_2: place2Payout,
         payout_trifecta: trifectaPayout,
         payout_trio: trioPayout,
+        winning_technique: result.winningTechnique,
         result_at: new Date().toISOString()
       });
       updatedCount++;

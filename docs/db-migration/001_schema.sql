@@ -111,6 +111,8 @@ CREATE TABLE IF NOT EXISTS race_entries (
     -- 成績情報
     win_rate DECIMAL(5,3),
     local_win_rate DECIMAL(5,3),
+    global_2rate DECIMAL(5,2),             -- 全国2連率
+    local_2rate DECIMAL(5,2),              -- 当地2連率
 
     -- 機材情報
     motor_number SMALLINT,

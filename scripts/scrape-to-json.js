@@ -141,6 +141,21 @@ async function getRaceStartTimes(date, placeCd) {
   }
 }
 
+// レースグレードを取得する関数
+function scrapeRaceGrade($) {
+  const classAttr = $('.heading2_title').attr('class') || '';
+  if (classAttr.includes('is-sg')) return 'SG';
+  if (classAttr.includes('is-g1')) return 'G1';
+  if (classAttr.includes('is-g2')) return 'G2';
+  if (classAttr.includes('is-g3')) return 'G3';
+  return 'ippan';
+}
+
+// レースタイトルを取得する関数
+function scrapeRaceTitle($) {
+  return $('.heading2_titleName').text().trim() || null;
+}
+
 // 出走表から選手情報を取得する関数
 async function getRacelist(date, placeCd, raceNo) {
   try {
@@ -161,6 +176,10 @@ async function getRacelist(date, placeCd, raceNo) {
 
     const html = await response.text();
     const $ = cheerio.load(html);
+
+    // レースグレードとタイトルを取得
+    const raceGrade = scrapeRaceGrade($);
+    const raceTitle = scrapeRaceTitle($);
 
     const racers = [];
 
@@ -226,7 +245,7 @@ async function getRacelist(date, placeCd, raceNo) {
       });
     });
 
-    return racers.length > 0 ? racers : null;
+    return racers.length > 0 ? { racers, raceGrade, raceTitle } : null;
 
   } catch (error) {
     console.error(`Error fetching racelist for place ${placeCd}, race ${raceNo}:`, error.message);
@@ -339,14 +358,16 @@ async function main() {
       const results = await Promise.all(racePromises);
 
       // nullでないデータのみを追加し、beforeinfoとracelistをマージ
-      results.forEach(([beforeinfo, racelist], index) => {
+      results.forEach(([beforeinfo, racelistData], index) => {
         if (beforeinfo) {
           const raceNo = index + 1;
           // beforeinfoとracelistを統合し、締切予定時刻も追加
           const raceData = {
             ...beforeinfo,
             startTime: startTimes[raceNo] || null, // 締切予定時刻を追加
-            racers: racelist || [] // 選手情報を追加（取得できない場合は空配列）
+            racers: racelistData?.racers || [], // 選手情報を追加（取得できない場合は空配列）
+            raceGrade: racelistData?.raceGrade || null, // レースグレード
+            raceTitle: racelistData?.raceTitle || null, // レースタイトル
           };
           venueRaces.push(raceData);
         }
