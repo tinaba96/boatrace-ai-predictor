@@ -1,0 +1,3544 @@
+{
+  "analysisDate": "2026-02-04T06:02:18.607Z",
+  "betType": "exacta",
+  "description": "3連単（順序通り）- payout_trio使用",
+  "totalRules": 218,
+  "rules": [
+    {
+      "id": "AS21-EX-N1-C90",
+      "condition": "1号艇含まず × conf90+",
+      "samples": 27,
+      "hits": 1,
+      "hitRate": 0.037037037037037035,
+      "recovery": 6577.777777777777
+    },
+    {
+      "id": "AS21-EX-TP2-C85",
+      "condition": "1着予想=2号艇 × conf85+",
+      "samples": 28,
+      "hits": 1,
+      "hitRate": 0.03571428571428571,
+      "recovery": 6342.857142857143
+    },
+    {
+      "id": "AS21-EX-N1-C85",
+      "condition": "1号艇含まず × conf85+",
+      "samples": 29,
+      "hits": 1,
+      "hitRate": 0.034482758620689655,
+      "recovery": 6124.137931034483
+    },
+    {
+      "id": "AS21-EX-N1-C80",
+      "condition": "1号艇含まず × conf80+",
+      "samples": 30,
+      "hits": 1,
+      "hitRate": 0.03333333333333333,
+      "recovery": 5920
+    },
+    {
+      "id": "AS21-EX-TP2-C80",
+      "condition": "1着予想=2号艇 × conf80+",
+      "samples": 31,
+      "hits": 1,
+      "hitRate": 0.03225806451612903,
+      "recovery": 5729.032258064516
+    },
+    {
+      "id": "AS21-EX-N1-C75",
+      "condition": "1号艇含まず × conf75+",
+      "samples": 33,
+      "hits": 1,
+      "hitRate": 0.030303030303030304,
+      "recovery": 5381.818181818182
+    },
+    {
+      "id": "AS21-EX-TP2-C75",
+      "condition": "1着予想=2号艇 × conf75+",
+      "samples": 33,
+      "hits": 1,
+      "hitRate": 0.030303030303030304,
+      "recovery": 5381.818181818182
+    },
+    {
+      "id": "AS21-EX-N1-C70",
+      "condition": "1号艇含まず × conf70+",
+      "samples": 37,
+      "hits": 1,
+      "hitRate": 0.02702702702702703,
+      "recovery": 4800
+    },
+    {
+      "id": "AS21-EX-TP2",
+      "condition": "1着予想=2号艇",
+      "samples": 38,
+      "hits": 1,
+      "hitRate": 0.02631578947368421,
+      "recovery": 4673.684210526316
+    },
+    {
+      "id": "AS21-EX-R1012-C85",
+      "condition": "終盤(10-12R) × conf85+",
+      "samples": 73,
+      "hits": 6,
+      "hitRate": 0.0821917808219178,
+      "recovery": 2501.3698630136987
+    },
+    {
+      "id": "AS21-EX-R1012-C80",
+      "condition": "終盤(10-12R) × conf80+",
+      "samples": 77,
+      "hits": 6,
+      "hitRate": 0.07792207792207792,
+      "recovery": 2371.4285714285716
+    },
+    {
+      "id": "AS21-EX-R1012",
+      "condition": "終盤レース(10-12R)",
+      "samples": 87,
+      "hits": 6,
+      "hitRate": 0.06896551724137931,
+      "recovery": 2098.8505747126437
+    },
+    {
+      "id": "AS21-EX-R712-C85",
+      "condition": "後半(7-12R) × conf85+",
+      "samples": 139,
+      "hits": 10,
+      "hitRate": 0.07194244604316546,
+      "recovery": 1344.9640287769785
+    },
+    {
+      "id": "AS21-EX-R712-C80",
+      "condition": "後半(7-12R) × conf80+",
+      "samples": 148,
+      "hits": 10,
+      "hitRate": 0.06756756756756757,
+      "recovery": 1263.1756756756756
+    },
+    {
+      "id": "AS21-EX-R712",
+      "condition": "後半レース(7-12R)",
+      "samples": 174,
+      "hits": 10,
+      "hitRate": 0.05747126436781609,
+      "recovery": 1074.4252873563219
+    },
+    {
+      "id": "H06-EX-TP2-C85",
+      "condition": "1着予想=2号艇 × conf85+",
+      "samples": 40,
+      "hits": 2,
+      "hitRate": 0.05,
+      "recovery": 1043.25
+    },
+    {
+      "id": "H06-EX-N1-C90",
+      "condition": "1号艇含まず × conf90+",
+      "samples": 46,
+      "hits": 1,
+      "hitRate": 0.021739130434782608,
+      "recovery": 889.1304347826087
+    },
+    {
+      "id": "H06-EX-TP2-C80",
+      "condition": "1着予想=2号艇 × conf80+",
+      "samples": 48,
+      "hits": 2,
+      "hitRate": 0.041666666666666664,
+      "recovery": 869.375
+    },
+    {
+      "id": "H06-EX-N1-C85",
+      "condition": "1号艇含まず × conf85+",
+      "samples": 48,
+      "hits": 1,
+      "hitRate": 0.020833333333333332,
+      "recovery": 852.0833333333334
+    },
+    {
+      "id": "H06-EX-TP2-C75",
+      "condition": "1着予想=2号艇 × conf75+",
+      "samples": 56,
+      "hits": 3,
+      "hitRate": 0.05357142857142857,
+      "recovery": 774.8214285714286
+    },
+    {
+      "id": "H06-EX-N1-C80",
+      "condition": "1号艇含まず × conf80+",
+      "samples": 54,
+      "hits": 1,
+      "hitRate": 0.018518518518518517,
+      "recovery": 757.4074074074074
+    },
+    {
+      "id": "AS21-EX-C90",
+      "condition": "confidence 90%以上",
+      "samples": 266,
+      "hits": 24,
+      "hitRate": 0.09022556390977443,
+      "recovery": 743.5338345864662
+    },
+    {
+      "id": "H06-EX-N1-C75",
+      "condition": "1号艇含まず × conf75+",
+      "samples": 58,
+      "hits": 1,
+      "hitRate": 0.017241379310344827,
+      "recovery": 705.1724137931035
+    },
+    {
+      "id": "AS21-EX-C85",
+      "condition": "confidence 85%以上",
+      "samples": 290,
+      "hits": 25,
+      "hitRate": 0.08620689655172414,
+      "recovery": 684.655172413793
+    },
+    {
+      "id": "H06-EX-N1-C70",
+      "condition": "1号艇含まず × conf70+",
+      "samples": 63,
+      "hits": 1,
+      "hitRate": 0.015873015873015872,
+      "recovery": 649.2063492063492
+    },
+    {
+      "id": "AS21-EX-C80",
+      "condition": "confidence 80%以上",
+      "samples": 309,
+      "hits": 26,
+      "hitRate": 0.08414239482200647,
+      "recovery": 644.1423948220065
+    },
+    {
+      "id": "H06-EX-TP2",
+      "condition": "1着予想=2号艇",
+      "samples": 72,
+      "hits": 3,
+      "hitRate": 0.041666666666666664,
+      "recovery": 602.6388888888889
+    },
+    {
+      "id": "H06-EX-R1012-C85",
+      "condition": "終盤(10-12R) × conf85+",
+      "samples": 95,
+      "hits": 7,
+      "hitRate": 0.07368421052631578,
+      "recovery": 469.57894736842104
+    },
+    {
+      "id": "H06-EX-R1012-C80",
+      "condition": "終盤(10-12R) × conf80+",
+      "samples": 101,
+      "hits": 7,
+      "hitRate": 0.06930693069306931,
+      "recovery": 441.68316831683165
+    },
+    {
+      "id": "G07-EX-TP5-C75",
+      "condition": "1着予想=5号艇 × conf75+",
+      "samples": 21,
+      "hits": 1,
+      "hitRate": 0.047619047619047616,
+      "recovery": 414.28571428571433
+    },
+    {
+      "id": "H06-EX-R1012",
+      "condition": "終盤レース(10-12R)",
+      "samples": 114,
+      "hits": 8,
+      "hitRate": 0.07017543859649122,
+      "recovery": 405.87719298245617
+    },
+    {
+      "id": "H06-EX-TP4-C80",
+      "condition": "1着予想=4号艇 × conf80+",
+      "samples": 21,
+      "hits": 1,
+      "hitRate": 0.047619047619047616,
+      "recovery": 370
+    },
+    {
+      "id": "G07-EX-TP5",
+      "condition": "1着予想=5号艇",
+      "samples": 24,
+      "hits": 1,
+      "hitRate": 0.041666666666666664,
+      "recovery": 362.5
+    },
+    {
+      "id": "H06-EX-TP4-C75",
+      "condition": "1着予想=4号艇 × conf75+",
+      "samples": 22,
+      "hits": 1,
+      "hitRate": 0.045454545454545456,
+      "recovery": 353.1818181818182
+    },
+    {
+      "id": "TY18-EX-TP4-C75",
+      "condition": "1着予想=4号艇 × conf75+",
+      "samples": 29,
+      "hits": 3,
+      "hitRate": 0.10344827586206896,
+      "recovery": 324.13793103448273
+    },
+    {
+      "id": "H06-EX-R712-C85",
+      "condition": "後半(7-12R) × conf85+",
+      "samples": 184,
+      "hits": 13,
+      "hitRate": 0.07065217391304347,
+      "recovery": 307.9347826086956
+    },
+    {
+      "id": "H06-EX-R712-C80",
+      "condition": "後半(7-12R) × conf80+",
+      "samples": 197,
+      "hits": 15,
+      "hitRate": 0.07614213197969544,
+      "recovery": 293.4010152284264
+    },
+    {
+      "id": "K16-EX-TP6-C85",
+      "condition": "1着予想=6号艇 × conf85+",
+      "samples": 28,
+      "hits": 1,
+      "hitRate": 0.03571428571428571,
+      "recovery": 280.71428571428567
+    },
+    {
+      "id": "H06-EX-R712",
+      "condition": "後半レース(7-12R)",
+      "samples": 228,
+      "hits": 18,
+      "hitRate": 0.07894736842105263,
+      "recovery": 280.61403508771934
+    },
+    {
+      "id": "H06-EX-TP4",
+      "condition": "1着予想=4号艇",
+      "samples": 29,
+      "hits": 1,
+      "hitRate": 0.034482758620689655,
+      "recovery": 267.9310344827586
+    },
+    {
+      "id": "TY18-EX-TP4",
+      "condition": "1着予想=4号艇",
+      "samples": 36,
+      "hits": 3,
+      "hitRate": 0.08333333333333333,
+      "recovery": 261.11111111111114
+    },
+    {
+      "id": "K16-EX-TP6-C80",
+      "condition": "1着予想=6号艇 × conf80+",
+      "samples": 31,
+      "hits": 1,
+      "hitRate": 0.03225806451612903,
+      "recovery": 253.5483870967742
+    },
+    {
+      "id": "TK08-EX-TP4",
+      "condition": "1着予想=4号艇",
+      "samples": 27,
+      "hits": 3,
+      "hitRate": 0.1111111111111111,
+      "recovery": 250.37037037037035
+    },
+    {
+      "id": "SM12-EX-TP2-C85",
+      "condition": "1着予想=2号艇 × conf85+",
+      "samples": 24,
+      "hits": 3,
+      "hitRate": 0.125,
+      "recovery": 240
+    },
+    {
+      "id": "F22-EX-N1-C90",
+      "condition": "1号艇含まず × conf90+",
+      "samples": 47,
+      "hits": 4,
+      "hitRate": 0.0851063829787234,
+      "recovery": 229.99999999999997
+    },
+    {
+      "id": "TM05-EX-124",
+      "condition": "予想=1-2-4",
+      "samples": 21,
+      "hits": 4,
+      "hitRate": 0.19047619047619047,
+      "recovery": 227.14285714285714
+    },
+    {
+      "id": "K16-EX-TP6-C75",
+      "condition": "1着予想=6号艇 × conf75+",
+      "samples": 36,
+      "hits": 1,
+      "hitRate": 0.027777777777777776,
+      "recovery": 218.33333333333331
+    },
+    {
+      "id": "F22-EX-N1-C85",
+      "condition": "1号艇含まず × conf85+",
+      "samples": 50,
+      "hits": 4,
+      "hitRate": 0.08,
+      "recovery": 216.2
+    },
+    {
+      "id": "F22-EX-N1-C80",
+      "condition": "1号艇含まず × conf80+",
+      "samples": 50,
+      "hits": 4,
+      "hitRate": 0.08,
+      "recovery": 216.2
+    },
+    {
+      "id": "SM12-EX-TP2-C80",
+      "condition": "1着予想=2号艇 × conf80+",
+      "samples": 27,
+      "hits": 3,
+      "hitRate": 0.1111111111111111,
+      "recovery": 213.33333333333334
+    },
+    {
+      "id": "F22-EX-TP6-C80",
+      "condition": "1着予想=6号艇 × conf80+",
+      "samples": 24,
+      "hits": 2,
+      "hitRate": 0.08333333333333333,
+      "recovery": 211.24999999999997
+    },
+    {
+      "id": "AS21-EX-132",
+      "condition": "予想=1-3-2",
+      "samples": 20,
+      "hits": 5,
+      "hitRate": 0.25,
+      "recovery": 210
+    },
+    {
+      "id": "SG19-EX-TP5",
+      "condition": "1着予想=5号艇",
+      "samples": 20,
+      "hits": 1,
+      "hitRate": 0.05,
+      "recovery": 205.50000000000003
+    },
+    {
+      "id": "H06-EX-C90",
+      "condition": "confidence 90%以上",
+      "samples": 314,
+      "hits": 20,
+      "hitRate": 0.06369426751592357,
+      "recovery": 202.57961783439492
+    },
+    {
+      "id": "F22-EX-TP2-C85",
+      "condition": "1着予想=2号艇 × conf85+",
+      "samples": 28,
+      "hits": 4,
+      "hitRate": 0.14285714285714285,
+      "recovery": 200.71428571428572
+    },
+    {
+      "id": "F22-EX-N1-C75",
+      "condition": "1号艇含まず × conf75+",
+      "samples": 54,
+      "hits": 4,
+      "hitRate": 0.07407407407407407,
+      "recovery": 200.1851851851852
+    },
+    {
+      "id": "F22-EX-N1-C70",
+      "condition": "1号艇含まず × conf70+",
+      "samples": 55,
+      "hits": 4,
+      "hitRate": 0.07272727272727272,
+      "recovery": 196.54545454545456
+    },
+    {
+      "id": "K16-EX-TP6",
+      "condition": "1着予想=6号艇",
+      "samples": 40,
+      "hits": 1,
+      "hitRate": 0.025,
+      "recovery": 196.5
+    },
+    {
+      "id": "F22-EX-TP6-C75",
+      "condition": "1着予想=6号艇 × conf75+",
+      "samples": 26,
+      "hits": 2,
+      "hitRate": 0.07692307692307693,
+      "recovery": 195
+    },
+    {
+      "id": "M10-EX-TP2-C85",
+      "condition": "1着予想=2号艇 × conf85+",
+      "samples": 28,
+      "hits": 3,
+      "hitRate": 0.10714285714285714,
+      "recovery": 193.92857142857142
+    },
+    {
+      "id": "H06-EX-C85",
+      "condition": "confidence 85%以上",
+      "samples": 344,
+      "hits": 22,
+      "hitRate": 0.06395348837209303,
+      "recovery": 192.52906976744185
+    },
+    {
+      "id": "SM12-EX-TP2-C75",
+      "condition": "1着予想=2号艇 × conf75+",
+      "samples": 32,
+      "hits": 3,
+      "hitRate": 0.09375,
+      "recovery": 180
+    },
+    {
+      "id": "H06-EX-C80",
+      "condition": "confidence 80%以上",
+      "samples": 383,
+      "hits": 25,
+      "hitRate": 0.06527415143603134,
+      "recovery": 177.7023498694517
+    },
+    {
+      "id": "F22-EX-TP2-C80",
+      "condition": "1着予想=2号艇 × conf80+",
+      "samples": 32,
+      "hits": 4,
+      "hitRate": 0.125,
+      "recovery": 175.625
+    },
+    {
+      "id": "G07-EX-124",
+      "condition": "予想=1-2-4",
+      "samples": 22,
+      "hits": 2,
+      "hitRate": 0.09090909090909091,
+      "recovery": 173.63636363636363
+    },
+    {
+      "id": "B11-EX-TP5-C85",
+      "condition": "1着予想=5号艇 × conf85+",
+      "samples": 21,
+      "hits": 2,
+      "hitRate": 0.09523809523809523,
+      "recovery": 172.38095238095238
+    },
+    {
+      "id": "B11-EX-TP5-C80",
+      "condition": "1着予想=5号艇 × conf80+",
+      "samples": 21,
+      "hits": 2,
+      "hitRate": 0.09523809523809523,
+      "recovery": 172.38095238095238
+    },
+    {
+      "id": "M10-EX-TP2-C80",
+      "condition": "1着予想=2号艇 × conf80+",
+      "samples": 32,
+      "hits": 3,
+      "hitRate": 0.09375,
+      "recovery": 169.6875
+    },
+    {
+      "id": "H06-EX-132",
+      "condition": "予想=1-3-2",
+      "samples": 29,
+      "hits": 6,
+      "hitRate": 0.20689655172413793,
+      "recovery": 167.24137931034483
+    },
+    {
+      "id": "G07-EX-C75",
+      "condition": "confidence 75%以上",
+      "samples": 92,
+      "hits": 8,
+      "hitRate": 0.08695652173913043,
+      "recovery": 166.63043478260872
+    },
+    {
+      "id": "K16-EX-142",
+      "condition": "予想=1-4-2",
+      "samples": 20,
+      "hits": 3,
+      "hitRate": 0.15,
+      "recovery": 165.5
+    },
+    {
+      "id": "WK20-EX-TP6-C75",
+      "condition": "1着予想=6号艇 × conf75+",
+      "samples": 31,
+      "hits": 1,
+      "hitRate": 0.03225806451612903,
+      "recovery": 165.16129032258064
+    },
+    {
+      "id": "SG19-EX-132",
+      "condition": "予想=1-3-2",
+      "samples": 38,
+      "hits": 7,
+      "hitRate": 0.18421052631578946,
+      "recovery": 164.73684210526315
+    },
+    {
+      "id": "SM12-EX-TP4",
+      "condition": "1着予想=4号艇",
+      "samples": 22,
+      "hits": 2,
+      "hitRate": 0.09090909090909091,
+      "recovery": 163.63636363636365
+    },
+    {
+      "id": "F22-EX-TP6",
+      "condition": "1着予想=6号艇",
+      "samples": 31,
+      "hits": 2,
+      "hitRate": 0.06451612903225806,
+      "recovery": 163.5483870967742
+    },
+    {
+      "id": "TY18-EX-124",
+      "condition": "予想=1-2-4",
+      "samples": 28,
+      "hits": 8,
+      "hitRate": 0.2857142857142857,
+      "recovery": 162.5
+    },
+    {
+      "id": "M10-EX-TP2-C75",
+      "condition": "1着予想=2号艇 × conf75+",
+      "samples": 43,
+      "hits": 4,
+      "hitRate": 0.09302325581395349,
+      "recovery": 161.3953488372093
+    },
+    {
+      "id": "R15-EX-TP2-C75",
+      "condition": "1着予想=2号艇 × conf75+",
+      "samples": 38,
+      "hits": 4,
+      "hitRate": 0.10526315789473684,
+      "recovery": 160.5263157894737
+    },
+    {
+      "id": "WK20-EX-TP6",
+      "condition": "1着予想=6号艇",
+      "samples": 32,
+      "hits": 1,
+      "hitRate": 0.03125,
+      "recovery": 160
+    },
+    {
+      "id": "MY17-EX-R1012-C85",
+      "condition": "終盤(10-12R) × conf85+",
+      "samples": 75,
+      "hits": 7,
+      "hitRate": 0.09333333333333334,
+      "recovery": 155.33333333333331
+    },
+    {
+      "id": "F22-EX-TP2-C75",
+      "condition": "1着予想=2号艇 × conf75+",
+      "samples": 37,
+      "hits": 4,
+      "hitRate": 0.10810810810810811,
+      "recovery": 151.8918918918919
+    },
+    {
+      "id": "B11-EX-TP5-C75",
+      "condition": "1着予想=5号艇 × conf75+",
+      "samples": 24,
+      "hits": 2,
+      "hitRate": 0.08333333333333333,
+      "recovery": 150.83333333333334
+    },
+    {
+      "id": "HW04-EX-TP5",
+      "condition": "1着予想=5号艇",
+      "samples": 21,
+      "hits": 1,
+      "hitRate": 0.047619047619047616,
+      "recovery": 149.04761904761904
+    },
+    {
+      "id": "SM12-EX-TP2",
+      "condition": "1着予想=2号艇",
+      "samples": 39,
+      "hits": 3,
+      "hitRate": 0.07692307692307693,
+      "recovery": 147.6923076923077
+    },
+    {
+      "id": "MY17-EX-R1012-C80",
+      "condition": "終盤(10-12R) × conf80+",
+      "samples": 80,
+      "hits": 7,
+      "hitRate": 0.0875,
+      "recovery": 145.625
+    },
+    {
+      "id": "TK08-EX-TP2-C80",
+      "condition": "1着予想=2号艇 × conf80+",
+      "samples": 39,
+      "hits": 2,
+      "hitRate": 0.05128205128205128,
+      "recovery": 145.1282051282051
+    },
+    {
+      "id": "HW04-EX-TP2-C80",
+      "condition": "1着予想=2号艇 × conf80+",
+      "samples": 29,
+      "hits": 1,
+      "hitRate": 0.034482758620689655,
+      "recovery": 144.48275862068965
+    },
+    {
+      "id": "F22-EX-R16-C85",
+      "condition": "前半(1-6R) × conf85+",
+      "samples": 150,
+      "hits": 15,
+      "hitRate": 0.1,
+      "recovery": 144
+    },
+    {
+      "id": "H06-EX-C75",
+      "condition": "confidence 75%以上",
+      "samples": 72,
+      "hits": 8,
+      "hitRate": 0.1111111111111111,
+      "recovery": 142.63888888888889
+    },
+    {
+      "id": "TK08-EX-C70",
+      "condition": "confidence 70%以上",
+      "samples": 54,
+      "hits": 5,
+      "hitRate": 0.09259259259259259,
+      "recovery": 142.03703703703704
+    },
+    {
+      "id": "F22-EX-124",
+      "condition": "予想=1-2-4",
+      "samples": 25,
+      "hits": 5,
+      "hitRate": 0.2,
+      "recovery": 142
+    },
+    {
+      "id": "KR01-EX-TP3-C85",
+      "condition": "1着予想=3号艇 × conf85+",
+      "samples": 27,
+      "hits": 2,
+      "hitRate": 0.07407407407407407,
+      "recovery": 141.11111111111111
+    },
+    {
+      "id": "H06-EX-TP3-C85",
+      "condition": "1着予想=3号艇 × conf85+",
+      "samples": 27,
+      "hits": 1,
+      "hitRate": 0.037037037037037035,
+      "recovery": 139.62962962962965
+    },
+    {
+      "id": "R15-EX-R1012-C85",
+      "condition": "終盤(10-12R) × conf85+",
+      "samples": 86,
+      "hits": 8,
+      "hitRate": 0.09302325581395349,
+      "recovery": 138.6046511627907
+    },
+    {
+      "id": "F22-EX-TP2",
+      "condition": "1着予想=2号艇",
+      "samples": 41,
+      "hits": 4,
+      "hitRate": 0.0975609756097561,
+      "recovery": 137.07317073170734
+    },
+    {
+      "id": "HW04-EX-R1012-C85",
+      "condition": "終盤(10-12R) × conf85+",
+      "samples": 67,
+      "hits": 5,
+      "hitRate": 0.07462686567164178,
+      "recovery": 136.2686567164179
+    },
+    {
+      "id": "TS09-EX-TP2-C85",
+      "condition": "1着予想=2号艇 × conf85+",
+      "samples": 39,
+      "hits": 2,
+      "hitRate": 0.05128205128205128,
+      "recovery": 136.15384615384616
+    },
+    {
+      "id": "SM12-EX-123",
+      "condition": "予想=1-2-3",
+      "samples": 26,
+      "hits": 4,
+      "hitRate": 0.15384615384615385,
+      "recovery": 135.3846153846154
+    },
+    {
+      "id": "N14-EX-R1012-C85",
+      "condition": "終盤(10-12R) × conf85+",
+      "samples": 75,
+      "hits": 6,
+      "hitRate": 0.08,
+      "recovery": 135.06666666666666
+    },
+    {
+      "id": "K16-EX-TP4-C85",
+      "condition": "1着予想=4号艇 × conf85+",
+      "samples": 22,
+      "hits": 1,
+      "hitRate": 0.045454545454545456,
+      "recovery": 135
+    },
+    {
+      "id": "TY18-EX-R712-C85",
+      "condition": "後半(7-12R) × conf85+",
+      "samples": 157,
+      "hits": 19,
+      "hitRate": 0.12101910828025478,
+      "recovery": 134.33121019108282
+    },
+    {
+      "id": "H06-EX-TP3-C80",
+      "condition": "1着予想=3号艇 × conf80+",
+      "samples": 34,
+      "hits": 2,
+      "hitRate": 0.058823529411764705,
+      "recovery": 134.1176470588235
+    },
+    {
+      "id": "B11-EX-TP5",
+      "condition": "1着予想=5号艇",
+      "samples": 27,
+      "hits": 2,
+      "hitRate": 0.07407407407407407,
+      "recovery": 134.07407407407408
+    },
+    {
+      "id": "R15-EX-R1012-C80",
+      "condition": "終盤(10-12R) × conf80+",
+      "samples": 89,
+      "hits": 8,
+      "hitRate": 0.0898876404494382,
+      "recovery": 133.93258426966293
+    },
+    {
+      "id": "R15-EX-TP2",
+      "condition": "1着予想=2号艇",
+      "samples": 46,
+      "hits": 4,
+      "hitRate": 0.08695652173913043,
+      "recovery": 132.6086956521739
+    },
+    {
+      "id": "WK20-EX-C70",
+      "condition": "confidence 70%以上",
+      "samples": 52,
+      "hits": 4,
+      "hitRate": 0.07692307692307693,
+      "recovery": 131.73076923076923
+    },
+    {
+      "id": "WK20-EX-TP5-C75",
+      "condition": "1着予想=5号艇 × conf75+",
+      "samples": 20,
+      "hits": 2,
+      "hitRate": 0.1,
+      "recovery": 131
+    },
+    {
+      "id": "M10-EX-TP2",
+      "condition": "1着予想=2号艇",
+      "samples": 53,
+      "hits": 4,
+      "hitRate": 0.07547169811320754,
+      "recovery": 130.94339622641508
+    },
+    {
+      "id": "HW04-EX-R712",
+      "condition": "後半レース(7-12R)",
+      "samples": 158,
+      "hits": 12,
+      "hitRate": 0.0759493670886076,
+      "recovery": 130.50632911392407
+    },
+    {
+      "id": "HW04-EX-R1012-C80",
+      "condition": "終盤(10-12R) × conf80+",
+      "samples": 70,
+      "hits": 5,
+      "hitRate": 0.07142857142857142,
+      "recovery": 130.42857142857142
+    },
+    {
+      "id": "F22-EX-R16-C80",
+      "condition": "前半(1-6R) × conf80+",
+      "samples": 166,
+      "hits": 15,
+      "hitRate": 0.09036144578313253,
+      "recovery": 130.12048192771084
+    },
+    {
+      "id": "G07-EX-C70",
+      "condition": "confidence 70%以上",
+      "samples": 91,
+      "hits": 6,
+      "hitRate": 0.06593406593406594,
+      "recovery": 129.67032967032966
+    },
+    {
+      "id": "TS09-EX-TP2-C80",
+      "condition": "1着予想=2号艇 × conf80+",
+      "samples": 41,
+      "hits": 2,
+      "hitRate": 0.04878048780487805,
+      "recovery": 129.51219512195124
+    },
+    {
+      "id": "TD02-EX-TP2-C75",
+      "condition": "1着予想=2号艇 × conf75+",
+      "samples": 56,
+      "hits": 3,
+      "hitRate": 0.05357142857142857,
+      "recovery": 129.46428571428572
+    },
+    {
+      "id": "N14-EX-C70",
+      "condition": "confidence 70%以上",
+      "samples": 75,
+      "hits": 5,
+      "hitRate": 0.06666666666666667,
+      "recovery": 129.20000000000002
+    },
+    {
+      "id": "R15-EX-TP2-C85",
+      "condition": "1着予想=2号艇 × conf85+",
+      "samples": 31,
+      "hits": 3,
+      "hitRate": 0.0967741935483871,
+      "recovery": 128.70967741935485
+    },
+    {
+      "id": "OM24-EX-132",
+      "condition": "予想=1-3-2",
+      "samples": 32,
+      "hits": 7,
+      "hitRate": 0.21875,
+      "recovery": 128.125
+    },
+    {
+      "id": "OM24-EX-TP4-C80",
+      "condition": "1着予想=4号艇 × conf80+",
+      "samples": 21,
+      "hits": 1,
+      "hitRate": 0.047619047619047616,
+      "recovery": 128.09523809523807
+    },
+    {
+      "id": "KR01-EX-TP3",
+      "condition": "1着予想=3号艇",
+      "samples": 41,
+      "hits": 3,
+      "hitRate": 0.07317073170731707,
+      "recovery": 127.5609756097561
+    },
+    {
+      "id": "AS21-EX-124",
+      "condition": "予想=1-2-4",
+      "samples": 26,
+      "hits": 2,
+      "hitRate": 0.07692307692307693,
+      "recovery": 126.92307692307692
+    },
+    {
+      "id": "TY18-EX-R712",
+      "condition": "後半レース(7-12R)",
+      "samples": 233,
+      "hits": 22,
+      "hitRate": 0.0944206008583691,
+      "recovery": 126.78111587982832
+    },
+    {
+      "id": "H06-EX-TP3-C75",
+      "condition": "1着予想=3号艇 × conf75+",
+      "samples": 36,
+      "hits": 2,
+      "hitRate": 0.05555555555555555,
+      "recovery": 126.66666666666666
+    },
+    {
+      "id": "HW04-EX-H1-C90",
+      "condition": "1号艇含む × conf90+",
+      "samples": 171,
+      "hits": 14,
+      "hitRate": 0.08187134502923976,
+      "recovery": 125.0877192982456
+    },
+    {
+      "id": "M10-EX-R1012-C80",
+      "condition": "終盤(10-12R) × conf80+",
+      "samples": 77,
+      "hits": 8,
+      "hitRate": 0.1038961038961039,
+      "recovery": 124.8051948051948
+    },
+    {
+      "id": "WK20-EX-TP5",
+      "condition": "1着予想=5号艇",
+      "samples": 21,
+      "hits": 2,
+      "hitRate": 0.09523809523809523,
+      "recovery": 124.76190476190476
+    },
+    {
+      "id": "TY18-EX-TP4-C85",
+      "condition": "1着予想=4号艇 × conf85+",
+      "samples": 22,
+      "hits": 2,
+      "hitRate": 0.09090909090909091,
+      "recovery": 124.54545454545453
+    },
+    {
+      "id": "AM13-EX-R1012-C85",
+      "condition": "終盤(10-12R) × conf85+",
+      "samples": 94,
+      "hits": 14,
+      "hitRate": 0.14893617021276595,
+      "recovery": 124.04255319148936
+    },
+    {
+      "id": "HW04-EX-R712-C85",
+      "condition": "後半(7-12R) × conf85+",
+      "samples": 120,
+      "hits": 10,
+      "hitRate": 0.08333333333333333,
+      "recovery": 123.91666666666667
+    },
+    {
+      "id": "B11-EX-TP3-C80",
+      "condition": "1着予想=3号艇 × conf80+",
+      "samples": 24,
+      "hits": 2,
+      "hitRate": 0.08333333333333333,
+      "recovery": 123.75
+    },
+    {
+      "id": "TK08-EX-TP2-C75",
+      "condition": "1着予想=2号艇 × conf75+",
+      "samples": 46,
+      "hits": 2,
+      "hitRate": 0.043478260869565216,
+      "recovery": 123.04347826086956
+    },
+    {
+      "id": "MY17-EX-R1012",
+      "condition": "終盤レース(10-12R)",
+      "samples": 95,
+      "hits": 7,
+      "hitRate": 0.07368421052631578,
+      "recovery": 122.63157894736842
+    },
+    {
+      "id": "H06-EX-123",
+      "condition": "予想=1-2-3",
+      "samples": 33,
+      "hits": 5,
+      "hitRate": 0.15151515151515152,
+      "recovery": 122.42424242424241
+    },
+    {
+      "id": "TD02-EX-124",
+      "condition": "予想=1-2-4",
+      "samples": 22,
+      "hits": 3,
+      "hitRate": 0.13636363636363635,
+      "recovery": 122.27272727272727
+    },
+    {
+      "id": "HW04-EX-C90",
+      "condition": "confidence 90%以上",
+      "samples": 175,
+      "hits": 14,
+      "hitRate": 0.08,
+      "recovery": 122.22857142857141
+    },
+    {
+      "id": "N14-EX-R1012-C80",
+      "condition": "終盤(10-12R) × conf80+",
+      "samples": 83,
+      "hits": 6,
+      "hitRate": 0.07228915662650602,
+      "recovery": 122.04819277108435
+    },
+    {
+      "id": "HW04-EX-TP1-C85",
+      "condition": "1着予想=1号艇 × conf85+",
+      "samples": 161,
+      "hits": 14,
+      "hitRate": 0.08695652173913043,
+      "recovery": 121.86335403726709
+    },
+    {
+      "id": "TY18-EX-R712-C80",
+      "condition": "後半(7-12R) × conf80+",
+      "samples": 175,
+      "hits": 19,
+      "hitRate": 0.10857142857142857,
+      "recovery": 120.5142857142857
+    },
+    {
+      "id": "R15-EX-R1012",
+      "condition": "終盤レース(10-12R)",
+      "samples": 99,
+      "hits": 8,
+      "hitRate": 0.08080808080808081,
+      "recovery": 120.4040404040404
+    },
+    {
+      "id": "F22-EX-C85",
+      "condition": "confidence 85%以上",
+      "samples": 321,
+      "hits": 30,
+      "hitRate": 0.09345794392523364,
+      "recovery": 119.62616822429905
+    },
+    {
+      "id": "F22-EX-C90",
+      "condition": "confidence 90%以上",
+      "samples": 284,
+      "hits": 26,
+      "hitRate": 0.09154929577464789,
+      "recovery": 119.29577464788733
+    },
+    {
+      "id": "TY18-EX-C75",
+      "condition": "confidence 75%以上",
+      "samples": 63,
+      "hits": 2,
+      "hitRate": 0.031746031746031744,
+      "recovery": 118.41269841269842
+    },
+    {
+      "id": "TY18-EX-TP1-C85",
+      "condition": "1着予想=1号艇 × conf85+",
+      "samples": 235,
+      "hits": 26,
+      "hitRate": 0.11063829787234042,
+      "recovery": 117.95744680851064
+    },
+    {
+      "id": "AM13-EX-R1012-C80",
+      "condition": "終盤(10-12R) × conf80+",
+      "samples": 99,
+      "hits": 14,
+      "hitRate": 0.1414141414141414,
+      "recovery": 117.77777777777779
+    },
+    {
+      "id": "R15-EX-TP2-C80",
+      "condition": "1着予想=2号艇 × conf80+",
+      "samples": 34,
+      "hits": 3,
+      "hitRate": 0.08823529411764706,
+      "recovery": 117.3529411764706
+    },
+    {
+      "id": "TK08-EX-C75",
+      "condition": "confidence 75%以上",
+      "samples": 52,
+      "hits": 5,
+      "hitRate": 0.09615384615384616,
+      "recovery": 117.3076923076923
+    },
+    {
+      "id": "HW04-EX-R712-C80",
+      "condition": "後半(7-12R) × conf80+",
+      "samples": 127,
+      "hits": 10,
+      "hitRate": 0.07874015748031496,
+      "recovery": 117.08661417322834
+    },
+    {
+      "id": "HW04-EX-R1012",
+      "condition": "終盤レース(10-12R)",
+      "samples": 78,
+      "hits": 5,
+      "hitRate": 0.0641025641025641,
+      "recovery": 117.05128205128206
+    },
+    {
+      "id": "OM24-EX-TP4-C75",
+      "condition": "1着予想=4号艇 × conf75+",
+      "samples": 23,
+      "hits": 1,
+      "hitRate": 0.043478260869565216,
+      "recovery": 116.95652173913042
+    },
+    {
+      "id": "B11-EX-TP3",
+      "condition": "1着予想=3号艇",
+      "samples": 38,
+      "hits": 3,
+      "hitRate": 0.07894736842105263,
+      "recovery": 115.78947368421053
+    },
+    {
+      "id": "MY17-EX-123",
+      "condition": "予想=1-2-3",
+      "samples": 28,
+      "hits": 5,
+      "hitRate": 0.17857142857142858,
+      "recovery": 115.71428571428572
+    },
+    {
+      "id": "KR01-EX-TP3-C80",
+      "condition": "1着予想=3号艇 × conf80+",
+      "samples": 33,
+      "hits": 2,
+      "hitRate": 0.06060606060606061,
+      "recovery": 115.45454545454545
+    },
+    {
+      "id": "TY18-EX-N1-C75",
+      "condition": "1号艇含まず × conf75+",
+      "samples": 58,
+      "hits": 1,
+      "hitRate": 0.017241379310344827,
+      "recovery": 114.82758620689654
+    },
+    {
+      "id": "MY17-EX-TP1-C85",
+      "condition": "1着予想=1号艇 × conf85+",
+      "samples": 189,
+      "hits": 18,
+      "hitRate": 0.09523809523809523,
+      "recovery": 114.70899470899471
+    },
+    {
+      "id": "N14-EX-TP1-C85",
+      "condition": "1着予想=1号艇 × conf85+",
+      "samples": 182,
+      "hits": 20,
+      "hitRate": 0.10989010989010989,
+      "recovery": 114.56043956043955
+    },
+    {
+      "id": "N14-EX-TP3",
+      "condition": "1着予想=3号艇",
+      "samples": 26,
+      "hits": 1,
+      "hitRate": 0.038461538461538464,
+      "recovery": 114.23076923076923
+    },
+    {
+      "id": "G07-EX-123",
+      "condition": "予想=1-2-3",
+      "samples": 29,
+      "hits": 4,
+      "hitRate": 0.13793103448275862,
+      "recovery": 113.44827586206895
+    },
+    {
+      "id": "TD02-EX-TP2",
+      "condition": "1着予想=2号艇",
+      "samples": 64,
+      "hits": 3,
+      "hitRate": 0.046875,
+      "recovery": 113.28125
+    },
+    {
+      "id": "HW04-EX-TP2-C75",
+      "condition": "1着予想=2号艇 × conf75+",
+      "samples": 37,
+      "hits": 1,
+      "hitRate": 0.02702702702702703,
+      "recovery": 113.24324324324324
+    },
+    {
+      "id": "TK08-EX-TP2",
+      "condition": "1着予想=2号艇",
+      "samples": 50,
+      "hits": 2,
+      "hitRate": 0.04,
+      "recovery": 113.19999999999999
+    },
+    {
+      "id": "HW04-EX-H1-C80",
+      "condition": "1号艇含む × conf80+",
+      "samples": 238,
+      "hits": 16,
+      "hitRate": 0.06722689075630252,
+      "recovery": 113.19327731092437
+    },
+    {
+      "id": "HW04-EX-H1-C85",
+      "condition": "1号艇含む × conf85+",
+      "samples": 201,
+      "hits": 15,
+      "hitRate": 0.07462686567164178,
+      "recovery": 113.18407960199004
+    },
+    {
+      "id": "TY18-EX-R1012",
+      "condition": "終盤レース(10-12R)",
+      "samples": 116,
+      "hits": 10,
+      "hitRate": 0.08620689655172414,
+      "recovery": 112.32758620689656
+    },
+    {
+      "id": "F22-EX-C80",
+      "condition": "confidence 80%以上",
+      "samples": 342,
+      "hits": 30,
+      "hitRate": 0.08771929824561403,
+      "recovery": 112.28070175438596
+    },
+    {
+      "id": "F22-EX-R16",
+      "condition": "前半レース(1-6R)",
+      "samples": 210,
+      "hits": 17,
+      "hitRate": 0.08095238095238096,
+      "recovery": 111.85714285714286
+    },
+    {
+      "id": "N14-EX-R1012",
+      "condition": "終盤レース(10-12R)",
+      "samples": 91,
+      "hits": 6,
+      "hitRate": 0.06593406593406594,
+      "recovery": 111.31868131868133
+    },
+    {
+      "id": "G07-EX-R1012-C85",
+      "condition": "終盤(10-12R) × conf85+",
+      "samples": 110,
+      "hits": 12,
+      "hitRate": 0.10909090909090909,
+      "recovery": 111.27272727272728
+    },
+    {
+      "id": "TS09-EX-TP2-C75",
+      "condition": "1着予想=2号艇 × conf75+",
+      "samples": 48,
+      "hits": 2,
+      "hitRate": 0.041666666666666664,
+      "recovery": 110.625
+    },
+    {
+      "id": "HW04-EX-C85",
+      "condition": "confidence 85%以上",
+      "samples": 206,
+      "hits": 15,
+      "hitRate": 0.07281553398058252,
+      "recovery": 110.4368932038835
+    },
+    {
+      "id": "K16-EX-TP4-C80",
+      "condition": "1着予想=4号艇 × conf80+",
+      "samples": 27,
+      "hits": 1,
+      "hitRate": 0.037037037037037035,
+      "recovery": 110.00000000000001
+    },
+    {
+      "id": "HW04-EX-C80",
+      "condition": "confidence 80%以上",
+      "samples": 245,
+      "hits": 16,
+      "hitRate": 0.0653061224489796,
+      "recovery": 109.9591836734694
+    },
+    {
+      "id": "TY18-EX-H1-C90",
+      "condition": "1号艇含む × conf90+",
+      "samples": 273,
+      "hits": 27,
+      "hitRate": 0.0989010989010989,
+      "recovery": 109.92673992673994
+    },
+    {
+      "id": "G07-EX-R1012-C80",
+      "condition": "終盤(10-12R) × conf80+",
+      "samples": 117,
+      "hits": 13,
+      "hitRate": 0.1111111111111111,
+      "recovery": 109.91452991452992
+    },
+    {
+      "id": "G07-EX-142",
+      "condition": "予想=1-4-2",
+      "samples": 25,
+      "hits": 2,
+      "hitRate": 0.08,
+      "recovery": 109.60000000000001
+    },
+    {
+      "id": "TS09-EX-TP1",
+      "condition": "1着予想=1号艇",
+      "samples": 200,
+      "hits": 23,
+      "hitRate": 0.115,
+      "recovery": 109.60000000000001
+    },
+    {
+      "id": "TY18-EX-TP4-C80",
+      "condition": "1着予想=4号艇 × conf80+",
+      "samples": 25,
+      "hits": 2,
+      "hitRate": 0.08,
+      "recovery": 109.60000000000001
+    },
+    {
+      "id": "M10-EX-R1012",
+      "condition": "終盤レース(10-12R)",
+      "samples": 96,
+      "hits": 9,
+      "hitRate": 0.09375,
+      "recovery": 109.58333333333334
+    },
+    {
+      "id": "TS09-EX-TP1-C75",
+      "condition": "1着予想=1号艇 × conf75+",
+      "samples": 181,
+      "hits": 21,
+      "hitRate": 0.11602209944751381,
+      "recovery": 109.55801104972376
+    },
+    {
+      "id": "KR01-EX-TP4-C80",
+      "condition": "1着予想=4号艇 × conf80+",
+      "samples": 26,
+      "hits": 1,
+      "hitRate": 0.038461538461538464,
+      "recovery": 109.23076923076923
+    },
+    {
+      "id": "R15-EX-124",
+      "condition": "予想=1-2-4",
+      "samples": 25,
+      "hits": 5,
+      "hitRate": 0.2,
+      "recovery": 109.2
+    },
+    {
+      "id": "TY18-EX-TP1-C80",
+      "condition": "1着予想=1号艇 × conf80+",
+      "samples": 254,
+      "hits": 26,
+      "hitRate": 0.10236220472440945,
+      "recovery": 109.13385826771653
+    },
+    {
+      "id": "MY17-EX-R712-C85",
+      "condition": "後半(7-12R) × conf85+",
+      "samples": 143,
+      "hits": 10,
+      "hitRate": 0.06993006993006994,
+      "recovery": 108.81118881118881
+    },
+    {
+      "id": "H06-EX-TP3",
+      "condition": "1着予想=3号艇",
+      "samples": 42,
+      "hits": 2,
+      "hitRate": 0.047619047619047616,
+      "recovery": 108.57142857142857
+    },
+    {
+      "id": "TS09-EX-TP1-C80",
+      "condition": "1着予想=1号艇 × conf80+",
+      "samples": 174,
+      "hits": 20,
+      "hitRate": 0.11494252873563218,
+      "recovery": 108.39080459770113
+    },
+    {
+      "id": "N14-EX-TP1-C80",
+      "condition": "1着予想=1号艇 × conf80+",
+      "samples": 193,
+      "hits": 20,
+      "hitRate": 0.10362694300518134,
+      "recovery": 108.03108808290156
+    },
+    {
+      "id": "TY18-EX-H1-C85",
+      "condition": "1号艇含む × conf85+",
+      "samples": 301,
+      "hits": 29,
+      "hitRate": 0.09634551495016612,
+      "recovery": 107.67441860465117
+    },
+    {
+      "id": "M10-EX-R712-C80",
+      "condition": "後半(7-12R) × conf80+",
+      "samples": 140,
+      "hits": 12,
+      "hitRate": 0.08571428571428572,
+      "recovery": 107.28571428571429
+    },
+    {
+      "id": "HW04-EX-TP1-C80",
+      "condition": "1着予想=1号艇 × conf80+",
+      "samples": 183,
+      "hits": 14,
+      "hitRate": 0.07650273224043716,
+      "recovery": 107.21311475409836
+    },
+    {
+      "id": "TS09-EX-TP1-C85",
+      "condition": "1着予想=1号艇 × conf85+",
+      "samples": 164,
+      "hits": 18,
+      "hitRate": 0.10975609756097561,
+      "recovery": 106.89024390243902
+    },
+    {
+      "id": "H06-EX-C70",
+      "condition": "confidence 70%以上",
+      "samples": 79,
+      "hits": 5,
+      "hitRate": 0.06329113924050633,
+      "recovery": 106.83544303797467
+    },
+    {
+      "id": "MY17-EX-TP1-C80",
+      "condition": "1着予想=1号艇 × conf80+",
+      "samples": 203,
+      "hits": 18,
+      "hitRate": 0.08866995073891626,
+      "recovery": 106.79802955665025
+    },
+    {
+      "id": "HW04-EX-H1-C70",
+      "condition": "1号艇含む × conf70+",
+      "samples": 317,
+      "hits": 19,
+      "hitRate": 0.05993690851735016,
+      "recovery": 106.7192429022082
+    },
+    {
+      "id": "TM05-EX-TP2-C85",
+      "condition": "1着予想=2号艇 × conf85+",
+      "samples": 30,
+      "hits": 2,
+      "hitRate": 0.06666666666666667,
+      "recovery": 106
+    },
+    {
+      "id": "KR01-EX-TP3-C75",
+      "condition": "1着予想=3号艇 × conf75+",
+      "samples": 36,
+      "hits": 2,
+      "hitRate": 0.05555555555555555,
+      "recovery": 105.83333333333333
+    },
+    {
+      "id": "TY18-EX-TP1-C75",
+      "condition": "1着予想=1号艇 × conf75+",
+      "samples": 263,
+      "hits": 26,
+      "hitRate": 0.09885931558935361,
+      "recovery": 105.39923954372622
+    },
+    {
+      "id": "N14-EX-TP1",
+      "condition": "1着予想=1号艇",
+      "samples": 222,
+      "hits": 22,
+      "hitRate": 0.0990990990990991,
+      "recovery": 105.13513513513513
+    },
+    {
+      "id": "OM24-EX-TP1-C85",
+      "condition": "1着予想=1号艇 × conf85+",
+      "samples": 216,
+      "hits": 24,
+      "hitRate": 0.1111111111111111,
+      "recovery": 105.04629629629629
+    },
+    {
+      "id": "AM13-EX-R1012",
+      "condition": "終盤レース(10-12R)",
+      "samples": 111,
+      "hits": 14,
+      "hitRate": 0.12612612612612611,
+      "recovery": 105.04504504504504
+    },
+    {
+      "id": "OM24-EX-134",
+      "condition": "予想=1-3-4",
+      "samples": 20,
+      "hits": 3,
+      "hitRate": 0.15,
+      "recovery": 105
+    },
+    {
+      "id": "TM05-EX-132",
+      "condition": "予想=1-3-2",
+      "samples": 20,
+      "hits": 3,
+      "hitRate": 0.15,
+      "recovery": 104.5
+    },
+    {
+      "id": "G07-EX-R1012",
+      "condition": "終盤レース(10-12R)",
+      "samples": 128,
+      "hits": 14,
+      "hitRate": 0.109375,
+      "recovery": 104.375
+    },
+    {
+      "id": "OM24-EX-R1012-C85",
+      "condition": "終盤(10-12R) × conf85+",
+      "samples": 83,
+      "hits": 9,
+      "hitRate": 0.10843373493975904,
+      "recovery": 103.855421686747
+    },
+    {
+      "id": "WK20-EX-132",
+      "condition": "予想=1-3-2",
+      "samples": 22,
+      "hits": 3,
+      "hitRate": 0.13636363636363635,
+      "recovery": 103.63636363636364
+    },
+    {
+      "id": "F22-EX-123",
+      "condition": "予想=1-2-3",
+      "samples": 28,
+      "hits": 5,
+      "hitRate": 0.17857142857142858,
+      "recovery": 103.21428571428572
+    },
+    {
+      "id": "N14-EX-132",
+      "condition": "予想=1-3-2",
+      "samples": 24,
+      "hits": 3,
+      "hitRate": 0.125,
+      "recovery": 102.91666666666666
+    },
+    {
+      "id": "HW04-EX-H1-C75",
+      "condition": "1号艇含む × conf75+",
+      "samples": 279,
+      "hits": 17,
+      "hitRate": 0.06093189964157706,
+      "recovery": 102.47311827956989
+    },
+    {
+      "id": "WK20-EX-123",
+      "condition": "予想=1-2-3",
+      "samples": 34,
+      "hits": 5,
+      "hitRate": 0.14705882352941177,
+      "recovery": 102.35294117647058
+    },
+    {
+      "id": "HW04-EX-R16-C80",
+      "condition": "前半(1-6R) × conf80+",
+      "samples": 118,
+      "hits": 6,
+      "hitRate": 0.05084745762711865,
+      "recovery": 102.28813559322035
+    },
+    {
+      "id": "N14-EX-TP1-C75",
+      "condition": "1着予想=1号艇 × conf75+",
+      "samples": 204,
+      "hits": 20,
+      "hitRate": 0.09803921568627451,
+      "recovery": 102.20588235294117
+    },
+    {
+      "id": "F22-EX-H1-C85",
+      "condition": "1号艇含む × conf85+",
+      "samples": 271,
+      "hits": 26,
+      "hitRate": 0.0959409594095941,
+      "recovery": 101.80811808118082
+    },
+    {
+      "id": "M10-EX-R712-C85",
+      "condition": "後半(7-12R) × conf85+",
+      "samples": 125,
+      "hits": 11,
+      "hitRate": 0.088,
+      "recovery": 101.6
+    },
+    {
+      "id": "KR23-EX-TP3",
+      "condition": "1着予想=3号艇",
+      "samples": 39,
+      "hits": 2,
+      "hitRate": 0.05128205128205128,
+      "recovery": 101.53846153846153
+    },
+    {
+      "id": "TS09-EX-TP6-C85",
+      "condition": "1着予想=6号艇 × conf85+",
+      "samples": 20,
+      "hits": 1,
+      "hitRate": 0.05,
+      "recovery": 101.49999999999999
+    },
+    {
+      "id": "M10-EX-R1012-C85",
+      "condition": "終盤(10-12R) × conf85+",
+      "samples": 72,
+      "hits": 7,
+      "hitRate": 0.09722222222222222,
+      "recovery": 101.25
+    },
+    {
+      "id": "MY17-EX-TP1-C75",
+      "condition": "1着予想=1号艇 × conf75+",
+      "samples": 215,
+      "hits": 18,
+      "hitRate": 0.08372093023255814,
+      "recovery": 100.83720930232558
+    },
+    {
+      "id": "TY18-EX-TP1",
+      "condition": "1着予想=1号艇",
+      "samples": 286,
+      "hits": 27,
+      "hitRate": 0.0944055944055944,
+      "recovery": 100.38461538461539
+    },
+    {
+      "id": "TS09-EX-TP2",
+      "condition": "1着予想=2号艇",
+      "samples": 53,
+      "hits": 2,
+      "hitRate": 0.03773584905660377,
+      "recovery": 100.18867924528303
+    },
+    {
+      "id": "WK20-EX-C75",
+      "condition": "confidence 75%以上",
+      "samples": 65,
+      "hits": 3,
+      "hitRate": 0.046153846153846156,
+      "recovery": 100.15384615384615
+    },
+    {
+      "id": "OM24-EX-TP1-C75",
+      "condition": "1着予想=1号艇 × conf75+",
+      "samples": 246,
+      "hits": 26,
+      "hitRate": 0.10569105691056911,
+      "recovery": 100.04065040650407
+    }
+  ],
+  "byVenue": {
+    "10": [
+      {
+        "id": "M10-EX-TP2-C85",
+        "condition": "1着予想=2号艇 × conf85+",
+        "samples": 28,
+        "hits": 3,
+        "hitRate": 0.10714285714285714,
+        "recovery": 193.92857142857142
+      },
+      {
+        "id": "M10-EX-TP2-C80",
+        "condition": "1着予想=2号艇 × conf80+",
+        "samples": 32,
+        "hits": 3,
+        "hitRate": 0.09375,
+        "recovery": 169.6875
+      },
+      {
+        "id": "M10-EX-TP2-C75",
+        "condition": "1着予想=2号艇 × conf75+",
+        "samples": 43,
+        "hits": 4,
+        "hitRate": 0.09302325581395349,
+        "recovery": 161.3953488372093
+      },
+      {
+        "id": "M10-EX-TP2",
+        "condition": "1着予想=2号艇",
+        "samples": 53,
+        "hits": 4,
+        "hitRate": 0.07547169811320754,
+        "recovery": 130.94339622641508
+      },
+      {
+        "id": "M10-EX-R1012-C80",
+        "condition": "終盤(10-12R) × conf80+",
+        "samples": 77,
+        "hits": 8,
+        "hitRate": 0.1038961038961039,
+        "recovery": 124.8051948051948
+      },
+      {
+        "id": "M10-EX-R1012",
+        "condition": "終盤レース(10-12R)",
+        "samples": 96,
+        "hits": 9,
+        "hitRate": 0.09375,
+        "recovery": 109.58333333333334
+      },
+      {
+        "id": "M10-EX-R712-C80",
+        "condition": "後半(7-12R) × conf80+",
+        "samples": 140,
+        "hits": 12,
+        "hitRate": 0.08571428571428572,
+        "recovery": 107.28571428571429
+      },
+      {
+        "id": "M10-EX-R712-C85",
+        "condition": "後半(7-12R) × conf85+",
+        "samples": 125,
+        "hits": 11,
+        "hitRate": 0.088,
+        "recovery": 101.6
+      },
+      {
+        "id": "M10-EX-R1012-C85",
+        "condition": "終盤(10-12R) × conf85+",
+        "samples": 72,
+        "hits": 7,
+        "hitRate": 0.09722222222222222,
+        "recovery": 101.25
+      }
+    ],
+    "11": [
+      {
+        "id": "B11-EX-TP5-C85",
+        "condition": "1着予想=5号艇 × conf85+",
+        "samples": 21,
+        "hits": 2,
+        "hitRate": 0.09523809523809523,
+        "recovery": 172.38095238095238
+      },
+      {
+        "id": "B11-EX-TP5-C80",
+        "condition": "1着予想=5号艇 × conf80+",
+        "samples": 21,
+        "hits": 2,
+        "hitRate": 0.09523809523809523,
+        "recovery": 172.38095238095238
+      },
+      {
+        "id": "B11-EX-TP5-C75",
+        "condition": "1着予想=5号艇 × conf75+",
+        "samples": 24,
+        "hits": 2,
+        "hitRate": 0.08333333333333333,
+        "recovery": 150.83333333333334
+      },
+      {
+        "id": "B11-EX-TP5",
+        "condition": "1着予想=5号艇",
+        "samples": 27,
+        "hits": 2,
+        "hitRate": 0.07407407407407407,
+        "recovery": 134.07407407407408
+      },
+      {
+        "id": "B11-EX-TP3-C80",
+        "condition": "1着予想=3号艇 × conf80+",
+        "samples": 24,
+        "hits": 2,
+        "hitRate": 0.08333333333333333,
+        "recovery": 123.75
+      },
+      {
+        "id": "B11-EX-TP3",
+        "condition": "1着予想=3号艇",
+        "samples": 38,
+        "hits": 3,
+        "hitRate": 0.07894736842105263,
+        "recovery": 115.78947368421053
+      }
+    ],
+    "12": [
+      {
+        "id": "SM12-EX-TP2-C85",
+        "condition": "1着予想=2号艇 × conf85+",
+        "samples": 24,
+        "hits": 3,
+        "hitRate": 0.125,
+        "recovery": 240
+      },
+      {
+        "id": "SM12-EX-TP2-C80",
+        "condition": "1着予想=2号艇 × conf80+",
+        "samples": 27,
+        "hits": 3,
+        "hitRate": 0.1111111111111111,
+        "recovery": 213.33333333333334
+      },
+      {
+        "id": "SM12-EX-TP2-C75",
+        "condition": "1着予想=2号艇 × conf75+",
+        "samples": 32,
+        "hits": 3,
+        "hitRate": 0.09375,
+        "recovery": 180
+      },
+      {
+        "id": "SM12-EX-TP4",
+        "condition": "1着予想=4号艇",
+        "samples": 22,
+        "hits": 2,
+        "hitRate": 0.09090909090909091,
+        "recovery": 163.63636363636365
+      },
+      {
+        "id": "SM12-EX-TP2",
+        "condition": "1着予想=2号艇",
+        "samples": 39,
+        "hits": 3,
+        "hitRate": 0.07692307692307693,
+        "recovery": 147.6923076923077
+      },
+      {
+        "id": "SM12-EX-123",
+        "condition": "予想=1-2-3",
+        "samples": 26,
+        "hits": 4,
+        "hitRate": 0.15384615384615385,
+        "recovery": 135.3846153846154
+      }
+    ],
+    "13": [
+      {
+        "id": "AM13-EX-R1012-C85",
+        "condition": "終盤(10-12R) × conf85+",
+        "samples": 94,
+        "hits": 14,
+        "hitRate": 0.14893617021276595,
+        "recovery": 124.04255319148936
+      },
+      {
+        "id": "AM13-EX-R1012-C80",
+        "condition": "終盤(10-12R) × conf80+",
+        "samples": 99,
+        "hits": 14,
+        "hitRate": 0.1414141414141414,
+        "recovery": 117.77777777777779
+      },
+      {
+        "id": "AM13-EX-R1012",
+        "condition": "終盤レース(10-12R)",
+        "samples": 111,
+        "hits": 14,
+        "hitRate": 0.12612612612612611,
+        "recovery": 105.04504504504504
+      }
+    ],
+    "14": [
+      {
+        "id": "N14-EX-R1012-C85",
+        "condition": "終盤(10-12R) × conf85+",
+        "samples": 75,
+        "hits": 6,
+        "hitRate": 0.08,
+        "recovery": 135.06666666666666
+      },
+      {
+        "id": "N14-EX-C70",
+        "condition": "confidence 70%以上",
+        "samples": 75,
+        "hits": 5,
+        "hitRate": 0.06666666666666667,
+        "recovery": 129.20000000000002
+      },
+      {
+        "id": "N14-EX-R1012-C80",
+        "condition": "終盤(10-12R) × conf80+",
+        "samples": 83,
+        "hits": 6,
+        "hitRate": 0.07228915662650602,
+        "recovery": 122.04819277108435
+      },
+      {
+        "id": "N14-EX-TP1-C85",
+        "condition": "1着予想=1号艇 × conf85+",
+        "samples": 182,
+        "hits": 20,
+        "hitRate": 0.10989010989010989,
+        "recovery": 114.56043956043955
+      },
+      {
+        "id": "N14-EX-TP3",
+        "condition": "1着予想=3号艇",
+        "samples": 26,
+        "hits": 1,
+        "hitRate": 0.038461538461538464,
+        "recovery": 114.23076923076923
+      },
+      {
+        "id": "N14-EX-R1012",
+        "condition": "終盤レース(10-12R)",
+        "samples": 91,
+        "hits": 6,
+        "hitRate": 0.06593406593406594,
+        "recovery": 111.31868131868133
+      },
+      {
+        "id": "N14-EX-TP1-C80",
+        "condition": "1着予想=1号艇 × conf80+",
+        "samples": 193,
+        "hits": 20,
+        "hitRate": 0.10362694300518134,
+        "recovery": 108.03108808290156
+      },
+      {
+        "id": "N14-EX-TP1",
+        "condition": "1着予想=1号艇",
+        "samples": 222,
+        "hits": 22,
+        "hitRate": 0.0990990990990991,
+        "recovery": 105.13513513513513
+      },
+      {
+        "id": "N14-EX-132",
+        "condition": "予想=1-3-2",
+        "samples": 24,
+        "hits": 3,
+        "hitRate": 0.125,
+        "recovery": 102.91666666666666
+      },
+      {
+        "id": "N14-EX-TP1-C75",
+        "condition": "1着予想=1号艇 × conf75+",
+        "samples": 204,
+        "hits": 20,
+        "hitRate": 0.09803921568627451,
+        "recovery": 102.20588235294117
+      }
+    ],
+    "15": [
+      {
+        "id": "R15-EX-TP2-C75",
+        "condition": "1着予想=2号艇 × conf75+",
+        "samples": 38,
+        "hits": 4,
+        "hitRate": 0.10526315789473684,
+        "recovery": 160.5263157894737
+      },
+      {
+        "id": "R15-EX-R1012-C85",
+        "condition": "終盤(10-12R) × conf85+",
+        "samples": 86,
+        "hits": 8,
+        "hitRate": 0.09302325581395349,
+        "recovery": 138.6046511627907
+      },
+      {
+        "id": "R15-EX-R1012-C80",
+        "condition": "終盤(10-12R) × conf80+",
+        "samples": 89,
+        "hits": 8,
+        "hitRate": 0.0898876404494382,
+        "recovery": 133.93258426966293
+      },
+      {
+        "id": "R15-EX-TP2",
+        "condition": "1着予想=2号艇",
+        "samples": 46,
+        "hits": 4,
+        "hitRate": 0.08695652173913043,
+        "recovery": 132.6086956521739
+      },
+      {
+        "id": "R15-EX-TP2-C85",
+        "condition": "1着予想=2号艇 × conf85+",
+        "samples": 31,
+        "hits": 3,
+        "hitRate": 0.0967741935483871,
+        "recovery": 128.70967741935485
+      },
+      {
+        "id": "R15-EX-R1012",
+        "condition": "終盤レース(10-12R)",
+        "samples": 99,
+        "hits": 8,
+        "hitRate": 0.08080808080808081,
+        "recovery": 120.4040404040404
+      },
+      {
+        "id": "R15-EX-TP2-C80",
+        "condition": "1着予想=2号艇 × conf80+",
+        "samples": 34,
+        "hits": 3,
+        "hitRate": 0.08823529411764706,
+        "recovery": 117.3529411764706
+      },
+      {
+        "id": "R15-EX-124",
+        "condition": "予想=1-2-4",
+        "samples": 25,
+        "hits": 5,
+        "hitRate": 0.2,
+        "recovery": 109.2
+      }
+    ],
+    "16": [
+      {
+        "id": "K16-EX-TP6-C85",
+        "condition": "1着予想=6号艇 × conf85+",
+        "samples": 28,
+        "hits": 1,
+        "hitRate": 0.03571428571428571,
+        "recovery": 280.71428571428567
+      },
+      {
+        "id": "K16-EX-TP6-C80",
+        "condition": "1着予想=6号艇 × conf80+",
+        "samples": 31,
+        "hits": 1,
+        "hitRate": 0.03225806451612903,
+        "recovery": 253.5483870967742
+      },
+      {
+        "id": "K16-EX-TP6-C75",
+        "condition": "1着予想=6号艇 × conf75+",
+        "samples": 36,
+        "hits": 1,
+        "hitRate": 0.027777777777777776,
+        "recovery": 218.33333333333331
+      },
+      {
+        "id": "K16-EX-TP6",
+        "condition": "1着予想=6号艇",
+        "samples": 40,
+        "hits": 1,
+        "hitRate": 0.025,
+        "recovery": 196.5
+      },
+      {
+        "id": "K16-EX-142",
+        "condition": "予想=1-4-2",
+        "samples": 20,
+        "hits": 3,
+        "hitRate": 0.15,
+        "recovery": 165.5
+      },
+      {
+        "id": "K16-EX-TP4-C85",
+        "condition": "1着予想=4号艇 × conf85+",
+        "samples": 22,
+        "hits": 1,
+        "hitRate": 0.045454545454545456,
+        "recovery": 135
+      },
+      {
+        "id": "K16-EX-TP4-C80",
+        "condition": "1着予想=4号艇 × conf80+",
+        "samples": 27,
+        "hits": 1,
+        "hitRate": 0.037037037037037035,
+        "recovery": 110.00000000000001
+      }
+    ],
+    "17": [
+      {
+        "id": "MY17-EX-R1012-C85",
+        "condition": "終盤(10-12R) × conf85+",
+        "samples": 75,
+        "hits": 7,
+        "hitRate": 0.09333333333333334,
+        "recovery": 155.33333333333331
+      },
+      {
+        "id": "MY17-EX-R1012-C80",
+        "condition": "終盤(10-12R) × conf80+",
+        "samples": 80,
+        "hits": 7,
+        "hitRate": 0.0875,
+        "recovery": 145.625
+      },
+      {
+        "id": "MY17-EX-R1012",
+        "condition": "終盤レース(10-12R)",
+        "samples": 95,
+        "hits": 7,
+        "hitRate": 0.07368421052631578,
+        "recovery": 122.63157894736842
+      },
+      {
+        "id": "MY17-EX-123",
+        "condition": "予想=1-2-3",
+        "samples": 28,
+        "hits": 5,
+        "hitRate": 0.17857142857142858,
+        "recovery": 115.71428571428572
+      },
+      {
+        "id": "MY17-EX-TP1-C85",
+        "condition": "1着予想=1号艇 × conf85+",
+        "samples": 189,
+        "hits": 18,
+        "hitRate": 0.09523809523809523,
+        "recovery": 114.70899470899471
+      },
+      {
+        "id": "MY17-EX-R712-C85",
+        "condition": "後半(7-12R) × conf85+",
+        "samples": 143,
+        "hits": 10,
+        "hitRate": 0.06993006993006994,
+        "recovery": 108.81118881118881
+      },
+      {
+        "id": "MY17-EX-TP1-C80",
+        "condition": "1着予想=1号艇 × conf80+",
+        "samples": 203,
+        "hits": 18,
+        "hitRate": 0.08866995073891626,
+        "recovery": 106.79802955665025
+      },
+      {
+        "id": "MY17-EX-TP1-C75",
+        "condition": "1着予想=1号艇 × conf75+",
+        "samples": 215,
+        "hits": 18,
+        "hitRate": 0.08372093023255814,
+        "recovery": 100.83720930232558
+      }
+    ],
+    "18": [
+      {
+        "id": "TY18-EX-TP4-C75",
+        "condition": "1着予想=4号艇 × conf75+",
+        "samples": 29,
+        "hits": 3,
+        "hitRate": 0.10344827586206896,
+        "recovery": 324.13793103448273
+      },
+      {
+        "id": "TY18-EX-TP4",
+        "condition": "1着予想=4号艇",
+        "samples": 36,
+        "hits": 3,
+        "hitRate": 0.08333333333333333,
+        "recovery": 261.11111111111114
+      },
+      {
+        "id": "TY18-EX-124",
+        "condition": "予想=1-2-4",
+        "samples": 28,
+        "hits": 8,
+        "hitRate": 0.2857142857142857,
+        "recovery": 162.5
+      },
+      {
+        "id": "TY18-EX-R712-C85",
+        "condition": "後半(7-12R) × conf85+",
+        "samples": 157,
+        "hits": 19,
+        "hitRate": 0.12101910828025478,
+        "recovery": 134.33121019108282
+      },
+      {
+        "id": "TY18-EX-R712",
+        "condition": "後半レース(7-12R)",
+        "samples": 233,
+        "hits": 22,
+        "hitRate": 0.0944206008583691,
+        "recovery": 126.78111587982832
+      },
+      {
+        "id": "TY18-EX-TP4-C85",
+        "condition": "1着予想=4号艇 × conf85+",
+        "samples": 22,
+        "hits": 2,
+        "hitRate": 0.09090909090909091,
+        "recovery": 124.54545454545453
+      },
+      {
+        "id": "TY18-EX-R712-C80",
+        "condition": "後半(7-12R) × conf80+",
+        "samples": 175,
+        "hits": 19,
+        "hitRate": 0.10857142857142857,
+        "recovery": 120.5142857142857
+      },
+      {
+        "id": "TY18-EX-C75",
+        "condition": "confidence 75%以上",
+        "samples": 63,
+        "hits": 2,
+        "hitRate": 0.031746031746031744,
+        "recovery": 118.41269841269842
+      },
+      {
+        "id": "TY18-EX-TP1-C85",
+        "condition": "1着予想=1号艇 × conf85+",
+        "samples": 235,
+        "hits": 26,
+        "hitRate": 0.11063829787234042,
+        "recovery": 117.95744680851064
+      },
+      {
+        "id": "TY18-EX-N1-C75",
+        "condition": "1号艇含まず × conf75+",
+        "samples": 58,
+        "hits": 1,
+        "hitRate": 0.017241379310344827,
+        "recovery": 114.82758620689654
+      },
+      {
+        "id": "TY18-EX-R1012",
+        "condition": "終盤レース(10-12R)",
+        "samples": 116,
+        "hits": 10,
+        "hitRate": 0.08620689655172414,
+        "recovery": 112.32758620689656
+      },
+      {
+        "id": "TY18-EX-H1-C90",
+        "condition": "1号艇含む × conf90+",
+        "samples": 273,
+        "hits": 27,
+        "hitRate": 0.0989010989010989,
+        "recovery": 109.92673992673994
+      },
+      {
+        "id": "TY18-EX-TP4-C80",
+        "condition": "1着予想=4号艇 × conf80+",
+        "samples": 25,
+        "hits": 2,
+        "hitRate": 0.08,
+        "recovery": 109.60000000000001
+      },
+      {
+        "id": "TY18-EX-TP1-C80",
+        "condition": "1着予想=1号艇 × conf80+",
+        "samples": 254,
+        "hits": 26,
+        "hitRate": 0.10236220472440945,
+        "recovery": 109.13385826771653
+      },
+      {
+        "id": "TY18-EX-H1-C85",
+        "condition": "1号艇含む × conf85+",
+        "samples": 301,
+        "hits": 29,
+        "hitRate": 0.09634551495016612,
+        "recovery": 107.67441860465117
+      },
+      {
+        "id": "TY18-EX-TP1-C75",
+        "condition": "1着予想=1号艇 × conf75+",
+        "samples": 263,
+        "hits": 26,
+        "hitRate": 0.09885931558935361,
+        "recovery": 105.39923954372622
+      },
+      {
+        "id": "TY18-EX-TP1",
+        "condition": "1着予想=1号艇",
+        "samples": 286,
+        "hits": 27,
+        "hitRate": 0.0944055944055944,
+        "recovery": 100.38461538461539
+      }
+    ],
+    "19": [
+      {
+        "id": "SG19-EX-TP5",
+        "condition": "1着予想=5号艇",
+        "samples": 20,
+        "hits": 1,
+        "hitRate": 0.05,
+        "recovery": 205.50000000000003
+      },
+      {
+        "id": "SG19-EX-132",
+        "condition": "予想=1-3-2",
+        "samples": 38,
+        "hits": 7,
+        "hitRate": 0.18421052631578946,
+        "recovery": 164.73684210526315
+      }
+    ],
+    "20": [
+      {
+        "id": "WK20-EX-TP6-C75",
+        "condition": "1着予想=6号艇 × conf75+",
+        "samples": 31,
+        "hits": 1,
+        "hitRate": 0.03225806451612903,
+        "recovery": 165.16129032258064
+      },
+      {
+        "id": "WK20-EX-TP6",
+        "condition": "1着予想=6号艇",
+        "samples": 32,
+        "hits": 1,
+        "hitRate": 0.03125,
+        "recovery": 160
+      },
+      {
+        "id": "WK20-EX-C70",
+        "condition": "confidence 70%以上",
+        "samples": 52,
+        "hits": 4,
+        "hitRate": 0.07692307692307693,
+        "recovery": 131.73076923076923
+      },
+      {
+        "id": "WK20-EX-TP5-C75",
+        "condition": "1着予想=5号艇 × conf75+",
+        "samples": 20,
+        "hits": 2,
+        "hitRate": 0.1,
+        "recovery": 131
+      },
+      {
+        "id": "WK20-EX-TP5",
+        "condition": "1着予想=5号艇",
+        "samples": 21,
+        "hits": 2,
+        "hitRate": 0.09523809523809523,
+        "recovery": 124.76190476190476
+      },
+      {
+        "id": "WK20-EX-132",
+        "condition": "予想=1-3-2",
+        "samples": 22,
+        "hits": 3,
+        "hitRate": 0.13636363636363635,
+        "recovery": 103.63636363636364
+      },
+      {
+        "id": "WK20-EX-123",
+        "condition": "予想=1-2-3",
+        "samples": 34,
+        "hits": 5,
+        "hitRate": 0.14705882352941177,
+        "recovery": 102.35294117647058
+      },
+      {
+        "id": "WK20-EX-C75",
+        "condition": "confidence 75%以上",
+        "samples": 65,
+        "hits": 3,
+        "hitRate": 0.046153846153846156,
+        "recovery": 100.15384615384615
+      }
+    ],
+    "21": [
+      {
+        "id": "AS21-EX-N1-C90",
+        "condition": "1号艇含まず × conf90+",
+        "samples": 27,
+        "hits": 1,
+        "hitRate": 0.037037037037037035,
+        "recovery": 6577.777777777777
+      },
+      {
+        "id": "AS21-EX-TP2-C85",
+        "condition": "1着予想=2号艇 × conf85+",
+        "samples": 28,
+        "hits": 1,
+        "hitRate": 0.03571428571428571,
+        "recovery": 6342.857142857143
+      },
+      {
+        "id": "AS21-EX-N1-C85",
+        "condition": "1号艇含まず × conf85+",
+        "samples": 29,
+        "hits": 1,
+        "hitRate": 0.034482758620689655,
+        "recovery": 6124.137931034483
+      },
+      {
+        "id": "AS21-EX-N1-C80",
+        "condition": "1号艇含まず × conf80+",
+        "samples": 30,
+        "hits": 1,
+        "hitRate": 0.03333333333333333,
+        "recovery": 5920
+      },
+      {
+        "id": "AS21-EX-TP2-C80",
+        "condition": "1着予想=2号艇 × conf80+",
+        "samples": 31,
+        "hits": 1,
+        "hitRate": 0.03225806451612903,
+        "recovery": 5729.032258064516
+      },
+      {
+        "id": "AS21-EX-N1-C75",
+        "condition": "1号艇含まず × conf75+",
+        "samples": 33,
+        "hits": 1,
+        "hitRate": 0.030303030303030304,
+        "recovery": 5381.818181818182
+      },
+      {
+        "id": "AS21-EX-TP2-C75",
+        "condition": "1着予想=2号艇 × conf75+",
+        "samples": 33,
+        "hits": 1,
+        "hitRate": 0.030303030303030304,
+        "recovery": 5381.818181818182
+      },
+      {
+        "id": "AS21-EX-N1-C70",
+        "condition": "1号艇含まず × conf70+",
+        "samples": 37,
+        "hits": 1,
+        "hitRate": 0.02702702702702703,
+        "recovery": 4800
+      },
+      {
+        "id": "AS21-EX-TP2",
+        "condition": "1着予想=2号艇",
+        "samples": 38,
+        "hits": 1,
+        "hitRate": 0.02631578947368421,
+        "recovery": 4673.684210526316
+      },
+      {
+        "id": "AS21-EX-R1012-C85",
+        "condition": "終盤(10-12R) × conf85+",
+        "samples": 73,
+        "hits": 6,
+        "hitRate": 0.0821917808219178,
+        "recovery": 2501.3698630136987
+      },
+      {
+        "id": "AS21-EX-R1012-C80",
+        "condition": "終盤(10-12R) × conf80+",
+        "samples": 77,
+        "hits": 6,
+        "hitRate": 0.07792207792207792,
+        "recovery": 2371.4285714285716
+      },
+      {
+        "id": "AS21-EX-R1012",
+        "condition": "終盤レース(10-12R)",
+        "samples": 87,
+        "hits": 6,
+        "hitRate": 0.06896551724137931,
+        "recovery": 2098.8505747126437
+      },
+      {
+        "id": "AS21-EX-R712-C85",
+        "condition": "後半(7-12R) × conf85+",
+        "samples": 139,
+        "hits": 10,
+        "hitRate": 0.07194244604316546,
+        "recovery": 1344.9640287769785
+      },
+      {
+        "id": "AS21-EX-R712-C80",
+        "condition": "後半(7-12R) × conf80+",
+        "samples": 148,
+        "hits": 10,
+        "hitRate": 0.06756756756756757,
+        "recovery": 1263.1756756756756
+      },
+      {
+        "id": "AS21-EX-R712",
+        "condition": "後半レース(7-12R)",
+        "samples": 174,
+        "hits": 10,
+        "hitRate": 0.05747126436781609,
+        "recovery": 1074.4252873563219
+      },
+      {
+        "id": "AS21-EX-C90",
+        "condition": "confidence 90%以上",
+        "samples": 266,
+        "hits": 24,
+        "hitRate": 0.09022556390977443,
+        "recovery": 743.5338345864662
+      },
+      {
+        "id": "AS21-EX-C85",
+        "condition": "confidence 85%以上",
+        "samples": 290,
+        "hits": 25,
+        "hitRate": 0.08620689655172414,
+        "recovery": 684.655172413793
+      },
+      {
+        "id": "AS21-EX-C80",
+        "condition": "confidence 80%以上",
+        "samples": 309,
+        "hits": 26,
+        "hitRate": 0.08414239482200647,
+        "recovery": 644.1423948220065
+      },
+      {
+        "id": "AS21-EX-132",
+        "condition": "予想=1-3-2",
+        "samples": 20,
+        "hits": 5,
+        "hitRate": 0.25,
+        "recovery": 210
+      },
+      {
+        "id": "AS21-EX-124",
+        "condition": "予想=1-2-4",
+        "samples": 26,
+        "hits": 2,
+        "hitRate": 0.07692307692307693,
+        "recovery": 126.92307692307692
+      }
+    ],
+    "22": [
+      {
+        "id": "F22-EX-N1-C90",
+        "condition": "1号艇含まず × conf90+",
+        "samples": 47,
+        "hits": 4,
+        "hitRate": 0.0851063829787234,
+        "recovery": 229.99999999999997
+      },
+      {
+        "id": "F22-EX-N1-C85",
+        "condition": "1号艇含まず × conf85+",
+        "samples": 50,
+        "hits": 4,
+        "hitRate": 0.08,
+        "recovery": 216.2
+      },
+      {
+        "id": "F22-EX-N1-C80",
+        "condition": "1号艇含まず × conf80+",
+        "samples": 50,
+        "hits": 4,
+        "hitRate": 0.08,
+        "recovery": 216.2
+      },
+      {
+        "id": "F22-EX-TP6-C80",
+        "condition": "1着予想=6号艇 × conf80+",
+        "samples": 24,
+        "hits": 2,
+        "hitRate": 0.08333333333333333,
+        "recovery": 211.24999999999997
+      },
+      {
+        "id": "F22-EX-TP2-C85",
+        "condition": "1着予想=2号艇 × conf85+",
+        "samples": 28,
+        "hits": 4,
+        "hitRate": 0.14285714285714285,
+        "recovery": 200.71428571428572
+      },
+      {
+        "id": "F22-EX-N1-C75",
+        "condition": "1号艇含まず × conf75+",
+        "samples": 54,
+        "hits": 4,
+        "hitRate": 0.07407407407407407,
+        "recovery": 200.1851851851852
+      },
+      {
+        "id": "F22-EX-N1-C70",
+        "condition": "1号艇含まず × conf70+",
+        "samples": 55,
+        "hits": 4,
+        "hitRate": 0.07272727272727272,
+        "recovery": 196.54545454545456
+      },
+      {
+        "id": "F22-EX-TP6-C75",
+        "condition": "1着予想=6号艇 × conf75+",
+        "samples": 26,
+        "hits": 2,
+        "hitRate": 0.07692307692307693,
+        "recovery": 195
+      },
+      {
+        "id": "F22-EX-TP2-C80",
+        "condition": "1着予想=2号艇 × conf80+",
+        "samples": 32,
+        "hits": 4,
+        "hitRate": 0.125,
+        "recovery": 175.625
+      },
+      {
+        "id": "F22-EX-TP6",
+        "condition": "1着予想=6号艇",
+        "samples": 31,
+        "hits": 2,
+        "hitRate": 0.06451612903225806,
+        "recovery": 163.5483870967742
+      },
+      {
+        "id": "F22-EX-TP2-C75",
+        "condition": "1着予想=2号艇 × conf75+",
+        "samples": 37,
+        "hits": 4,
+        "hitRate": 0.10810810810810811,
+        "recovery": 151.8918918918919
+      },
+      {
+        "id": "F22-EX-R16-C85",
+        "condition": "前半(1-6R) × conf85+",
+        "samples": 150,
+        "hits": 15,
+        "hitRate": 0.1,
+        "recovery": 144
+      },
+      {
+        "id": "F22-EX-124",
+        "condition": "予想=1-2-4",
+        "samples": 25,
+        "hits": 5,
+        "hitRate": 0.2,
+        "recovery": 142
+      },
+      {
+        "id": "F22-EX-TP2",
+        "condition": "1着予想=2号艇",
+        "samples": 41,
+        "hits": 4,
+        "hitRate": 0.0975609756097561,
+        "recovery": 137.07317073170734
+      },
+      {
+        "id": "F22-EX-R16-C80",
+        "condition": "前半(1-6R) × conf80+",
+        "samples": 166,
+        "hits": 15,
+        "hitRate": 0.09036144578313253,
+        "recovery": 130.12048192771084
+      },
+      {
+        "id": "F22-EX-C85",
+        "condition": "confidence 85%以上",
+        "samples": 321,
+        "hits": 30,
+        "hitRate": 0.09345794392523364,
+        "recovery": 119.62616822429905
+      },
+      {
+        "id": "F22-EX-C90",
+        "condition": "confidence 90%以上",
+        "samples": 284,
+        "hits": 26,
+        "hitRate": 0.09154929577464789,
+        "recovery": 119.29577464788733
+      },
+      {
+        "id": "F22-EX-C80",
+        "condition": "confidence 80%以上",
+        "samples": 342,
+        "hits": 30,
+        "hitRate": 0.08771929824561403,
+        "recovery": 112.28070175438596
+      },
+      {
+        "id": "F22-EX-R16",
+        "condition": "前半レース(1-6R)",
+        "samples": 210,
+        "hits": 17,
+        "hitRate": 0.08095238095238096,
+        "recovery": 111.85714285714286
+      },
+      {
+        "id": "F22-EX-123",
+        "condition": "予想=1-2-3",
+        "samples": 28,
+        "hits": 5,
+        "hitRate": 0.17857142857142858,
+        "recovery": 103.21428571428572
+      },
+      {
+        "id": "F22-EX-H1-C85",
+        "condition": "1号艇含む × conf85+",
+        "samples": 271,
+        "hits": 26,
+        "hitRate": 0.0959409594095941,
+        "recovery": 101.80811808118082
+      }
+    ],
+    "23": [
+      {
+        "id": "KR23-EX-TP3",
+        "condition": "1着予想=3号艇",
+        "samples": 39,
+        "hits": 2,
+        "hitRate": 0.05128205128205128,
+        "recovery": 101.53846153846153
+      }
+    ],
+    "24": [
+      {
+        "id": "OM24-EX-132",
+        "condition": "予想=1-3-2",
+        "samples": 32,
+        "hits": 7,
+        "hitRate": 0.21875,
+        "recovery": 128.125
+      },
+      {
+        "id": "OM24-EX-TP4-C80",
+        "condition": "1着予想=4号艇 × conf80+",
+        "samples": 21,
+        "hits": 1,
+        "hitRate": 0.047619047619047616,
+        "recovery": 128.09523809523807
+      },
+      {
+        "id": "OM24-EX-TP4-C75",
+        "condition": "1着予想=4号艇 × conf75+",
+        "samples": 23,
+        "hits": 1,
+        "hitRate": 0.043478260869565216,
+        "recovery": 116.95652173913042
+      },
+      {
+        "id": "OM24-EX-TP1-C85",
+        "condition": "1着予想=1号艇 × conf85+",
+        "samples": 216,
+        "hits": 24,
+        "hitRate": 0.1111111111111111,
+        "recovery": 105.04629629629629
+      },
+      {
+        "id": "OM24-EX-134",
+        "condition": "予想=1-3-4",
+        "samples": 20,
+        "hits": 3,
+        "hitRate": 0.15,
+        "recovery": 105
+      },
+      {
+        "id": "OM24-EX-R1012-C85",
+        "condition": "終盤(10-12R) × conf85+",
+        "samples": 83,
+        "hits": 9,
+        "hitRate": 0.10843373493975904,
+        "recovery": 103.855421686747
+      },
+      {
+        "id": "OM24-EX-TP1-C75",
+        "condition": "1着予想=1号艇 × conf75+",
+        "samples": 246,
+        "hits": 26,
+        "hitRate": 0.10569105691056911,
+        "recovery": 100.04065040650407
+      }
+    ],
+    "06": [
+      {
+        "id": "H06-EX-TP2-C85",
+        "condition": "1着予想=2号艇 × conf85+",
+        "samples": 40,
+        "hits": 2,
+        "hitRate": 0.05,
+        "recovery": 1043.25
+      },
+      {
+        "id": "H06-EX-N1-C90",
+        "condition": "1号艇含まず × conf90+",
+        "samples": 46,
+        "hits": 1,
+        "hitRate": 0.021739130434782608,
+        "recovery": 889.1304347826087
+      },
+      {
+        "id": "H06-EX-TP2-C80",
+        "condition": "1着予想=2号艇 × conf80+",
+        "samples": 48,
+        "hits": 2,
+        "hitRate": 0.041666666666666664,
+        "recovery": 869.375
+      },
+      {
+        "id": "H06-EX-N1-C85",
+        "condition": "1号艇含まず × conf85+",
+        "samples": 48,
+        "hits": 1,
+        "hitRate": 0.020833333333333332,
+        "recovery": 852.0833333333334
+      },
+      {
+        "id": "H06-EX-TP2-C75",
+        "condition": "1着予想=2号艇 × conf75+",
+        "samples": 56,
+        "hits": 3,
+        "hitRate": 0.05357142857142857,
+        "recovery": 774.8214285714286
+      },
+      {
+        "id": "H06-EX-N1-C80",
+        "condition": "1号艇含まず × conf80+",
+        "samples": 54,
+        "hits": 1,
+        "hitRate": 0.018518518518518517,
+        "recovery": 757.4074074074074
+      },
+      {
+        "id": "H06-EX-N1-C75",
+        "condition": "1号艇含まず × conf75+",
+        "samples": 58,
+        "hits": 1,
+        "hitRate": 0.017241379310344827,
+        "recovery": 705.1724137931035
+      },
+      {
+        "id": "H06-EX-N1-C70",
+        "condition": "1号艇含まず × conf70+",
+        "samples": 63,
+        "hits": 1,
+        "hitRate": 0.015873015873015872,
+        "recovery": 649.2063492063492
+      },
+      {
+        "id": "H06-EX-TP2",
+        "condition": "1着予想=2号艇",
+        "samples": 72,
+        "hits": 3,
+        "hitRate": 0.041666666666666664,
+        "recovery": 602.6388888888889
+      },
+      {
+        "id": "H06-EX-R1012-C85",
+        "condition": "終盤(10-12R) × conf85+",
+        "samples": 95,
+        "hits": 7,
+        "hitRate": 0.07368421052631578,
+        "recovery": 469.57894736842104
+      },
+      {
+        "id": "H06-EX-R1012-C80",
+        "condition": "終盤(10-12R) × conf80+",
+        "samples": 101,
+        "hits": 7,
+        "hitRate": 0.06930693069306931,
+        "recovery": 441.68316831683165
+      },
+      {
+        "id": "H06-EX-R1012",
+        "condition": "終盤レース(10-12R)",
+        "samples": 114,
+        "hits": 8,
+        "hitRate": 0.07017543859649122,
+        "recovery": 405.87719298245617
+      },
+      {
+        "id": "H06-EX-TP4-C80",
+        "condition": "1着予想=4号艇 × conf80+",
+        "samples": 21,
+        "hits": 1,
+        "hitRate": 0.047619047619047616,
+        "recovery": 370
+      },
+      {
+        "id": "H06-EX-TP4-C75",
+        "condition": "1着予想=4号艇 × conf75+",
+        "samples": 22,
+        "hits": 1,
+        "hitRate": 0.045454545454545456,
+        "recovery": 353.1818181818182
+      },
+      {
+        "id": "H06-EX-R712-C85",
+        "condition": "後半(7-12R) × conf85+",
+        "samples": 184,
+        "hits": 13,
+        "hitRate": 0.07065217391304347,
+        "recovery": 307.9347826086956
+      },
+      {
+        "id": "H06-EX-R712-C80",
+        "condition": "後半(7-12R) × conf80+",
+        "samples": 197,
+        "hits": 15,
+        "hitRate": 0.07614213197969544,
+        "recovery": 293.4010152284264
+      },
+      {
+        "id": "H06-EX-R712",
+        "condition": "後半レース(7-12R)",
+        "samples": 228,
+        "hits": 18,
+        "hitRate": 0.07894736842105263,
+        "recovery": 280.61403508771934
+      },
+      {
+        "id": "H06-EX-TP4",
+        "condition": "1着予想=4号艇",
+        "samples": 29,
+        "hits": 1,
+        "hitRate": 0.034482758620689655,
+        "recovery": 267.9310344827586
+      },
+      {
+        "id": "H06-EX-C90",
+        "condition": "confidence 90%以上",
+        "samples": 314,
+        "hits": 20,
+        "hitRate": 0.06369426751592357,
+        "recovery": 202.57961783439492
+      },
+      {
+        "id": "H06-EX-C85",
+        "condition": "confidence 85%以上",
+        "samples": 344,
+        "hits": 22,
+        "hitRate": 0.06395348837209303,
+        "recovery": 192.52906976744185
+      },
+      {
+        "id": "H06-EX-C80",
+        "condition": "confidence 80%以上",
+        "samples": 383,
+        "hits": 25,
+        "hitRate": 0.06527415143603134,
+        "recovery": 177.7023498694517
+      },
+      {
+        "id": "H06-EX-132",
+        "condition": "予想=1-3-2",
+        "samples": 29,
+        "hits": 6,
+        "hitRate": 0.20689655172413793,
+        "recovery": 167.24137931034483
+      },
+      {
+        "id": "H06-EX-C75",
+        "condition": "confidence 75%以上",
+        "samples": 72,
+        "hits": 8,
+        "hitRate": 0.1111111111111111,
+        "recovery": 142.63888888888889
+      },
+      {
+        "id": "H06-EX-TP3-C85",
+        "condition": "1着予想=3号艇 × conf85+",
+        "samples": 27,
+        "hits": 1,
+        "hitRate": 0.037037037037037035,
+        "recovery": 139.62962962962965
+      },
+      {
+        "id": "H06-EX-TP3-C80",
+        "condition": "1着予想=3号艇 × conf80+",
+        "samples": 34,
+        "hits": 2,
+        "hitRate": 0.058823529411764705,
+        "recovery": 134.1176470588235
+      },
+      {
+        "id": "H06-EX-TP3-C75",
+        "condition": "1着予想=3号艇 × conf75+",
+        "samples": 36,
+        "hits": 2,
+        "hitRate": 0.05555555555555555,
+        "recovery": 126.66666666666666
+      },
+      {
+        "id": "H06-EX-123",
+        "condition": "予想=1-2-3",
+        "samples": 33,
+        "hits": 5,
+        "hitRate": 0.15151515151515152,
+        "recovery": 122.42424242424241
+      },
+      {
+        "id": "H06-EX-TP3",
+        "condition": "1着予想=3号艇",
+        "samples": 42,
+        "hits": 2,
+        "hitRate": 0.047619047619047616,
+        "recovery": 108.57142857142857
+      },
+      {
+        "id": "H06-EX-C70",
+        "condition": "confidence 70%以上",
+        "samples": 79,
+        "hits": 5,
+        "hitRate": 0.06329113924050633,
+        "recovery": 106.83544303797467
+      }
+    ],
+    "07": [
+      {
+        "id": "G07-EX-TP5-C75",
+        "condition": "1着予想=5号艇 × conf75+",
+        "samples": 21,
+        "hits": 1,
+        "hitRate": 0.047619047619047616,
+        "recovery": 414.28571428571433
+      },
+      {
+        "id": "G07-EX-TP5",
+        "condition": "1着予想=5号艇",
+        "samples": 24,
+        "hits": 1,
+        "hitRate": 0.041666666666666664,
+        "recovery": 362.5
+      },
+      {
+        "id": "G07-EX-124",
+        "condition": "予想=1-2-4",
+        "samples": 22,
+        "hits": 2,
+        "hitRate": 0.09090909090909091,
+        "recovery": 173.63636363636363
+      },
+      {
+        "id": "G07-EX-C75",
+        "condition": "confidence 75%以上",
+        "samples": 92,
+        "hits": 8,
+        "hitRate": 0.08695652173913043,
+        "recovery": 166.63043478260872
+      },
+      {
+        "id": "G07-EX-C70",
+        "condition": "confidence 70%以上",
+        "samples": 91,
+        "hits": 6,
+        "hitRate": 0.06593406593406594,
+        "recovery": 129.67032967032966
+      },
+      {
+        "id": "G07-EX-123",
+        "condition": "予想=1-2-3",
+        "samples": 29,
+        "hits": 4,
+        "hitRate": 0.13793103448275862,
+        "recovery": 113.44827586206895
+      },
+      {
+        "id": "G07-EX-R1012-C85",
+        "condition": "終盤(10-12R) × conf85+",
+        "samples": 110,
+        "hits": 12,
+        "hitRate": 0.10909090909090909,
+        "recovery": 111.27272727272728
+      },
+      {
+        "id": "G07-EX-R1012-C80",
+        "condition": "終盤(10-12R) × conf80+",
+        "samples": 117,
+        "hits": 13,
+        "hitRate": 0.1111111111111111,
+        "recovery": 109.91452991452992
+      },
+      {
+        "id": "G07-EX-142",
+        "condition": "予想=1-4-2",
+        "samples": 25,
+        "hits": 2,
+        "hitRate": 0.08,
+        "recovery": 109.60000000000001
+      },
+      {
+        "id": "G07-EX-R1012",
+        "condition": "終盤レース(10-12R)",
+        "samples": 128,
+        "hits": 14,
+        "hitRate": 0.109375,
+        "recovery": 104.375
+      }
+    ],
+    "08": [
+      {
+        "id": "TK08-EX-TP4",
+        "condition": "1着予想=4号艇",
+        "samples": 27,
+        "hits": 3,
+        "hitRate": 0.1111111111111111,
+        "recovery": 250.37037037037035
+      },
+      {
+        "id": "TK08-EX-TP2-C80",
+        "condition": "1着予想=2号艇 × conf80+",
+        "samples": 39,
+        "hits": 2,
+        "hitRate": 0.05128205128205128,
+        "recovery": 145.1282051282051
+      },
+      {
+        "id": "TK08-EX-C70",
+        "condition": "confidence 70%以上",
+        "samples": 54,
+        "hits": 5,
+        "hitRate": 0.09259259259259259,
+        "recovery": 142.03703703703704
+      },
+      {
+        "id": "TK08-EX-TP2-C75",
+        "condition": "1着予想=2号艇 × conf75+",
+        "samples": 46,
+        "hits": 2,
+        "hitRate": 0.043478260869565216,
+        "recovery": 123.04347826086956
+      },
+      {
+        "id": "TK08-EX-C75",
+        "condition": "confidence 75%以上",
+        "samples": 52,
+        "hits": 5,
+        "hitRate": 0.09615384615384616,
+        "recovery": 117.3076923076923
+      },
+      {
+        "id": "TK08-EX-TP2",
+        "condition": "1着予想=2号艇",
+        "samples": 50,
+        "hits": 2,
+        "hitRate": 0.04,
+        "recovery": 113.19999999999999
+      }
+    ],
+    "05": [
+      {
+        "id": "TM05-EX-124",
+        "condition": "予想=1-2-4",
+        "samples": 21,
+        "hits": 4,
+        "hitRate": 0.19047619047619047,
+        "recovery": 227.14285714285714
+      },
+      {
+        "id": "TM05-EX-TP2-C85",
+        "condition": "1着予想=2号艇 × conf85+",
+        "samples": 30,
+        "hits": 2,
+        "hitRate": 0.06666666666666667,
+        "recovery": 106
+      },
+      {
+        "id": "TM05-EX-132",
+        "condition": "予想=1-3-2",
+        "samples": 20,
+        "hits": 3,
+        "hitRate": 0.15,
+        "recovery": 104.5
+      }
+    ],
+    "04": [
+      {
+        "id": "HW04-EX-TP5",
+        "condition": "1着予想=5号艇",
+        "samples": 21,
+        "hits": 1,
+        "hitRate": 0.047619047619047616,
+        "recovery": 149.04761904761904
+      },
+      {
+        "id": "HW04-EX-TP2-C80",
+        "condition": "1着予想=2号艇 × conf80+",
+        "samples": 29,
+        "hits": 1,
+        "hitRate": 0.034482758620689655,
+        "recovery": 144.48275862068965
+      },
+      {
+        "id": "HW04-EX-R1012-C85",
+        "condition": "終盤(10-12R) × conf85+",
+        "samples": 67,
+        "hits": 5,
+        "hitRate": 0.07462686567164178,
+        "recovery": 136.2686567164179
+      },
+      {
+        "id": "HW04-EX-R712",
+        "condition": "後半レース(7-12R)",
+        "samples": 158,
+        "hits": 12,
+        "hitRate": 0.0759493670886076,
+        "recovery": 130.50632911392407
+      },
+      {
+        "id": "HW04-EX-R1012-C80",
+        "condition": "終盤(10-12R) × conf80+",
+        "samples": 70,
+        "hits": 5,
+        "hitRate": 0.07142857142857142,
+        "recovery": 130.42857142857142
+      },
+      {
+        "id": "HW04-EX-H1-C90",
+        "condition": "1号艇含む × conf90+",
+        "samples": 171,
+        "hits": 14,
+        "hitRate": 0.08187134502923976,
+        "recovery": 125.0877192982456
+      },
+      {
+        "id": "HW04-EX-R712-C85",
+        "condition": "後半(7-12R) × conf85+",
+        "samples": 120,
+        "hits": 10,
+        "hitRate": 0.08333333333333333,
+        "recovery": 123.91666666666667
+      },
+      {
+        "id": "HW04-EX-C90",
+        "condition": "confidence 90%以上",
+        "samples": 175,
+        "hits": 14,
+        "hitRate": 0.08,
+        "recovery": 122.22857142857141
+      },
+      {
+        "id": "HW04-EX-TP1-C85",
+        "condition": "1着予想=1号艇 × conf85+",
+        "samples": 161,
+        "hits": 14,
+        "hitRate": 0.08695652173913043,
+        "recovery": 121.86335403726709
+      },
+      {
+        "id": "HW04-EX-R712-C80",
+        "condition": "後半(7-12R) × conf80+",
+        "samples": 127,
+        "hits": 10,
+        "hitRate": 0.07874015748031496,
+        "recovery": 117.08661417322834
+      },
+      {
+        "id": "HW04-EX-R1012",
+        "condition": "終盤レース(10-12R)",
+        "samples": 78,
+        "hits": 5,
+        "hitRate": 0.0641025641025641,
+        "recovery": 117.05128205128206
+      },
+      {
+        "id": "HW04-EX-TP2-C75",
+        "condition": "1着予想=2号艇 × conf75+",
+        "samples": 37,
+        "hits": 1,
+        "hitRate": 0.02702702702702703,
+        "recovery": 113.24324324324324
+      },
+      {
+        "id": "HW04-EX-H1-C80",
+        "condition": "1号艇含む × conf80+",
+        "samples": 238,
+        "hits": 16,
+        "hitRate": 0.06722689075630252,
+        "recovery": 113.19327731092437
+      },
+      {
+        "id": "HW04-EX-H1-C85",
+        "condition": "1号艇含む × conf85+",
+        "samples": 201,
+        "hits": 15,
+        "hitRate": 0.07462686567164178,
+        "recovery": 113.18407960199004
+      },
+      {
+        "id": "HW04-EX-C85",
+        "condition": "confidence 85%以上",
+        "samples": 206,
+        "hits": 15,
+        "hitRate": 0.07281553398058252,
+        "recovery": 110.4368932038835
+      },
+      {
+        "id": "HW04-EX-C80",
+        "condition": "confidence 80%以上",
+        "samples": 245,
+        "hits": 16,
+        "hitRate": 0.0653061224489796,
+        "recovery": 109.9591836734694
+      },
+      {
+        "id": "HW04-EX-TP1-C80",
+        "condition": "1着予想=1号艇 × conf80+",
+        "samples": 183,
+        "hits": 14,
+        "hitRate": 0.07650273224043716,
+        "recovery": 107.21311475409836
+      },
+      {
+        "id": "HW04-EX-H1-C70",
+        "condition": "1号艇含む × conf70+",
+        "samples": 317,
+        "hits": 19,
+        "hitRate": 0.05993690851735016,
+        "recovery": 106.7192429022082
+      },
+      {
+        "id": "HW04-EX-H1-C75",
+        "condition": "1号艇含む × conf75+",
+        "samples": 279,
+        "hits": 17,
+        "hitRate": 0.06093189964157706,
+        "recovery": 102.47311827956989
+      },
+      {
+        "id": "HW04-EX-R16-C80",
+        "condition": "前半(1-6R) × conf80+",
+        "samples": 118,
+        "hits": 6,
+        "hitRate": 0.05084745762711865,
+        "recovery": 102.28813559322035
+      }
+    ],
+    "01": [
+      {
+        "id": "KR01-EX-TP3-C85",
+        "condition": "1着予想=3号艇 × conf85+",
+        "samples": 27,
+        "hits": 2,
+        "hitRate": 0.07407407407407407,
+        "recovery": 141.11111111111111
+      },
+      {
+        "id": "KR01-EX-TP3",
+        "condition": "1着予想=3号艇",
+        "samples": 41,
+        "hits": 3,
+        "hitRate": 0.07317073170731707,
+        "recovery": 127.5609756097561
+      },
+      {
+        "id": "KR01-EX-TP3-C80",
+        "condition": "1着予想=3号艇 × conf80+",
+        "samples": 33,
+        "hits": 2,
+        "hitRate": 0.06060606060606061,
+        "recovery": 115.45454545454545
+      },
+      {
+        "id": "KR01-EX-TP4-C80",
+        "condition": "1着予想=4号艇 × conf80+",
+        "samples": 26,
+        "hits": 1,
+        "hitRate": 0.038461538461538464,
+        "recovery": 109.23076923076923
+      },
+      {
+        "id": "KR01-EX-TP3-C75",
+        "condition": "1着予想=3号艇 × conf75+",
+        "samples": 36,
+        "hits": 2,
+        "hitRate": 0.05555555555555555,
+        "recovery": 105.83333333333333
+      }
+    ],
+    "09": [
+      {
+        "id": "TS09-EX-TP2-C85",
+        "condition": "1着予想=2号艇 × conf85+",
+        "samples": 39,
+        "hits": 2,
+        "hitRate": 0.05128205128205128,
+        "recovery": 136.15384615384616
+      },
+      {
+        "id": "TS09-EX-TP2-C80",
+        "condition": "1着予想=2号艇 × conf80+",
+        "samples": 41,
+        "hits": 2,
+        "hitRate": 0.04878048780487805,
+        "recovery": 129.51219512195124
+      },
+      {
+        "id": "TS09-EX-TP2-C75",
+        "condition": "1着予想=2号艇 × conf75+",
+        "samples": 48,
+        "hits": 2,
+        "hitRate": 0.041666666666666664,
+        "recovery": 110.625
+      },
+      {
+        "id": "TS09-EX-TP1",
+        "condition": "1着予想=1号艇",
+        "samples": 200,
+        "hits": 23,
+        "hitRate": 0.115,
+        "recovery": 109.60000000000001
+      },
+      {
+        "id": "TS09-EX-TP1-C75",
+        "condition": "1着予想=1号艇 × conf75+",
+        "samples": 181,
+        "hits": 21,
+        "hitRate": 0.11602209944751381,
+        "recovery": 109.55801104972376
+      },
+      {
+        "id": "TS09-EX-TP1-C80",
+        "condition": "1着予想=1号艇 × conf80+",
+        "samples": 174,
+        "hits": 20,
+        "hitRate": 0.11494252873563218,
+        "recovery": 108.39080459770113
+      },
+      {
+        "id": "TS09-EX-TP1-C85",
+        "condition": "1着予想=1号艇 × conf85+",
+        "samples": 164,
+        "hits": 18,
+        "hitRate": 0.10975609756097561,
+        "recovery": 106.89024390243902
+      },
+      {
+        "id": "TS09-EX-TP6-C85",
+        "condition": "1着予想=6号艇 × conf85+",
+        "samples": 20,
+        "hits": 1,
+        "hitRate": 0.05,
+        "recovery": 101.49999999999999
+      },
+      {
+        "id": "TS09-EX-TP2",
+        "condition": "1着予想=2号艇",
+        "samples": 53,
+        "hits": 2,
+        "hitRate": 0.03773584905660377,
+        "recovery": 100.18867924528303
+      }
+    ],
+    "02": [
+      {
+        "id": "TD02-EX-TP2-C75",
+        "condition": "1着予想=2号艇 × conf75+",
+        "samples": 56,
+        "hits": 3,
+        "hitRate": 0.05357142857142857,
+        "recovery": 129.46428571428572
+      },
+      {
+        "id": "TD02-EX-124",
+        "condition": "予想=1-2-4",
+        "samples": 22,
+        "hits": 3,
+        "hitRate": 0.13636363636363635,
+        "recovery": 122.27272727272727
+      },
+      {
+        "id": "TD02-EX-TP2",
+        "condition": "1着予想=2号艇",
+        "samples": 64,
+        "hits": 3,
+        "hitRate": 0.046875,
+        "recovery": 113.28125
+      }
+    ]
+  }
+}
