@@ -1787,9 +1787,10 @@ export async function getTodaysMatchingRaces(date) {
 
         for (const rule of rules) {
           if (rule.betType === 'trio') {
+            // 3連複: 順不同で3艇を当てる（payout_trifecta）
             const isHit = predSorted === resultSorted
             if (isHit) {
-              hitInfo = { hit: true, payout: result.payout_trio || 0 }
+              hitInfo = { hit: true, payout: result.payout_trifecta || 0 }
               break
             }
           } else if (rule.betType === 'win') {
@@ -1974,9 +1975,10 @@ export async function getRulePerformanceByVenue(venueCode, startDate = '2026-01-
             let payout = 0
 
             if (rule.betType === 'trio') {
+              // 3連複: 順不同で3艇を当てる（payout_trifecta）
               const resultSorted = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b).join('-')
               isHit = predSorted === resultSorted
-              payout = result.payout_trio || 0
+              payout = result.payout_trifecta || 0
             } else if (rule.betType === 'win') {
               isHit = prediction.topPick === result.rank1
               payout = result.payout_win || 0
@@ -2112,9 +2114,10 @@ export async function getTopPerformingRules({ limit = null, minRecovery = null, 
               let payout = 0
 
               if (rule.betType === 'trio') {
+                // 3連複: 順不同で3艇を当てる（payout_trifecta）
                 const resultSorted = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b).join('-')
                 isHit = predSorted === resultSorted
-                payout = result.payout_trio || 0
+                payout = result.payout_trifecta || 0
               } else if (rule.betType === 'win') {
                 isHit = prediction.topPick === result.rank1
                 payout = result.payout_win || 0
@@ -2275,9 +2278,10 @@ export async function getTopRulesWeeklyPerformance(topN = 10) {
               let payout = 0
 
               if (rule.betType === 'trio') {
+                // 3連複: 順不同で3艇を当てる（payout_trifecta）
                 const resultSorted = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b).join('-')
                 isHit = predSorted === resultSorted
-                payout = result.payout_trio || 0
+                payout = result.payout_trifecta || 0
               } else if (rule.betType === 'win') {
                 isHit = prediction.topPick === result.rank1
                 payout = result.payout_win || 0
@@ -2489,9 +2493,10 @@ export async function getVenueTopRulesWeeklyPerformance(venueCode, topN = 10) {
             let payout = 0
 
             if (rule.betType === 'trio') {
+              // 3連複: 順不同で3艇を当てる（payout_trifecta）
               const resultSorted = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b).join('-')
               isHit = predSorted === resultSorted
-              payout = result.payout_trio || 0
+              payout = result.payout_trifecta || 0
             } else if (rule.betType === 'win') {
               isHit = prediction.topPick === result.rank1
               payout = result.payout_win || 0

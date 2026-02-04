@@ -253,10 +253,11 @@ function TodaysPicks() {
     const resultSorted = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b).join('-')
 
     if (rule.betType === 'trio') {
+      // 3連複: 順不同で3艇を当てる（payout_trifecta）
       const isHit = predSorted === resultSorted
       return {
         hit: isHit,
-        payout: isHit ? (race.result.payout_trio || 0) : 0
+        payout: isHit ? (race.result.payout_trifecta || 0) : 0
       }
     } else if (rule.betType === 'win') {
       const isHit = prediction.topPick === result.rank1
