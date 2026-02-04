@@ -1829,6 +1829,7 @@ export async function getTodaysMatchingRaces(date) {
           rank1: result.rank1,
           rank2: result.rank2,
           rank3: result.rank3,
+          payout_trifecta: result.payout_trifecta,
           payout_trio: result.payout_trio,
           payout_win: result.payout_win,
           payout_place_1: result.payout_place_1,
