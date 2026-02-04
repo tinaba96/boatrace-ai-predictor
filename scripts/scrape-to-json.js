@@ -5,6 +5,7 @@ import * as cheerio from 'cheerio';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getTodayDateJST } from './lib/dateUtils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -233,14 +234,8 @@ async function getRacelist(date, placeCd, raceNo) {
   }
 }
 
-// 今日の日付を取得 (YYYY-MM-DD形式)
-function getTodayDate() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
+// 今日の日付を取得 (YYYY-MM-DD形式, JST)
+// dateUtils.jsのgetTodayDateJST()を使用
 
 // 本日開催中のレース場リストを取得
 async function getTodayVenues() {
@@ -292,7 +287,7 @@ async function main() {
     console.log('Starting race data scraping...');
     console.log(`Timestamp: ${new Date().toISOString()}`);
 
-    const date = getTodayDate();
+    const date = getTodayDateJST();
     console.log(`Date: ${date}`);
 
     // 本日開催中のレース場リストを取得

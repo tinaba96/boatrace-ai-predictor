@@ -11,6 +11,18 @@ import { getTodayDateJST } from '../lib/dateUtils.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// 風向の度数（16方位）をテキストに変換
+function convertWindDirection(direction) {
+    const directions16 = [
+        null, '北', '北北東', '北東', '東北東', '東', '東南東', '南東',
+        '南南東', '南', '南南西', '南西', '西南西', '西', '西北西', '北西', '北北西'
+    ];
+    if (direction == null || direction === 0 || direction < 0 || direction > 16) {
+        return null;
+    }
+    return directions16[direction];
+}
+
 // 標準偏差を計算
 function calculateStdDev(values) {
     const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
@@ -431,6 +443,16 @@ function generateRacePrediction(race, date) {
         raceNumber: race.raceNo,
         startTime: race.startTime || '未定',
 
+        // 天候情報（race_conditionsテーブル用）
+        conditions: {
+            weather: race.weather || null,
+            airTemp: race.airTemp ?? null,
+            windDirection: race.windDirection ?? null,
+            windVelocity: race.windVelocity ?? null,
+            waterTemp: race.waterTemp ?? null,
+            waveHeight: race.waveHeight ?? null,
+        },
+
         // 荒れ度情報
         volatility: {
             score: volatilityData.score,
@@ -639,6 +661,34 @@ async function writeToSupabase(allPredictions, date) {
             }
         }
         console.log(`  ✅ predictions: ${predictionsData.length}件`);
+
+        // 4. race_conditionsテーブルにupsert
+        const conditionsData = allPredictions
+            .filter(race => race.conditions?.weather || race.conditions?.airTemp != null)
+            .map(race => ({
+                race_id: race.raceId,
+                weather: race.conditions.weather,
+                wind_direction: convertWindDirection(race.conditions.windDirection),
+                wind_speed: race.conditions.windVelocity,
+                wave_height: race.conditions.waveHeight != null ? Math.round(race.conditions.waveHeight) : null,
+                temperature: race.conditions.airTemp,
+                water_temperature: race.conditions.waterTemp,
+                race_grade: null,  // 現在未取得
+                race_title: null,
+                series_day: null,
+                is_final_day: null
+            }));
+
+        if (conditionsData.length > 0) {
+            const { error: conditionsError } = await supabase
+                .from('race_conditions')
+                .upsert(conditionsData, { onConflict: 'race_id' });
+            if (conditionsError) {
+                console.error('❌ race_conditions書き込みエラー:', conditionsError.message);
+            } else {
+                console.log(`  ✅ race_conditions: ${conditionsData.length}件`);
+            }
+        }
 
         console.log('✅ Supabase書き込み完了');
 
