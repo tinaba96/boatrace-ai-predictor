@@ -1,0 +1,744 @@
+/**
+ * AdminRules - 管理者向けルール成績ダッシュボード スタイル
+ */
+
+.admin-rules-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+  min-height: 100vh;
+  background: #f5f7fa;
+}
+
+/* ヘッダー */
+.admin-header {
+  margin-bottom: 1.5rem;
+}
+
+.admin-header .back-link {
+  display: inline-block;
+  color: #0ea5e9;
+  text-decoration: none;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.admin-header .back-link:hover {
+  text-decoration: underline;
+}
+
+.admin-header h1 {
+  font-size: 1.5rem;
+  color: #1e293b;
+  margin: 0 0 0.25rem 0;
+  font-weight: 700;
+}
+
+.admin-badge {
+  display: inline-block;
+  background: #7c3aed;
+  color: white;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  margin: 0;
+}
+
+.operation-period {
+  color: #64748b;
+  font-size: 0.875rem;
+  margin: 0.5rem 0 0 0;
+}
+
+/* ローディング・エラー */
+.loading-state,
+.error-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #64748b;
+}
+
+.loading-state .spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #7c3aed;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error-state button {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: #7c3aed;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* 累積成績サマリー */
+.overall-summary-card {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  color: white;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.summary-main {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 1rem;
+}
+
+.summary-label {
+  font-weight: 600;
+}
+
+.summary-value {
+  font-weight: 700;
+}
+
+.summary-arrow {
+  color: #94a3b8;
+}
+
+.recovery-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.recovery-badge.positive {
+  background: #10b981;
+  color: white;
+}
+
+.recovery-badge.negative {
+  background: #ef4444;
+  color: white;
+}
+
+.overall-summary-card .summary-detail {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+/* タブナビゲーション */
+.tab-navigation {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tab-btn {
+  padding: 0.6rem 1.25rem;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.tab-btn:hover {
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+.tab-btn.active {
+  background: #7c3aed;
+  border-color: #7c3aed;
+  color: white;
+}
+
+/* タブコンテンツ */
+.tab-content {
+  background: white;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* 概要タブ - 週別チャート */
+.weekly-chart-section {
+  margin-bottom: 1.5rem;
+}
+
+.weekly-chart-section h3 {
+  font-size: 1.1rem;
+  color: #1e293b;
+  margin: 0 0 1rem 0;
+}
+
+.weekly-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  height: 150px;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.week-bar-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 50px;
+  flex: 1;
+}
+
+.week-bar {
+  width: 100%;
+  max-width: 40px;
+  min-height: 20px;
+  border-radius: 4px 4px 0 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 4px;
+  transition: height 0.3s;
+}
+
+.week-bar.positive {
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+}
+
+.week-bar.negative {
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+}
+
+.bar-value {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: white;
+}
+
+.week-label {
+  margin-top: 0.25rem;
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+/* ルールテーブル */
+.rules-table-section h3 {
+  font-size: 1.1rem;
+  color: #1e293b;
+  margin: 0 0 1rem 0;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rules-table,
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  min-width: 700px;
+}
+
+.rules-table th,
+.history-table th {
+  background: #f8fafc;
+  padding: 0.75rem 0.5rem;
+  text-align: left;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 2px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.rules-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.rules-table th.sortable:hover {
+  background: #f1f5f9;
+}
+
+.rules-table th.sorted {
+  color: #7c3aed;
+}
+
+.rules-table td,
+.history-table td {
+  padding: 0.6rem 0.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  color: #1e293b;
+}
+
+.rules-table tbody tr:hover,
+.history-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.rule-id {
+  font-family: monospace;
+  font-weight: 600;
+  color: #7c3aed;
+}
+
+.rule-desc {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.num-cell {
+  text-align: right;
+  font-family: monospace;
+}
+
+.num-cell.recovery.positive {
+  color: #059669;
+  font-weight: 700;
+}
+
+.num-cell.recovery.negative {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+/* 種別バッジ */
+.bet-type-badge {
+  display: inline-block;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.bet-type-badge.small {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.3rem;
+}
+
+.bet-type-badge.win {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.bet-type-badge.place {
+  background: #fce7f3;
+  color: #be185d;
+}
+
+.bet-type-badge.trio {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.bet-type-badge.exacta {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+/* 会場別タブ */
+.venue-tab .venue-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.venue-selector label {
+  font-weight: 600;
+  color: #475569;
+}
+
+.venue-selector select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: white;
+}
+
+.venue-summary {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.venue-summary h3 {
+  font-size: 1rem;
+  color: #1e293b;
+  margin: 0 0 0.75rem 0;
+}
+
+.venue-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.stat-value.recovery.positive {
+  color: #059669;
+}
+
+.stat-value.recovery.negative {
+  color: #dc2626;
+}
+
+/* 本日タブ */
+.today-tab .empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: #64748b;
+}
+
+.today-summary {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.today-summary h3 {
+  font-size: 1rem;
+  color: #1e293b;
+  margin: 0 0 0.75rem 0;
+}
+
+.today-summary .summary-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.today-races .venue-group {
+  margin-bottom: 1.5rem;
+}
+
+.venue-group-header {
+  font-size: 1rem;
+  color: #1e293b;
+  margin: 0 0 0.75rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.race-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem;
+}
+
+.race-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.race-card.hit {
+  border-color: #10b981;
+  background: #ecfdf5;
+}
+
+.race-card.finished:not(.hit) {
+  opacity: 0.8;
+}
+
+.race-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.race-no {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.race-time {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.race-card-body {
+  margin-bottom: 0.5rem;
+}
+
+.prediction-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.prediction-label {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.prediction-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.rules-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.rule-tag {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.rule-tag.win { background: #dbeafe; color: #1e40af; }
+.rule-tag.place { background: #fce7f3; color: #be185d; }
+.rule-tag.trio { background: #ede9fe; color: #6d28d9; }
+.rule-tag.exacta { background: #fef3c7; color: #b45309; }
+
+.race-card-result {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.race-card-result.hit {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.race-card-result.miss {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.result-label {
+  font-size: 0.75rem;
+}
+
+.result-value {
+  font-weight: 700;
+}
+
+.payout {
+  margin-left: auto;
+  font-weight: 700;
+  color: #059669;
+}
+
+/* 履歴タブ */
+.history-filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.filter-group input[type="date"] {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.history-info {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin-bottom: 0.75rem;
+}
+
+.history-table td.hit {
+  color: #059669;
+  font-weight: 600;
+}
+
+.history-table td.miss {
+  color: #dc2626;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.pagination button {
+  padding: 0.4rem 0.75rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.pagination button:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+/* レスポンシブ */
+@media (max-width: 768px) {
+  .admin-rules-page {
+    padding: 0.75rem;
+  }
+
+  .admin-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .summary-main {
+    font-size: 0.9rem;
+  }
+
+  .tab-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .tab-content {
+    padding: 0.75rem;
+  }
+
+  .weekly-chart {
+    height: 120px;
+  }
+
+  .rules-table,
+  .history-table {
+    font-size: 0.8rem;
+  }
+
+  .race-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-rules-page {
+    padding: 0.5rem;
+  }
+
+  .admin-header h1 {
+    font-size: 1.1rem;
+  }
+
+  .overall-summary-card {
+    padding: 0.75rem;
+  }
+
+  .summary-main {
+    font-size: 0.85rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .summary-arrow {
+    display: none;
+  }
+
+  .recovery-badge {
+    margin-top: 0.5rem;
+  }
+
+  .tab-navigation {
+    gap: 0.35rem;
+  }
+
+  .tab-btn {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .tab-content {
+    padding: 0.5rem;
+  }
+
+  .weekly-chart-section h3,
+  .rules-table-section h3 {
+    font-size: 1rem;
+  }
+
+  .venue-stats,
+  .today-summary .summary-stats {
+    gap: 0.75rem;
+  }
+
+  .stat-value {
+    font-size: 1rem;
+  }
+
+  .history-filters {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}

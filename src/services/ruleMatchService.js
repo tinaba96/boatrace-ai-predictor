@@ -1080,3 +1080,110 @@ export async function getTopPerformingRules({ limit = null, minRecovery = null, 
 
   return ruleList
 }
+
+/**
+ * 全会場・全ルールの累積運用成績を取得
+ * @returns {Promise<Object>} { startDate, samples, hits, hitRate, totalInvestment, totalPayout, recovery }
+ */
+export async function getOverallPerformance() {
+  if (!supabase) {
+    console.warn('Supabaseが設定されていません')
+    return { startDate: '2026-01-16', samples: 0, hits: 0, hitRate: 0, totalInvestment: 0, totalPayout: 0, recovery: 0 }
+  }
+
+  const DEFAULT_START_DATE = '2026-01-16'
+
+  // 全予測データを取得
+  const allPredictions = await fetchAllPredictions(DEFAULT_START_DATE, 'standard')
+
+  if (!allPredictions || allPredictions.length === 0) {
+    return { startDate: DEFAULT_START_DATE, samples: 0, hits: 0, hitRate: 0, totalInvestment: 0, totalPayout: 0, recovery: 0 }
+  }
+
+  // 全結果データを取得
+  const raceIds = allPredictions.map(p => p.race_id)
+  const results = await fetchResultsByRaceIds(raceIds)
+
+  const resultsMap = {}
+  results.forEach(r => { resultsMap[r.race_id] = r })
+
+  // 全体集計
+  let totalSamples = 0
+  let totalHits = 0
+  let totalPayout = 0
+
+  for (const pred of allPredictions) {
+    const parts = pred.race_id.split('-')
+    const venueCode = parts[3]
+    const raceNo = parseInt(parts[4])
+
+    const rules = VENUE_RULES[venueCode]
+    if (!rules) continue
+
+    const prediction = {
+      confidence: pred.confidence,
+      topPick: pred.top_pick,
+      top3: [pred.top_pick, pred.top_2nd, pred.top_3rd]
+    }
+
+    const conf = prediction.confidence || 0
+    const top3 = prediction.top3
+    const predSorted = [...top3].sort((a, b) => a - b).join('-')
+    const has1 = top3.includes(1)
+
+    const result = resultsMap[pred.race_id]
+
+    for (const rule of rules) {
+      try {
+        if (rule.check(prediction, raceNo, conf, predSorted, has1)) {
+          if (result) {
+            totalSamples++
+
+            let isHit = false
+            let payout = 0
+
+            if (rule.betType === 'trio') {
+              const resultSorted = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b).join('-')
+              isHit = predSorted === resultSorted
+              payout = result.payout_trifecta || 0
+            } else if (rule.betType === 'exacta') {
+              const predExact = top3.join('-')
+              const resultExact = `${result.rank1}-${result.rank2}-${result.rank3}`
+              isHit = predExact === resultExact
+              payout = result.payout_trio || 0
+            } else if (rule.betType === 'win') {
+              isHit = prediction.topPick === result.rank1
+              payout = result.payout_win || 0
+            } else if (rule.betType === 'place') {
+              isHit = prediction.topPick === result.rank1 || prediction.topPick === result.rank2
+              payout = prediction.topPick === result.rank1
+                ? (result.payout_place_1 || 0)
+                : (result.payout_place_2 || 0)
+            }
+
+            if (isHit) {
+              totalHits++
+              totalPayout += payout
+            }
+          }
+        }
+      } catch (e) {
+        // エラー無視
+      }
+    }
+  }
+
+  const totalInvestment = totalSamples * 100
+  const hitRate = totalSamples > 0 ? Math.round((totalHits / totalSamples) * 100) : 0
+  const recovery = totalSamples > 0 ? Math.round((totalPayout / totalInvestment) * 100) : 0
+
+  return {
+    startDate: DEFAULT_START_DATE,
+    samples: totalSamples,
+    hits: totalHits,
+    hitRate,
+    totalInvestment,
+    totalPayout,
+    recovery
+  }
+}

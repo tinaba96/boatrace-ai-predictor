@@ -11,6 +11,7 @@ import RaceDetail from './pages/RaceDetail';
 import Profile from './pages/Profile';
 import AccuracyHistory from './pages/AccuracyHistory';
 import ContentHub from './pages/ContentHub';
+import AdminRules from './pages/admin/AdminRules';
 
 // 旧ハッシュURLからのリダイレクトを処理するコンポーネント
 function HashRedirect() {
@@ -64,6 +65,9 @@ export default function AppRouter() {
         <Route path="/how-to-use" element={<HowToUse />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/guide" element={<ContentHub />} />
+
+        {/* Admin Pages (Hidden) */}
+        <Route path="/admin/rules" element={<AdminRules />} />
 
         {/* Fallback: 不明なパスはトップへ */}
         <Route path="*" element={<Navigate to="/" replace />} />

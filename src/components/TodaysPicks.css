@@ -105,50 +105,6 @@
   gap: 0.5rem;
 }
 
-/* 会場別週別推移グラフ */
-.venue-chart-container {
-  margin-top: 0.75rem;
-  padding: 0.75rem;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-}
-
-.venue-chart-title {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #475569;
-  margin: 0 0 0.5rem 0;
-}
-
-/* RuleTrendChartの高さを会場内で小さくする */
-.venue-chart-container .rule-trend-section h3 {
-  display: none;
-}
-
-.venue-chart-container .recharts-responsive-container {
-  height: 200px !important;
-}
-
-.venue-chart-container .chart-note {
-  font-size: 0.7rem;
-}
-
-/* 会場別ルール運用成績 */
-.venue-performance {
-  margin-top: 0.75rem;
-  padding: 0.75rem;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-}
-
-.venue-performance-header {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #475569;
-  margin-bottom: 0.5rem;
-}
 
 .picks-loading,
 .picks-error,
@@ -192,6 +148,73 @@
   margin-bottom: 0.75rem;
   font-size: 0.85rem;
   color: #6b7280;
+}
+
+/* 全体サマリー */
+.overall-summary {
+  margin: 0.75rem 0 1rem;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.summary-header {
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: white;
+}
+
+.summary-stats {
+  padding: 1rem;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.summary-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.overall-summary .summary-row .stat-label {
+  font-size: 0.85rem;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.overall-summary .summary-row .stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.overall-summary .summary-row .stat-arrow {
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.recovery-rate {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.recovery-rate.positive {
+  color: #059669;
+}
+
+.recovery-rate.negative {
+  color: #dc2626;
+}
+
+.summary-detail {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-top: 0.25rem;
 }
 
 /* 注目レースセクション */
@@ -353,55 +376,6 @@
   font-weight: 700;
 }
 
-/* パターン名 */
-.pick-pattern {
-  margin-bottom: 0.4rem;
-}
-
-.pattern-name {
-  font-family: 'Courier New', monospace;
-  font-size: 0.7rem;
-  color: #64748b;
-  letter-spacing: 0.5px;
-}
-
-.rule-tag {
-  display: inline-block;
-  margin-left: 0.5rem;
-  padding: 0.1rem 0.4rem;
-  background: #e0e7ff;
-  color: #4338ca;
-  border-radius: 4px;
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0;
-}
-
-/* 発掘実績 */
-.pick-stats {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 0.5rem;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  margin-bottom: 0.5rem;
-}
-
-.stats-label {
-  color: #64748b;
-}
-
-.stats-record {
-  font-weight: 600;
-}
-
-.stats-recovery {
-  margin-left: auto;
-  font-weight: 700;
-}
 
 /* 結果表示 */
 .pick-result {
@@ -459,178 +433,9 @@
   }
 }
 
-/* ルール運用成績セクション */
-.rule-performance-section {
-  margin-top: 1.5rem;
-  background: white;
-  border-radius: 12px;
-  padding: 1rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 2px solid #e2e8f0;
-}
-
-.performance-toggle {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #1e293b;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition: all 0.2s;
-}
-
-.performance-toggle:hover {
-  background: #e2e8f0;
-  transform: translateY(-1px);
-}
-
 .toggle-icon {
   font-size: 0.75rem;
   color: #64748b;
-}
-
-.performance-content {
-  margin-top: 0.75rem;
-}
-
-.performance-table-wrapper {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  background: white;
-  border-radius: 8px;
-}
-
-.performance-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 380px;
-  font-size: 0.85rem;
-  background: white;
-}
-
-.performance-table thead {
-  background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
-}
-
-.performance-table th {
-  padding: 0.75rem 0.5rem;
-  text-align: center;
-  font-weight: 700;
-  color: white;
-  font-size: 0.8rem;
-  border-bottom: none;
-}
-
-.performance-table td {
-  padding: 0.6rem 0.4rem;
-  border-bottom: 1px solid #e2e8f0;
-  text-align: center;
-  white-space: nowrap;
-  color: #1e293b;
-}
-
-.performance-table tbody tr {
-  cursor: pointer;
-  transition: background 0.15s;
-  background: white;
-}
-
-.performance-table tbody tr:hover {
-  background: #f8fafc;
-}
-
-.performance-table tbody tr.selected {
-  background: #fef3c7;
-}
-
-.performance-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.rule-id-cell {
-  font-family: 'Courier New', monospace;
-  font-weight: 700;
-  color: #0ea5e9;
-  text-align: left;
-}
-
-.rule-id-link {
-  background: none;
-  border: none;
-  color: #0ea5e9;
-  font-family: 'Courier New', monospace;
-  font-weight: 700;
-  font-size: inherit;
-  cursor: pointer;
-  padding: 0;
-  text-decoration: underline;
-}
-
-.rule-id-link:hover {
-  color: #0284c7;
-}
-
-.rank-cell {
-  font-weight: 700;
-  color: #f59e0b;
-}
-
-.top-rules-section {
-  margin-top: 1rem;
-}
-
-.performance-table .positive {
-  color: #059669;
-  font-weight: 700;
-}
-
-.performance-table .negative {
-  color: #dc2626;
-}
-
-.total-summary {
-  margin-top: 0.75rem;
-  padding: 0.75rem;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-radius: 8px;
-  text-align: center;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #1e293b;
-  border: 1px solid #e2e8f0;
-}
-
-.total-summary .positive {
-  color: #059669;
-}
-
-.total-summary .negative {
-  color: #dc2626;
-}
-
-@media (min-width: 768px) {
-  .rule-performance-section {
-    margin-top: 2rem;
-    padding: 1.5rem;
-  }
-
-  .performance-table {
-    font-size: 0.9rem;
-  }
-
-  .performance-table th {
-    padding: 0.85rem 0.75rem;
-  }
-
-  .performance-table td {
-    padding: 0.7rem 0.75rem;
-  }
 }
 
 /* ====================================
@@ -699,28 +504,6 @@
     margin-bottom: 0.35rem;
   }
 
-  /* パターン名・ルールタグの文字サイズ改善 */
-  .pattern-name {
-    font-size: 0.8rem;
-  }
-
-  .rule-tag {
-    font-size: 0.7rem;
-    padding: 0.15rem 0.35rem;
-  }
-
-  /* 統計情報 - 縦並びに変更 */
-  .pick-stats {
-    flex-direction: column;
-    gap: 0.2rem;
-    padding: 0.35rem;
-    align-items: flex-start;
-  }
-
-  .stats-recovery {
-    margin-left: 0;
-  }
-
   /* 結果表示 */
   .pick-result {
     gap: 0.25rem;
@@ -728,41 +511,26 @@
     font-size: 0.75rem;
   }
 
-  /* テーブル最適化 */
-  .performance-table {
-    min-width: 340px;
-    font-size: 0.8rem;
+  /* 全体サマリー */
+  .overall-summary {
+    margin: 0.5rem 0 0.75rem;
   }
 
-  .performance-table th {
-    padding: 0.5rem 0.25rem;
-    font-size: 0.75rem;
-  }
-
-  .performance-table td {
-    padding: 0.6rem 0.25rem;
-  }
-
-  /* 折りたたみボタン */
-  .performance-toggle {
+  .summary-header {
     padding: 0.6rem 0.75rem;
     font-size: 0.85rem;
   }
 
-  /* 合計サマリー */
-  .total-summary {
-    padding: 0.5rem;
-    font-size: 0.8rem;
+  .summary-stats {
+    padding: 0.75rem;
+  }
+
+  .summary-row .stat-value {
+    font-size: 1rem;
+  }
+
+  .recovery-rate {
+    font-size: 1rem;
   }
 }
 
-/* タッチターゲットの改善 (768px以下) */
-@media (max-width: 768px) {
-  .performance-table tbody tr {
-    min-height: 44px;
-  }
-
-  .performance-table td {
-    padding: 0.75rem 0.4rem;
-  }
-}
