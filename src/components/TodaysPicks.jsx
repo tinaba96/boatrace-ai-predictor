@@ -224,6 +224,10 @@ function TodaysPicks() {
     if (betType === 'trio') {
       return [...top3].sort((a, b) => a - b).join('-')
     }
+    if (betType === 'exacta') {
+      // 3連単は順序通り
+      return top3.join('-')
+    }
     if (betType === 'win' || betType === 'place') {
       return `${top3[0]}号艇`
     }
@@ -258,6 +262,15 @@ function TodaysPicks() {
       return {
         hit: isHit,
         payout: isHit ? (race.result.payout_trifecta || 0) : 0
+      }
+    } else if (rule.betType === 'exacta') {
+      // 3連単: 順序通りで3艇を当てる（payout_trio）
+      const predExact = prediction.top3.join('-')
+      const resultExact = `${result.rank1}-${result.rank2}-${result.rank3}`
+      const isHit = predExact === resultExact
+      return {
+        hit: isHit,
+        payout: isHit ? (race.result.payout_trio || 0) : 0
       }
     } else if (rule.betType === 'win') {
       const isHit = prediction.topPick === result.rank1

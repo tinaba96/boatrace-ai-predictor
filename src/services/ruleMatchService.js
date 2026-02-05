@@ -2,7 +2,8 @@
  * 会場別ルールマッチングサービス
  *
  * 2026-01-01〜2026-02-04のデータ再分析により、回収率100%以上のルールのみ厳選
- * 有効ルール: 25件（単勝12件 + 複勝10件 + 3連複3件）
+ * 有効ルール: 34件（単勝12件 + 複勝10件 + 3連複3件 + 3連単9件）
+ * 対象会場: 15会場
  */
 
 import { supabase } from './supabaseClient'
@@ -127,7 +128,7 @@ const EDOGAWA_RULES = [
   }
 ]
 
-// 浜名湖（06）: 1ルール
+// 浜名湖（06）: 2ルール
 const HAMANAKO_RULES = [
   {
     id: 'H06-W002',
@@ -138,6 +139,17 @@ const HAMANAKO_RULES = [
     reliability: 'highest',
     check: (pred, raceNo, conf, predSorted, has1) =>
       pred.topPick === 3 && has1
+  },
+  // 3連単
+  {
+    id: 'H06-EX001',
+    patternName: 'HAMANAKO-EXACTA-R712',
+    description: '3連単：後半レース(7-12R)',
+    betType: 'exacta',
+    stats: { samples: 228, hits: 18, recovery: 281 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      raceNo >= 7 && raceNo <= 12
   }
 ]
 
@@ -258,7 +270,7 @@ const BIWAKO_RULES = [
   }
 ]
 
-// 鳴門（14）: 2ルール
+// 鳴門（14）: 3ルール
 const NARUTO_RULES = [
   {
     id: 'N14-W002',
@@ -279,6 +291,17 @@ const NARUTO_RULES = [
     reliability: 'high',
     check: (pred, raceNo, conf, predSorted, has1) =>
       pred.topPick === 3 && conf >= 75
+  },
+  // 3連単
+  {
+    id: 'N14-EX001',
+    patternName: 'NARUTO-EXACTA-TP1-HC',
+    description: '3連単：1着予想=1号艇×conf85+',
+    betType: 'exacta',
+    stats: { samples: 182, hits: 20, recovery: 115 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1 && conf >= 85
   }
 ]
 
@@ -342,7 +365,7 @@ const KOJIMA_RULES = [
   }
 ]
 
-// 福岡（22）: 3ルール
+// 福岡（22）: 4ルール
 const FUKUOKA_RULES = [
   {
     id: 'F22-W003',
@@ -373,22 +396,127 @@ const FUKUOKA_RULES = [
     reliability: 'highest',
     check: (pred, raceNo, conf, predSorted, has1) =>
       pred.topPick === 2 && raceNo >= 1 && raceNo <= 4
+  },
+  // 3連単
+  {
+    id: 'F22-EX001',
+    patternName: 'FUKUOKA-EXACTA-R16-HC',
+    description: '3連単：前半(1-6R)×conf85+',
+    betType: 'exacta',
+    stats: { samples: 150, hits: 15, recovery: 144 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      raceNo >= 1 && raceNo <= 6 && conf >= 85
   }
 ]
 
 // ========================================
-// 会場ルールマッピング（有効な9会場のみ）
+// 3連単専用ルール（新規会場）
+// ========================================
+
+// 平和島（04）: 3連単
+const HEIWAJIMA_RULES = [
+  {
+    id: 'HW04-EX001',
+    patternName: 'HEIWAJIMA-EXACTA-R712',
+    description: '3連単：後半レース(7-12R)',
+    betType: 'exacta',
+    stats: { samples: 158, hits: 12, recovery: 131 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      raceNo >= 7 && raceNo <= 12
+  }
+]
+
+// 津（09）: 3連単
+const TSU_RULES = [
+  {
+    id: 'TS09-EX001',
+    patternName: 'TSU-EXACTA-TP1',
+    description: '3連単：1着予想=1号艇',
+    betType: 'exacta',
+    stats: { samples: 200, hits: 23, recovery: 110 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1
+  }
+]
+
+// 宮島（17）: 3連単
+const MIYAJIMA_RULES = [
+  {
+    id: 'MY17-EX001',
+    patternName: 'MIYAJIMA-EXACTA-TP1-HC',
+    description: '3連単：1着予想=1号艇×conf85+',
+    betType: 'exacta',
+    stats: { samples: 189, hits: 18, recovery: 115 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1 && conf >= 85
+  }
+]
+
+// 徳山（18）: 3連単
+const TOKUYAMA_RULES = [
+  {
+    id: 'TY18-EX001',
+    patternName: 'TOKUYAMA-EXACTA-R712',
+    description: '3連単：後半レース(7-12R)',
+    betType: 'exacta',
+    stats: { samples: 233, hits: 22, recovery: 127 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      raceNo >= 7 && raceNo <= 12
+  }
+]
+
+// 芦屋（21）: 3連単
+const ASHIYA_RULES = [
+  {
+    id: 'AS21-EX001',
+    patternName: 'ASHIYA-EXACTA-R712',
+    description: '3連単：後半レース(7-12R)',
+    betType: 'exacta',
+    stats: { samples: 174, hits: 10, recovery: 1074 },
+    reliability: 'highest',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      raceNo >= 7 && raceNo <= 12
+  }
+]
+
+// 大村（24）: 3連単
+const OMURA_RULES = [
+  {
+    id: 'OM24-EX001',
+    patternName: 'OMURA-EXACTA-TP1-HC',
+    description: '3連単：1着予想=1号艇×conf85+',
+    betType: 'exacta',
+    stats: { samples: 216, hits: 24, recovery: 105 },
+    reliability: 'high',
+    check: (pred, raceNo, conf, predSorted, has1) =>
+      pred.topPick === 1 && conf >= 85
+  }
+]
+
+// ========================================
+// 会場ルールマッピング（15会場）
 // ========================================
 const VENUE_RULES = {
   '03': EDOGAWA_RULES,
+  '04': HEIWAJIMA_RULES,
   '06': HAMANAKO_RULES,
   '07': GAMAGORI_RULES,
+  '09': TSU_RULES,
   '10': MIKUNI_RULES,
   '11': BIWAKO_RULES,
   '14': NARUTO_RULES,
   '15': MARUGAME_RULES,
   '16': KOJIMA_RULES,
-  '22': FUKUOKA_RULES
+  '17': MIYAJIMA_RULES,
+  '18': TOKUYAMA_RULES,
+  '21': ASHIYA_RULES,
+  '22': FUKUOKA_RULES,
+  '24': OMURA_RULES
 }
 
 // ========================================
@@ -443,6 +571,7 @@ export function getBetTypeName(betType) {
   const names = {
     'trio': '3連複',
     'trifecta': '3連単',
+    'exacta': '3連単',
     'win': '単勝',
     'place': '複勝'
   }
@@ -567,6 +696,15 @@ export async function getTodaysMatchingRaces(date) {
             const isHit = predSorted === resultSorted
             if (isHit) {
               hitInfo = { hit: true, payout: result.payout_trifecta || 0 }
+              break
+            }
+          } else if (rule.betType === 'exacta') {
+            // 3連単: 順序通りで3艇を当てる（payout_trio）
+            const predExact = prediction.top3.join('-')
+            const resultExact = `${result.rank1}-${result.rank2}-${result.rank3}`
+            const isHit = predExact === resultExact
+            if (isHit) {
+              hitInfo = { hit: true, payout: result.payout_trio || 0 }
               break
             }
           } else if (rule.betType === 'win') {
@@ -747,6 +885,12 @@ export async function getRulePerformanceByVenue(venueCode, startDate = '2026-01-
               const resultSorted = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b).join('-')
               isHit = predSorted === resultSorted
               payout = result.payout_trifecta || 0
+            } else if (rule.betType === 'exacta') {
+              // 3連単: 順序通りで3艇を当てる（payout_trio）
+              const predExact = top3.join('-')
+              const resultExact = `${result.rank1}-${result.rank2}-${result.rank3}`
+              isHit = predExact === resultExact
+              payout = result.payout_trio || 0
             } else if (rule.betType === 'win') {
               isHit = prediction.topPick === result.rank1
               payout = result.payout_win || 0
@@ -878,6 +1022,12 @@ export async function getTopPerformingRules({ limit = null, minRecovery = null, 
               const resultSorted = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b).join('-')
               isHit = predSorted === resultSorted
               payout = result.payout_trifecta || 0
+            } else if (rule.betType === 'exacta') {
+              // 3連単: 順序通りで3艇を当てる（payout_trio）
+              const predExact = top3.join('-')
+              const resultExact = `${result.rank1}-${result.rank2}-${result.rank3}`
+              isHit = predExact === resultExact
+              payout = result.payout_trio || 0
             } else if (rule.betType === 'win') {
               isHit = prediction.topPick === result.rank1
               payout = result.payout_win || 0
