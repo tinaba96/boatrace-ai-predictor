@@ -640,7 +640,7 @@ function HistoryTab({
       </div>
 
       <div className="table-wrapper">
-        <table className="history-table">
+        <table className="rules-table">
           <thead>
             <tr>
               <th>日付</th>
@@ -659,19 +659,19 @@ function HistoryTab({
               <tr key={`${item.raceId}-${item.ruleId}-${idx}`}>
                 <td>{item.date}</td>
                 <td>{item.venueName}</td>
-                <td>{item.raceNo}R</td>
+                <td className="num-cell">{item.raceNo}R</td>
                 <td className="rule-id">{item.ruleId}</td>
                 <td>
                   <span className={`bet-type-badge small ${item.betType}`}>
                     {getBetTypeName(item.betType)}
                   </span>
                 </td>
-                <td>{item.prediction}</td>
-                <td>{item.result || '-'}</td>
-                <td className={`hit-cell ${item.isHit ? 'hit' : 'miss'}`}>
+                <td className="num-cell">{item.prediction}</td>
+                <td className="num-cell">{item.result || '-'}</td>
+                <td className={`num-cell ${item.isHit ? 'recovery positive' : 'recovery negative'}`}>
                   {item.result ? (item.isHit ? '○' : '×') : '-'}
                 </td>
-                <td className={`payout-cell ${item.isHit ? 'hit' : ''}`}>
+                <td className={`num-cell ${item.isHit ? 'recovery positive' : ''}`}>
                   {item.isHit ? `+${item.payout.toLocaleString()}円` : '-'}
                 </td>
               </tr>

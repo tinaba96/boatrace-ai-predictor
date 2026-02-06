@@ -258,15 +258,7 @@
   min-width: 700px;
 }
 
-.history-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-  min-width: 900px;
-}
-
-.rules-table th,
-.history-table th {
+.rules-table th {
   background: #f8fafc;
   padding: 0.75rem 0.5rem;
   text-align: left;
@@ -289,15 +281,13 @@
   color: #7c3aed;
 }
 
-.rules-table td,
-.history-table td {
+.rules-table td {
   padding: 0.6rem 0.5rem;
   border-bottom: 1px solid #e2e8f0;
   color: #1e293b;
 }
 
-.rules-table tbody tr:hover,
-.history-table tbody tr:hover {
+.rules-table tbody tr:hover {
   background: #f8fafc;
 }
 
@@ -611,27 +601,6 @@
   margin-bottom: 0.75rem;
 }
 
-.history-table td.hit {
-  color: #059669;
-  font-weight: 600;
-}
-
-.history-table td.miss {
-  color: #dc2626;
-}
-
-.history-table .hit-cell {
-  text-align: center;
-  min-width: 50px;
-  white-space: nowrap;
-}
-
-.history-table .payout-cell {
-  text-align: right;
-  min-width: 100px;
-  white-space: nowrap;
-}
-
 .pagination {
   display: flex;
   justify-content: center;
@@ -692,8 +661,7 @@
     height: 120px;
   }
 
-  .rules-table,
-  .history-table {
+  .rules-table {
     font-size: 0.8rem;
   }
 
