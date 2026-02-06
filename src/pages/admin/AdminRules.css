@@ -201,8 +201,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-end;
   min-width: 50px;
   flex: 1;
+  height: 100%;
 }
 
 .week-bar {

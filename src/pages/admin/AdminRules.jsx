@@ -288,19 +288,21 @@ function OverviewTab({ rules, sortKey, sortDesc, onSort, weeklyData }) {
         <div className="weekly-chart-section">
           <h3>週別累積回収率推移</h3>
           <div className="weekly-chart">
-            {weeklyData.map((week, idx) => (
-              <div key={idx} className="week-bar-container">
-                <div
-                  className={`week-bar ${week.cumulativeRecovery >= 100 ? 'positive' : 'negative'}`}
-                  style={{
-                    height: `${Math.min(Math.max(week.cumulativeRecovery / 2, 10), 100)}%`
-                  }}
-                >
-                  <span className="bar-value">{week.cumulativeRecovery}%</span>
+            {weeklyData.map((week, idx) => {
+              // 回収率100%を基準に高さを計算（80px基準、最小20px、最大120px）
+              const barHeight = Math.min(Math.max((week.cumulativeRecovery / 100) * 80, 20), 120)
+              return (
+                <div key={idx} className="week-bar-container">
+                  <div
+                    className={`week-bar ${week.cumulativeRecovery >= 100 ? 'positive' : 'negative'}`}
+                    style={{ height: `${barHeight}px` }}
+                  >
+                    <span className="bar-value">{week.cumulativeRecovery}%</span>
+                  </div>
+                  <span className="week-label">{week.weekLabel}</span>
                 </div>
-                <span className="week-label">{week.weekLabel}</span>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
