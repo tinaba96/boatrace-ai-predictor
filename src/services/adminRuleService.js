@@ -33,12 +33,17 @@ export async function getRuleApplicationHistory(startDate, endDate, limit = 50, 
   }
 
   try {
+    // 終了日を翌日の0時に設定（その日のデータを含めるため）
+    const endDateNext = new Date(endDate)
+    endDateNext.setDate(endDateNext.getDate() + 1)
+    const endDateStr = endDateNext.toISOString().split('T')[0]
+
     // 予測データを取得（日付範囲）
     const { data: predictions, error: predError, count } = await supabase
       .from('predictions')
       .select('*', { count: 'exact' })
       .gte('predicted_at', startDate)
-      .lte('predicted_at', endDate)
+      .lt('predicted_at', endDateStr)
       .eq('model_id', 'standard')
       .order('predicted_at', { ascending: false })
       .range(offset, offset + limit - 1)
