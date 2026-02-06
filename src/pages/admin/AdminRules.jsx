@@ -668,10 +668,10 @@ function HistoryTab({
                 </td>
                 <td>{item.prediction}</td>
                 <td>{item.result || '-'}</td>
-                <td className={item.isHit ? 'hit' : 'miss'}>
+                <td className={`hit-cell ${item.isHit ? 'hit' : 'miss'}`}>
                   {item.result ? (item.isHit ? '○' : '×') : '-'}
                 </td>
-                <td className={item.isHit ? 'hit' : ''}>
+                <td className={`payout-cell ${item.isHit ? 'hit' : ''}`}>
                   {item.isHit ? `+${item.payout.toLocaleString()}円` : '-'}
                 </td>
               </tr>

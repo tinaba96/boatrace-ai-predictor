@@ -614,24 +614,21 @@
 .history-table td.hit {
   color: #059669;
   font-weight: 600;
-  white-space: nowrap;
 }
 
 .history-table td.miss {
   color: #dc2626;
+}
+
+.history-table .hit-cell {
+  text-align: center;
+  min-width: 50px;
   white-space: nowrap;
 }
 
-.history-table th:nth-child(8),
-.history-table td:nth-child(8) {
-  text-align: center;
-  min-width: 50px;
-}
-
-.history-table th:nth-child(9),
-.history-table td:nth-child(9) {
+.history-table .payout-cell {
   text-align: right;
-  min-width: 80px;
+  min-width: 100px;
   white-space: nowrap;
 }
 
