@@ -251,12 +251,18 @@
   -webkit-overflow-scrolling: touch;
 }
 
-.rules-table,
-.history-table {
+.rules-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
   min-width: 700px;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  min-width: 900px;
 }
 
 .rules-table th,
@@ -608,10 +614,25 @@
 .history-table td.hit {
   color: #059669;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .history-table td.miss {
   color: #dc2626;
+  white-space: nowrap;
+}
+
+.history-table th:nth-child(8),
+.history-table td:nth-child(8) {
+  text-align: center;
+  min-width: 50px;
+}
+
+.history-table th:nth-child(9),
+.history-table td:nth-child(9) {
+  text-align: right;
+  min-width: 80px;
+  white-space: nowrap;
 }
 
 .pagination {
