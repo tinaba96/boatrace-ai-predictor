@@ -615,6 +615,16 @@ function HistoryTab({
 }) {
   const totalPages = Math.ceil(historyTotal / pageSize)
 
+  // 期間内のサマリーを計算
+  const periodSummary = useMemo(() => {
+    const samples = historyData.length
+    const hits = historyData.filter(item => item.isHit).length
+    const totalPayout = historyData.reduce((sum, item) => sum + (item.payout || 0), 0)
+    const investment = samples * 100
+    const recovery = investment > 0 ? Math.round((totalPayout / investment) * 100) : 0
+    return { samples, hits, totalPayout, investment, recovery }
+  }, [historyData])
+
   return (
     <div className="history-tab">
       <div className="history-filters">
@@ -642,8 +652,19 @@ function HistoryTab({
         </div>
       </div>
 
-      <div className="history-info">
-        ルール適用数: {historyTotal} 件
+      <div className="history-summary">
+        <div className="summary-row">
+          <span className="summary-label">期間成績:</span>
+          <span className="summary-value">
+            投資 {periodSummary.investment.toLocaleString()}円 → 回収 {periodSummary.totalPayout.toLocaleString()}円
+          </span>
+          <span className={`recovery-badge ${periodSummary.recovery >= 100 ? 'positive' : 'negative'}`}>
+            回収率 {periodSummary.recovery}%
+          </span>
+        </div>
+        <div className="summary-detail">
+          ルール適用数: {periodSummary.samples}件 / 的中数: {periodSummary.hits}件 ({periodSummary.samples > 0 ? Math.round((periodSummary.hits / periodSummary.samples) * 100) : 0}%)
+        </div>
       </div>
 
       <div className="table-wrapper">
