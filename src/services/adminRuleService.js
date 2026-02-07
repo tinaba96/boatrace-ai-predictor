@@ -33,19 +33,20 @@ export async function getRuleApplicationHistory(startDate, endDate, limit = 50, 
   }
 
   try {
-    // 終了日を翌日の0時に設定（その日のデータを含めるため）
+    // 終了日の翌日（race_id文字列比較用）
     const endDateNext = new Date(endDate)
     endDateNext.setDate(endDateNext.getDate() + 1)
-    const endDateStr = endDateNext.toISOString().split('T')[0]
+    const endDateNextStr = `${endDateNext.getFullYear()}-${String(endDateNext.getMonth() + 1).padStart(2, '0')}-${String(endDateNext.getDate()).padStart(2, '0')}`
 
-    // 予測データを取得（日付範囲）
+    // 予測データを取得（race_idで日付範囲フィルタ）
+    // race_id形式: YYYY-MM-DD-venueCode-raceNo
     const { data: predictions, error: predError, count } = await supabase
       .from('predictions')
       .select('*', { count: 'exact' })
-      .gte('predicted_at', startDate)
-      .lt('predicted_at', endDateStr)
+      .gte('race_id', startDate)
+      .lt('race_id', endDateNextStr)
       .eq('model_id', 'standard')
-      .order('predicted_at', { ascending: false })
+      .order('race_id', { ascending: false })
       .range(offset, offset + limit - 1)
 
     if (predError) {
@@ -132,7 +133,10 @@ export async function getRuleApplicationHistory(startDate, endDate, limit = 50, 
       }
     }
 
-    return { data: historyItems, total: count || 0 }
+    // totalはルール適用数を返す（予測データ数ではない）
+    // 注: ページネーションは予測データベースで行われるため、
+    // totalは現在のページのルール適用数のみ反映
+    return { data: historyItems, total: historyItems.length }
   } catch (err) {
     console.error('履歴取得エラー:', err)
     return { data: [], total: 0 }

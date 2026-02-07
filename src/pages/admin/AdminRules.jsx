@@ -54,20 +54,27 @@ function AdminRules() {
   const [sortKey, setSortKey] = useState('recovery')
   const [sortDesc, setSortDesc] = useState(true)
 
-  // 履歴フィルタ
-  const [historyPage, setHistoryPage] = useState(0)
-  const [historyStartDate, setHistoryStartDate] = useState('')
-  const [historyEndDate, setHistoryEndDate] = useState('')
-  const HISTORY_PAGE_SIZE = 50
-
-  // 利用可能な会場リスト
-  const venues = useMemo(() => getAvailableVenues(), [])
-
   // 今日の日付
   const today = useMemo(() => {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   }, [])
+
+  // 前日の日付
+  const yesterday = useMemo(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 1)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }, [])
+
+  // 履歴フィルタ（デフォルトは前日）
+  const [historyPage, setHistoryPage] = useState(0)
+  const [historyStartDate, setHistoryStartDate] = useState(yesterday)
+  const [historyEndDate, setHistoryEndDate] = useState(yesterday)
+  const HISTORY_PAGE_SIZE = 300
+
+  // 利用可能な会場リスト
+  const venues = useMemo(() => getAvailableVenues(), [])
 
   // 初期データ読み込み
   useEffect(() => {
@@ -636,7 +643,7 @@ function HistoryTab({
       </div>
 
       <div className="history-info">
-        全 {historyTotal} 件中 {historyPage * pageSize + 1}〜{Math.min((historyPage + 1) * pageSize, historyTotal)} 件を表示
+        ルール適用数: {historyTotal} 件
       </div>
 
       <div className="table-wrapper">
