@@ -352,16 +352,16 @@
   text-align: center;
 }
 
-.stat-label {
+.hit-races-section .stat-label {
   font-size: 0.9rem;
-  color: rgba(255,255,255,0.9) !important;
+  color: rgba(255,255,255,0.9);
   margin-bottom: 0.25rem;
 }
 
-.stat-value {
+.hit-races-section .stat-value {
   font-size: 1.8rem;
   font-weight: bold;
-  color: white !important;
+  color: white;
 }
 
 /* LoadingScreenコンポーネントを使用 */
