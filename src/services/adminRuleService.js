@@ -100,20 +100,22 @@ export async function getRuleApplicationHistory(startDate, endDate, limit = 50, 
 
           if (rule.betType === 'trio') {
             isHit = predSorted === resultSorted
-            payout = result.payout_trifecta || 0
+            if (isHit) payout = result.payout_trifecta || 0
           } else if (rule.betType === 'exacta') {
             const predExact = prediction.top3.join('-')
             const resultExact = `${result.rank1}-${result.rank2}-${result.rank3}`
             isHit = predExact === resultExact
-            payout = result.payout_trio || 0
+            if (isHit) payout = result.payout_trio || 0
           } else if (rule.betType === 'win') {
             isHit = prediction.topPick === result.rank1
-            payout = result.payout_win || 0
+            if (isHit) payout = result.payout_win || 0
           } else if (rule.betType === 'place') {
             isHit = prediction.topPick === result.rank1 || prediction.topPick === result.rank2
-            payout = prediction.topPick === result.rank1
-              ? (result.payout_place_1 || 0)
-              : (result.payout_place_2 || 0)
+            if (isHit) {
+              payout = prediction.topPick === result.rank1
+                ? (result.payout_place_1 || 0)
+                : (result.payout_place_2 || 0)
+            }
           }
         }
 
