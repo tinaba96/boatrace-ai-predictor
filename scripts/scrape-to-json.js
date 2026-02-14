@@ -196,8 +196,10 @@ async function getRacelist(date, placeCd, raceNo) {
       // .is-fs11 には2つのdivがある: 1つ目が「4203 / B1」、2つ目が「地域/地域<br>年齢/体重」
       const $fs11Divs = $tbody.find('.is-fs11');
 
-      // 級別を取得（例: "4203 / B1" から "B1" を抽出）
+      // 登録番号と級別を取得（例: "4203 / B1" から "4203" と "B1" を抽出）
       const gradeText = $fs11Divs.eq(0).text().trim();
+      const racerIdMatch = gradeText.match(/^(\d+)/);
+      const racerId = racerIdMatch ? parseInt(racerIdMatch[1]) : null;
       const gradeMatch = gradeText.match(/\s*\/\s*([AB][12])/);
       const grade = gradeMatch ? gradeMatch[1] : '-';
 
@@ -213,35 +215,44 @@ async function getRacelist(date, placeCd, raceNo) {
       const globalStats = $stats.eq(1).text().trim().split('\n').map(s => s.trim()).filter(Boolean);
       const globalWinRate = parseFloat(globalStats[0]) || 0;
       const global2Rate = parseFloat(globalStats[1]) || 0;
+      const global3Rate = parseFloat(globalStats[2]) || 0;
 
       // 当地: 勝率<br>2連率<br>3連率
       const localStats = $stats.eq(2).text().trim().split('\n').map(s => s.trim()).filter(Boolean);
       const localWinRate = parseFloat(localStats[0]) || 0;
       const local2Rate = parseFloat(localStats[1]) || 0;
+      const local3Rate = parseFloat(localStats[2]) || 0;
 
       // モーター: 番号<br>2連率<br>3連率
       const motorStats = $stats.eq(3).text().trim().split('\n').map(s => s.trim()).filter(Boolean);
       const motorNumber = parseInt(motorStats[0]) || null;
       const motor2Rate = parseFloat(motorStats[1]) || 0;
+      const motor3Rate = parseFloat(motorStats[2]) || 0;
 
       // ボート: 番号<br>2連率<br>3連率
       const boatStats = $stats.eq(4).text().trim().split('\n').map(s => s.trim()).filter(Boolean);
       const boatNumber = parseInt(boatStats[0]) || null;
       const boat2Rate = parseFloat(boatStats[1]) || 0;
+      const boat3Rate = parseFloat(boatStats[2]) || 0;
 
       racers.push({
         lane: index + 1, // 1-6
+        racerId: racerId,
         name: name || '選手名不明',
         grade: grade || '-',
         age: age,
         globalWinRate: globalWinRate,
         global2Rate: global2Rate,
+        global3Rate: global3Rate,
         localWinRate: localWinRate,
         local2Rate: local2Rate,
+        local3Rate: local3Rate,
         motorNumber: motorNumber,
         motor2Rate: motor2Rate,
+        motor3Rate: motor3Rate,
         boatNumber: boatNumber,
         boat2Rate: boat2Rate,
+        boat3Rate: boat3Rate,
       });
     });
 

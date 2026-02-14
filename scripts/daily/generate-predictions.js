@@ -257,6 +257,7 @@ function processRacersWithScoreFn(racers, scoreFn) {
 
     const players = racers.map((racer, idx) => ({
         number: racer.lane,
+        racerId: racer.racerId || null,
         name: racer.name,
         grade: racer.grade,
         age: racer.age,
@@ -264,10 +265,14 @@ function processRacersWithScoreFn(racers, scoreFn) {
         localWinRate: racer.localWinRate.toFixed(3),
         global2Rate: racer.global2Rate?.toFixed(1) || null,
         local2Rate: racer.local2Rate?.toFixed(1) || null,
+        global3Rate: racer.global3Rate?.toFixed(1) || null,
+        local3Rate: racer.local3Rate?.toFixed(1) || null,
         motorNumber: racer.motorNumber,
         motor2Rate: racer.motor2Rate.toFixed(1),
+        motor3Rate: racer.motor3Rate?.toFixed(1) || null,
         boatNumber: racer.boatNumber,
         boat2Rate: racer.boat2Rate.toFixed(1),
+        boat3Rate: racer.boat3Rate?.toFixed(1) || null,
         aiScore: scoreFn(racer, idx),
     }));
 
@@ -576,6 +581,7 @@ async function writeToSupabase(allPredictions, date) {
                 entriesData.push({
                     race_id: race.raceId,
                     boat_number: player.number,
+                    racer_id: player.racerId,
                     player_name: player.name,
                     grade: player.grade,
                     age: player.age,
@@ -583,10 +589,14 @@ async function writeToSupabase(allPredictions, date) {
                     local_win_rate: parseFloat(player.localWinRate),
                     global_2rate: player.global2Rate ? parseFloat(player.global2Rate) : null,
                     local_2rate: player.local2Rate ? parseFloat(player.local2Rate) : null,
+                    global_3rate: player.global3Rate ? parseFloat(player.global3Rate) : null,
+                    local_3rate: player.local3Rate ? parseFloat(player.local3Rate) : null,
                     motor_number: player.motorNumber,
                     motor_2rate: parseFloat(player.motor2Rate),
+                    motor_3rate: player.motor3Rate ? parseFloat(player.motor3Rate) : null,
                     boat_number_id: player.boatNumber,
                     boat_2rate: parseFloat(player.boat2Rate),
+                    boat_3rate: player.boat3Rate ? parseFloat(player.boat3Rate) : null,
                     ai_score_standard: player.aiScore,
                     ai_score_safe_bet: safeBetPlayer?.aiScore || 0,
                     ai_score_upset_focus: upsetPlayer?.aiScore || 0

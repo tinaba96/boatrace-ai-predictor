@@ -104,6 +104,7 @@ CREATE TABLE IF NOT EXISTS race_entries (
     boat_number SMALLINT NOT NULL,             -- 1-6
 
     -- 選手情報
+    racer_id INTEGER,                          -- 選手登録番号（4桁）
     player_name VARCHAR(50),
     grade VARCHAR(5),
     age SMALLINT,
@@ -113,12 +114,16 @@ CREATE TABLE IF NOT EXISTS race_entries (
     local_win_rate DECIMAL(5,3),
     global_2rate DECIMAL(5,2),             -- 全国2連率
     local_2rate DECIMAL(5,2),              -- 当地2連率
+    global_3rate DECIMAL(5,2),             -- 全国3連率
+    local_3rate DECIMAL(5,2),              -- 当地3連率
 
     -- 機材情報
     motor_number SMALLINT,
     motor_2rate DECIMAL(5,2),
+    motor_3rate DECIMAL(5,2),              -- モーター3連率
     boat_number_id SMALLINT,
     boat_2rate DECIMAL(5,2),
+    boat_3rate DECIMAL(5,2),               -- ボート3連率
 
     -- AIスコア（モデル別）
     ai_score_standard INTEGER,
