@@ -12,6 +12,7 @@ import Profile from './pages/Profile';
 import AccuracyHistory from './pages/AccuracyHistory';
 import ContentHub from './pages/ContentHub';
 import AdminRules from './pages/admin/AdminRules';
+import ResponsibleGambling from './pages/ResponsibleGambling';
 
 // 旧ハッシュURLからのリダイレクトを処理するコンポーネント
 function HashRedirect() {
@@ -65,6 +66,7 @@ export default function AppRouter() {
         <Route path="/how-to-use" element={<HowToUse />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/guide" element={<ContentHub />} />
+        <Route path="/responsible-gambling" element={<ResponsibleGambling />} />
 
         {/* Admin Pages (Hidden) */}
         <Route path="/admin/rules" element={<AdminRules />} />

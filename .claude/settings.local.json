@@ -33,7 +33,11 @@
       "Bash(source .env.local)",
       "Bash(npx vercel:*)",
       "Bash(sips:*)",
-      "Bash(xargs sed:*)"
+      "Bash(xargs sed:*)",
+      "Bash(xargs:*)",
+      "WebFetch(domain:www.boat-ai.jp)",
+      "Bash(pkill:*)",
+      "WebFetch(domain:supabase.com)"
     ],
     "deny": [
       "Bash(rm -rf:*)",

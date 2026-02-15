@@ -1403,6 +1403,7 @@ function App({ tab = 'races' }) {
                     <Link to="/privacy" style={{ color: '#94a3b8', textDecoration: 'none' }}>プライバシーポリシー</Link>
                     <Link to="/terms" style={{ color: '#94a3b8', textDecoration: 'none' }}>利用規約</Link>
                     <Link to="/contact" style={{ color: '#94a3b8', textDecoration: 'none' }}>お問い合わせ</Link>
+                    <Link to="/responsible-gambling" style={{ color: '#94a3b8', textDecoration: 'none' }}>責任あるギャンブル</Link>
                 </div>
                 <p>&copy; 2025 BoatAI - All Rights Reserved</p>
             </footer>

@@ -2,6 +2,10 @@
 
 会場別ルールの追加・削除・監視に関する運用ルール。
 
+> **関連ドキュメント:**
+> - [system-specification.md](../reference/system-specification.md) - 技術仕様
+> - [analysis-guide.md](../reference/analysis-guide.md) - 分析ガイド（ルール発掘手順）
+
 ---
 
 ## 概要
@@ -215,6 +219,22 @@ const TOKUYAMA_RULES = [
 ---
 
 ## 注意事項
+
+### 用語に関する注意
+
+**「レース数」の実態はルール適用数**
+
+画面上の「レース数: 1285」は、実際には「ルール適用数（結果あり）」を意味する。
+
+```
+例: 江戸川 7R に3つのルールがマッチした場合
+- ユニークなレース数: 1
+- ルール適用数: 3  ← これが「レース数」として表示される
+```
+
+詳細は [system-specification.md](../reference/system-specification.md) の「指標の計算仕様」を参照。
+
+---
 
 1. **ルール追加/削除後は必ずデプロイが必要**
    ```bash

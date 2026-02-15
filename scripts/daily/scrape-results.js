@@ -13,6 +13,34 @@ function getRaceResultUrl(venueCode, raceNo, dateStr) {
   return `https://www.boatrace.jp/owpc/pc/race/raceresult?rno=${raceNo}&jcd=${jcd}&hd=${ymd}`;
 }
 
+// Scrape course info (進入コース)
+function scrapeCourseInfo($) {
+  const courseInfo = {};
+
+  // スタート情報テーブルを取得
+  const startInfoTable = $('.is-w495.is-h292__3rdadd');
+  if (startInfoTable.length === 0) {
+    return courseInfo;
+  }
+
+  startInfoTable.find('.table1_boatImage1').each((index, el) => {
+    // コース番号（1-6）
+    const courseText = $(el).find('.table1_boatImage1Number').text().trim();
+    const courseNum = parseInt(courseText);
+
+    // 艇番（画像URLから抽出）
+    const imgSrc = $(el).find('.table1_boatImage1Boat img').attr('src') || '';
+    const boatMatch = imgSrc.match(/img_boat2_(\d)\.png/);
+    const boatNum = boatMatch ? parseInt(boatMatch[1]) : null;
+
+    if (courseNum >= 1 && courseNum <= 6 && boatNum) {
+      courseInfo[`course_${courseNum}`] = boatNum;
+    }
+  });
+
+  return courseInfo;
+}
+
 // Scrape winning technique (決まり手)
 function scrapeWinningTechnique($) {
   let winningTechnique = null;
@@ -149,12 +177,16 @@ async function scrapeRaceResult(venueCode, raceNo, dateStr) {
     // Get winning technique (決まり手)
     const winningTechnique = scrapeWinningTechnique($);
 
+    // Get course info (進入コース)
+    const courseInfo = scrapeCourseInfo($);
+
     return {
       rank1: rankings[0],
       rank2: rankings[1],
       rank3: rankings[2],
       payouts: payouts,
       winningTechnique: winningTechnique,
+      courseInfo: courseInfo,
     };
 
   } catch (error) {
@@ -247,6 +279,12 @@ async function scrapeResults(dateStr = null) {
         payout_trifecta: trifectaPayout,
         payout_trio: trioPayout,
         winning_technique: result.winningTechnique,
+        course_1: result.courseInfo?.course_1 || null,
+        course_2: result.courseInfo?.course_2 || null,
+        course_3: result.courseInfo?.course_3 || null,
+        course_4: result.courseInfo?.course_4 || null,
+        course_5: result.courseInfo?.course_5 || null,
+        course_6: result.courseInfo?.course_6 || null,
         result_at: new Date().toISOString()
       });
       updatedCount++;
