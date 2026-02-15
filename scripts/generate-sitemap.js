@@ -84,6 +84,30 @@ const staticPages = [
     lastmod: new Date().toISOString().split('T')[0],
     changefreq: 'daily',
     priority: '0.9'
+  },
+  {
+    loc: '/guide',
+    lastmod: new Date().toISOString().split('T')[0],
+    changefreq: 'monthly',
+    priority: '0.8'
+  },
+  {
+    loc: '/responsible-gambling',
+    lastmod: new Date().toISOString().split('T')[0],
+    changefreq: 'yearly',
+    priority: '0.5'
+  },
+  {
+    loc: '/profile',
+    lastmod: new Date().toISOString().split('T')[0],
+    changefreq: 'monthly',
+    priority: '0.5'
+  },
+  {
+    loc: '/accuracy/history',
+    lastmod: new Date().toISOString().split('T')[0],
+    changefreq: 'daily',
+    priority: '0.8'
   }
 ];
 
@@ -151,17 +175,19 @@ function getRacePages() {
     const dateStr = file.replace('.json', '');
     const stats = fs.statSync(path.join(PREDICTIONS_DIR, file));
 
-    // 過去30日以内のデータのみsitemapに含める（SEO効果を最大化するため）
+    // 過去90日以内のデータをsitemapに含める
     const fileDate = new Date(dateStr);
     const now = new Date();
     const daysDiff = (now - fileDate) / (1000 * 60 * 60 * 24);
 
-    if (daysDiff <= 30) {
+    if (daysDiff <= 90) {
+      // 古いデータほど優先度を下げる
+      const priority = daysDiff <= 7 ? '0.8' : daysDiff <= 30 ? '0.7' : '0.5';
       racePages.push({
         loc: `/races/${dateStr}`,
         lastmod: stats.mtime.toISOString().split('T')[0],
         changefreq: 'weekly',
-        priority: '0.7'
+        priority
       });
     }
   });
