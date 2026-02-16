@@ -1,6 +1,26 @@
 // Blog post metadata
 export const blogPosts = [
     {
+        id: '10000-races-analysis',
+        title: 'BoatAI 1万レース突破 - データで振り返るAI予想の実力と限界',
+        description: 'BoatAIの累計分析レース数が1万を突破。11,546レースのデータから見えた的中率47.4%の実力と、回収率85.9%という課題を正直に公開します。',
+        date: '2026-02-16',
+        category: '実績分析',
+        tags: ['1万レース', '実績分析', '的中率', '回収率', 'データ公開'],
+        readTime: '10分',
+        featured: true
+    },
+    {
+        id: 'monthly-report-202601',
+        title: '【2026年1月】BoatAI 月間実績レポート - 3モデル×5,160レースの全成績',
+        description: '2026年1月のBoatAI実績を3モデル別に徹底分析。スタンダードモデル単勝的中率52.8%、本命狙い回収率91.1%など全データを公開。',
+        date: '2026-02-16',
+        category: '月間レポート',
+        tags: ['月間レポート', '2026年1月', '実績公開', '3モデル', '回収率'],
+        readTime: '8分',
+        featured: true
+    },
+    {
         id: 'suji-funaken-guide',
         title: 'スジ舟券とは？理論と実践で回収率を上げる買い方',
         description: 'ボートレースの「スジ」を徹底解説。イン逃げ、まくり、差しの展開別スジパターン、逆スジの見分け方、会場別傾向まで。買い目を絞って回収率アップ。',
