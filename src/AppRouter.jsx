@@ -13,6 +13,7 @@ import AccuracyHistory from './pages/AccuracyHistory';
 import ContentHub from './pages/ContentHub';
 import AdminRules from './pages/admin/AdminRules';
 import ResponsibleGambling from './pages/ResponsibleGambling';
+import CookieConsent from './components/CookieConsent';
 
 // 旧ハッシュURLからのリダイレクトを処理するコンポーネント
 function HashRedirect() {
@@ -39,6 +40,7 @@ export default function AppRouter() {
   return (
     <>
       <HashRedirect />
+      <CookieConsent />
       <Routes>
         {/* Main App - 予想ページ（トップ） */}
         <Route path="/" element={<App tab="races" />} />

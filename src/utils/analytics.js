@@ -1,3 +1,27 @@
+// Cookie同意管理
+const CONSENT_KEY = 'boatai:cookie-consent';
+
+export const getCookieConsent = () => localStorage.getItem(CONSENT_KEY);
+export const setCookieConsent = (value) => localStorage.setItem(CONSENT_KEY, value);
+
+// AdSense動的ロード
+export const initAdSense = () => {
+  if (document.querySelector('script[src*="adsbygoogle"]')) return;
+  const script = document.createElement('script');
+  script.async = true;
+  script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4942038531343866';
+  script.crossOrigin = 'anonymous';
+  document.head.appendChild(script);
+};
+
+// 同意済みならGA+AdSenseを初期化
+export const initTrackingIfConsented = () => {
+  if (getCookieConsent() === 'accepted') {
+    initGA();
+    initAdSense();
+  }
+};
+
 // Google Analytics utility
 export const initGA = () => {
   const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID;
