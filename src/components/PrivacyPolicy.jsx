@@ -102,11 +102,21 @@ export default function PrivacyPolicy() {
                     4. 広告配信について
                 </h2>
                 <p style={{ color: '#475569', lineHeight: '1.8', marginBottom: '0.75rem' }}>
-                    当サイトでは、今後、第三者配信の広告サービス（Google AdSense等）を利用する可能性があります。
+                    当サイトでは、第三者配信の広告サービス「Google AdSense」を利用しています。
                 </p>
                 <p style={{ color: '#475569', lineHeight: '1.8', marginBottom: '0.75rem' }}>
-                    広告配信が開始された場合、広告配信事業者はユーザーの興味に応じた広告を表示するためにCookieを使用することがあります。
+                    Google AdSenseは、ユーザーの興味に応じた広告を表示するためにCookieを使用することがあります。
                     Cookieを使用することで、当サイトや他のサイトへのアクセス情報に基づいて広告が配信されます。
+                </p>
+                <p style={{ color: '#475569', lineHeight: '1.8', marginBottom: '0.75rem' }}>
+                    ユーザーは、Googleの
+                    <a href="https://adssettings.google.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: '#0ea5e9', textDecoration: 'underline' }}>
+                        広告設定ページ
+                    </a>
+                    からパーソナライズ広告を無効にすることができます。
                 </p>
                 <p style={{ color: '#475569', lineHeight: '1.8' }}>
                     Googleの広告およびCookieの使用については、
@@ -138,6 +148,16 @@ export default function PrivacyPolicy() {
                 <p style={{ color: '#475569', lineHeight: '1.8', marginBottom: '0.75rem' }}>
                     このトラフィックデータは匿名で収集されており、個人を特定するものではありません。
                 </p>
+                <p style={{ color: '#475569', lineHeight: '1.8', marginBottom: '0.75rem' }}>
+                    Google Analyticsによるデータ収集を無効にしたい場合は、Googleが提供する
+                    <a href="https://tools.google.com/dlpage/gaoptout?hl=ja"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: '#0ea5e9', textDecoration: 'underline' }}>
+                        オプトアウトアドオン
+                    </a>
+                    をご利用ください。
+                </p>
                 <p style={{ color: '#475569', lineHeight: '1.8' }}>
                     詳細については、
                     <a href="https://policies.google.com/privacy?hl=ja"
@@ -167,9 +187,13 @@ export default function PrivacyPolicy() {
                 </p>
                 <ul style={{ color: '#475569', lineHeight: '1.8', paddingLeft: '1.5rem', marginBottom: '0.75rem' }}>
                     <li>ユーザーの利便性向上のため</li>
-                    <li>サイトの利用状況を把握するため</li>
-                    <li>広告配信のため</li>
+                    <li>サイトの利用状況を把握するため（Google Analytics）</li>
+                    <li>広告配信のため（Google AdSense）</li>
+                    <li>Cookie同意設定の保存のため</li>
                 </ul>
+                <p style={{ color: '#475569', lineHeight: '1.8', marginBottom: '0.75rem' }}>
+                    当サイトでは初回アクセス時にCookie同意バナーを表示し、ユーザーの同意を得た場合にのみGoogle Analytics及びGoogle AdSenseのCookieを使用します。
+                </p>
                 <p style={{ color: '#475569', lineHeight: '1.8' }}>
                     ブラウザの設定でCookieを無効にすることも可能ですが、一部機能が利用できなくなる場合があります。
                 </p>

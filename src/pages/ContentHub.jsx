@@ -125,8 +125,8 @@ function ContentHub() {
             <p className="section-desc">予想の精度を高めるための戦略と買い方を解説します。</p>
             <div className="article-grid">
               <Link to="/blog/betting-strategy" className="article-card">
-                <h3>1万円を確実に増やす舟券戦略</h3>
-                <p>少額から始めて確実に増やす実践的な舟券戦略</p>
+                <h3>1万円から始める実践的な舟券戦略</h3>
+                <p>少額から始める堅実な舟券の買い方と資金管理術</p>
               </Link>
               <Link to="/blog/suji-funaken-guide" className="article-card">
                 <h3>スジ舟券とは？理論と実践</h3>
