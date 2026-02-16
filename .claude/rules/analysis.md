@@ -1,0 +1,86 @@
+---
+paths:
+  - "scripts/analysis/**"
+  - "scripts/daily/**"
+  - "data/analysis/**"
+  - "data/venue-params/**"
+  - "src/services/ruleMatchService.js"
+---
+
+# 分析ワークフロー・ルール
+
+## 目標
+各会場で「回収率100%超え」のルール・条件を統計的に発見し、厳選型のモデルを構築する。
+
+## 分析ステップ
+1. **データ収集**: Supabaseから過去データを取得
+2. **条件探索**: 回収率100%超えの条件を統計的に探索
+3. **ルール検証**: 発見したルールの信頼性を検証（サンプル数、期間）
+4. **モデル化**: ルールを `src/services/ruleMatchService.js` に組み込み
+
+## 分析PDCA
+
+```
+仮説立案 → データ分析 → ルール発見 → 検証 → 本番適用 → 結果確認 → フィードバック
+```
+
+分析結果は `data/analysis/venue-{コード}/` に保存。保存形式は `.claude/templates/analysis-docs.md` を参照。
+
+---
+
+## スクリプト作成ルール
+
+| 用途 | 配置場所 |
+|------|---------|
+| 毎日実行 | `scripts/daily/` |
+| 分析・調査 | `scripts/analysis/` |
+| データ修正・補完 | `scripts/maintenance/` |
+| DB関連 | `scripts/db/` |
+
+### 共通処理
+- Supabase接続は `scripts/lib/supabaseClient.js` を使用
+- 共通ユーティリティは `scripts/lib/` に切り出す
+- テンプレートは `.claude/templates/analysis-docs.md` を参照
+
+---
+
+## 月次会場分析
+
+### 実施フロー
+`/collect-stats` で全会場統計収集 → 会場選定 → `/analyze-venue {コード}` で詳細分析 → ルール実装 → ドキュメント作成
+
+### ルール採用基準
+
+| 指標 | 基準 |
+|------|------|
+| 回収率 | 100%以上（必須） |
+| サンプル数 | 10以上（推奨20以上） |
+| 的中率 | 参考値（回収率優先） |
+
+### ルール実装
+- 実装先: `src/services/ruleMatchService.js`
+- betType: `win`（単勝）, `place`（複勝）, `trio`（3連複）, `exacta`（3連単）
+- テンプレート: `.claude/templates/analysis-docs.md` を参照
+
+### ルールID prefix
+
+| 会場 | prefix | 会場 | prefix | 会場 | prefix |
+|------|--------|------|--------|------|--------|
+| 江戸川(03) | E03 | 平和島(04) | HW04 | 浜名湖(06) | H06 |
+| 蒲郡(07) | G07 | 津(09) | TS09 | 三国(10) | M10 |
+| びわこ(11) | B11 | 鳴門(14) | N14 | 丸亀(15) | R15 |
+| 児島(16) | K16 | 宮島(17) | MY17 | 徳山(18) | TY18 |
+| 芦屋(21) | AS21 | 福岡(22) | F22 | 大村(24) | OM24 |
+
+### ドキュメント3点セット
+会場分析完了時に `data/analysis/venue-{コード}/` に以下を作成:
+- `README.md` — 会場特性・分析概要
+- `rules.json` — ルール定義
+- `RULE_SPECIFICATION.md` — 実装仕様書
+
+テンプレートは `.claude/templates/analysis-docs.md` を参照。
+
+### 分析済み会場
+現在: **15会場 / 34ルール**（単勝12 + 複勝10 + 3連複3 + 3連単9）
+
+実装済み: 江戸川(03), 平和島(04), 浜名湖(06), 蒲郡(07), 津(09), 三国(10), びわこ(11), 鳴門(14), 丸亀(15), 児島(16), 宮島(17), 徳山(18), 芦屋(21), 福岡(22), 大村(24)
