@@ -83,16 +83,15 @@ boatrace-ai-predictor/
 
 ## 開発フロー
 
-### ブランチ戦略
+### ブランチ戦略（GitHub Flow）
 
 | ブランチ | 用途 | デプロイ先 |
 |---------|------|-----------|
 | `master` | 本番リリース | boatai.net |
-| `develop` | 開発・テスト | Vercel Preview URL |
-| `feature/*` | 機能開発 | - |
+| `feature/*` | 機能開発 | Vercel Preview（PR単位で自動生成） |
 
 ### デプロイフロー
-`feature/*` → `develop`（Vercel Preview確認） → `master`（本番デプロイ）
+`feature/*` → PR作成（Vercel Previewで確認） → レビュー → `master` にマージ（本番デプロイ）
 
 ### コミットメッセージ
 形式: `<type>: <日本語の説明>`
@@ -144,13 +143,14 @@ node scripts/daily/calculate-accuracy.js
 
 | コマンド | 用途 |
 |---------|------|
+| `/create-pr {ブランチ名}` | featureブランチ作成 → PR作成 |
+| `/review-pr {PR番号}` | PRレビュー（ルール準拠チェック） |
+| `/deploy-preview {PR番号}` | Vercel Preview URL確認 |
 | `/analyze-venue {コード}` | 会場別詳細分析 |
 | `/collect-stats` | 24会場の統計一括収集 |
 | `/daily-report` | 本日の予測結果レポート |
-| `/deploy-preview` | Vercel Previewデプロイ |
 | `/check-env` | 環境変数確認 |
 | `/onboarding` | 環境セットアップ確認 |
-| `/review-pr` | PRレビュー |
 
 ---
 

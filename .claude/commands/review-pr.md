@@ -1,16 +1,16 @@
 # PR レビュー
 
-指定されたPRの内容を確認し、CLAUDE.mdのルールに照らしてレビューを行います。
+指定されたPRの内容を確認し、CLAUDE.mdおよびrules/のルールに照らしてレビューを行います。
 
 ## 引数
-- `$ARGUMENTS`: PR番号（例: 123）またはPR URL
+- `$ARGUMENTS`: PR番号（例: 123）またはPR URL。省略時は現在のブランチのPRをレビュー
 
 ## 実行手順
 
 ### 1. PR情報の取得
 
 ```bash
-gh pr view $ARGUMENTS --json number,title,body,additions,deletions,changedFiles,headRefName,baseRefName
+gh pr view $ARGUMENTS --json number,title,body,additions,deletions,changedFiles,headRefName,baseRefName,files
 ```
 
 ### 2. 差分の取得
@@ -19,26 +19,31 @@ gh pr view $ARGUMENTS --json number,title,body,additions,deletions,changedFiles,
 gh pr diff $ARGUMENTS
 ```
 
-### 3. レビュー観点
+### 3. ビルド確認
 
-CLAUDE.mdのルールに照らして、以下を確認:
+```bash
+npm run build
+```
 
-#### コーディング規約
+ビルドエラーがある場合はレビュー結果に含めてください。
+
+### 4. レビュー観点
+
+CLAUDE.mdおよび `.claude/rules/` のルールに照らして確認:
+
+#### コーディング規約（rules/code-style.md）
+- [ ] 「競艇」という表記が使われていないか（→「ボートレース」）
 - [ ] `!important` が不必要に使われていないか
-- [ ] イベントハンドラがシンプルに保たれているか
+- [ ] `Header` コンポーネントが含まれているか（ページの場合）
+- [ ] `design-tokens.css` のCSS変数を使用しているか
 - [ ] ES Modules（import/export）が使用されているか
 - [ ] async/awaitが使用されているか
+- [ ] デバッグ用コード（console.log）が残っていないか
 
-#### ファイル配置
-- [ ] スクリプトが適切なディレクトリに配置されているか
-  - 日次実行: `scripts/daily/`
-  - 分析・調査: `scripts/analysis/`
-  - メンテナンス: `scripts/maintenance/`
-- [ ] 新しいドキュメントが適切な場所に配置されているか
-
-#### 命名規則
+#### ファイル配置・命名（rules/documentation.md）
 - [ ] ファイル名が `kebab-case` になっているか
-- [ ] 分析結果ファイルが `data/analysis/` に配置されているか
+- [ ] 適切なディレクトリに配置されているか
+- [ ] ドキュメントに最終更新日・変更履歴・著者が含まれていないか
 
 #### セキュリティ
 - [ ] 環境変数やシークレットがハードコードされていないか
@@ -46,29 +51,41 @@ CLAUDE.mdのルールに照らして、以下を確認:
 
 #### モバイル対応（該当する場合）
 - [ ] タッチイベントが `onClick` のみで実装されているか
-- [ ] 余白がモバイルで適切か
+- [ ] 余白がモバイル基準に適合しているか
 
-### 4. レビュー結果の出力
+### 5. レビュー結果の出力
 
-以下の形式でレビュー結果をまとめてください:
+以下の形式で出力:
 
-```
-## PR #123 レビュー結果
+```markdown
+## PR #{番号} レビュー結果
 
 ### 概要
 - **タイトル**: XXX
+- **ブランチ**: feature/xxx → master
 - **変更ファイル数**: XX
 - **追加/削除行数**: +XX / -XX
 
 ### 問題点
-1. **[重要]** `src/xxx.js`: `!important` が使用されています
-2. **[軽微]** `scripts/xxx.js`: ファイル名がkebab-caseではありません
+1. **[重要]** `path/to/file`: 説明
+2. **[軽微]** `path/to/file`: 説明
 
 ### 良い点
 - XXX
 
-### 推奨アクション
-- [ ] XXXを修正してください
+### 判定
+- [ ] Approve（問題なし）
+- [ ] Request Changes（修正必要）
 ```
 
-レビュー完了後、必要に応じて `gh pr review $ARGUMENTS --comment --body "..."` でコメントを残すか確認してください。
+### 6. レビューコメントの投稿
+
+ユーザーに確認の上、GitHubにレビューを投稿:
+
+```bash
+# 承認の場合
+gh pr review $ARGUMENTS --approve --body "LGTM"
+
+# 修正リクエストの場合
+gh pr review $ARGUMENTS --request-changes --body "修正をお願いします"
+```

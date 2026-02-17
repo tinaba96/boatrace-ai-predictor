@@ -1,31 +1,40 @@
----
-name: deploy-preview
-description: developブランチをVercel Previewにデプロイして確認
----
+# Vercel Preview 確認
 
-# Vercel Preview デプロイ
+PRのVercel Preview URLを確認します。
 
-開発中の変更をVercel Previewにデプロイして確認します。
+## 引数
+- `$ARGUMENTS`: PR番号（例: 123）。省略時は現在のブランチのPRを検索
 
-## 手順
+## 実行手順
 
-1. **ビルド確認**
-   ```bash
-   npm run build
-   ```
+### 1. PR情報の取得
 
-2. **developブランチにpush**
-   ```bash
-   git add .
-   git commit -m "Preview deploy"
-   git push origin develop
-   ```
+```bash
+# 引数指定時
+gh pr view $ARGUMENTS --json url,headRefName,statusCheckRollup
 
-3. **Vercel Preview URL確認**
-   - Vercelダッシュボードで自動生成されたPreview URLを確認
-   - または `vercel` CLIでデプロイ
+# 引数省略時（現在のブランチのPR）
+gh pr view --json url,headRefName,statusCheckRollup
+```
 
-## 注意
+### 2. デプロイ状況の確認
 
-- 本番（master）には直接pushしない
-- Preview URLで動作確認後、masterにマージ
+```bash
+gh pr checks $ARGUMENTS
+```
+
+### 3. Preview URL の報告
+
+Vercel のデプロイ状況を確認し、Preview URLをユーザーに報告してください。
+
+- デプロイ成功: Preview URLを表示
+- デプロイ中: 「デプロイ中です」と報告
+- デプロイ失敗: エラー内容を報告
+
+### 4. ビルドエラーがある場合
+
+```bash
+npm run build
+```
+
+ローカルでビルドを実行し、エラーを特定・修正してください。
