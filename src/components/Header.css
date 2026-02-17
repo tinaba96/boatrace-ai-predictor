@@ -27,6 +27,11 @@
   flex-shrink: 0;
   cursor: pointer;
   transition: transform 0.2s;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
 }
 
 .logo:hover {
