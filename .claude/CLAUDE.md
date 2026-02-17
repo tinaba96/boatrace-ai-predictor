@@ -87,7 +87,7 @@ boatrace-ai-predictor/
 
 | ブランチ | 用途 | デプロイ先 |
 |---------|------|-----------|
-| `master` | 本番リリース | boatai.net |
+| `master` | 本番リリース | www.boat-ai.jp |
 | `feature/*` | 機能開発 | Vercel Preview（PR単位で自動生成） |
 
 ### デプロイフロー

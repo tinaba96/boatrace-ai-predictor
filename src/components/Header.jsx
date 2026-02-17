@@ -45,10 +45,10 @@ function Header() {
   return (
     <header className="app-header">
       <div className="header-content">
-        <div className="logo" onClick={handleLogoClick}>
+        <button className="logo" onClick={handleLogoClick} aria-label="BoatAI トップページへ">
           <span className="logo-icon">🚤</span>
           <h1>BoatAI</h1>
-        </div>
+        </button>
         <nav className="nav">
           <button
             className={`nav-btn ${activeTab === 'races' ? 'active' : ''}`}
