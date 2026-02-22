@@ -148,16 +148,16 @@
 
 ## DBスキーマとの乖離
 
-### テーブル別レコード数（2026-02-12時点）
+### テーブル別レコード数（2026-02-20時点）
 
 | テーブル | レコード数 | 状態 |
 |---------|-----------|------|
 | venues | 24 | ✅ マスタ完備 |
-| races | 11,748 | ✅ 稼働中 |
-| race_entries | 70,488 | ✅ 稼働中 |
-| race_results | 11,002 | ✅ 稼働中 |
-| race_conditions | 1,452 | ⚠️ 一部のみ（12%） |
-| predictions | 30,636 | ✅ 稼働中 |
+| races | 12,720 | ✅ 稼働中 |
+| race_entries | 76,320 | ✅ 稼働中 |
+| race_results | 11,969 | ✅ 稼働中 |
+| race_conditions | 2,424 | ⚠️ 一部のみ（19%） |
+| predictions | 33,552 | ✅ 稼働中 |
 | models | 3 | ✅ マスタ完備 |
 | race_odds | 0 | ❌ 未使用 |
 | exhibition_data | 0 | ❌ 未使用 |
@@ -179,98 +179,98 @@
 | avg_first_win_rate | 20 | 83% | ⚠️ 4会場欠損 |
 | avg_volatility_score | 20 | 83% | ⚠️ 4会場欠損 |
 
-#### races（11,748件）
+#### races（12,720件）
 
 | カラム | 格納数 | 格納率 | 備考 |
 |--------|--------|--------|------|
-| race_id, race_date, venue_code, race_number | 11,748 | 100% | ✅ |
-| start_time | 11,748 | 100% | ✅ |
-| volatility_score | 9,426 | 80.2% | ✅ |
-| volatility_level, recommended_model | 9,444 | 80.4% | ✅ |
-| volatility_reasons | 9,444 | 80.4% | ✅ |
-| first_boat_grade | 11,748 | 100% | ✅ |
-| first_boat_win_rate | 11,748 | 100% | ✅ |
-| first_boat_motor_2rate | 11,748 | 100% | ✅ |
-| win_rate_stddev | 11,748 | 100% | ✅ |
-| win_rate_avg | 11,748 | 100% | ✅ |
-| motor_2rate_stddev | 11,748 | 100% | ✅ |
+| race_id, race_date, venue_code, race_number | 12,720 | 100% | ✅ |
+| start_time | 12,720 | 100% | ✅ |
+| volatility_score | 10,398 | 81.7% | ✅ |
+| volatility_level, recommended_model | 10,416 | 81.9% | ✅ |
+| volatility_reasons | 10,416 | 81.9% | ✅ |
+| first_boat_grade | 12,720 | 100% | ✅ |
+| first_boat_win_rate | 12,720 | 100% | ✅ |
+| first_boat_motor_2rate | 12,720 | 100% | ✅ |
+| win_rate_stddev | 12,720 | 100% | ✅ |
+| win_rate_avg | 12,720 | 100% | ✅ |
+| motor_2rate_stddev | 12,720 | 100% | ✅ |
 
-#### race_entries（70,488件）
-
-| カラム | 格納数 | 格納率 | 備考 |
-|--------|--------|--------|------|
-| race_id, boat_number | 70,488 | 100% | ✅ PK |
-| player_name | 70,488 | 100% | ✅ |
-| grade | 70,488 | 100% | ✅ |
-| age | 70,488 | 100% | ✅ |
-| win_rate | 70,466 | 99.97% | ✅ |
-| local_win_rate | 68,118 | 96.6% | ✅ |
-| global_2rate | 24,549 | 34.8% | ✅ 2026-02-12補完 |
-| local_2rate | 22,742 | 32.3% | ✅ 2026-02-12補完 |
-| global_3rate | 18,357 | 26.0% | ✅ 2026-02-12実装+補完 |
-| local_3rate | 16,776 | 23.8% | ✅ 2026-02-12実装+補完 |
-| motor_number | 70,488 | 100% | ✅ |
-| motor_2rate | 68,552 | 97.3% | ✅ |
-| motor_3rate | 18,153 | 25.8% | ✅ 2026-02-12実装+補完 |
-| boat_number_id | 70,488 | 100% | ✅ |
-| boat_2rate | 69,341 | 98.4% | ✅ |
-| boat_3rate | 18,426 | 26.1% | ✅ 2026-02-12実装+補完 |
-| racer_id | 18,576 | 26.4% | ✅ 2026-02-12実装+補完 |
-| ai_score_standard | 70,488 | 100% | ✅ |
-| ai_score_safe_bet | 56,664 | 80.4% | ✅ |
-| ai_score_upset_focus | 56,664 | 80.4% | ✅ |
-
-#### race_results（11,002件）
+#### race_entries（76,320件）
 
 | カラム | 格納数 | 格納率 | 備考 |
 |--------|--------|--------|------|
-| race_id | 11,002 | 100% | ✅ PK |
-| rank1, rank2, rank3 | 11,002 | 100% | ✅ |
-| payout_win | 11,002 | 100% | ✅ |
-| payout_place_1 | 10,997 | 99.95% | ✅ |
-| payout_place_2 | 10,973 | 99.7% | ✅ |
-| payout_trifecta | 11,002 | 100% | ✅ |
-| payout_trio | 11,002 | 100% | ✅ |
-| course_1〜6 | 10,534 | 95.7% | ✅ 2026-02-11実装 |
-| winning_technique | 3,731 | 33.9% | ✅ 2026-02-12補完 |
-| is_cancelled | 11,002 | 100% | 全てFALSE（判定ロジック未実装） |
-| is_no_race | 11,002 | 100% | 全てFALSE（判定ロジック未実装） |
-| result_at | 11,002 | 100% | ✅ |
+| race_id, boat_number | 76,320 | 100% | ✅ PK |
+| player_name | 76,320 | 100% | ✅ |
+| grade | 76,320 | 100% | ✅ |
+| age | 76,320 | 100% | ✅ |
+| win_rate | 76,298 | 100.0% | ✅ |
+| local_win_rate | 73,950 | 96.9% | ✅ |
+| global_2rate | 27,690 | 36.3% | ✅ 日次取得中 |
+| local_2rate | 25,580 | 33.5% | ✅ 日次取得中 |
+| global_3rate | 24,168 | 31.7% | ✅ 日次取得中 |
+| local_3rate | 22,326 | 29.3% | ✅ 日次取得中 |
+| motor_number | 76,320 | 100% | ✅ |
+| motor_2rate | 74,384 | 97.5% | ✅ |
+| motor_3rate | 23,985 | 31.4% | ✅ 日次取得中 |
+| boat_number_id | 76,320 | 100% | ✅ |
+| boat_2rate | 75,173 | 98.5% | ✅ |
+| boat_3rate | 24,258 | 31.8% | ✅ 日次取得中 |
+| racer_id | 24,408 | 32.0% | ✅ 日次取得中 |
+| ai_score_standard | 76,320 | 100% | ✅ |
+| ai_score_safe_bet | 62,496 | 81.9% | ✅ |
+| ai_score_upset_focus | 62,496 | 81.9% | ✅ |
 
-#### race_conditions（1,452件）
+#### race_results（11,969件）
 
 | カラム | 格納数 | 格納率 | 備考 |
 |--------|--------|--------|------|
-| race_id | 1,452 | 100% | ✅ PK |
-| weather | 1,415 | 97.5% | ✅ |
-| wind_direction | 1,245 | 85.7% | ✅ |
-| wind_speed | 1,404 | 96.7% | ✅ |
-| wave_height | 1,404 | 96.7% | ✅ |
-| temperature | 1,404 | 96.7% | ✅ |
-| water_temperature | 1,404 | 96.7% | ✅ |
-| race_grade | 1,308 | 90.1% | ✅ |
-| race_title | 1,308 | 90.1% | ✅ |
+| race_id | 11,969 | 100% | ✅ PK |
+| rank1, rank2, rank3 | 11,969 | 100% | ✅ |
+| payout_win | 11,969 | 100% | ✅ |
+| payout_place_1 | 11,964 | 100.0% | ✅ |
+| payout_place_2 | 11,940 | 99.8% | ✅ |
+| payout_trifecta | 11,969 | 100% | ✅ |
+| payout_trio | 11,969 | 100% | ✅ |
+| course_1〜6 | 11,010〜11,014 | 92.0% | ✅ 日次取得中 |
+| winning_technique | 4,310 | 36.0% | ✅ 日次取得中 |
+| is_cancelled | 11,969 | 100% | 全てFALSE（判定ロジック未実装） |
+| is_no_race | 11,969 | 100% | 全てFALSE（判定ロジック未実装） |
+| result_at | 11,969 | 100% | ✅ |
+
+#### race_conditions（2,424件）
+
+| カラム | 格納数 | 格納率 | 備考 |
+|--------|--------|--------|------|
+| race_id | 2,424 | 100% | ✅ PK |
+| weather | 2,399 | 99.0% | ✅ |
+| wind_direction | 2,191 | 90.4% | ✅ |
+| wind_speed | 2,388 | 98.5% | ✅ |
+| wave_height | 2,388 | 98.5% | ✅ |
+| temperature | 2,388 | 98.5% | ✅ |
+| water_temperature | 2,388 | 98.5% | ✅ |
+| race_grade | 2,280 | 94.1% | ✅ |
+| race_title | 2,280 | 94.1% | ✅ |
 | series_day | 0 | 0% | ❌ 未実装 |
 | is_final_day | 0 | 0% | ❌ 未実装 |
 
-#### predictions（30,636件）
+#### predictions（33,552件）
 
 | カラム | 格納数 | 格納率 | 備考 |
 |--------|--------|--------|------|
-| race_id, model_id | 30,636 | 100% | ✅ |
-| top_pick, top_2nd, top_3rd | 30,636 | 100% | ✅ |
-| confidence | 30,636 | 100% | ✅ |
-| scores | 14,184 | 46.3% | ⚠️ 一部のみ |
+| race_id, model_id | 33,552 | 100% | ✅ |
+| top_pick, top_2nd, top_3rd | 33,552 | 100% | ✅ |
+| confidence | 33,552 | 100% | ✅ |
+| scores | 14,184 | 42.3% | ⚠️ 一部のみ |
 | feature_contributions | 0 | 0% | ❌ 未実装 |
-| is_hit_win | 28,950 | 94.5% | ✅ トリガー自動更新 |
-| is_hit_place | 28,950 | 94.5% | ✅ |
-| is_hit_trifecta | 28,950 | 94.5% | ✅ |
-| is_hit_trio | 28,950 | 94.5% | ✅ |
-| payout_win | 11,695 | 38.2% | 的中分のみ |
-| payout_place | 17,055 | 55.7% | 的中分のみ |
-| payout_trifecta | 5,648 | 18.4% | 的中分のみ |
-| payout_trio | 2,695 | 8.8% | 的中分のみ |
-| is_shadow | 30,636 | 100% | ✅ |
+| is_hit_win | 31,767 | 94.7% | ✅ トリガー自動更新 |
+| is_hit_place | 31,767 | 94.7% | ✅ |
+| is_hit_trifecta | 31,767 | 94.7% | ✅ |
+| is_hit_trio | 31,767 | 94.7% | ✅ |
+| payout_win | 14,484 | 43.2% | 的中分のみ |
+| payout_place | 19,858 | 59.2% | 的中分のみ |
+| payout_trifecta | 8,435 | 25.1% | 的中分のみ |
+| payout_trio | 5,473 | 16.3% | 的中分のみ |
+| is_shadow | 33,552 | 100% | ✅ |
 
 #### models（3件）
 
@@ -325,9 +325,9 @@
 4. ~~**過去データ補完**~~ ✅ 完了（2026-02-12）
    - `scripts/maintenance/backfill-race-data.js` を作成
    - 2025-12〜2026-02の過去データを補完
-   - racer_id: 792件 → 18,576件 (26.4%)
-   - global_3rate等: 792件 → 18,000件超 (26%)
-   - winning_technique: 1,133件 → 3,731件 (33.9%)
+   - racer_id: 792件 → 24,408件 (32.0%)
+   - global_3rate等: 792件 → 24,000件超 (31%)
+   - winning_technique: 1,133件 → 4,310件 (36.0%)
 
 ### 中期（1ヶ月以内）
 
