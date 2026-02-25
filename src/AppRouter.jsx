@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
+import { refreshAdsOnRouteChange } from './utils/analytics';
 import App from './App';
 import Blog from './pages/Blog';
 import BlogPost from './pages/BlogPost';
@@ -36,10 +37,22 @@ function HashRedirect() {
   return null;
 }
 
+// ルート変更時にAuto Adsを再スキャン
+function AdRefresh() {
+  const location = useLocation();
+
+  useEffect(() => {
+    refreshAdsOnRouteChange();
+  }, [location.pathname]);
+
+  return null;
+}
+
 export default function AppRouter() {
   return (
     <>
       <HashRedirect />
+      <AdRefresh />
       <CookieConsent />
       <Routes>
         {/* Main App - 予想ページ（トップ） */}

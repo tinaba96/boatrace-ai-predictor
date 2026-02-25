@@ -64,3 +64,13 @@ export const trackEvent = (eventName, eventParams = {}) => {
     window.gtag('event', eventName, eventParams);
   }
 };
+
+// SPA ルート変更時にAuto Adsを再スキャン
+export const refreshAdsOnRouteChange = () => {
+  try {
+    const adsbygoogle = window.adsbygoogle || [];
+    adsbygoogle.push({});
+  } catch (e) {
+    // AdSense未読み込み時は無視
+  }
+};
