@@ -1,5 +1,5 @@
 /**
- * HitRaceCard - 正解レースカードコンポーネント
+ * HitRaceCard - 的中レースカードコンポーネント
  */
 import { SocialShareButtons } from '../SocialShareButtons'
 import { generateHitRaceShareText } from '../../utils/share'
@@ -36,7 +36,7 @@ function HitRaceCard({ hitRace, selectedModel, variant = 'today', showDate = fal
           </div>
         </div>
         <div className={`hit-badge ${variant}`}>
-          正解
+          的中
         </div>
       </div>
 
@@ -81,7 +81,7 @@ function HitRaceCard({ hitRace, selectedModel, variant = 'today', showDate = fal
             totalPayout: hitRace.totalPayout,
             hitTypes: hitRace.hitTypes || []
           }, selectedModel)}
-          hashtags={['ボートレース', '正解', 'BoatAI']}
+          hashtags={['ボートレース', '的中', 'BoatAI']}
           size={36}
         />
       </div>

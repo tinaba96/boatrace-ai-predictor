@@ -1151,7 +1151,7 @@ function App({ tab = 'races' }) {
                                                         <div className="check-item">
                                                             {prediction.topPick.number === prediction.result.rank1 ? (
                                                                 <div className="hit">
-                                                                    ✅ 単勝正解！
+                                                                    ✅ 単勝的中！
                                                                     {prediction.result.payouts?.win?.[prediction.topPick.number] && (
                                                                         <span style={{ marginLeft: '0.5rem', color: '#2196f3', fontWeight: 'bold' }}>
                                                                             配当: {prediction.result.payouts.win[prediction.topPick.number]}円
@@ -1159,7 +1159,7 @@ function App({ tab = 'races' }) {
                                                                     )}
                                                                 </div>
                                                             ) : (
-                                                                <div className="miss">❌ 単勝不正解（予測: {prediction.topPick.number}号艇 → 実際: {prediction.result.rank1}号艇）</div>
+                                                                <div className="miss">❌ 単勝不的中（予測: {prediction.topPick.number}号艇 → 実際: {prediction.result.rank1}号艇）</div>
                                                             )}
                                                         </div>
 
@@ -1168,7 +1168,7 @@ function App({ tab = 'races' }) {
                                                             {(prediction.topPick.number === prediction.result.rank1 ||
                                                                 prediction.topPick.number === prediction.result.rank2) ? (
                                                                 <div className="hit">
-                                                                    ✅ 複勝正解！
+                                                                    ✅ 複勝的中！
                                                                     {prediction.result.payouts?.place?.[prediction.topPick.number] && (
                                                                         <span style={{ marginLeft: '0.5rem', color: '#2196f3', fontWeight: 'bold' }}>
                                                                             配当: {prediction.result.payouts.place[prediction.topPick.number]}円
@@ -1176,7 +1176,7 @@ function App({ tab = 'races' }) {
                                                                     )}
                                                                 </div>
                                                             ) : (
-                                                                <div className="miss">❌ 複勝不正解</div>
+                                                                <div className="miss">❌ 複勝不的中</div>
                                                             )}
                                                         </div>
 
@@ -1186,7 +1186,7 @@ function App({ tab = 'races' }) {
                                                                 prediction.top3.includes(prediction.result.rank2) &&
                                                                 prediction.top3.includes(prediction.result.rank3) ? (
                                                                 <div className="hit">
-                                                                    ✅ 3連複正解！
+                                                                    ✅ 3連複的中！
                                                                     {(() => {
                                                                         const sorted = [prediction.result.rank1, prediction.result.rank2, prediction.result.rank3].sort((a, b) => a - b);
                                                                         const key = sorted.join('-');
@@ -1199,7 +1199,7 @@ function App({ tab = 'races' }) {
                                                                     })()}
                                                                 </div>
                                                             ) : (
-                                                                <div className="miss">❌ 3連複不正解</div>
+                                                                <div className="miss">❌ 3連複不的中</div>
                                                             )}
                                                         </div>
 
@@ -1209,7 +1209,7 @@ function App({ tab = 'races' }) {
                                                                 prediction.top3[1] === prediction.result.rank2 &&
                                                                 prediction.top3[2] === prediction.result.rank3 ? (
                                                                 <div className="hit">
-                                                                    ✅ 3連単正解！
+                                                                    ✅ 3連単的中！
                                                                     {(() => {
                                                                         const key = `${prediction.result.rank1}-${prediction.result.rank2}-${prediction.result.rank3}`;
                                                                         const payout = prediction.result.payouts?.trio?.[key];
@@ -1221,7 +1221,7 @@ function App({ tab = 'races' }) {
                                                                     })()}
                                                                 </div>
                                                             ) : (
-                                                                <div className="miss">❌ 3連単不正解</div>
+                                                                <div className="miss">❌ 3連単不的中</div>
                                                             )}
                                                         </div>
                                                     </div>

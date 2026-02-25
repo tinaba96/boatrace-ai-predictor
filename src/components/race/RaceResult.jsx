@@ -12,7 +12,7 @@ function RaceResult({ prediction }) {
   const topPick = prediction.topPick
   const top3 = prediction.top3
 
-  // 正解判定
+  // 的中判定
   const isWinHit = topPick.number === result.rank1
   const isPlaceHit = topPick.number === result.rank1 || topPick.number === result.rank2
   const is3FukuHit = top3 && top3.includes(result.rank1) && top3.includes(result.rank2) && top3.includes(result.rank3)
@@ -55,7 +55,7 @@ function RaceResult({ prediction }) {
         <div className="check-item">
           {isWinHit ? (
             <div className="hit">
-              ✅ 単勝正解！
+              ✅ 単勝的中！
               {getWinPayout() && (
                 <span style={{ marginLeft: '0.5rem', color: '#2196f3', fontWeight: 'bold' }}>
                   配当: {getWinPayout()}円
@@ -63,7 +63,7 @@ function RaceResult({ prediction }) {
               )}
             </div>
           ) : (
-            <div className="miss">❌ 単勝不正解（予測: {topPick.number}号艇 → 実際: {result.rank1}号艇）</div>
+            <div className="miss">❌ 単勝不的中（予測: {topPick.number}号艇 → 実際: {result.rank1}号艇）</div>
           )}
         </div>
 
@@ -71,7 +71,7 @@ function RaceResult({ prediction }) {
         <div className="check-item">
           {isPlaceHit ? (
             <div className="hit">
-              ✅ 複勝正解！
+              ✅ 複勝的中！
               {getPlacePayout() && (
                 <span style={{ marginLeft: '0.5rem', color: '#2196f3', fontWeight: 'bold' }}>
                   配当: {getPlacePayout()}円
@@ -79,7 +79,7 @@ function RaceResult({ prediction }) {
               )}
             </div>
           ) : (
-            <div className="miss">❌ 複勝不正解</div>
+            <div className="miss">❌ 複勝不的中</div>
           )}
         </div>
 
@@ -87,7 +87,7 @@ function RaceResult({ prediction }) {
         <div className="check-item">
           {is3FukuHit ? (
             <div className="hit">
-              ✅ 3連複正解！
+              ✅ 3連複的中！
               {getTrifectaPayout() && (
                 <span style={{ marginLeft: '0.5rem', color: '#2196f3', fontWeight: 'bold' }}>
                   配当: {getTrifectaPayout()}円
@@ -95,7 +95,7 @@ function RaceResult({ prediction }) {
               )}
             </div>
           ) : (
-            <div className="miss">❌ 3連複不正解</div>
+            <div className="miss">❌ 3連複不的中</div>
           )}
         </div>
 
@@ -103,7 +103,7 @@ function RaceResult({ prediction }) {
         <div className="check-item">
           {is3TanHit ? (
             <div className="hit">
-              ✅ 3連単正解！
+              ✅ 3連単的中！
               {getTrioPayout() && (
                 <span style={{ marginLeft: '0.5rem', color: '#2196f3', fontWeight: 'bold' }}>
                   配当: {getTrioPayout()}円
@@ -111,7 +111,7 @@ function RaceResult({ prediction }) {
               )}
             </div>
           ) : (
-            <div className="miss">❌ 3連単不正解</div>
+            <div className="miss">❌ 3連単不的中</div>
           )}
         </div>
       </div>

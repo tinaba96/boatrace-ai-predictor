@@ -124,8 +124,8 @@ export default function HowToUse() {
                         <h4>💡 予測データの種別について</h4>
                         <ul>
                             <li><strong>複勝</strong>: 予測精度49.5%（2着以内予測）- 初心者向け</li>
-                            <li><strong>3連複</strong>: 正解率12.8%、回収率80.6%（順不同で1-2-3着）- 中級者向け</li>
-                            <li><strong>3連単</strong>: 正解率2.8%、回収率134.3%（着順一致）- 上級者向け</li>
+                            <li><strong>3連複</strong>: 的中率12.8%、回収率80.6%（順不同で1-2-3着）- 中級者向け</li>
+                            <li><strong>3連単</strong>: 的中率2.8%、回収率134.3%（着順一致）- 上級者向け</li>
                         </ul>
                     </div>
                 </>
@@ -168,11 +168,11 @@ export default function HowToUse() {
             icon: '📈',
             content: (
                 <>
-                    <p>レース終了後、AIの予測が正解だったかを確認できます。</p>
+                    <p>レース終了後、AIの予測が的中だったかを確認できます。</p>
                     <div className="step-detail">
                         <h4>💡 実績の確認方法</h4>
                         <ul>
-                            <li><strong>「正解レース」タブ</strong>: 過去14日間の正解レースを表示</li>
+                            <li><strong>「的中レース」タブ</strong>: 過去14日間の的中レースを表示</li>
                             <li><strong>「成績」タブ</strong>: 予測精度・回収率の統計データを表示</li>
                             <li>期間別（今日、昨日、全期間）に絞り込み可能</li>
                             <li>モデル別（スタンダード、本命狙い、穴狙い）に切り替え可能</li>
@@ -181,7 +181,7 @@ export default function HowToUse() {
                     <div className="tip-box">
                         <h4>📊 実績の見方</h4>
                         <ul>
-                            <li><strong>予測精度</strong>: どれくらいの確率で正解するか</li>
+                            <li><strong>予測精度</strong>: どれくらいの確率で的中するか</li>
                             <li><strong>回収率</strong>: 予測のパフォーマンスを示す指標
                                 <ul>
                                     <li>100%以上: 高パフォーマンス</li>

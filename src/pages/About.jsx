@@ -206,7 +206,7 @@ export default function About() {
                     </div>
                     <div className="stat-card">
                         <div className="stat-value">12.8%</div>
-                        <div className="stat-label">3連複正解率</div>
+                        <div className="stat-label">3連複的中率</div>
                     </div>
                     <div className="stat-card">
                         <div className="stat-value">85.3%</div>

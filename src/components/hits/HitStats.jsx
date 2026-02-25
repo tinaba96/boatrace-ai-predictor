@@ -1,5 +1,5 @@
 /**
- * HitStats - 正解統計ボックスコンポーネント
+ * HitStats - 的中統計ボックスコンポーネント
  */
 
 function HitStats({ hitRaces }) {
@@ -10,7 +10,7 @@ function HitStats({ hitRaces }) {
       <div className="stats-flex">
         <div className="stat-item">
           <div className="stat-label">
-            正解数
+            的中数
           </div>
           <div className="stat-value">
             {hitRaces.length}

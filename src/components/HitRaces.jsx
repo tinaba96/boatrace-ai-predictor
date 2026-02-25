@@ -24,7 +24,7 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
 
   const { todayStr, yesterdayStr } = getJSTDateInfo()
 
-  // 正解レースを読み込む
+  // 的中レースを読み込む
   useEffect(() => {
     const fetchHitRaces = async () => {
       try {
@@ -45,7 +45,7 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
           loadDayPredictions(yesterdayStr)
         ])
 
-        // 正解レースを抽出する関数（モデル対応）
+        // 的中レースを抽出する関数（モデル対応）
         const extractHitRaces = (predictions, modelKey) => {
           return predictions
             .filter(race => {
@@ -137,7 +137,7 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
         )
         setHitRacesAll(allHitRaces)
       } catch (error) {
-        console.error('正解レース読み込みエラー:', error)
+        console.error('的中レース読み込みエラー:', error)
       } finally {
         setLoading(false)
       }
@@ -190,7 +190,7 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
   if (loading) {
     return (
       <LoadingScreen
-        title="正解レースを読み込み中..."
+        title="的中レースを読み込み中..."
         description="過去14日分のデータを分析しています"
       />
     )
@@ -200,8 +200,8 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
     return (
       <div className="no-data-container">
         <div className="icon">🎯</div>
-        <h2>正解レースはまだありません</h2>
-        <p>レース結果が確定すると、ここに正解レースが表示されます。</p>
+        <h2>的中レースはまだありません</h2>
+        <p>レース結果が確定すると、ここに的中レースが表示されます。</p>
       </div>
     )
   }
@@ -237,13 +237,13 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
   return (
     <>
       <Helmet>
-        <title>正解レース一覧 | BoatAI</title>
-        <meta name="description" content="BoatAIのAI予測が正解したレース一覧。今日・昨日・過去14日間の正解レースと会場別正解実績を公開。" />
+        <title>的中レース一覧 | BoatAI</title>
+        <meta name="description" content="BoatAIのAI予測が的中したレース一覧。今日・昨日・過去14日間の的中レースと会場別的中実績を公開。" />
         <link rel="canonical" href="https://www.boat-ai.jp/hit-races" />
       </Helmet>
       <div>
         <section className="venue-stats-section">
-          <h2>📊 ボートレース場別の正解実績</h2>
+          <h2>📊 ボートレース場別の的中実績</h2>
         <UpdateStatus
           lastUpdated={lastUpdated}
           dataType="予想データ"
@@ -268,13 +268,13 @@ function HitRaces({ allVenuesData, analyzeRace, fetchWithRetry, lastUpdated, onR
         <VenueStatsTable venueStats={venueStats} />
       </section>
 
-      {/* 正解レースセクション */}
+      {/* 的中レースセクション */}
       {currentHitRaces.length > 0 && (
         <section className={`hit-races-section ${selectedPeriod}`}>
           <h2>
-            📅 {selectedPeriod === 'today' ? `今日の正解レース ${formatDateShort(todayStr)}` :
-               selectedPeriod === 'yesterday' ? `昨日の正解レース ${formatDateShort(yesterdayStr)}` :
-               '過去14日間の正解レース'}
+            📅 {selectedPeriod === 'today' ? `今日の的中レース ${formatDateShort(todayStr)}` :
+               selectedPeriod === 'yesterday' ? `昨日の的中レース ${formatDateShort(yesterdayStr)}` :
+               '過去14日間の的中レース'}
             {` (${currentHitRaces.length}レース)`}
           </h2>
           <div className="race-cards-grid">
