@@ -1,6 +1,16 @@
 // Blog post metadata
 export const blogPosts = [
     {
+        id: 'picks-performance-report',
+        title: '「今日のおすすめ」が回収率104%を達成 - 2,577レースの実績データ',
+        description: 'BoatAIの「今日のおすすめ」機能が累計2,577レースで回収率104%を記録。25%の控除率を逆転してプラス収支を実現した仕組みと、正直な課題を公開。',
+        date: '2026-03-02',
+        category: '実績分析',
+        tags: ['今日のおすすめ', '回収率', 'データマイニング', '実績公開'],
+        readTime: '7分',
+        featured: true
+    },
+    {
         id: 'monthly-report-202602',
         title: '【2026年2月】BoatAI 月間実績レポート - 3モデル×4,165レースの全成績公開',
         description: '2026年2月のBoatAI実績を3モデル別に徹底分析。スタンダードモデル単勝的中率54.5%（過去最高）、本命狙い3連複回収率92.3%など全データを公開。',
