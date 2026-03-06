@@ -37,7 +37,8 @@
       "Bash(xargs:*)",
       "WebFetch(domain:www.boat-ai.jp)",
       "Bash(pkill:*)",
-      "WebFetch(domain:supabase.com)"
+      "WebFetch(domain:supabase.com)",
+      "Bash(npm install:*)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
