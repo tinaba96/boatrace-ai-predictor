@@ -11,7 +11,8 @@ import {
   ModelDescription,
   ModelSwitcher,
   RaceResult,
-  PlayerTable
+  PlayerTable,
+  FirstMarkAnimation
 } from '../components/race'
 import { dataService } from '../services/dataService'
 import { STADIUM_NAMES } from '../constants'
@@ -176,7 +177,8 @@ function RaceDetail() {
       reasoning: modelPrediction.reasoning || ['予想根拠データなし'],
       top3: modelPrediction.top3,
       result: racePrediction.result,
-      predictions: racePrediction.predictions || { standard: racePrediction.prediction }
+      predictions: racePrediction.predictions || { standard: racePrediction.prediction },
+      turnPrediction: racePrediction.turnPrediction || null,
     })
 
     setTimeout(() => {
@@ -409,6 +411,17 @@ function RaceDetail() {
                             <div className="bar-fill" style={{ width: `${prediction.confidence}%` }}></div>
                           </div>
                         </div>
+
+                        {prediction.turnPrediction && (
+                          <FirstMarkAnimation
+                            patterns={prediction.turnPrediction.patterns}
+                            technique={prediction.turnPrediction.technique}
+                            probability={prediction.turnPrediction.probability}
+                            winnerCourse={prediction.turnPrediction.winnerCourse}
+                            distribution={prediction.turnPrediction.distribution}
+                            players={prediction.allPlayers?.map(p => ({ number: p.number, name: p.name }))}
+                          />
+                        )}
 
                         <div className="top-pick">
                           <h3>🥇 AI推奨</h3>

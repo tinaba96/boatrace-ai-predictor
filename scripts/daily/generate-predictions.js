@@ -7,6 +7,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { supabase, isSupabaseEnabled, VENUE_CODES } from '../lib/supabaseClient.js';
 import { getTodayDateJST } from '../lib/dateUtils.js';
+import { predictFirstMark } from '../lib/turnPrediction.js';
+import { COURSE_DEFAULT_DISTRIBUTION, COURSE_DEFAULT_DEFENSE } from '../lib/winningTechniques.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -163,7 +165,7 @@ function calculateStandardScore(racer, index) {
 // - 級別の影響: 5倍差（重要）
 // - モーター性能: 5.2%差（限定的）
 // - 当地成績: 3.7%差（限定的）
-function calculateStandardScoreV2(racer, index) {
+function calculateStandardScoreV2(racer, index, turnResult, exEntry, avgExTime) {
     let score = 0;
 
     // 全国勝率（最重要: 10倍の差がある）
@@ -193,11 +195,17 @@ function calculateStandardScoreV2(racer, index) {
     const localAdvantage = racer.localWinRate - racer.globalWinRate;
     score += localAdvantage * 10;
 
+    // 展開予測ボーナス
+    score += calculateTurnBonus(turnResult, racer.lane, 'standard');
+
+    // 展示データボーナス
+    score += calculateExhibitionBonus(exEntry, avgExTime, 'standard');
+
     return Math.floor(score);
 }
 
 // 本命狙い版スコア（堅実型）
-function calculateSafeBetScore(racer, index) {
+function calculateSafeBetScore(racer, index, turnResult, exEntry, avgExTime) {
     let score = 0;
 
     // 1号艇に大きなボーナス
@@ -219,11 +227,17 @@ function calculateSafeBetScore(racer, index) {
     // レーン位置ペナルティ（強め）
     score -= index * 15;
 
+    // 展開予測ボーナス
+    score += calculateTurnBonus(turnResult, racer.lane, 'safeBet');
+
+    // 展示データボーナス
+    score += calculateExhibitionBonus(exEntry, avgExTime, 'safeBet');
+
     return Math.floor(score);
 }
 
 // 穴狙い版スコア（高配当型）
-function calculateUpsetFocusScore(racer, index) {
+function calculateUpsetFocusScore(racer, index, turnResult, exEntry, avgExTime) {
     let score = 0;
 
     // 外枠の逆転要素を重視
@@ -245,36 +259,56 @@ function calculateUpsetFocusScore(racer, index) {
     // 1号艇へのペナルティ（逆張り）
     if (index === 0) score -= 100;
 
+    // 展開予測ボーナス
+    score += calculateTurnBonus(turnResult, racer.lane, 'upsetFocus');
+
+    // 展示データボーナス
+    score += calculateExhibitionBonus(exEntry, avgExTime, 'upsetFocus');
+
     return Math.floor(score);
 }
 
 // 選手データを処理（特定のスコア計算関数を使用）
-function processRacersWithScoreFn(racers, scoreFn) {
+function processRacersWithScoreFn(racers, scoreFn, turnResult, exhibitionData) {
     if (!racers || racers.length === 0) {
         console.warn('⚠️  選手データが空です');
         return [];
     }
 
-    const players = racers.map((racer, idx) => ({
-        number: racer.lane,
-        racerId: racer.racerId || null,
-        name: racer.name,
-        grade: racer.grade,
-        age: racer.age,
-        winRate: racer.globalWinRate.toFixed(3),
-        localWinRate: racer.localWinRate.toFixed(3),
-        global2Rate: racer.global2Rate?.toFixed(1) || null,
-        local2Rate: racer.local2Rate?.toFixed(1) || null,
-        global3Rate: racer.global3Rate?.toFixed(1) || null,
-        local3Rate: racer.local3Rate?.toFixed(1) || null,
-        motorNumber: racer.motorNumber,
-        motor2Rate: racer.motor2Rate.toFixed(1),
-        motor3Rate: racer.motor3Rate?.toFixed(1) || null,
-        boatNumber: racer.boatNumber,
-        boat2Rate: racer.boat2Rate.toFixed(1),
-        boat3Rate: racer.boat3Rate?.toFixed(1) || null,
-        aiScore: scoreFn(racer, idx),
-    }));
+    // 展示タイム平均を計算
+    let avgExTime = null;
+    if (exhibitionData && exhibitionData.length > 0) {
+        const exTimes = exhibitionData
+            .filter(e => e.exhibitionTime != null)
+            .map(e => e.exhibitionTime);
+        if (exTimes.length > 0) {
+            avgExTime = exTimes.reduce((s, v) => s + v, 0) / exTimes.length;
+        }
+    }
+
+    const players = racers.map((racer, idx) => {
+        const exEntry = exhibitionData?.find(e => e.boatNumber === racer.lane) || null;
+        return {
+            number: racer.lane,
+            racerId: racer.racerId || null,
+            name: racer.name,
+            grade: racer.grade,
+            age: racer.age,
+            winRate: racer.globalWinRate.toFixed(3),
+            localWinRate: racer.localWinRate.toFixed(3),
+            global2Rate: racer.global2Rate?.toFixed(1) || null,
+            local2Rate: racer.local2Rate?.toFixed(1) || null,
+            global3Rate: racer.global3Rate?.toFixed(1) || null,
+            local3Rate: racer.local3Rate?.toFixed(1) || null,
+            motorNumber: racer.motorNumber,
+            motor2Rate: racer.motor2Rate.toFixed(1),
+            motor3Rate: racer.motor3Rate?.toFixed(1) || null,
+            boatNumber: racer.boatNumber,
+            boat2Rate: racer.boat2Rate.toFixed(1),
+            boat3Rate: racer.boat3Rate?.toFixed(1) || null,
+            aiScore: scoreFn(racer, idx, turnResult, exEntry, avgExTime),
+        };
+    });
 
     // AIスコア順にソート
     return players.sort((a, b) => b.aiScore - a.aiScore);
@@ -406,8 +440,73 @@ function calculateConfidence(players) {
     return confidence;
 }
 
+// racer_aggregated_stats から選手統計を一括取得
+async function fetchRacerStats(racerIds) {
+    if (!isSupabaseEnabled() || racerIds.length === 0) return new Map();
+
+    const map = new Map();
+    const CHUNK_SIZE = 900; // Supabase .in() の1000件制限内
+
+    for (let i = 0; i < racerIds.length; i += CHUNK_SIZE) {
+        const chunk = racerIds.slice(i, i + CHUNK_SIZE);
+        const { data, error } = await supabase
+            .from('racer_aggregated_stats')
+            .select('racer_id, avg_st, st_stddev, attack_distribution, defense_distribution, course_race_counts')
+            .in('racer_id', chunk)
+            .eq('venue_code', 0);
+
+        if (error) {
+            console.error('racer_aggregated_stats取得エラー:', error.message);
+            continue;
+        }
+        data?.forEach(r => map.set(r.racer_id, r));
+    }
+
+    return map;
+}
+
+// 展開予測ボーナスを計算
+function calculateTurnBonus(turnResult, boatLane, modelType) {
+    if (!turnResult?.patterns) return 0;
+    let bonus = 0;
+    for (const pattern of turnResult.patterns) {
+        if (pattern.winnerCourse !== boatLane) continue;
+        const prob = pattern.probability;
+        switch (modelType) {
+            case 'standard':  bonus += prob * 300; break;
+            case 'safeBet':
+                bonus += prob * (pattern.technique === 'nige' ? 500 : 150); break;
+            case 'upsetFocus':
+                bonus += prob * (pattern.technique === 'nige' ? 100 : 400); break;
+        }
+    }
+    return Math.round(bonus);
+}
+
+// 展示データボーナスを計算
+function calculateExhibitionBonus(exhibitionEntry, avgExTime, modelType) {
+    if (!exhibitionEntry) return 0;
+    let bonus = 0;
+
+    // 展示タイム（速い = 良いモーター/セッティング）
+    if (exhibitionEntry.exhibitionTime && avgExTime) {
+        const diff = avgExTime - exhibitionEntry.exhibitionTime;
+        const weight = { standard: 50, safeBet: 30, upsetFocus: 80 }[modelType];
+        bonus += diff * weight;
+    }
+
+    // 展示ST（速い = スタート力）
+    if (exhibitionEntry.startTiming != null) {
+        const stBonus = Math.max(0, (0.18 - exhibitionEntry.startTiming)) * 100;
+        const weight = { standard: 40, safeBet: 25, upsetFocus: 60 }[modelType];
+        bonus += stBonus * weight;
+    }
+
+    return Math.round(bonus);
+}
+
 // 1レース分の予想を生成（3モデル対応）
-function generateRacePrediction(race, date) {
+function generateRacePrediction(race, date, racerStatsMap) {
     if (!race.racers || race.racers.length === 0) {
         console.warn(`⚠️  レース ${race.placeCd}-${race.raceNo} の選手データが不足しています`);
         return null;
@@ -418,10 +517,10 @@ function generateRacePrediction(race, date) {
     const volatilityLevel = getVolatilityLevel(volatilityData.score);
     const recommendedModel = getRecommendedModel(volatilityData.score);
 
-    // 3つのモデルで予想を生成
-    const standardPlayers = processRacersWithScoreFn(race.racers, calculateStandardScoreV2);
-    const safeBetPlayers = processRacersWithScoreFn(race.racers, calculateSafeBetScore);
-    const upsetFocusPlayers = processRacersWithScoreFn(race.racers, calculateUpsetFocusScore);
+    // 3つのモデルで予想を生成（展開予測・展示データを反映）
+    const standardPlayers = processRacersWithScoreFn(race.racers, calculateStandardScoreV2, turnPrediction, race.exhibitionData);
+    const safeBetPlayers = processRacersWithScoreFn(race.racers, calculateSafeBetScore, turnPrediction, race.exhibitionData);
+    const upsetFocusPlayers = processRacersWithScoreFn(race.racers, calculateUpsetFocusScore, turnPrediction, race.exhibitionData);
 
     if (standardPlayers.length === 0) {
         console.warn(`⚠️  レース ${race.placeCd}-${race.raceNo} の選手データが不足しています`);
@@ -442,6 +541,25 @@ function generateRacePrediction(race, date) {
     const upsetFocusTop3 = upsetFocusPlayers.slice(0, 3).map(p => p.number);
     const upsetFocusConfidence = calculateConfidence(upsetFocusPlayers);
     const upsetFocusReasoning = generateTopPickReasoning(upsetFocusPlayers[0], upsetFocusPlayers, 'upset-focus');
+
+    // 1マーク展開予測を算出（racer_aggregated_stats のデータを使用）
+    const turnPredictionPlayers = race.racers.map((racer) => {
+        const exhibitionEntry = race.exhibitionData?.find(e => e.boatNumber === racer.lane);
+        const stats = racerStatsMap?.get(racer.racerId) || null;
+        return {
+            boatNumber: racer.lane,
+            course: racer.lane, // 枠番=進入コース（デフォルト）
+            exhibitionST: exhibitionEntry?.startTiming ?? null,
+            avgST: stats?.avg_st ?? null,
+            stStddev: stats?.st_stddev ?? null,
+            attackDistribution: stats?.attack_distribution || null,
+            defenseDistribution: stats?.defense_distribution || null,
+            courseRaceCounts: stats?.course_race_counts || null,
+            exhibitionTime: exhibitionEntry?.exhibitionTime ?? null,
+            motor2Rate: racer.motor2Rate || null,
+        };
+    });
+    const turnPrediction = predictFirstMark(turnPredictionPlayers);
 
     return {
         raceId: generateRaceId(date, race.placeCd, race.raceNo),
@@ -495,6 +613,15 @@ function generateRacePrediction(race, date) {
             },
         },
 
+        // 1マーク展開予測
+        turnPrediction: {
+            technique: turnPrediction.technique,
+            probability: turnPrediction.probability,
+            winnerCourse: turnPrediction.winnerCourse,
+            distribution: turnPrediction.distribution,
+            patterns: turnPrediction.patterns || null,
+        },
+
         // 後方互換性のため（既存のpredictionフィールドを維持）
         prediction: {
             topPick: standardPlayers[0].number,
@@ -503,6 +630,9 @@ function generateRacePrediction(race, date) {
             players: standardPlayers,
             reasoning: standardReasoning,
         },
+
+        // 展示データ（exhibition_data upsert用）
+        exhibitionData: race.exhibitionData || null,
 
         result: {
             finished: false,
@@ -617,10 +747,45 @@ async function writeToSupabase(allPredictions, date) {
         }
         console.log(`  ✅ race_entries: ${entriesData.length}件`);
 
+        // 2.5. exhibition_dataテーブルにupsert
+        const exhibitionRows = [];
+        for (const race of allPredictions) {
+            const raceId = race.raceId;
+            // races.jsonのexhibitionDataは各ボートの展示データ
+            // raceIdに対応するrace objectを探す
+            // allPredictionsの元データから展示データを取得
+            if (race.exhibitionData) {
+                for (const ex of race.exhibitionData) {
+                    if (ex.exhibitionTime != null || ex.startTiming != null) {
+                        exhibitionRows.push({
+                            race_id: raceId,
+                            boat_number: ex.boatNumber,
+                            exhibition_time: ex.exhibitionTime,
+                            start_timing: ex.startTiming,
+                        });
+                    }
+                }
+            }
+        }
+
+        if (exhibitionRows.length > 0) {
+            for (let i = 0; i < exhibitionRows.length; i += 1000) {
+                const batch = exhibitionRows.slice(i, i + 1000);
+                const { error: exError } = await supabase
+                    .from('exhibition_data')
+                    .upsert(batch, { onConflict: 'race_id,boat_number' });
+
+                if (exError) {
+                    console.error('❌ exhibition_data書き込みエラー:', exError.message);
+                }
+            }
+            console.log(`  ✅ exhibition_data: ${exhibitionRows.length}件`);
+        }
+
         // 3. predictionsテーブルにupsert
         const predictionsData = [];
         for (const race of allPredictions) {
-            // Standard model
+            // Standard model (turnPredictionはstandard行に格納)
             const std = race.predictions.standard;
             predictionsData.push({
                 race_id: race.raceId,
@@ -629,7 +794,10 @@ async function writeToSupabase(allPredictions, date) {
                 top_2nd: std.top3[1] || null,
                 top_3rd: std.top3[2] || null,
                 confidence: std.confidence,
-                is_shadow: false
+                is_shadow: false,
+                feature_contributions: race.turnPrediction ? {
+                    turnPrediction: race.turnPrediction
+                } : null
             });
 
             // SafeBet model
@@ -738,6 +906,22 @@ async function main() {
         const allPredictions = [];
         let totalRaces = 0;
 
+        // 全選手IDを収集して racer_aggregated_stats を一括取得
+        const allRacerIds = new Set();
+        for (const venue of racesData.data) {
+            if (!venue.races) continue;
+            for (const race of venue.races) {
+                if (!race.racers) continue;
+                for (const racer of race.racers) {
+                    if (racer.racerId) allRacerIds.add(racer.racerId);
+                }
+            }
+        }
+        const racerStatsMap = await fetchRacerStats([...allRacerIds]);
+        if (racerStatsMap.size > 0) {
+            console.log(`📊 ${racerStatsMap.size}人の選手統計を取得しました`);
+        }
+
         for (const venue of racesData.data) {
             console.log(`\n📍 ${venue.placeName} (${venue.placeCd})`);
 
@@ -751,7 +935,7 @@ async function main() {
                 race.placeName = venue.placeName;
                 race.placeCd = venue.placeCd;
 
-                const prediction = generateRacePrediction(race, today);
+                const prediction = generateRacePrediction(race, today, racerStatsMap);
 
                 if (prediction) {
                     allPredictions.push(prediction);

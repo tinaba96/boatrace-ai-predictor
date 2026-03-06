@@ -499,7 +499,8 @@ export const supabaseDataService = {
           top_3rd,
           confidence,
           is_hit_win,
-          is_hit_place
+          is_hit_place,
+          feature_contributions
         ),
         race_results (
           rank1,
@@ -532,6 +533,15 @@ export const supabaseDataService = {
       const safeBetPred = predictions.find(p => p.model_id === 'safeBet');
       const upsetPred = predictions.find(p => p.model_id === 'upsetFocus');
 
+      // turnPredictionを取得（standardのfeature_contributionsに格納）
+      const rawTurn = standardPred?.feature_contributions?.turnPrediction || null;
+      const turnPrediction = rawTurn ? {
+        ...rawTurn,
+        patterns: rawTurn.patterns || [
+          { technique: rawTurn.technique, winnerCourse: rawTurn.winnerCourse, probability: rawTurn.probability }
+        ],
+      } : null;
+
       // players配列を作成（aiScoreで降順ソート）
       const createPlayers = (pred, scoreField) => entries.map(e => ({
         number: e.boat_number,
@@ -558,7 +568,8 @@ export const supabaseDataService = {
           level: race.volatility_level,
           recommendedModel: race.recommended_model,
           reasons: race.volatility_reasons || []
-        } : null
+        } : null,
+        turnPrediction: turnPrediction,
       };
 
       // 予測データ（新形式: predictions）
