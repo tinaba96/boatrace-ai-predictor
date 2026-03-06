@@ -14,6 +14,18 @@ import {
 
 const DEFAULT_ST = 0.15;
 
+// コース別の基本勝率（全国平均）
+// attackDistribution は「勝った時の決まり手比率」（条件付き確率）なので、
+// コース自体の勝率を乗じて絶対確率にスケールする必要がある
+const COURSE_BASE_WIN_RATE = {
+  1: 0.55,
+  2: 0.15,
+  3: 0.12,
+  4: 0.1,
+  5: 0.06,
+  6: 0.04,
+};
+
 /**
  * シグモイド関数（ST差を0-1の優位性に変換）
  * 0.5 = 互角、0.7 = 大きな優位
@@ -133,24 +145,41 @@ export function predictFirstMarkV2(players) {
   for (let cIdx = 1; cIdx < 6; cIdx++) {
     const player = sorted[cIdx];
     const courseNum = String(player.course);
+    const courseInt = player.course;
     const playerAttackDist = player.attackDistribution || {};
     const playerCourseDist =
       playerAttackDist[courseNum] ||
-      COURSE_DEFAULT_DISTRIBUTION[player.course] ||
+      COURSE_DEFAULT_DISTRIBUTION[courseInt] ||
       {};
 
+    // コース別基本勝率（絶対確率へのスケーリング用）
+    const courseWinRate = COURSE_BASE_WIN_RATE[courseInt] || 0.05;
+
+    // ベイズ縮小用: このコースの出走数
+    const playerCourseRaces = player.courseRaceCounts?.[courseNum]?.total || 0;
+    const playerBlend = Math.min(1, playerCourseRaces / 50);
+
     for (const t of techniques) {
-      const attackRate = playerCourseDist[t] || 0;
+      // 攻撃率・被攻撃率をベイズ縮小で算出（ST/モーター補正の前に）
+      const personalAttackRate = playerCourseDist[t] || 0;
+      const defaultAttackRate =
+        (COURSE_DEFAULT_DISTRIBUTION[courseInt] || {})[t] || 0;
+      const attackRate =
+        personalAttackRate * playerBlend +
+        defaultAttackRate * (1 - playerBlend);
+
       const defenseRate = c1DefenseForCourse[t] || 0;
 
       if (attackRate <= 0 && defenseRate <= 0) continue;
 
-      // 攻守の幾何平均
-      let rawProb = Math.sqrt(
-        Math.max(attackRate, 0.001) * Math.max(defenseRate, 0.001),
-      );
+      // 攻守の幾何平均 x コース勝率で絶対確率にスケーリング
+      // attackRate は「このコースで勝った時の決まり手比率」（条件付き確率）
+      // courseWinRate を乗じて「このコースがこの決まり手で勝つ絶対確率」にする
+      let rawProb =
+        Math.sqrt(Math.max(attackRate, 0.001) * Math.max(defenseRate, 0.001)) *
+        courseWinRate;
 
-      // ST補正
+      // ST補正（まくり系はST優位が必要、差しは控えめ）
       if (t === "makuri" || t === "makurizashi") {
         rawProb *= stAdvantage[cIdx][0];
       } else if (t === "sashi") {
@@ -160,22 +189,15 @@ export function predictFirstMarkV2(players) {
       // モーター補正
       rawProb *= 1 + motorZ[cIdx] * 0.03;
 
-      // コース出走数でのベイズ縮小
-      const playerCourseRaces =
-        player.courseRaceCounts?.[courseNum]?.total || 0;
-      const playerBlend = Math.min(1, playerCourseRaces / 50);
-      const defaultRate =
-        (COURSE_DEFAULT_DISTRIBUTION[player.course] || {})[t] || 0;
-      const defaultDefRate = (COURSE_DEFAULT_DEFENSE[1] || {})[t] || 0;
-      const defaultProb = Math.sqrt(
-        Math.max(defaultRate, 0.001) * Math.max(defaultDefRate, 0.001),
-      );
-      rawProb = rawProb * playerBlend + defaultProb * (1 - playerBlend);
+      // megumare のフロア値（実際は1-2%程度存在する）
+      if (t === "megumare") {
+        rawProb = Math.max(rawProb, 0.005);
+      }
 
       if (rawProb > 0.001) {
         patterns.push({
           technique: t,
-          winnerCourse: player.course,
+          winnerCourse: courseInt,
           rawProb,
         });
       }

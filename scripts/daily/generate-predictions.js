@@ -517,6 +517,26 @@ function generateRacePrediction(race, date, racerStatsMap) {
     const volatilityLevel = getVolatilityLevel(volatilityData.score);
     const recommendedModel = getRecommendedModel(volatilityData.score);
 
+    // 1マーク展開予測を算出（racer_aggregated_stats のデータを使用）
+    // ※ 展開予測ボーナスをスコア計算に反映するため、モデル処理の前に実行する
+    const turnPredictionPlayers = race.racers.map((racer) => {
+        const exhibitionEntry = race.exhibitionData?.find(e => e.boatNumber === racer.lane);
+        const stats = racerStatsMap?.get(racer.racerId) || null;
+        return {
+            boatNumber: racer.lane,
+            course: racer.lane, // 枠番=進入コース（デフォルト）
+            exhibitionST: exhibitionEntry?.startTiming ?? null,
+            avgST: stats?.avg_st ?? null,
+            stStddev: stats?.st_stddev ?? null,
+            attackDistribution: stats?.attack_distribution || null,
+            defenseDistribution: stats?.defense_distribution || null,
+            courseRaceCounts: stats?.course_race_counts || null,
+            exhibitionTime: exhibitionEntry?.exhibitionTime ?? null,
+            motor2Rate: racer.motor2Rate || null,
+        };
+    });
+    const turnPrediction = predictFirstMark(turnPredictionPlayers);
+
     // 3つのモデルで予想を生成（展開予測・展示データを反映）
     const standardPlayers = processRacersWithScoreFn(race.racers, calculateStandardScoreV2, turnPrediction, race.exhibitionData);
     const safeBetPlayers = processRacersWithScoreFn(race.racers, calculateSafeBetScore, turnPrediction, race.exhibitionData);
@@ -541,25 +561,6 @@ function generateRacePrediction(race, date, racerStatsMap) {
     const upsetFocusTop3 = upsetFocusPlayers.slice(0, 3).map(p => p.number);
     const upsetFocusConfidence = calculateConfidence(upsetFocusPlayers);
     const upsetFocusReasoning = generateTopPickReasoning(upsetFocusPlayers[0], upsetFocusPlayers, 'upset-focus');
-
-    // 1マーク展開予測を算出（racer_aggregated_stats のデータを使用）
-    const turnPredictionPlayers = race.racers.map((racer) => {
-        const exhibitionEntry = race.exhibitionData?.find(e => e.boatNumber === racer.lane);
-        const stats = racerStatsMap?.get(racer.racerId) || null;
-        return {
-            boatNumber: racer.lane,
-            course: racer.lane, // 枠番=進入コース（デフォルト）
-            exhibitionST: exhibitionEntry?.startTiming ?? null,
-            avgST: stats?.avg_st ?? null,
-            stStddev: stats?.st_stddev ?? null,
-            attackDistribution: stats?.attack_distribution || null,
-            defenseDistribution: stats?.defense_distribution || null,
-            courseRaceCounts: stats?.course_race_counts || null,
-            exhibitionTime: exhibitionEntry?.exhibitionTime ?? null,
-            motor2Rate: racer.motor2Rate || null,
-        };
-    });
-    const turnPrediction = predictFirstMark(turnPredictionPlayers);
 
     return {
         raceId: generateRaceId(date, race.placeCd, race.raceNo),
