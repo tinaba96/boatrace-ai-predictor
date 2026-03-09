@@ -15,6 +15,7 @@ import { shareRacePredictionToX, generatePredictionShareText } from './utils/sha
 import { getVenueGuidePath } from './utils/venueUtils'
 import { getFeaturedPosts, getLatestPosts } from './data/blogPosts'
 import { dataService } from './services/dataService'
+import { FirstMarkAnimation, AttackDefenseTable } from './components/race'
 import { STADIUM_NAMES, WEEKDAYS } from './constants'
 import { getTodayJST, formatDateJP } from './utils/dateUtils'
 
@@ -420,7 +421,9 @@ function App({ tab = 'races' }) {
                     reasoning: modelPrediction.reasoning || [], // 未設定の場合は空配列
                     top3: modelPrediction.top3 || [], // トップ3の艇番（number配列）
                     result: racePrediction.result, // レース結果
-                    predictions: racePrediction.predictions // 全モデルの予想データ
+                    predictions: racePrediction.predictions, // 全モデルの予想データ
+                    turnPrediction: racePrediction.turnPrediction || null,
+                    racerStats: racePrediction.racerStats || null,
                 }
                 setPrediction(aiPrediction)
                 setIsAnalyzing(false)
@@ -1066,6 +1069,27 @@ function App({ tab = 'races' }) {
                                                     ))}
                                                 </ul>
                                             </div>
+
+                                            {/* 1マーク展開予測 */}
+                                            {prediction.turnPrediction && (
+                                                <FirstMarkAnimation
+                                                    patterns={prediction.turnPrediction.patterns}
+                                                    technique={prediction.turnPrediction.technique}
+                                                    probability={prediction.turnPrediction.probability}
+                                                    winnerCourse={prediction.turnPrediction.winnerCourse}
+                                                    distribution={prediction.turnPrediction.distribution}
+                                                    boatStrengths={prediction.turnPrediction.boatStrengths}
+                                                    players={prediction.allPlayers?.map(p => ({ number: p.number, name: p.name }))}
+                                                />
+                                            )}
+
+                                            {/* 超展開データ */}
+                                            {prediction.racerStats && (
+                                                <AttackDefenseTable
+                                                    racerStats={prediction.racerStats}
+                                                    players={prediction.allPlayers}
+                                                />
+                                            )}
 
                                             {/* SNSシェアボタン */}
                                             <div className="social-share-wrapper">

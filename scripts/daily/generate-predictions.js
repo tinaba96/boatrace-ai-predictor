@@ -470,14 +470,31 @@ function calculateTurnBonus(turnResult, boatLane, modelType) {
     if (!turnResult?.patterns) return 0;
     let bonus = 0;
     for (const pattern of turnResult.patterns) {
-        if (pattern.winnerCourse !== boatLane) continue;
         const prob = pattern.probability;
-        switch (modelType) {
-            case 'standard':  bonus += prob * 300; break;
-            case 'safeBet':
-                bonus += prob * (pattern.technique === 'nige' ? 500 : 150); break;
-            case 'upsetFocus':
-                bonus += prob * (pattern.technique === 'nige' ? 100 : 400); break;
+
+        // 1着ボーナス
+        if (pattern.winnerCourse === boatLane) {
+            switch (modelType) {
+                case 'standard':  bonus += prob * 300; break;
+                case 'safeBet':
+                    bonus += prob * (pattern.technique === 'nige' ? 500 : 150); break;
+                case 'upsetFocus':
+                    bonus += prob * (pattern.technique === 'nige' ? 100 : 400); break;
+            }
+        }
+
+        // 2着ボーナス
+        const secondProb = pattern.secondPlace?.[boatLane] || 0;
+        if (secondProb > 0) {
+            const w = { standard: 150, safeBet: 200, upsetFocus: 100 }[modelType];
+            bonus += prob * secondProb * w;
+        }
+
+        // 3着ボーナス
+        const thirdProb = pattern.thirdPlace?.[boatLane] || 0;
+        if (thirdProb > 0) {
+            const w = { standard: 80, safeBet: 100, upsetFocus: 60 }[modelType];
+            bonus += prob * thirdProb * w;
         }
     }
     return Math.round(bonus);
@@ -621,7 +638,17 @@ function generateRacePrediction(race, date, racerStatsMap) {
             winnerCourse: turnPrediction.winnerCourse,
             distribution: turnPrediction.distribution,
             patterns: turnPrediction.patterns || null,
+            boatStrengths: turnPrediction.boatStrengths || null,
         },
+
+        // 超展開データ（攻守の実績データ）
+        racerStats: turnPredictionPlayers.map(p => ({
+            boatNumber: p.boatNumber,
+            course: p.course,
+            attackDistribution: p.attackDistribution,
+            defenseDistribution: p.defenseDistribution,
+            courseRaceCounts: p.courseRaceCounts,
+        })),
 
         // 後方互換性のため（既存のpredictionフィールドを維持）
         prediction: {
@@ -796,8 +823,9 @@ async function writeToSupabase(allPredictions, date) {
                 top_3rd: std.top3[2] || null,
                 confidence: std.confidence,
                 is_shadow: false,
-                feature_contributions: race.turnPrediction ? {
-                    turnPrediction: race.turnPrediction
+                feature_contributions: (race.turnPrediction || race.racerStats) ? {
+                    turnPrediction: race.turnPrediction || null,
+                    racerStats: race.racerStats || null,
                 } : null
             });
 
@@ -810,7 +838,11 @@ async function writeToSupabase(allPredictions, date) {
                 top_2nd: safe.top3[1] || null,
                 top_3rd: safe.top3[2] || null,
                 confidence: safe.confidence,
-                is_shadow: false
+                is_shadow: false,
+                feature_contributions: (race.turnPrediction || race.racerStats) ? {
+                    turnPrediction: race.turnPrediction || null,
+                    racerStats: race.racerStats || null,
+                } : null
             });
 
             // UpsetFocus model
@@ -822,7 +854,11 @@ async function writeToSupabase(allPredictions, date) {
                 top_2nd: upset.top3[1] || null,
                 top_3rd: upset.top3[2] || null,
                 confidence: upset.confidence,
-                is_shadow: false
+                is_shadow: false,
+                feature_contributions: (race.turnPrediction || race.racerStats) ? {
+                    turnPrediction: race.turnPrediction || null,
+                    racerStats: race.racerStats || null,
+                } : null
             });
         }
 

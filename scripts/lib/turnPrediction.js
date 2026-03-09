@@ -11,6 +11,7 @@ import {
   COURSE_DEFAULT_DISTRIBUTION,
   COURSE_DEFAULT_DEFENSE,
 } from "./winningTechniques.js";
+import { getPlacementBaseline } from "./placementDistribution.js";
 
 const DEFAULT_ST = 0.15;
 
@@ -222,6 +223,82 @@ export function predictFirstMarkV2(players) {
       probability,
     }));
 
+  // Step 6: 各パターンの2着・3着確率分布
+  // skillZ: motor2Rate を選手＋機材の総合力の代理変数として使用
+  const skillRates = sorted.map((p) => p.motor2Rate || 30);
+  const skillAvg = skillRates.reduce((s, v) => s + v, 0) / skillRates.length;
+  const skillStdDev = Math.max(
+    1,
+    Math.sqrt(
+      skillRates.reduce((s, v) => s + Math.pow(v - skillAvg, 2), 0) /
+        skillRates.length,
+    ),
+  );
+  const skillZ = skillRates.map((v) => (v - skillAvg) / skillStdDev);
+
+  for (const pattern of top3) {
+    const baseline = getPlacementBaseline(
+      pattern.technique,
+      pattern.winnerCourse,
+    );
+
+    const secondPlace = {};
+    const thirdPlace = {};
+
+    for (let c = 1; c <= 6; c++) {
+      if (c === pattern.winnerCourse) continue;
+
+      const cIdx = sorted.findIndex((p) => p.course === c);
+      if (cIdx < 0) continue;
+
+      // 他コース（勝者・自分除く）との平均ST優位性
+      const otherIndices = [];
+      for (let j = 0; j < 6; j++) {
+        if (j !== cIdx && sorted[j].course !== pattern.winnerCourse) {
+          otherIndices.push(j);
+        }
+      }
+      const avgStAdv =
+        otherIndices.length > 0
+          ? otherIndices.reduce((s, j) => s + stAdvantage[cIdx][j], 0) /
+            otherIndices.length
+          : 0.5;
+
+      // 補正係数（上限2.0倍）
+      const multiplier = Math.min(
+        2.0,
+        (1 + 0.15 * (avgStAdv - 0.5) * 2) *
+          (1 + 0.1 * motorZ[cIdx]) *
+          (1 + 0.05 * skillZ[cIdx]),
+      );
+
+      secondPlace[c] =
+        (baseline.second[c] || 0) * Math.max(0.1, multiplier);
+      thirdPlace[c] =
+        (baseline.third[c] || 0) * Math.max(0.1, multiplier);
+    }
+
+    // 正規化（勝者コース除外、残り5コースで合計1.0）
+    const sumS = Object.values(secondPlace).reduce((a, b) => a + b, 0);
+    const sumT = Object.values(thirdPlace).reduce((a, b) => a + b, 0);
+
+    for (const c of Object.keys(secondPlace)) {
+      secondPlace[c] =
+        sumS > 0
+          ? Math.round((secondPlace[c] / sumS) * 100) / 100
+          : 0;
+    }
+    for (const c of Object.keys(thirdPlace)) {
+      thirdPlace[c] =
+        sumT > 0
+          ? Math.round((thirdPlace[c] / sumT) * 100) / 100
+          : 0;
+    }
+
+    pattern.secondPlace = secondPlace;
+    pattern.thirdPlace = thirdPlace;
+  }
+
   // 全体の分布（決まり手ごとに合算）
   const distribution = {};
   for (const p of patterns) {
@@ -233,12 +310,25 @@ export function predictFirstMarkV2(players) {
     distribution[key] = Math.round(distribution[key] * 100) / 100;
   }
 
+  // 各コースの総合強さスコア（0-1、高いほど強い）
+  const boatStrengths = sorted.map((_, i) => {
+    // 他の5艇に対する平均ST優位性（sigmoid正規化済み、0.5=互角）
+    const avgStAdv =
+      [0, 1, 2, 3, 4, 5]
+        .filter((j) => j !== i)
+        .reduce((s, j) => s + stAdvantage[i][j], 0) / 5;
+    // モーターZ-score を 0-1 にスケーリング（clamp付き）
+    const motorScore = Math.max(0, Math.min(1, motorZ[i] * 0.1 + 0.5));
+    return avgStAdv * 0.6 + motorScore * 0.4;
+  });
+
   return {
     patterns: top3,
     technique: top3[0].technique,
     probability: top3[0].probability,
     winnerCourse: top3[0].winnerCourse,
     distribution,
+    boatStrengths,
   };
 }
 
@@ -253,9 +343,27 @@ export function predictFirstMark(players) {
 function getDefaultPrediction() {
   return {
     patterns: [
-      { technique: "nige", winnerCourse: 1, probability: 0.55 },
-      { technique: "sashi", winnerCourse: 2, probability: 0.15 },
-      { technique: "makuri", winnerCourse: 3, probability: 0.13 },
+      {
+        technique: "nige",
+        winnerCourse: 1,
+        probability: 0.55,
+        secondPlace: { 2: 0.33, 3: 0.29, 4: 0.19, 5: 0.12, 6: 0.07 },
+        thirdPlace: { 2: 0.22, 3: 0.24, 4: 0.22, 5: 0.17, 6: 0.15 },
+      },
+      {
+        technique: "sashi",
+        winnerCourse: 2,
+        probability: 0.15,
+        secondPlace: { 1: 0.62, 3: 0.17, 4: 0.1, 5: 0.06, 6: 0.05 },
+        thirdPlace: { 1: 0.19, 3: 0.26, 4: 0.23, 5: 0.17, 6: 0.15 },
+      },
+      {
+        technique: "makuri",
+        winnerCourse: 3,
+        probability: 0.13,
+        secondPlace: { 1: 0.19, 2: 0.24, 4: 0.26, 5: 0.21, 6: 0.1 },
+        thirdPlace: { 1: 0.17, 2: 0.22, 4: 0.21, 5: 0.21, 6: 0.19 },
+      },
     ],
     technique: "nige",
     probability: 0.55,
@@ -268,5 +376,6 @@ function getDefaultPrediction() {
       nuki: 0.05,
       megumare: 0.02,
     },
+    boatStrengths: [0.55, 0.52, 0.50, 0.48, 0.46, 0.44],
   };
 }

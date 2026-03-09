@@ -12,7 +12,8 @@ import {
   ModelSwitcher,
   RaceResult,
   PlayerTable,
-  FirstMarkAnimation
+  FirstMarkAnimation,
+  AttackDefenseTable
 } from '../components/race'
 import { dataService } from '../services/dataService'
 import { STADIUM_NAMES } from '../constants'
@@ -179,6 +180,7 @@ function RaceDetail() {
       result: racePrediction.result,
       predictions: racePrediction.predictions || { standard: racePrediction.prediction },
       turnPrediction: racePrediction.turnPrediction || null,
+      racerStats: racePrediction.racerStats || null,
     })
 
     setTimeout(() => {
@@ -419,7 +421,15 @@ function RaceDetail() {
                             probability={prediction.turnPrediction.probability}
                             winnerCourse={prediction.turnPrediction.winnerCourse}
                             distribution={prediction.turnPrediction.distribution}
+                            boatStrengths={prediction.turnPrediction.boatStrengths}
                             players={prediction.allPlayers?.map(p => ({ number: p.number, name: p.name }))}
+                          />
+                        )}
+
+                        {prediction.racerStats && (
+                          <AttackDefenseTable
+                            racerStats={prediction.racerStats}
+                            players={prediction.allPlayers}
                           />
                         )}
 
