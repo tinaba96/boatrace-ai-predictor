@@ -11,7 +11,6 @@ import {
   ModelDescription,
   ModelSwitcher,
   RaceResult,
-  PlayerTable,
   FirstMarkAnimation,
   AttackDefenseTable
 } from '../components/race'
@@ -418,54 +417,15 @@ function RaceDetail() {
                           />
                         )}
 
-                        <div className="confidence-bar">
-                          <div className="confidence-label">
-                            AI信頼度: <strong>{prediction.confidence}%</strong>
-                          </div>
-                          <div className="bar">
-                            <div className="bar-fill" style={{ width: `${prediction.confidence}%` }}></div>
-                          </div>
-                        </div>
-
-                        <div className="top-pick">
-                          <h3>🥇 AI推奨</h3>
-                          <div className="player-card featured">
-                            <div className="player-number">{prediction.topPick.number}</div>
-                            <div className="player-details">
-                              <h4>{prediction.topPick.name}</h4>
-                              <div className="stats">
-                                <span>級別: {prediction.topPick.grade}</span>
-                                <span>年齢: {prediction.topPick.age}歳</span>
-                                <span>勝率: {prediction.topPick.winRate}</span>
-                                <span>モーター: {prediction.topPick.motorNumber} ({prediction.topPick.motor2Rate}%)</span>
-                              </div>
-                            </div>
-                            <div className="ai-score">
-                              <div className="score-label">AIスコア</div>
-                              <div className="score-value">{prediction.topPick.aiScore}</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="reasoning">
-                          <h4>📌 予想根拠</h4>
-                          <ul>
-                            {(prediction.reasoning || []).map((reason, idx) => (
-                              <li key={idx}>{reason}</li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        <RaceResult prediction={prediction} />
-                        <PlayerTable allPlayers={prediction.allPlayers} top3={prediction.top3} />
-
-                        {/* 超展開データ（上級者向け） */}
+                        {/* 超展開データ（アニメーション直下） */}
                         {prediction.racerStats && (
                           <AttackDefenseTable
                             racerStats={prediction.racerStats}
                             players={prediction.allPlayers}
                           />
                         )}
+
+                        <RaceResult prediction={prediction} />
 
                         {/* 会場攻略ガイドリンク */}
                         {selectedRace?.rawData?.venueCode && getVenueGuidePath(selectedRace.rawData.venueCode) && (
