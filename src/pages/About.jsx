@@ -154,8 +154,8 @@ export default function About() {
                     </div>
                     <div className="feature-card">
                         <div className="feature-icon">🤖</div>
-                        <h3>AIスコア</h3>
-                        <p>各艇のAIスコアを表示。一目で有力艇が分かります。</p>
+                        <h3>展開予測</h3>
+                        <p>1マークの展開をシミュレーション。レース展開が一目でわかります。</p>
                     </div>
                 </div>
             </section>
@@ -180,8 +180,8 @@ export default function About() {
                     <div className="ai-step">
                         <div className="step-number">3</div>
                         <div className="step-content">
-                            <h3>AIスコア算出</h3>
-                            <p>機械学習モデルで各艇のスコアを算出</p>
+                            <h3>展開予測</h3>
+                            <p>1マークでの各艇の動きをシミュレーション</p>
                         </div>
                     </div>
                     <div className="ai-step">

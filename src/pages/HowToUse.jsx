@@ -113,11 +113,11 @@ export default function HowToUse() {
                     <div className="step-detail">
                         <h4>💡 予想画面の見方</h4>
                         <ul>
-                            <li><strong>AIスコア</strong>: 各艇の勝率をAIが数値化（高いほど有力）</li>
-                            <li><strong>本命</strong>: AIが最も勝つ可能性が高いと判断した艇</li>
-                            <li><strong>推奨買い目（3連複）</strong>: 3連複を買う場合の推奨組み合わせ</li>
-                            <li><strong>推奨買い目（3連単）</strong>: 3連単を買う場合の推奨組み合わせ</li>
-                            <li><strong>選手データ</strong>: 各選手の級別、勝率、モーター性能など</li>
+                            <li><strong>展開予測アニメーション</strong>: 1マークでの各艇の動きをシミュレーション表示</li>
+                            <li><strong>超展開データ</strong>: 各コースの攻撃力・守備力を数値化したテーブル</li>
+                            <li><strong>本命</strong>: 展開予測で最も1着の可能性が高い艇</li>
+                            <li><strong>推奨買い目</strong>: 展開予測に基づく1〜3着の推奨組み合わせ</li>
+                            <li><strong>AIデータ予想</strong>: 各選手の級別、勝率、モーター性能などの詳細データ</li>
                         </ul>
                     </div>
                     <div className="tip-box">
@@ -155,9 +155,9 @@ export default function HowToUse() {
                     <div className="tip-box">
                         <h4>📝 活用のヒント</h4>
                         <ul>
-                            <li>AIスコアの高い艇を中心にレース展開を予測</li>
-                            <li>予測根拠を参考に、自分なりの分析を加える</li>
-                            <li>モデル別の特性を理解して活用する</li>
+                            <li>展開予測アニメーションでレース展開をイメージ</li>
+                            <li>超展開データで各コースの攻防を分析</li>
+                            <li>モデル別の展開パターンを比較して活用する</li>
                         </ul>
                     </div>
                 </>
