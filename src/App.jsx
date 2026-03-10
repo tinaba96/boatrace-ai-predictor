@@ -1090,6 +1090,14 @@ function App({ tab = 'races' }) {
                                                 />
                                             )}
 
+                                            {/* 超展開データ（アニメーション直下） */}
+                                            {prediction.racerStats && (
+                                                <AttackDefenseTable
+                                                    racerStats={prediction.racerStats}
+                                                    players={prediction.allPlayers}
+                                                />
+                                            )}
+
                                             <div className="confidence-bar">
                                                 <div className="confidence-label">
                                                     AI信頼度: <strong>{prediction.confidence}%</strong>
@@ -1100,35 +1108,6 @@ function App({ tab = 'races' }) {
                                                         style={{ width: `${prediction.confidence}%` }}
                                                     ></div>
                                                 </div>
-                                            </div>
-
-                                            <div className="top-pick">
-                                                <h3>🥇 AI推奨</h3>
-                                                <div className="player-card featured">
-                                                    <div className="player-number">{prediction.topPick.number}</div>
-                                                    <div className="player-details">
-                                                        <h4>{prediction.topPick.name}</h4>
-                                                        <div className="stats">
-                                                            <span>級別: {prediction.topPick.grade}</span>
-                                                            <span>年齢: {prediction.topPick.age}歳</span>
-                                                            <span>勝率: {prediction.topPick.winRate}</span>
-                                                            <span>モーター: {prediction.topPick.motorNumber} ({prediction.topPick.motor2Rate}%)</span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="ai-score">
-                                                        <div className="score-label">AIスコア</div>
-                                                        <div className="score-value">{prediction.topPick.aiScore}</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="reasoning">
-                                                <h4>📌 予想根拠</h4>
-                                                <ul>
-                                                    {prediction.reasoning.map((reason, idx) => (
-                                                        <li key={idx}>{reason}</li>
-                                                    ))}
-                                                </ul>
                                             </div>
 
                                             {/* SNSシェアボタン */}
@@ -1155,38 +1134,6 @@ function App({ tab = 'races' }) {
                                                     hashtags={['ボートレース', 'AI予想', 'BoatAI']}
                                                     size={40}
                                                 />
-                                            </div>
-
-                                            <div className="all-players">
-                                                <h4><span aria-hidden="true">🏆</span> AI予想順位</h4>
-                                                <div className="table-wrapper">
-                                                <table className="players-table" aria-label="AI予想順位一覧">
-                                                    <thead>
-                                                        <tr>
-                                                            <th scope="col">艇番</th>
-                                                            <th scope="col">選手名</th>
-                                                            <th scope="col">級別</th>
-                                                            <th scope="col">年齢</th>
-                                                            <th scope="col">勝率</th>
-                                                            <th scope="col">モーター</th>
-                                                            <th scope="col">AIスコア</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {prediction.allPlayers.map(player => (
-                                                            <tr key={player.number} className={player.number <= 3 ? 'recommended' : ''}>
-                                                                <th scope="row"><strong>{player.number}</strong></th>
-                                                                <td>{player.name}</td>
-                                                                <td>{player.grade}</td>
-                                                                <td>{player.age}歳</td>
-                                                                <td>{player.winRate}</td>
-                                                                <td>{player.motorNumber} ({player.motor2Rate}%)</td>
-                                                                <td><span className="score-badge">{player.aiScore}</span></td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                                </div>
                                             </div>
 
                                             {/* レース結果セクション */}
@@ -1437,14 +1384,6 @@ function App({ tab = 'races' }) {
                                                     </div>
                                                 </div>
                                             </div>
-
-                                            {/* 超展開データ（上級者向け） */}
-                                            {prediction.racerStats && (
-                                                <AttackDefenseTable
-                                                    racerStats={prediction.racerStats}
-                                                    players={prediction.allPlayers}
-                                                />
-                                            )}
 
                                             {/* 会場攻略ガイドリンク */}
                                             {selectedRace?.rawData?.placeCd && getVenueGuidePath(selectedRace.rawData.placeCd) && (
