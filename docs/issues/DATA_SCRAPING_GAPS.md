@@ -57,9 +57,10 @@ cron: '0 0-13,18-23 * * *' (UTC)
 
 #### 展示データの取得
 
-beforeinfo ページの `.table1`（2番目）から抽出:
-- **展示タイム** (`exhibitionTime`): 各艇の直線走行タイム（6.XX秒台）
-- **展示ST** (`startTiming`): 各艇のスタートタイミング（0.XX秒）
+beforeinfo ページから抽出:
+- **展示タイム** (`exhibitionTime`): `.table1`（2番目）の各 tbody の tr[0] td[4] から取得（6.XX秒台）
+- **展示ST** (`startTiming`): `.table1`（3番目）の `.table1_boatImage1` → `.table1_boatImage1Time` から取得（0.XX秒）
+  - フライング判定（`F.14` 等）にも対応
 - 展示未実施の場合: HTMLにデータなし → `null` を返す
 
 ### 2. generate-predictions.js
@@ -195,32 +196,47 @@ WebSocket、EventSource、meta refresh、Ajax ポーリングは一切なし。
 
 beforeinfo ページの HTML は展示前後でテーブル構造が同一。セルの値で判別する:
 
-| 状態 | 展示タイム (td[4]) | 展示ST (row2 td[2]) |
-|------|-------------------|---------------------|
+| 状態 | 展示タイム（table[1] td[4]） | 展示ST（table[2] .table1_boatImage1Time） |
+|------|---------------------------|----------------------------------------|
 | 前検前 | 空 | 空 |
 | 前検後・展示前 | 空 | 空 |
-| 展示後 | 数値（例: 6.84） | 数値（例: .09） |
+| 展示後 | 数値（例: 6.84） | 数値（例: .09、F.14） |
 
 ## 採用: 案B — 15分間隔の展示専用軽量ワークフロー
+
+**ステータス: ✅ 実装済み（動作確認待ち）**
 
 ### 理由
 
 - 既存の scrape.yml（1時間間隔）は結果取得（scrape-results.js）が平均24分かかるため間隔を縮められない
-- 展示データ取得 + 予想再生成だけなら2-3分で完了し、15分間隔でも余裕がある
+- 展示データ取得（scrape-to-json.js: ~4分）+ 予想再生成（generate-predictions.js: ~4秒）= 約4分で完了し、15分間隔でも余裕がある
 - 既存ワークフローへの影響がない（独立して動作）
 
-### 設計概要
+### 実装内容
 
 ```
-[新規] .github/workflows/scrape-exhibition.yml
-  cron: 15分間隔（JST 9:00-17:00、レース開催時間帯のみ）
+.github/workflows/scrape-exhibition.yml
+  cron: '*/15 0-8 * * *' (UTC) = JST 9:00-17:00、15分間隔
+  concurrency: scrape-pipeline（既存ワークフローとの同時実行防止）
 
   ステップ:
-  1. 全会場の beforeinfo をスクレイピング（展示データのみ）
-  2. 新しく展示データが入ったレースを検出
-  3. 該当レースの予想を展示データ込みで再生成
-  4. Supabase に exhibition_data + predictions を upsert
+  1. scrape-to-json.js — 全会場の出走表・天候・展示データを取得（~4分）
+  2. generate-predictions.js — 予想生成 + Supabase upsert（~4秒）
+  ※ git push・deploy なし（Supabaseへの書き込みのみ）
 ```
+
+既存の scrape.yml にも同じ `concurrency: scrape-pipeline` を追加済み。
+
+### 実行時間の内訳（実測値）
+
+| ステップ | scrape.yml（既存） | scrape-exhibition.yml（新規） |
+|---------|-------------------|------------------------------|
+| scrape-to-json.js | ~4分 | ~4分 |
+| generate-predictions.js | ~4秒 | ~4秒 |
+| scrape-results.js | ~23分 | なし |
+| calculate-accuracy.js | ~39秒 | なし |
+| git push + deploy | ~2秒 | なし |
+| **合計** | **~28分** | **~4分** |
 
 ---
 
