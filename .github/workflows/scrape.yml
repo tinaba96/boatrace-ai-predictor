@@ -9,6 +9,10 @@ on:
   # 手動実行も可能
   workflow_dispatch:
 
+concurrency:
+  group: scrape-pipeline
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
