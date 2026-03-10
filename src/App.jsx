@@ -446,6 +446,7 @@ function App({ tab = 'races' }) {
                     predictions: racePrediction.predictions, // 全モデルの予想データ
                     turnPrediction: racePrediction.turnPrediction || null,
                     racerStats: racePrediction.racerStats || null,
+                    exhibitionData: racePrediction.exhibitionData || null,
                 }
                 setPrediction(aiPrediction)
                 setIsAnalyzing(false)
