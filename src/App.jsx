@@ -1098,18 +1098,6 @@ function App({ tab = 'races' }) {
                                                 />
                                             )}
 
-                                            <div className="confidence-bar">
-                                                <div className="confidence-label">
-                                                    AI信頼度: <strong>{prediction.confidence}%</strong>
-                                                </div>
-                                                <div className="bar">
-                                                    <div
-                                                        className="bar-fill"
-                                                        style={{ width: `${prediction.confidence}%` }}
-                                                    ></div>
-                                                </div>
-                                            </div>
-
                                             {/* SNSシェアボタン */}
                                             <div className="social-share-wrapper">
                                                 <SocialShareButtons
@@ -1125,9 +1113,8 @@ function App({ tab = 'races' }) {
                                                             raceNo: selectedRace?.raceNumber || '?',
                                                             date: date,
                                                             prediction: {
-                                                                topPick: prediction.topPick.number,
-                                                                top3: [1, 2, 3].map(i => prediction.allPlayers[i - 1]?.number).filter(Boolean),
-                                                                aiScores: [prediction.topPick.aiScore]
+                                                                topPick: prediction.top3?.[0] || prediction.topPick?.number,
+                                                                top3: prediction.top3 || [],
                                                             }
                                                         }, selectedModel);
                                                     })()}
@@ -1262,9 +1249,9 @@ function App({ tab = 'races' }) {
                                                 </div>
                                             )}
 
-                                            {/* 詳細データ分析セクション（新規追加） */}
+                                            {/* AIデータ予想 */}
                                             <div className="detailed-analysis">
-                                                <h3><span aria-hidden="true">📊</span> 詳細データ分析</h3>
+                                                <h3><span aria-hidden="true">📊</span> AIデータ予想</h3>
 
                                                 {/* 強化されたテーブル */}
                                                 <div className="enhanced-table">
@@ -1287,8 +1274,21 @@ function App({ tab = 'races' }) {
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            {prediction.allPlayers.map(player => (
-                                                                <tr key={player.number}>
+                                                            {(() => {
+                                                                // 展開予想順位でソート: top3を先頭、残りはboatStrengths降順
+                                                                const top3 = prediction.top3 || [];
+                                                                const strengths = prediction.turnPrediction?.boatStrengths || [];
+                                                                const sorted = [...prediction.allPlayers].sort((a, b) => {
+                                                                    const aIdx = top3.indexOf(a.number);
+                                                                    const bIdx = top3.indexOf(b.number);
+                                                                    if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+                                                                    if (aIdx !== -1) return -1;
+                                                                    if (bIdx !== -1) return 1;
+                                                                    return (strengths[b.number - 1] || 0) - (strengths[a.number - 1] || 0);
+                                                                });
+                                                                return sorted;
+                                                            })().map(player => (
+                                                                <tr key={player.number} className={prediction.top3?.includes(player.number) ? 'recommended' : ''}>
                                                                     <th scope="row"><strong>{player.number}</strong></th>
                                                                     <td>{player.name}</td>
                                                                     <td>{player.grade}</td>
