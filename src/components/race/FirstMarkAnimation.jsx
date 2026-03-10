@@ -438,22 +438,25 @@ function ResultBadge({ rank, course, x, y, delay, label }) {
   );
 }
 
-function FirstMarkAnimationInner({ patterns, distribution, players, boatStrengths }) {
+function FirstMarkAnimationInner({ patterns, distribution, players, boatStrengths, selectedPatternIndex = 0 }) {
   const [animKey, setAnimKey] = useState(0);
-  const [selectedPatternIndex, setSelectedPatternIndex] = useState(0);
   const [phase, setPhase] = useState("");
   const [animationDone, setAnimationDone] = useState(false);
   const phaseTimers = useRef([]);
   const motionMod = useMotion();
+  const prevPatternIndex = useRef(selectedPatternIndex);
 
   const handleReplay = useCallback(() => {
     setAnimKey((prev) => prev + 1);
   }, []);
 
-  const handleTabChange = useCallback((index) => {
-    setSelectedPatternIndex(index);
-    setAnimKey((prev) => prev + 1);
-  }, []);
+  // 外部からのパターン変更時にアニメーションをリセット
+  useEffect(() => {
+    if (prevPatternIndex.current !== selectedPatternIndex) {
+      prevPatternIndex.current = selectedPatternIndex;
+      setAnimKey((prev) => prev + 1);
+    }
+  }, [selectedPatternIndex]);
 
   // 現在選択中のパターン
   const currentPattern = patterns[selectedPatternIndex] || patterns[0];
@@ -625,34 +628,12 @@ function FirstMarkAnimationInner({ patterns, distribution, players, boatStrength
     </>
   );
 
-  // パターンタブバー
-  const patternTabs =
-    patterns.length > 1 ? (
-      <div className="pattern-tabs">
-        {patterns.map((p, idx) => (
-          <button
-            key={idx}
-            className={`pattern-tab ${idx === selectedPatternIndex ? "pattern-tab--active" : ""}`}
-            onClick={() => handleTabChange(idx)}
-          >
-            <span className="pattern-tab__label">展開{idx + 1}</span>
-            <span className="pattern-tab__tech">
-              {TECHNIQUE_NAMES[p.technique] || p.technique}
-            </span>
-            <span className="pattern-tab__info">
-              {p.winnerCourse}コース {Math.round(p.probability * 100)}%
-            </span>
-          </button>
-        ))}
-      </div>
-    ) : null;
-
   // motion がまだロードされていない場合は静止画を表示
   if (!motionMod) {
     return (
       <div className="first-mark-animation">
         <div className="first-mark-animation__title">1マーク展開予測</div>
-        {patternTabs}
+
         <div className="first-mark-animation__svg-container">
           <svg
             viewBox="0 0 400 280"
@@ -712,8 +693,6 @@ function FirstMarkAnimationInner({ patterns, distribution, players, boatStrength
   return (
     <div className="first-mark-animation">
       <div className="first-mark-animation__title">1マーク展開予測</div>
-
-      {patternTabs}
 
       <div className="first-mark-animation__svg-container">
         <svg
@@ -1023,6 +1002,7 @@ export default function FirstMarkAnimation(props) {
       distribution={props.distribution}
       players={props.players}
       boatStrengths={props.boatStrengths}
+      selectedPatternIndex={props.selectedPatternIndex || 0}
     />
   );
 }

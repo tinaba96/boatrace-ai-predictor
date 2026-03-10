@@ -400,7 +400,8 @@ input:focus-visible,
 }
 
 .predict-btn:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
+  transition: transform 0.1s;
 }
 
 .predict-btn:focus-visible {
@@ -1662,4 +1663,47 @@ input:focus-visible,
   .players-table-detailed {
     min-width: 650px;
   }
+}
+
+/* =====================================================
+   PC ホバーエフェクト（タッチデバイスでは無効）
+   ===================================================== */
+@media (hover: hover) {
+  .race-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .race-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+
+  .predict-btn {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+}
+
+/* =====================================================
+   シマーアニメーション（予想セクションヘッダー）
+   ===================================================== */
+@keyframes headerShimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.prediction-section h2 {
+  background: linear-gradient(
+    90deg,
+    currentColor 0%,
+    currentColor 40%,
+    #38bdf8 50%,
+    currentColor 60%,
+    currentColor 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: headerShimmer 2s ease-in-out 1;
+  animation-fill-mode: forwards;
 }

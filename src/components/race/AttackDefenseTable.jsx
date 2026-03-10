@@ -175,12 +175,12 @@ export default function AttackDefenseTable({ racerStats, players }) {
   };
 
   return (
-    <div className="all-players ad-section">
+    <div className="ad-section">
       <h4>超展開データ</h4>
 
       {/* Desktop table */}
-      <div className="table-wrapper ad-table-desktop">
-        <table className="players-table">
+      <div className="ad-table-desktop">
+        <table className="ad-table">
           <thead>
             <tr>
               <th></th>
@@ -251,8 +251,8 @@ export default function AttackDefenseTable({ racerStats, players }) {
       </div>
 
       {/* Mobile: scrollable table (same as desktop) */}
-      <div className="table-wrapper ad-table-mobile">
-        <table className="players-table">
+      <div className="ad-table-mobile">
+        <table className="ad-table">
           <thead>
             <tr>
               <th className="ad-sticky-col"></th>
