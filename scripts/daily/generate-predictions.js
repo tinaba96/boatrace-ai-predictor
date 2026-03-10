@@ -522,6 +522,28 @@ function calculateExhibitionBonus(exhibitionEntry, avgExTime, modelType) {
     return Math.round(bonus);
 }
 
+// 展開予測の1着・2着・3着からtop3を取得
+function getTop3FromTurnPrediction(turnPrediction) {
+    if (!turnPrediction?.patterns?.[0]) return null;
+    const pattern = turnPrediction.patterns[0];
+    const first = pattern.winnerCourse;
+
+    // 2着: secondPlaceの最大確率コース（1着除外）
+    let second = null, maxSecond = 0;
+    for (const [c, p] of Object.entries(pattern.secondPlace || {})) {
+        if (Number(c) !== first && p > maxSecond) { maxSecond = p; second = Number(c); }
+    }
+
+    // 3着: thirdPlaceの最大確率コース（1着・2着除外）
+    let third = null, maxThird = 0;
+    for (const [c, p] of Object.entries(pattern.thirdPlace || {})) {
+        if (Number(c) !== first && Number(c) !== second && p > maxThird) { maxThird = p; third = Number(c); }
+    }
+
+    if (!second || !third) return null;
+    return [first, second, third];
+}
+
 // 1レース分の予想を生成（3モデル対応）
 function generateRacePrediction(race, date, racerStatsMap) {
     if (!race.racers || race.racers.length === 0) {
@@ -564,20 +586,29 @@ function generateRacePrediction(race, date, racerStatsMap) {
         return null;
     }
 
+    // 展開予測からtop3を取得（全モデル共通）
+    const turnTop3 = getTop3FromTurnPrediction(turnPrediction);
+
     // スタンダード版の予想
-    const standardTop3 = standardPlayers.slice(0, 3).map(p => p.number);
+    const standardTopPick = turnTop3 ? turnTop3[0] : standardPlayers[0].number;
+    const standardTop3 = turnTop3 || standardPlayers.slice(0, 3).map(p => p.number);
     const standardConfidence = calculateConfidence(standardPlayers);
-    const standardReasoning = generateTopPickReasoning(standardPlayers[0], standardPlayers, 'standard');
+    const standardTopPlayer = standardPlayers.find(p => p.number === standardTopPick) || standardPlayers[0];
+    const standardReasoning = generateTopPickReasoning(standardTopPlayer, standardPlayers, 'standard');
 
     // 本命狙い版の予想
-    const safeBetTop3 = safeBetPlayers.slice(0, 3).map(p => p.number);
+    const safeBetTopPick = turnTop3 ? turnTop3[0] : safeBetPlayers[0].number;
+    const safeBetTop3 = turnTop3 || safeBetPlayers.slice(0, 3).map(p => p.number);
     const safeBetConfidence = calculateConfidence(safeBetPlayers);
-    const safeBetReasoning = generateTopPickReasoning(safeBetPlayers[0], safeBetPlayers, 'safe-bet');
+    const safeBetTopPlayer = safeBetPlayers.find(p => p.number === safeBetTopPick) || safeBetPlayers[0];
+    const safeBetReasoning = generateTopPickReasoning(safeBetTopPlayer, safeBetPlayers, 'safe-bet');
 
     // 穴狙い版の予想
-    const upsetFocusTop3 = upsetFocusPlayers.slice(0, 3).map(p => p.number);
+    const upsetFocusTopPick = turnTop3 ? turnTop3[0] : upsetFocusPlayers[0].number;
+    const upsetFocusTop3 = turnTop3 || upsetFocusPlayers.slice(0, 3).map(p => p.number);
     const upsetFocusConfidence = calculateConfidence(upsetFocusPlayers);
-    const upsetFocusReasoning = generateTopPickReasoning(upsetFocusPlayers[0], upsetFocusPlayers, 'upset-focus');
+    const upsetFocusTopPlayer = upsetFocusPlayers.find(p => p.number === upsetFocusTopPick) || upsetFocusPlayers[0];
+    const upsetFocusReasoning = generateTopPickReasoning(upsetFocusTopPlayer, upsetFocusPlayers, 'upset-focus');
 
     return {
         raceId: generateRaceId(date, race.placeCd, race.raceNo),
@@ -609,21 +640,21 @@ function generateRacePrediction(race, date, racerStatsMap) {
         // 3モデルの予想
         predictions: {
             standard: {
-                topPick: standardPlayers[0].number,
+                topPick: standardTopPick,
                 top3: standardTop3,
                 confidence: standardConfidence,
                 players: standardPlayers,
                 reasoning: standardReasoning,
             },
             safeBet: {
-                topPick: safeBetPlayers[0].number,
+                topPick: safeBetTopPick,
                 top3: safeBetTop3,
                 confidence: safeBetConfidence,
                 players: safeBetPlayers,
                 reasoning: safeBetReasoning,
             },
             upsetFocus: {
-                topPick: upsetFocusPlayers[0].number,
+                topPick: upsetFocusTopPick,
                 top3: upsetFocusTop3,
                 confidence: upsetFocusConfidence,
                 players: upsetFocusPlayers,
@@ -652,7 +683,7 @@ function generateRacePrediction(race, date, racerStatsMap) {
 
         // 後方互換性のため（既存のpredictionフィールドを維持）
         prediction: {
-            topPick: standardPlayers[0].number,
+            topPick: standardTopPick,
             top3: standardTop3,
             confidence: standardConfidence,
             players: standardPlayers,

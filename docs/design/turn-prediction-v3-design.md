@@ -604,3 +604,35 @@ CREATE TABLE racer_aggregated_stats (
 | players に重複 boat number がある場合 | 低 | 実運用では発生しない |
 | 1コース全勝（losses=0）で防御行が `0/total` | 低 | 正しい挙動（防御機会なし=0回） |
 | SVG の ARIA ラベルなし | 低 | アクセシビリティ改善として検討 |
+
+---
+
+## 8. top3統一（v3.1）
+
+### 概要
+
+全AIモデル（standard/safeBet/upsetFocus）のtop3予想を展開予測（turnPrediction）の結果に統一。
+展開予測がサイトの目玉機能であり、予想の一貫性を確保する。
+
+### ヘルパー関数: `getTop3FromTurnPrediction()`
+
+`turnPrediction.patterns[0]` から1着・2着・3着を抽出:
+- 1着: `winnerCourse`
+- 2着: `secondPlace` の最大確率コース（1着除外）
+- 3着: `thirdPlace` の最大確率コース（1着・2着除外）
+
+### フォールバック
+
+- `turnPrediction` がnull、またはpatterns が空の場合 → 従来のAIスコアベースtop3を使用
+- confidence値は各モデル独自のまま維持
+
+### 詳細テーブル拡充
+
+詳細データ分析テーブルに以下の列を追加:
+
+| 列名 | データソース | 表示形式 |
+|------|------------|---------|
+| 総合力 | `turnPrediction.boatStrengths[boatIndex]` | パーセンテージ（例: 55%） |
+| コース勝率 | `racerStats[i].courseRaceCounts[course].wins/total` | 勝数/出走数（例: 3/5） |
+
+データがない場合は「-」を表示。
