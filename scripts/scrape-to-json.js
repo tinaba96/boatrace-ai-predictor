@@ -27,6 +27,54 @@ function getUrl(date, placeCd, raceNo, content) {
   return url;
 }
 
+// 展示データ（展示タイム・展示ST）を取得する関数
+function scrapeExhibitionData($) {
+  const exhibitionData = [];
+
+  // beforeinfoページの構造:
+  //   table[1] (展示タイム含む選手テーブル): 6つのtbody、各4行
+  //     tbody[n]/tr[0] = 選手情報行 (td[0]=枠番, td[4]=展示タイム)
+  //     tbody[n]/tr[2] = ST行 (td[2]=展示ST)
+  //   table[2] (スタート展示テーブル): コース順のST
+  const tables = $('.table1');
+  if (tables.length < 2) return null;
+
+  // 展示タイムと展示STを各選手から取得
+  const exTable = tables.eq(1);
+  const tbodies = exTable.find('tbody');
+
+  tbodies.each((i, tbody) => {
+    if (i >= 6) return;
+    const rows = $(tbody).find('tr');
+    if (rows.length < 3) return;
+
+    // 枠番と展示タイム (tr[0])
+    const mainCells = rows.eq(0).find('td');
+    const boatNumber = parseInt(mainCells.eq(0).text().trim());
+    const exhibitionTime = parseFloat(mainCells.eq(4).text().trim());
+
+    // 展示ST (tr[2] の td[2])
+    const stCells = rows.eq(2).find('td');
+    const stText = stCells.eq(2).text().trim();
+    const startTiming = parseFloat('0' + stText);
+
+    if (boatNumber >= 1 && boatNumber <= 6) {
+      const hasExTime = !isNaN(exhibitionTime) && exhibitionTime > 0;
+      const hasST = !isNaN(startTiming) && startTiming > 0;
+
+      if (hasExTime || hasST) {
+        exhibitionData.push({
+          boatNumber,
+          exhibitionTime: hasExTime ? exhibitionTime : null,
+          startTiming: hasST ? startTiming : null,
+        });
+      }
+    }
+  });
+
+  return exhibitionData.length > 0 ? exhibitionData : null;
+}
+
 // 直前情報を取得する関数
 async function getBeforeinfo(date, placeCd, raceNo) {
   try {
@@ -73,6 +121,9 @@ async function getBeforeinfo(date, placeCd, raceNo) {
       }
     }
 
+    // 展示データを取得
+    const exhibitionData = scrapeExhibitionData($);
+
     // データを統合
     const result = {
       date: date,
@@ -84,6 +135,7 @@ async function getBeforeinfo(date, placeCd, raceNo) {
       windVelocity: weatherData[1] ? parseFloat(weatherData[1].replace('m', '')) : null,
       waterTemp: weatherData[2] ? parseFloat(weatherData[2].replace('℃', '')) : null,
       waveHeight: weatherData[3] ? parseFloat(weatherData[3].replace('cm', '')) : null,
+      exhibitionData: exhibitionData,
     };
 
     return result;

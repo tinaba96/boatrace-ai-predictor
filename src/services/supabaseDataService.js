@@ -511,6 +511,11 @@ export const supabaseDataService = {
           payout_place_2,
           payout_trifecta,
           payout_trio
+        ),
+        exhibition_data (
+          boat_number,
+          exhibition_time,
+          start_timing
         )
       `)
       .eq('race_date', date)
@@ -570,6 +575,8 @@ export const supabaseDataService = {
           reasons: race.volatility_reasons || []
         } : null,
         turnPrediction: turnPrediction,
+        racerStats: standardPred?.feature_contributions?.racerStats || null,
+        exhibitionData: race.exhibition_data || null,
       };
 
       // 予測データ（新形式: predictions）
