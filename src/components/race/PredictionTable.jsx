@@ -65,12 +65,12 @@ function PredictionTable({ prediction, showExhibition = false }) {
               <th scope="col">艇番</th>
               <th scope="col">選手名</th>
               <th scope="col">級別</th>
+              <th scope="col">年齢</th>
               <th scope="col">全国勝率</th>
+              <th scope="col">全国2連率</th>
               <th scope="col">当地勝率</th>
-              <th scope="col">モーター番号</th>
               <th scope="col">モーター2率</th>
-              <th scope="col">ボート番号</th>
-              <th scope="col">ボート2率</th>
+              <th scope="col">平均ST</th>
               {showExhibition && <th scope="col">展示タイム</th>}
               {showExhibition && <th scope="col">展示ST</th>}
               <th scope="col">総合力</th>
@@ -88,7 +88,11 @@ function PredictionTable({ prediction, showExhibition = false }) {
                 </th>
                 <td>{player.name}</td>
                 <td>{player.grade}</td>
+                <td>{player.age || "-"}</td>
                 <td>{player.winRate}</td>
+                <td>
+                  {player.global2Rate ? `${player.global2Rate}%` : "-"}
+                </td>
                 <td>
                   {player.localWinRate}
                   {parseFloat(player.localWinRate) > 7.0 && (
@@ -97,7 +101,6 @@ function PredictionTable({ prediction, showExhibition = false }) {
                     </span>
                   )}
                 </td>
-                <td>{player.motorNumber}</td>
                 <td>
                   {player.motor2Rate}%
                   {parseFloat(player.motor2Rate) > 40 && (
@@ -106,8 +109,16 @@ function PredictionTable({ prediction, showExhibition = false }) {
                     </span>
                   )}
                 </td>
-                <td>{player.boatNumber}</td>
-                <td>{player.boat2Rate}%</td>
+                <td>
+                  {(() => {
+                    const stats = prediction.racerStats?.find(
+                      (s) => s.boatNumber === player.number,
+                    );
+                    return stats?.avgST != null
+                      ? stats.avgST.toFixed(2)
+                      : "-";
+                  })()}
+                </td>
                 {showExhibition && (
                   <td>
                     {(() => {
@@ -179,12 +190,20 @@ function PredictionTable({ prediction, showExhibition = false }) {
             <p>選手の全国での勝率。6.0以上でA級レベル。</p>
           </div>
           <div className="guide-item">
+            <strong>全国2連率</strong>
+            <p>2着以内に入る確率。舟券に絡む力を示す。</p>
+          </div>
+          <div className="guide-item">
             <strong>当地勝率</strong>
             <p>このレース場での勝率。得意度を示す。</p>
           </div>
           <div className="guide-item">
             <strong>モーター2率</strong>
             <p>モーターの2連率。40%以上なら好機。</p>
+          </div>
+          <div className="guide-item">
+            <strong>平均ST</strong>
+            <p>平均スタートタイミング。小さいほどスタートが速い。</p>
           </div>
           <div className="guide-item">
             <strong>🔥マーク</strong>
