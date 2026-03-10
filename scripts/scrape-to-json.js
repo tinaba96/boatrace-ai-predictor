@@ -32,47 +32,61 @@ function scrapeExhibitionData($) {
   const exhibitionData = [];
 
   // beforeinfoページの構造:
-  //   table[1] (展示タイム含む選手テーブル): 6つのtbody、各4行
+  //   table[1] (選手テーブル): 6つのtbody、各4行
   //     tbody[n]/tr[0] = 選手情報行 (td[0]=枠番, td[4]=展示タイム)
-  //     tbody[n]/tr[2] = ST行 (td[2]=展示ST)
-  //   table[2] (スタート展示テーブル): コース順のST
+  //   table[2] (スタート展示テーブル): .table1_boatImage1 でコース順のST
   const tables = $('.table1');
   if (tables.length < 2) return null;
 
-  // 展示タイムと展示STを各選手から取得
+  // 展示タイムを各選手から取得（table[1]）
   const exTable = tables.eq(1);
   const tbodies = exTable.find('tbody');
 
   tbodies.each((i, tbody) => {
     if (i >= 6) return;
     const rows = $(tbody).find('tr');
-    if (rows.length < 3) return;
+    if (rows.length < 1) return;
 
-    // 枠番と展示タイム (tr[0])
     const mainCells = rows.eq(0).find('td');
     const boatNumber = parseInt(mainCells.eq(0).text().trim());
     const exhibitionTime = parseFloat(mainCells.eq(4).text().trim());
 
-    // 展示ST (tr[2] の td[2])
-    const stCells = rows.eq(2).find('td');
-    const stText = stCells.eq(2).text().trim();
-    const startTiming = parseFloat('0' + stText);
-
     if (boatNumber >= 1 && boatNumber <= 6) {
-      const hasExTime = !isNaN(exhibitionTime) && exhibitionTime > 0;
-      const hasST = !isNaN(startTiming) && startTiming > 0;
-
-      if (hasExTime || hasST) {
-        exhibitionData.push({
-          boatNumber,
-          exhibitionTime: hasExTime ? exhibitionTime : null,
-          startTiming: hasST ? startTiming : null,
-        });
-      }
+      exhibitionData.push({
+        boatNumber,
+        exhibitionTime: !isNaN(exhibitionTime) && exhibitionTime > 0 ? exhibitionTime : null,
+        startTiming: null,
+      });
     }
   });
 
-  return exhibitionData.length > 0 ? exhibitionData : null;
+  // 展示ST（スタート展示テーブル table[2]）
+  if (tables.length >= 3) {
+    const startTable = tables.eq(2);
+    startTable.find('.table1_boatImage1').each((i, el) => {
+      // 艇番（画像またはテキストから取得）
+      const boatText = $(el).find('.table1_boatImage1Number').text().trim()
+        || $(el).text().trim().split('\n')[0].trim();
+      const boatNum = parseInt(boatText);
+
+      // ST値（.table1_boatImage1Time）
+      const stText = $(el).find('.table1_boatImage1Time').text().trim();
+      const isFlying = stText.includes('F');
+      const numMatch = stText.match(/[FL]?\.(\d+)/);
+      const stValue = numMatch ? parseFloat('0.' + numMatch[1]) : null;
+
+      if (boatNum >= 1 && boatNum <= 6 && stValue !== null) {
+        const entry = exhibitionData.find(e => e.boatNumber === boatNum);
+        if (entry) {
+          entry.startTiming = stValue;
+          entry.isFlying = isFlying;
+        }
+      }
+    });
+  }
+
+  const hasData = exhibitionData.some(e => e.exhibitionTime !== null || e.startTiming !== null);
+  return hasData ? exhibitionData : null;
 }
 
 // 直前情報を取得する関数
