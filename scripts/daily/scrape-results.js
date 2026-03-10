@@ -41,6 +41,51 @@ function scrapeCourseInfo($) {
   return courseInfo;
 }
 
+// Scrape start timings (各艇のST)
+function scrapeStartTimings($) {
+  const startTimings = [];
+
+  // スタート情報テーブル（scrapeCourseInfoと同じテーブル）
+  const startInfoTable = $('.is-w495.is-h292__3rdadd');
+  if (startInfoTable.length === 0) {
+    return startTimings;
+  }
+
+  startInfoTable.find('.table1_boatImage1').each((index, el) => {
+    // 艇番（画像URLから抽出）
+    const imgSrc = $(el).find('.table1_boatImage1Boat img').attr('src') || '';
+    const boatMatch = imgSrc.match(/img_boat2_(\d)\.png/);
+    const boatNum = boatMatch ? parseInt(boatMatch[1]) : null;
+
+    if (!boatNum) return;
+
+    // ST値を取得
+    const stText = $(el).find('.table1_boatImage1Time').text().trim();
+
+    // フライング（F）やレイトスタート（L）を判定
+    const isFlying = stText.includes('F');
+    const isLateStart = stText.includes('L');
+
+    // 数値部分を抽出（例: "F.05" → 0.05, ".12" → 0.12）
+    const numMatch = stText.match(/[FL]?\.?(\d+)/);
+    let stValue = null;
+    if (numMatch) {
+      stValue = parseFloat('0.' + numMatch[1]);
+    }
+
+    if (stValue !== null) {
+      startTimings.push({
+        boat_number: boatNum,
+        start_timing: stValue,
+        is_flying: isFlying,
+        is_late_start: isLateStart,
+      });
+    }
+  });
+
+  return startTimings;
+}
+
 // Scrape winning technique (決まり手)
 function scrapeWinningTechnique($) {
   let winningTechnique = null;
@@ -180,6 +225,9 @@ async function scrapeRaceResult(venueCode, raceNo, dateStr) {
     // Get course info (進入コース)
     const courseInfo = scrapeCourseInfo($);
 
+    // Get start timings (各艇のST)
+    const startTimings = scrapeStartTimings($);
+
     return {
       rank1: rankings[0],
       rank2: rankings[1],
@@ -187,6 +235,7 @@ async function scrapeRaceResult(venueCode, raceNo, dateStr) {
       payouts: payouts,
       winningTechnique: winningTechnique,
       courseInfo: courseInfo,
+      startTimings: startTimings,
     };
 
   } catch (error) {
@@ -240,6 +289,7 @@ async function scrapeResults(dateStr = null) {
   let alreadyFinishedCount = 0;
   let notYetCount = 0;
   const newResults = [];
+  const scrapeCache = new Map(); // race_id → scraped result (for start timings)
 
   // Fetch results for each race
   for (const race of races) {
@@ -259,6 +309,7 @@ async function scrapeResults(dateStr = null) {
 
     if (result) {
       console.log(`New result: ${result.rank1}-${result.rank2}-${result.rank3}`);
+      scrapeCache.set(race.race_id, result);
 
       const payouts = result.payouts || {};
       const winPayout = payouts.win ? Object.values(payouts.win)[0] : null;
@@ -314,6 +365,31 @@ async function scrapeResults(dateStr = null) {
       console.error('❌ race_results書き込みエラー:', error.message);
     } else {
       console.log(`  ✅ race_results: ${newResults.length}件`);
+    }
+
+    // race_start_timingsにST情報を書き込み
+    const allStartTimings = [];
+    for (const [raceId, scraped] of scrapeCache) {
+      if (scraped.startTimings && scraped.startTimings.length > 0) {
+        for (const st of scraped.startTimings) {
+          allStartTimings.push({
+            race_id: raceId,
+            ...st,
+          });
+        }
+      }
+    }
+
+    if (allStartTimings.length > 0) {
+      const { error: stError } = await supabase
+        .from('race_start_timings')
+        .upsert(allStartTimings, { onConflict: 'race_id,boat_number' });
+
+      if (stError) {
+        console.error('❌ race_start_timings書き込みエラー:', stError.message);
+      } else {
+        console.log(`  ✅ race_start_timings: ${allStartTimings.length}件`);
+      }
     }
 
     // predictions の的中判定を更新

@@ -1,0 +1,38 @@
+name: Scrape Exhibition Data
+
+on:
+  schedule:
+    # JST 9:00-17:00 = UTC 0:00-8:00、15分間隔
+    # レース開催時間帯のみ（ナイターは既存の1時間ワークフローでカバー）
+    - cron: '*/15 0-8 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: scrape-pipeline
+  cancel-in-progress: false
+
+jobs:
+  scrape-exhibition:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: mkdir -p data
+
+      - name: Scrape race data
+        run: node scripts/scrape-to-json.js
+        env:
+          TZ: 'Asia/Tokyo'
+
+      - name: Generate predictions with exhibition data
+        run: node scripts/daily/generate-predictions.js
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          TZ: 'Asia/Tokyo'
+
+      # git push・deploy は行わない（Supabaseへの書き込みのみ）

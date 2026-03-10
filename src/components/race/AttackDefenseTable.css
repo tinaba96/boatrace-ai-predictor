@@ -1,0 +1,160 @@
+/* 超展開データ — 自立型スタイル */
+
+.ad-section {
+  margin-top: 1.5rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.ad-section h4 {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+/* テーブル基本スタイル */
+.ad-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px;
+  font-size: 0.85rem;
+}
+
+.ad-table th {
+  padding: 0.75rem 0.5rem;
+  font-weight: 600;
+  text-align: center;
+  font-size: 0.85rem;
+  color: white;
+}
+
+.ad-table th.ad-course1-th {
+  color: #1e293b !important;
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0;
+}
+
+.ad-table td {
+  padding: 0.6rem 0.5rem;
+  text-align: center;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.85rem;
+  color: #334155;
+}
+
+.ad-table tbody tr:hover {
+  background: rgba(14, 165, 233, 0.04);
+}
+
+.ad-role-sub {
+  font-size: 0.7rem;
+  font-weight: 400;
+  opacity: 0.85;
+  margin-top: 2px;
+}
+
+.ad-label-cell {
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: left;
+}
+
+/* 決まり手ラベル色分け */
+.ad-tech-defense {
+  color: var(--color-error, #ef4444);
+  font-size: 0.85rem;
+}
+
+.ad-tech-sep {
+  margin: 0 2px;
+  color: var(--color-gray-400, #9ca3af);
+}
+
+.ad-tech-attack {
+  color: var(--color-primary-500, #0ea5e9);
+  font-size: 0.85rem;
+}
+
+.ad-tech-nige {
+  color: var(--color-success, #10b981);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* 凡例 */
+.ad-legend {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-gray-50, #f8fafc);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: var(--color-gray-600, #475569);
+  line-height: 1.7;
+}
+
+.ad-legend p {
+  margin: 0;
+}
+
+.ad-legend-example {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-gray-200, #e2e8f0);
+}
+
+.ad-legend-example-title {
+  font-weight: 600;
+  color: var(--color-gray-700, #334155);
+}
+
+/* Desktop: show full table, hide mobile */
+.ad-table-desktop {
+  overflow-x: auto;
+}
+
+.ad-table-mobile {
+  display: none;
+}
+
+/* Mobile: horizontal scroll table with sticky label column */
+@media (max-width: 480px) {
+  .ad-section {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .ad-table-desktop {
+    display: none;
+  }
+
+  .ad-table-mobile {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ad-table-mobile .ad-table {
+    min-width: 500px;
+  }
+
+  .ad-table-mobile .ad-table th,
+  .ad-table-mobile .ad-table td {
+    padding: 0.6rem 0.5rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .ad-sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: white;
+  }
+
+  thead .ad-sticky-col {
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    z-index: 2;
+  }
+}
