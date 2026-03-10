@@ -17,6 +17,8 @@ import { getFeaturedPosts, getLatestPosts } from './data/blogPosts'
 import { dataService } from './services/dataService'
 import { FirstMarkAnimation, AttackDefenseTable } from './components/race'
 import { STADIUM_NAMES, WEEKDAYS } from './constants'
+import { TECHNIQUE_NAMES } from './utils/turnPrediction'
+import { BOAT_COLORS } from './utils/colors'
 import { getTodayJST, formatDateJP } from './utils/dateUtils'
 
 function App({ tab = 'races' }) {
@@ -36,6 +38,7 @@ function App({ tab = 'races' }) {
     const [volatility, setVolatility] = useState(null) // 荒れ度情報
     const [lastUpdated, setLastUpdated] = useState(null) // データ更新時刻
     const [isRefreshing, setIsRefreshing] = useState(false) // 手動更新中フラグ
+    const [turnPredictionMap, setTurnPredictionMap] = useState({}) // レースID→展開予測のマップ
     const predictionRef = useRef(null)
     const raceCardRefs = useRef({}) // 各レースカードへの参照を保持
 
@@ -177,6 +180,25 @@ function App({ tab = 'races' }) {
                 setSelectedVenueId(result.data[0].placeCd)
             }
 
+            // 展開予測プレビュー用: 予測データをバックグラウンドで取得
+            const today = (() => {
+                const now = new Date()
+                const jstOffset = 9 * 60
+                const jstDate = new Date(now.getTime() + jstOffset * 60 * 1000)
+                return jstDate.toISOString().split('T')[0]
+            })()
+            dataService.getPredictions(today).then(predData => {
+                if (predData?.races) {
+                    const map = {}
+                    for (const race of predData.races) {
+                        if (race.turnPrediction) {
+                            map[race.raceId] = race.turnPrediction
+                        }
+                    }
+                    setTurnPredictionMap(map)
+                }
+            }).catch(() => {})
+
         } catch (err) {
             console.error('API取得エラー:', err)
             setError(err.message)
@@ -212,7 +234,7 @@ function App({ tab = 'races' }) {
                 // レースデータを表示用に変換
                 const formattedRaces = venueData.races.map(race => {
                     return {
-                        id: `${race.date}-${race.placeCd}-${race.raceNo}`,
+                        id: `${race.date}-${String(race.placeCd).padStart(2, '0')}-${String(race.raceNo).padStart(2, '0')}`,
                         venue: venueData.placeName,
                         raceNumber: race.raceNo,
                         startTime: race.startTime || '未定', // スクレイピングした締切予定時刻を使用
@@ -641,6 +663,9 @@ function App({ tab = 'races' }) {
                                                         return raceTimeInMinutes < currentTimeInMinutes
                                                     })()
 
+                                                    const turnPreview = turnPredictionMap[race.id]
+                                                    const topPattern = turnPreview?.patterns?.[0]
+
                                                     return (
                                                         <div
                                                             key={race.id}
@@ -671,6 +696,28 @@ function App({ tab = 'races' }) {
                                                                     </div>
                                                                 )}
                                                             </div>
+                                                            {topPattern && (
+                                                                <div className="race-card-turn-preview">
+                                                                    <span className="turn-preview-label">展開予測</span>
+                                                                    <div className="turn-preview-content">
+                                                                        <span
+                                                                            className="turn-preview-course"
+                                                                            style={{
+                                                                                backgroundColor: (BOAT_COLORS[topPattern.winnerCourse] || BOAT_COLORS[1]).bg,
+                                                                                color: (BOAT_COLORS[topPattern.winnerCourse] || BOAT_COLORS[1]).text,
+                                                                            }}
+                                                                        >
+                                                                            {topPattern.winnerCourse}
+                                                                        </span>
+                                                                        <span className="turn-preview-technique">
+                                                                            {TECHNIQUE_NAMES[topPattern.technique] || topPattern.technique}
+                                                                        </span>
+                                                                        <span className="turn-preview-prob">
+                                                                            {Math.round(topPattern.probability * 100)}%
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                             <button
                                                                 className="predict-btn"
                                                                 onClick={() => analyzeRace(race)}
@@ -1029,6 +1076,19 @@ function App({ tab = 'races' }) {
                                         </div>
                                     ) : prediction && (
                                         <div className="prediction-result">
+                                            {/* 1マーク展開予測（目玉機能: 最上部に配置） */}
+                                            {prediction.turnPrediction && (
+                                                <FirstMarkAnimation
+                                                    patterns={prediction.turnPrediction.patterns}
+                                                    technique={prediction.turnPrediction.technique}
+                                                    probability={prediction.turnPrediction.probability}
+                                                    winnerCourse={prediction.turnPrediction.winnerCourse}
+                                                    distribution={prediction.turnPrediction.distribution}
+                                                    boatStrengths={prediction.turnPrediction.boatStrengths}
+                                                    players={prediction.allPlayers?.map(p => ({ number: p.number, name: p.name }))}
+                                                />
+                                            )}
+
                                             <div className="confidence-bar">
                                                 <div className="confidence-label">
                                                     AI信頼度: <strong>{prediction.confidence}%</strong>
@@ -1069,27 +1129,6 @@ function App({ tab = 'races' }) {
                                                     ))}
                                                 </ul>
                                             </div>
-
-                                            {/* 1マーク展開予測 */}
-                                            {prediction.turnPrediction && (
-                                                <FirstMarkAnimation
-                                                    patterns={prediction.turnPrediction.patterns}
-                                                    technique={prediction.turnPrediction.technique}
-                                                    probability={prediction.turnPrediction.probability}
-                                                    winnerCourse={prediction.turnPrediction.winnerCourse}
-                                                    distribution={prediction.turnPrediction.distribution}
-                                                    boatStrengths={prediction.turnPrediction.boatStrengths}
-                                                    players={prediction.allPlayers?.map(p => ({ number: p.number, name: p.name }))}
-                                                />
-                                            )}
-
-                                            {/* 超展開データ */}
-                                            {prediction.racerStats && (
-                                                <AttackDefenseTable
-                                                    racerStats={prediction.racerStats}
-                                                    players={prediction.allPlayers}
-                                                />
-                                            )}
 
                                             {/* SNSシェアボタン */}
                                             <div className="social-share-wrapper">
@@ -1293,6 +1332,10 @@ function App({ tab = 'races' }) {
                                                                 <th scope="col">モーター2率</th>
                                                                 <th scope="col">ボート番号</th>
                                                                 <th scope="col">ボート2率</th>
+                                                                <th scope="col">展示タイム</th>
+                                                                <th scope="col">展示ST</th>
+                                                                <th scope="col">総合力</th>
+                                                                <th scope="col">コース勝率</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
@@ -1313,6 +1356,31 @@ function App({ tab = 'races' }) {
                                                                     </td>
                                                                     <td>{player.boatNumber}</td>
                                                                     <td>{player.boat2Rate}%</td>
+                                                                    <td>
+                                                                        {(() => {
+                                                                            const ex = prediction.exhibitionData?.find(e => e.boat_number === player.number);
+                                                                            return ex?.exhibition_time != null ? ex.exhibition_time.toFixed(2) : '-';
+                                                                        })()}
+                                                                    </td>
+                                                                    <td>
+                                                                        {(() => {
+                                                                            const ex = prediction.exhibitionData?.find(e => e.boat_number === player.number);
+                                                                            return ex?.start_timing != null ? ex.start_timing.toFixed(2) : '-';
+                                                                        })()}
+                                                                    </td>
+                                                                    <td>
+                                                                        {prediction.turnPrediction?.boatStrengths?.[player.number - 1] != null
+                                                                            ? `${Math.round(prediction.turnPrediction.boatStrengths[player.number - 1] * 100)}%`
+                                                                            : '-'}
+                                                                    </td>
+                                                                    <td>
+                                                                        {(() => {
+                                                                            const stats = prediction.racerStats?.find(s => s.boatNumber === player.number);
+                                                                            const courseCounts = stats?.courseRaceCounts?.[String(player.number)];
+                                                                            if (!courseCounts) return '-';
+                                                                            return `${courseCounts.wins || 0}/${courseCounts.total || 0}`;
+                                                                        })()}
+                                                                    </td>
                                                                 </tr>
                                                             ))}
                                                         </tbody>
@@ -1349,9 +1417,33 @@ function App({ tab = 'races' }) {
                                                             <strong>🔥マーク</strong>
                                                             <p>特に優れた数値（平均より大きく上回る）。</p>
                                                         </div>
+                                                        <div className="guide-item">
+                                                            <strong>展示タイム</strong>
+                                                            <p>直線の走行タイム。数字が小さいほど機力が良い。</p>
+                                                        </div>
+                                                        <div className="guide-item">
+                                                            <strong>展示ST</strong>
+                                                            <p>スタートタイミング。小さいほどスタート力が高い。</p>
+                                                        </div>
+                                                        <div className="guide-item">
+                                                            <strong>総合力</strong>
+                                                            <p>ST優位性とモーター性能から算出した総合的な強さ指標。</p>
+                                                        </div>
+                                                        <div className="guide-item">
+                                                            <strong>コース勝率</strong>
+                                                            <p>そのコースでの過去の勝利数と出走数。</p>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
+
+                                            {/* 超展開データ（上級者向け） */}
+                                            {prediction.racerStats && (
+                                                <AttackDefenseTable
+                                                    racerStats={prediction.racerStats}
+                                                    players={prediction.allPlayers}
+                                                />
+                                            )}
 
                                             {/* 会場攻略ガイドリンク */}
                                             {selectedRace?.rawData?.placeCd && getVenueGuidePath(selectedRace.rawData.placeCd) && (

@@ -331,6 +331,55 @@ input:focus-visible,
   color: var(--text-dark);
 }
 
+/* レースカード展開予測プレビュー */
+.race-card-turn-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+}
+
+.turn-preview-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.turn-preview-content {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.turn-preview-course {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.turn-preview-technique {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+.turn-preview-prob {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fbbf24;
+}
+
 .predict-btn {
   width: 100%;
   padding: 1.125rem;
@@ -1053,7 +1102,7 @@ input:focus-visible,
 
   .players-table-detailed {
     font-size: 0.8rem;
-    min-width: 600px;
+    min-width: 750px;
   }
 
   .players-table-detailed th,
@@ -1099,7 +1148,7 @@ input:focus-visible,
 
 .players-table-detailed {
   width: 100%;
-  min-width: 800px;
+  min-width: 1100px;
   border-collapse: separate;
   border-spacing: 0;
   background: white;
@@ -1260,7 +1309,7 @@ input:focus-visible,
 
   .players-table-detailed {
     font-size: 0.85rem;
-    min-width: 700px;
+    min-width: 850px;
   }
 
   .players-table-detailed th,
@@ -2008,6 +2057,6 @@ input:focus-visible,
   }
 
   .players-table-detailed {
-    min-width: 550px;
+    min-width: 650px;
   }
 }
