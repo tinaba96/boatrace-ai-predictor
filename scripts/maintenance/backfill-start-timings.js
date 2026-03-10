@@ -280,14 +280,11 @@ async function main() {
   let techniquesUpdated = 0;
   let techniquesSkipped = 0;
   let errors = 0;
+  let processed = 0;
 
-  for (let i = 0; i < targetRaces.length; i++) {
-    const race = targetRaces[i];
-    const progress = `[${i + 1}/${targetRaces.length}]`;
+  const CONCURRENCY = 10;
 
-    if (options.verbose)
-      console.log(`${progress} ${race.race_id} - スクレイピング中...`);
-
+  async function processRace(race) {
     const result = await scrapeRaceResult(
       race.race_date,
       race.venue_code,
@@ -297,8 +294,6 @@ async function main() {
     if (!result) {
       timingsSkipped++;
       techniquesSkipped++;
-      if (options.verbose)
-        console.log(`${progress} ${race.race_id} - スキップ（取得失敗）`);
     } else {
       // スタートタイミング
       if (
@@ -312,22 +307,15 @@ async function main() {
         );
         if (upsertResult.success) {
           timingsUpserted++;
-          if (options.verbose)
-            console.log(
-              `${progress} ${race.race_id} - ST ${upsertResult.count}件登録`,
-            );
         } else {
           errors++;
           console.error(
-            `${progress} ${race.race_id} ST更新エラー:`,
+            `${race.race_id} ST更新エラー:`,
             upsertResult.error?.message,
           );
         }
       } else {
         timingsSkipped++;
-        if (options.verbose && existingTimings.has(race.race_id)) {
-          console.log(`${progress} ${race.race_id} - ST登録済みスキップ`);
-        }
       }
 
       // 決まり手
@@ -339,31 +327,26 @@ async function main() {
         );
         if (updateResult.success) {
           techniquesUpdated++;
-          if (options.verbose)
-            console.log(
-              `${progress} ${race.race_id} - 決まり手更新 (${result.winningTechnique})`,
-            );
         } else {
           errors++;
-          console.error(
-            `${progress} ${race.race_id} 決まり手更新エラー:`,
-            updateResult.error?.message,
-          );
         }
       } else {
         techniquesSkipped++;
       }
     }
 
-    // 進捗表示（10件ごと）
-    if ((i + 1) % 10 === 0 || i === targetRaces.length - 1) {
+    processed++;
+    if (processed % 50 === 0 || processed === targetRaces.length) {
       console.log(
-        `${progress} ST: ${timingsUpserted}件登録, 決まり手: ${techniquesUpdated}件更新`,
+        `[${processed}/${targetRaces.length}] ST: ${timingsUpserted}件登録, 決まり手: ${techniquesUpdated}件更新`,
       );
     }
+  }
 
-    // レート制限対策（50msの遅延）
-    await new Promise((resolve) => setTimeout(resolve, 50));
+  // 並列実行（CONCURRENCY件ずつ）
+  for (let i = 0; i < targetRaces.length; i += CONCURRENCY) {
+    const batch = targetRaces.slice(i, i + CONCURRENCY);
+    await Promise.all(batch.map((race) => processRace(race)));
   }
 
   console.log("");

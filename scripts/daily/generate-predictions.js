@@ -571,6 +571,11 @@ function generateRacePrediction(race, date, racerStatsMap) {
             courseRaceCounts: stats?.course_race_counts || null,
             exhibitionTime: exhibitionEntry?.exhibitionTime ?? null,
             motor2Rate: racer.motor2Rate || null,
+            globalWinRate: racer.globalWinRate || null,
+            global2Rate: racer.global2Rate || null,
+            localWinRate: racer.localWinRate || null,
+            local2Rate: racer.local2Rate || null,
+            grade: racer.grade || null,
         };
     });
     const turnPrediction = predictFirstMark(turnPredictionPlayers);
@@ -681,6 +686,7 @@ function generateRacePrediction(race, date, racerStatsMap) {
         racerStats: turnPredictionPlayers.map(p => ({
             boatNumber: p.boatNumber,
             course: p.course,
+            avgST: p.avgST,
             attackDistribution: p.attackDistribution,
             defenseDistribution: p.defenseDistribution,
             courseRaceCounts: p.courseRaceCounts,

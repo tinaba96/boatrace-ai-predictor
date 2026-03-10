@@ -195,17 +195,17 @@ function PredictionPanel({
             />
           </motion.div>
 
-          {/* レース結果 */}
-          <motion.div {...staggerItem(0.5)}>
-            <RaceResult prediction={prediction} />
-          </motion.div>
-
           {/* AIデータ予想テーブル */}
-          <motion.div {...staggerItem(0.6)}>
+          <motion.div {...staggerItem(0.5)}>
             <PredictionTable
               prediction={prediction}
               showExhibition={showExhibition}
             />
+          </motion.div>
+
+          {/* レース結果 */}
+          <motion.div {...staggerItem(0.6)}>
+            <RaceResult prediction={prediction} />
           </motion.div>
 
           {/* 会場攻略ガイドリンク */}

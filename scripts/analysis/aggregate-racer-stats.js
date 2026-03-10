@@ -588,22 +588,23 @@ async function aggregateRacer(racerId, venueCode = 0) {
     calculateCourseRaceCounts(racerId, filterVenue),
   ]);
 
-  if (!stStats) {
+  // STデータがなくても攻撃/防御分布があれば保存する
+  if (!stStats && !attackDist && !defenseDist && !courseRaceCounts) {
     return null;
   }
 
   return {
     racer_id: racerId,
     venue_code: venueCode,
-    avg_st: stStats.avg_st,
-    avg_st_last_30: stStats.avg_st_last_30,
-    st_stddev: stStats.st_stddev,
-    flying_rate: stStats.flying_rate,
+    avg_st: stStats?.avg_st ?? null,
+    avg_st_last_30: stStats?.avg_st_last_30 ?? null,
+    st_stddev: stStats?.st_stddev ?? null,
+    flying_rate: stStats?.flying_rate ?? null,
     attack_distribution: attackDist || { ...COURSE_DEFAULT_DISTRIBUTION },
     defense_distribution: defenseDist || {},
     course_entry_tendency: courseTendency || null,
     course_race_counts: courseRaceCounts || {},
-    total_races: stStats.total_races,
+    total_races: stStats?.total_races ?? 0,
     calculated_at: new Date().toISOString(),
   };
 }
