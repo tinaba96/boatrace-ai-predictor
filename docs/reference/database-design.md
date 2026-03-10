@@ -45,16 +45,18 @@ BoatAI Supabaseデータベースの設計仕様。
 | `race_results` | レース結果 | フロント、日次スクリプト、分析 |
 | `races` | レース基本情報 | 日次スクリプト、分析 |
 | `race_entries` | 出走選手情報 | 日次スクリプト、分析 |
+| `race_conditions` | 天候等条件 | 予測生成スクリプト |
+| `exhibition_data` | 展示タイム・ST | 予測生成スクリプト、フロント |
+| `race_start_timings` | 本番ST | 結果スクレイピング |
+| `racer_aggregated_stats` | 選手集計統計 | 予測生成（攻防分布等） |
 | `models` | モデルマスタ | 日次スクリプト |
 | `venues` | 会場マスタ | メンテナンススクリプト |
-| `race_conditions` | 天候等条件 | 予測生成スクリプト |
 
 ### 定義済みだが未使用のテーブル
 
 | テーブル名 | 設計意図 | 未使用理由 |
 |-----------|---------|-----------|
 | `race_odds` | オッズ情報 | スクレイピング未実装 |
-| `exhibition_data` | 展示情報 | スクレイピング未実装 |
 | `bet_filters` | フィルタ条件マスタ | ルールはコードにハードコード |
 | `bet_recommendations` | 賭け推奨判定 | ルールマッチはコードで実行 |
 | `daily_bet_summary` | 日次集計 | フロントでリアルタイム計算 |
@@ -99,7 +101,8 @@ CREATE TABLE predictions (
     confidence SMALLINT,                 -- 信頼度 (0-100)
 
     -- 詳細スコア
-    scores JSONB,                        -- 各艇のスコア
+    scores JSONB,                        -- 各艇のスコア（未使用）
+    feature_contributions JSONB,         -- 展開予測+選手統計（下記参照）
 
     -- 結果照合（トリガーで自動更新）
     is_hit_win BOOLEAN,
@@ -124,17 +127,44 @@ CREATE TABLE predictions (
 - `idx_predictions_model` (model_id)
 - `idx_predictions_race_model` (race_id, model_id)
 
+**feature_contributions の構造:**
+
+```jsonc
+{
+  "turnPrediction": {
+    "patterns": [              // 上位3パターン（展開予測）
+      { "course": 1, "technique": "逃げ", "probability": 0.52, "name": "1コース逃げ" },
+      // ...
+    ],
+    "technique": "逃げ",       // 最有力決まり手
+    "probability": 0.52,       // 最有力パターンの確率
+    "winnerCourse": 1,         // 最有力1着コース
+    "distribution": [...],     // 各コース勝率分布
+    "boatStrengths": [...]     // 各艇の総合力
+  },
+  "racerStats": [              // 6艇の攻防統計
+    {
+      "boatNumber": 1,
+      "course": 1,
+      "attackDistribution": { "nige": 0.95, "sashi": 0.02, ... },
+      "defenseDistribution": { "nigasare": 0.05, "sasare": 0.1, ... },
+      "courseRaceCounts": { "1": 150, "2": 5, ... }
+    },
+    // ... 計6艇分
+  ]
+}
+```
+
 **使用パターン:**
 ```javascript
-// フロントエンド (ruleMatchService.js)
+// フロントエンド (supabaseDataService.js)
 supabase.from('predictions')
   .select('*')
-  .gte('race_id', startDate)
-  .eq('model_id', 'standard')
+  .eq('race_id', raceId)
 
 // 日次スクリプト (generate-predictions.js)
 supabase.from('predictions')
-  .upsert(predictionData)
+  .upsert(predictionData)  // feature_contributions含む
 ```
 
 ---
@@ -327,6 +357,89 @@ CREATE TABLE venues (
 
 ---
 
+### race_conditions
+
+天候・水面コンディション情報を格納。
+
+```sql
+CREATE TABLE race_conditions (
+    race_id VARCHAR(20) PRIMARY KEY,
+
+    -- 天候
+    weather VARCHAR(10),
+    wind_direction VARCHAR(10),
+    wind_speed DECIMAL(4,1),
+    wave_height SMALLINT,
+    temperature DECIMAL(4,1),          -- 気温
+    water_temperature DECIMAL(4,1),    -- 水温
+
+    -- レースグレード
+    race_grade VARCHAR(10),            -- SG, G1, G2, G3, 一般
+    race_title VARCHAR(100),
+
+    -- 節情報（未取得）
+    series_day SMALLINT,
+    is_final_day BOOLEAN,
+
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+---
+
+### exhibition_data
+
+展示航走データを格納。15分間隔ワークフロー（scrape-exhibition.yml）で取得。
+
+```sql
+CREATE TABLE exhibition_data (
+    race_id VARCHAR(20) NOT NULL,
+    boat_number SMALLINT NOT NULL,
+
+    exhibition_time DECIMAL(5,2),      -- 展示タイム（秒）
+    start_timing DECIMAL(4,2),         -- 展示ST（秒）
+
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+
+    PRIMARY KEY (race_id, boat_number)
+);
+```
+
+**使用パターン:**
+```javascript
+// 予測生成 (generate-predictions.js)
+supabase.from('exhibition_data')
+  .upsert(exhibitionRows)
+
+// フロントエンド (supabaseDataService.js)
+supabase.from('exhibition_data')
+  .select('*')
+  .eq('race_id', raceId)
+```
+
+---
+
+### race_start_timings
+
+本番レースのスタートタイミング情報。
+
+```sql
+CREATE TABLE race_start_timings (
+    race_id VARCHAR(20) NOT NULL,
+    boat_number SMALLINT NOT NULL,
+
+    start_timing DECIMAL(4,2),         -- 本番ST（秒）
+    is_flying BOOLEAN DEFAULT FALSE,   -- フライング
+    is_late_start BOOLEAN DEFAULT FALSE, -- 出遅れ
+
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+
+    PRIMARY KEY (race_id, boat_number)
+);
+```
+
+---
+
 ## テーブル関係図
 
 ```
@@ -369,6 +482,7 @@ CREATE TABLE venues (
   │ race_id (FK) ────────────────────────│
   │ model_id (FK) ───────────────────────│
   │ top_pick, confidence, ...            │
+  │ feature_contributions (JSONB)        │
   │ is_hit_win, payout_win, ...          │
   └──────────────────────────────────────┘
              │
@@ -379,6 +493,28 @@ CREATE TABLE venues (
   │ race_id (PK)                         │
   │ rank1, rank2, rank3                  │
   │ payout_win, payout_trifecta, ...     │
+  │ winning_technique, course_1~6        │
+  └──────────────────────────────────────┘
+             │
+             │ 1:N (via race_id)
+             ▼
+  ┌──────────────────────────────────────┐
+  │         race_start_timings            │
+  │ race_id + boat_number (PK)           │
+  │ start_timing, is_flying              │
+  └──────────────────────────────────────┘
+
+  ┌──────────────────────────────────────┐
+  │          exhibition_data              │
+  │ race_id + boat_number (PK)           │
+  │ exhibition_time, start_timing        │
+  └──────────────────────────────────────┘
+
+  ┌──────────────────────────────────────┐
+  │          race_conditions              │
+  │ race_id (PK)                         │
+  │ weather, wind, temperature, ...      │
+  │ race_grade, race_title               │
   └──────────────────────────────────────┘
 ```
 
@@ -405,12 +541,14 @@ CREATE TABLE venues (
 
 | ファイル | テーブル | 操作 |
 |---------|---------|------|
-| `generate-predictions.js` | races | SELECT, UPSERT |
-| `generate-predictions.js` | race_entries | SELECT, UPSERT |
-| `generate-predictions.js` | predictions | SELECT, UPSERT |
-| `generate-predictions.js` | race_conditions | SELECT |
+| `generate-predictions.js` | races | UPSERT |
+| `generate-predictions.js` | race_entries | UPSERT |
+| `generate-predictions.js` | predictions | UPSERT |
+| `generate-predictions.js` | race_conditions | UPSERT |
+| `generate-predictions.js` | exhibition_data | UPSERT |
 | `scrape-results.js` | races | SELECT |
-| `scrape-results.js` | race_results | SELECT, UPSERT |
+| `scrape-results.js` | race_results | UPSERT |
+| `scrape-results.js` | race_start_timings | UPSERT |
 | `scrape-results.js` | predictions | SELECT, UPDATE |
 | `calculate-accuracy.js` | predictions | SELECT |
 | `calculate-accuracy.js` | race_results | SELECT |
@@ -450,11 +588,10 @@ CREATE TABLE venues (
 | `daily_bet_summary` | 日次集計をDB保存 | フロントでリアルタイム計算 |
 | `user_visible_summary` | ユーザー向けサマリー | フロントでリアルタイム計算 |
 | `race_odds` | オッズ情報 | スクレイピング未実装 |
-| `exhibition_data` | 展示タイム | スクレイピング未実装 |
 
 **理由:**
-- 現在のルールマッチングは `ruleMatchService.js` にハードコードされており、DBへの保存は行っていない
-- 集計はページ読み込み時にリアルタイムで計算している
+- ルールマッチングは `ruleMatchService.js` にハードコード、DBへの保存は行っていない
+- 集計はページ読み込み時にリアルタイムで計算
 
 ### 2. 名称の不整合
 

@@ -95,15 +95,26 @@
 | race_id〜top_3rd | ✅ | - | |
 | confidence | ✅ | - | |
 | scores | ❌ 未使用 | - | スキーマのみ |
-| feature_contributions | ✅ | - | turnPrediction, racerStats を保存 |
+| feature_contributions | ✅ | - | turnPrediction + racerStats を保存（下記参照） |
 | is_hit_* | - | ✅ | |
 | payout_* | - | ✅ | |
 | is_shadow | ✅ | - | |
 
 **状況: ⚠️ scores のみ未使用**
 
+### feature_contributions の内容
+
+`generate-predictions.js` が書き込む JSONB データ:
+
+| キー | 内容 | フロントエンドでの用途 |
+|------|------|----------------------|
+| `turnPrediction.patterns` | 上位3展開パターン（コース・決まり手・確率） | FirstMarkAnimation |
+| `turnPrediction.distribution` | 各コース勝率分布 | FirstMarkAnimation |
+| `turnPrediction.boatStrengths` | 各艇の総合力 | FirstMarkAnimation |
+| `racerStats` | 6艇の攻撃/防御分布・コース別レース数 | AttackDefenseTable |
+
 ### 対応方針
-- `scores`: 現状不要。将来デバッグ用途で活用する可能性があるが、優先度低
+- `scores`: 現状不要。優先度低
 
 ---
 
@@ -171,7 +182,7 @@
 
 | カラム | 書き込み | 状況 |
 |--------|---------|------|
-| weather〜water_temperature | ✅ | |
+| weather〜water_temperature | ✅ | scrape-to-json.jsで取得 → generate-predictions.jsでupsert |
 | race_grade | ✅ | |
 | race_title | ✅ | |
 | series_day | ❌ 未取得 | |
@@ -180,8 +191,7 @@
 **状況: ⚠️ 節情報が未取得**
 
 ### 対応方針
-- `series_day` / `is_final_day`: beforeinfo ページに「○日目」の表記がある場合、スクレイピングで取得可能
-  - 節の最終日はイン逃げ率が変わるなど予測精度に影響する可能性あり
+- `series_day` / `is_final_day`: beforeinfo ページの「○日目」表記から取得可能
   - 優先度: 中（将来の予測モデル改善時に対応）
 
 ---
@@ -199,10 +209,14 @@
 
 ### 実際の書き込み (generate-predictions.js)
 
-**状況: ✅ 実装済み** — scrape-to-json.js で取得 → generate-predictions.js で upsert
+**状況: ✅ 実装済み・運用中** — scrape-to-json.js で取得 → generate-predictions.js で upsert
+
+- 毎時のフルパイプライン (scrape.yml) で取得
+- 15分間隔の展示専用ワークフロー (scrape-exhibition.yml, JST 9-17時) でも取得
+- フロントエンドからも `exhibition_data` テーブルを直接参照
 
 ### 既知の課題
-- 展示データのタイミング問題 → 15分間隔ワークフローで対応済み（詳細は [DATA_SCRAPING_GAPS.md](../issues/DATA_SCRAPING_GAPS.md)）
+- 展示データのタイミング問題 → 15分間隔ワークフローで改善済み（詳細は [DATA_SCRAPING_GAPS.md](../issues/DATA_SCRAPING_GAPS.md)）
 
 ---
 
@@ -259,18 +273,22 @@
         ▼
 ┌─────────────────────┐
 │  scrape-to-json.js  │ ── data/races.json
-└─────────────────────┘
+└─────────────────────┘    (出走表・天候・展示データ)
         │
         ▼
 ┌───────────────────────────┐
-│  generate-predictions.js  │
+│  generate-predictions.js  │  ← racer_aggregated_stats (攻防分布)
 └───────────────────────────┘
         │
         ├─▶ races テーブル (✅ 完全)
         ├─▶ race_entries テーブル (✅ 完全)
-        ├─▶ predictions テーブル (✅ feature_contributions含む)
+        ├─▶ predictions テーブル (✅ feature_contributions: turnPrediction + racerStats)
         ├─▶ race_conditions テーブル (⚠️ 節情報未取得)
-        └─▶ exhibition_data テーブル (✅ 実装済み)
+        └─▶ exhibition_data テーブル (✅ 運用中)
+
+[15分間隔ワークフロー (scrape-exhibition.yml)]
+        │ JST 9:00-17:00
+        └─▶ 上記と同じ (scrape-to-json → generate-predictions、Supabaseのみ)
 
 [レース終了後]
         │
@@ -280,11 +298,11 @@
 └─────────────────────┘
         │
         ├─▶ race_results テーブル (⚠️ 中止フラグ未取得)
-        ├─▶ race_start_timings テーブル (✅ 実装済み)
+        ├─▶ race_start_timings テーブル (✅ 運用中)
         └─▶ predictions テーブル (的中フラグ・配当更新)
 
 [未実装]
         │
-        ├─✗ race_odds テーブル（配当妙味機能で対応予定）
+        ├─✗ race_odds テーブル（期待値計算で対応予定）
         └─✗ bet_* テーブル群（同上）
 ```
