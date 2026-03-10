@@ -218,6 +218,22 @@
   flex-shrink: 0;
 }
 
+/* ターンマーク波紋パルス */
+.turn-mark-ripple {
+  animation: ripple 2.4s ease-out infinite;
+}
+
+@keyframes ripple {
+  0% {
+    r: 15;
+    opacity: 0.3;
+  }
+  100% {
+    r: 35;
+    opacity: 0;
+  }
+}
+
 /* リプレイボタン */
 .first-mark-animation__replay {
   display: flex;
@@ -226,19 +242,52 @@
 }
 
 .first-mark-animation__replay-btn {
-  padding: 0.4rem 1rem;
+  padding: 0.5rem 1.25rem;
   font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.7);
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.3);
   border-radius: 6px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, border-color 0.2s;
 }
 
 .first-mark-animation__replay-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.5);
   color: #fff;
+}
+
+/* 水しぶきエフェクト */
+.spray {
+  animation: spray 0.6s ease-out infinite;
+}
+
+.spray--1 {
+  animation-delay: 0s;
+}
+
+.spray--2 {
+  animation-delay: 0.2s;
+}
+
+.spray--3 {
+  animation-delay: 0.4s;
+}
+
+@keyframes spray {
+  0% {
+    opacity: 0.6;
+    r: 1.5;
+  }
+  50% {
+    opacity: 0.3;
+    r: 2.5;
+  }
+  100% {
+    opacity: 0;
+    r: 1;
+  }
 }
 
 /* モバイル対応 */
