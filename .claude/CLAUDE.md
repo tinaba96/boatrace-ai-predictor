@@ -36,11 +36,12 @@ boatrace-ai-predictor/
 ├── docs/
 │   ├── db-migration/      # DBマイグレーション
 │   ├── reference/         # リファレンス資料
+│   ├── design/            # 設計・実装資料（採用済み）
 │   ├── operation/         # 運用ガイド
 │   ├── issues/            # 既知の問題
-│   ├── proposal/          # 提案・検討
+│   ├── proposal/          # 提案・検討（未採用）
 │   ├── setup/             # セットアップガイド
-│   └── archive/           # 古いドキュメント
+│   └── archive/           # 廃案・不要になった資料
 ├── public/
 │   └── blog/              # ブログ記事（Markdown）
 ├── note-articles/         # note.com記事

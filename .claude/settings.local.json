@@ -1,6 +1,9 @@
 {
   "permissions": {
     "allow": [
+      "Read",
+      "Edit",
+      "Write",
       "Bash(node:*)",
       "Bash(npm run:*)",
       "Bash(git:*)",
@@ -37,13 +40,21 @@
       "Bash(xargs:*)",
       "WebFetch(domain:www.boat-ai.jp)",
       "Bash(pkill:*)",
-      "WebFetch(domain:supabase.com)"
+      "WebFetch(domain:supabase.com)",
+      "WebFetch(domain:kyoteibiyori.com)",
+      "WebFetch(domain:alpedeveroski.com)",
+      "WebFetch(domain:www.eurorvvv.org)",
+      "WebFetch(domain:zenn.dev)",
+      "Bash(python3:*)",
+      "Bash(npm install:*)",
+      "Read(//tmp/**)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
       "Bash(rm -r /:*)"
     ],
-    "ask": []
+    "ask": [],
+    "defaultMode": "acceptEdits"
   },
   "hooks": {
     "PreToolUse": [
