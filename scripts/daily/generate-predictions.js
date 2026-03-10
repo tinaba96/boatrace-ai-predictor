@@ -522,10 +522,9 @@ function calculateExhibitionBonus(exhibitionEntry, avgExTime, modelType) {
     return Math.round(bonus);
 }
 
-// 展開予測の1着・2着・3着からtop3を取得
-function getTop3FromTurnPrediction(turnPrediction) {
-    if (!turnPrediction?.patterns?.[0]) return null;
-    const pattern = turnPrediction.patterns[0];
+// 展開予測パターンの1着・2着・3着からtop3を取得
+function getTop3FromPattern(pattern) {
+    if (!pattern) return null;
     const first = pattern.winnerCourse;
 
     // 2着: secondPlaceの最大確率コース（1着除外）
@@ -586,26 +585,32 @@ function generateRacePrediction(race, date, racerStatsMap) {
         return null;
     }
 
-    // 展開予測からtop3を取得（全モデル共通）
-    const turnTop3 = getTop3FromTurnPrediction(turnPrediction);
+    // 展開予測パターンをモデルにマッピング
+    // patterns[0]（最高確率）→ safeBet（本命狙い）
+    // patterns[1]（2番目）  → standard（スタンダード）
+    // patterns[2]（3番目）  → upsetFocus（穴狙い）
+    const patterns = turnPrediction?.patterns || [];
+    const safeBetTurn = getTop3FromPattern(patterns[0] || null);
+    const standardTurn = getTop3FromPattern(patterns[1] || null);
+    const upsetFocusTurn = getTop3FromPattern(patterns[2] || null);
 
-    // スタンダード版の予想
-    const standardTopPick = turnTop3 ? turnTop3[0] : standardPlayers[0].number;
-    const standardTop3 = turnTop3 || standardPlayers.slice(0, 3).map(p => p.number);
-    const standardConfidence = calculateConfidence(standardPlayers);
-    const standardTopPlayer = standardPlayers.find(p => p.number === standardTopPick) || standardPlayers[0];
-    const standardReasoning = generateTopPickReasoning(standardTopPlayer, standardPlayers, 'standard');
-
-    // 本命狙い版の予想
-    const safeBetTopPick = turnTop3 ? turnTop3[0] : safeBetPlayers[0].number;
-    const safeBetTop3 = turnTop3 || safeBetPlayers.slice(0, 3).map(p => p.number);
+    // 本命狙い版の予想（展開予測パターン1）
+    const safeBetTopPick = safeBetTurn ? safeBetTurn[0] : safeBetPlayers[0].number;
+    const safeBetTop3 = safeBetTurn || safeBetPlayers.slice(0, 3).map(p => p.number);
     const safeBetConfidence = calculateConfidence(safeBetPlayers);
     const safeBetTopPlayer = safeBetPlayers.find(p => p.number === safeBetTopPick) || safeBetPlayers[0];
     const safeBetReasoning = generateTopPickReasoning(safeBetTopPlayer, safeBetPlayers, 'safe-bet');
 
-    // 穴狙い版の予想
-    const upsetFocusTopPick = turnTop3 ? turnTop3[0] : upsetFocusPlayers[0].number;
-    const upsetFocusTop3 = turnTop3 || upsetFocusPlayers.slice(0, 3).map(p => p.number);
+    // スタンダード版の予想（展開予測パターン2）
+    const standardTopPick = standardTurn ? standardTurn[0] : standardPlayers[0].number;
+    const standardTop3 = standardTurn || standardPlayers.slice(0, 3).map(p => p.number);
+    const standardConfidence = calculateConfidence(standardPlayers);
+    const standardTopPlayer = standardPlayers.find(p => p.number === standardTopPick) || standardPlayers[0];
+    const standardReasoning = generateTopPickReasoning(standardTopPlayer, standardPlayers, 'standard');
+
+    // 穴狙い版の予想（展開予測パターン3）
+    const upsetFocusTopPick = upsetFocusTurn ? upsetFocusTurn[0] : upsetFocusPlayers[0].number;
+    const upsetFocusTop3 = upsetFocusTurn || upsetFocusPlayers.slice(0, 3).map(p => p.number);
     const upsetFocusConfidence = calculateConfidence(upsetFocusPlayers);
     const upsetFocusTopPlayer = upsetFocusPlayers.find(p => p.number === upsetFocusTopPick) || upsetFocusPlayers[0];
     const upsetFocusReasoning = generateTopPickReasoning(upsetFocusTopPlayer, upsetFocusPlayers, 'upset-focus');
