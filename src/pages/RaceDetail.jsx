@@ -405,15 +405,7 @@ function RaceDetail() {
                       )}
 
                       <div className="prediction-result">
-                        <div className="confidence-bar">
-                          <div className="confidence-label">
-                            AI信頼度: <strong>{prediction.confidence}%</strong>
-                          </div>
-                          <div className="bar">
-                            <div className="bar-fill" style={{ width: `${prediction.confidence}%` }}></div>
-                          </div>
-                        </div>
-
+                        {/* 1マーク展開予測（目玉機能: 最上部に配置） */}
                         {prediction.turnPrediction && (
                           <FirstMarkAnimation
                             patterns={prediction.turnPrediction.patterns}
@@ -426,12 +418,14 @@ function RaceDetail() {
                           />
                         )}
 
-                        {prediction.racerStats && (
-                          <AttackDefenseTable
-                            racerStats={prediction.racerStats}
-                            players={prediction.allPlayers}
-                          />
-                        )}
+                        <div className="confidence-bar">
+                          <div className="confidence-label">
+                            AI信頼度: <strong>{prediction.confidence}%</strong>
+                          </div>
+                          <div className="bar">
+                            <div className="bar-fill" style={{ width: `${prediction.confidence}%` }}></div>
+                          </div>
+                        </div>
 
                         <div className="top-pick">
                           <h3>🥇 AI推奨</h3>
@@ -464,6 +458,14 @@ function RaceDetail() {
 
                         <RaceResult prediction={prediction} />
                         <PlayerTable allPlayers={prediction.allPlayers} top3={prediction.top3} />
+
+                        {/* 超展開データ（上級者向け） */}
+                        {prediction.racerStats && (
+                          <AttackDefenseTable
+                            racerStats={prediction.racerStats}
+                            players={prediction.allPlayers}
+                          />
+                        )}
 
                         {/* 会場攻略ガイドリンク */}
                         {selectedRace?.rawData?.venueCode && getVenueGuidePath(selectedRace.rawData.venueCode) && (
