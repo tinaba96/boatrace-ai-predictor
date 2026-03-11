@@ -1,0 +1,23 @@
+name: Aggregate Racer Stats
+
+on:
+  schedule:
+    - cron: '0 14 * * *' # JST 23:00（全レース終了後）
+  workflow_dispatch:
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Aggregate all racer stats
+        run: node scripts/analysis/aggregate-racer-stats.js --all
+        env:
+          TZ: 'Asia/Tokyo'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}

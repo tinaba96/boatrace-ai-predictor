@@ -169,6 +169,47 @@ supabase.from('predictions')
 
 ---
 
+### racer_aggregated_stats
+
+選手ごとの集計統計。`aggregate-racer-stats.js --all` で日次更新（`aggregate-stats.yml`）。
+
+| カラム | 型 | 説明 |
+|--------|-----|------|
+| `racer_id` | integer | 選手登録番号（PK） |
+| `venue_code` | integer | 会場コード（0=全会場集計）（PK） |
+| `avg_st` | decimal(5,3) | 平均スタートタイミング |
+| `avg_st_last_30` | decimal(5,3) | 直近30走の平均ST |
+| `st_stddev` | decimal(5,3) | ST標準偏差 |
+| `flying_rate` | decimal(5,4) | フライング率 |
+| `attack_distribution` | JSONB | コース別決まり手分布 |
+| `defense_distribution` | JSONB | 1コース時の被決まり手分布 |
+| `course_race_counts` | JSONB | コース別出走数・勝利数 |
+| `course_entry_tendency` | JSONB | 枠番→コース進入傾向 |
+| `total_races` | integer | 総レース数 |
+
+**複合PK:** `(racer_id, venue_code)`
+
+**更新頻度:** 日次（`aggregate-stats.yml` — JST 23:00）
+
+**データソース:** `race_entries` + `race_start_timings` + `race_results` から集計
+
+**使用箇所:** `turnPrediction.js`（展開予測）、`generate-predictions.js`（スコア計算）
+
+**使用パターン:**
+```javascript
+// 予測生成時 (generate-predictions.js)
+supabase.from('racer_aggregated_stats')
+  .select('*')
+  .in('racer_id', racerIds)
+  .eq('venue_code', 0)  // 全会場集計
+
+// 集計スクリプト (aggregate-racer-stats.js)
+supabase.from('racer_aggregated_stats')
+  .upsert(record, { onConflict: 'racer_id,venue_code' })
+```
+
+---
+
 ### race_results
 
 レース結果（着順・配当）を格納。

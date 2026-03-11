@@ -120,8 +120,9 @@ AIスコア = 全国勝率 × 重み
 | データ | ソース |
 |--------|--------|
 | 展示ST / デフォルトST(0.15) | exhibition_data / beforeinfo |
-| 選手の攻撃分布 (逃げ/差し/まくり等) | racer_aggregated_stats |
-| 選手の防御分布 (逃がされ/差され等) | racer_aggregated_stats |
+| 選手の平均ST | racer_aggregated_stats.avg_st（展示STと55:45でブレンド） |
+| 選手の攻撃分布 (逃げ/差し/まくり等) | racer_aggregated_stats.attack_distribution |
+| 選手の防御分布 (逃がされ/差され等) | racer_aggregated_stats.defense_distribution |
 | モーター2連率 | race_entries |
 
 ### 出力
@@ -213,6 +214,7 @@ AIスコア = 全国勝率 × 重み
 |-------------|------------|---------|
 | `scrape.yml` | 毎時（JST 3-22時） | フルパイプライン（スクレイプ→予測→結果→精度→デプロイ） |
 | `scrape-exhibition.yml` | 15分間隔（JST 9-17時） | 展示データ取得→予測再生成（Supabaseのみ、デプロイなし） |
+| `aggregate-stats.yml` | 毎日 JST 23:00 | 選手集計統計の更新（racer_aggregated_stats） |
 
 ### フルパイプライン（scrape.yml）
 
@@ -233,6 +235,19 @@ AIスコア = 全国勝率 × 重み
     │ → models テーブル更新
     ▼
 [5. git commit & push → Vercel deploy]
+```
+
+### 選手統計集計パイプライン（aggregate-stats.yml）
+
+毎日 JST 23:00 に実行。当日のレース結果を含む全データから選手統計を再集計する。
+
+```
+[race_results + race_start_timings + race_entries]
+    │ aggregate-racer-stats.js --all
+    │ → racer_aggregated_stats 更新
+    │   (avg_st, attack_distribution, defense_distribution 等)
+    ▼
+[翌日の generate-predictions.js で最新統計を使用]
 ```
 
 ### ページ読み込み時の処理
