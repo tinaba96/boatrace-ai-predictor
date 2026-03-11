@@ -164,7 +164,21 @@ function catmullRomSubdivide(points, segments = 3, tension = 0.5) {
   return result;
 }
 
-// SVG Cubic Bezier で滑らかな航跡パスを生成
+// 補間後のパスがターンマークの外側を通るよう制約を適用
+function enforceMarkClearance(points, mark, minDistance) {
+  return points.map(p => {
+    const dx = p.x - mark.x;
+    const dy = p.y - mark.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < minDistance && dist > 0) {
+      const scale = minDistance / dist;
+      return { x: mark.x + dx * scale, y: mark.y + dy * scale };
+    }
+    return p;
+  });
+}
+
+// SVG Cubic Bezier で滑らかな航跡パスを生成（制御点もターンマーク外側に制約）
 function buildSmoothWakePath(xValues, yValues) {
   if (xValues.length < 2) return "";
   let d = `M ${xValues[0]} ${yValues[0]}`;
@@ -172,45 +186,57 @@ function buildSmoothWakePath(xValues, yValues) {
     d += ` L ${xValues[1]} ${yValues[1]}`;
     return d;
   }
+  const M = TURN_MARK;
+  const MIN_CP = 30; // 制御点のクリアランス
   for (let i = 1; i < xValues.length - 1; i++) {
     const prevX = xValues[i - 1], prevY = yValues[i - 1];
     const curX = xValues[i], curY = yValues[i];
     const nextX = xValues[i + 1], nextY = yValues[i + 1];
     const next2X = xValues[Math.min(i + 2, xValues.length - 1)];
     const next2Y = yValues[Math.min(i + 2, yValues.length - 1)];
-    const cp1x = curX + (nextX - prevX) / 6;
-    const cp1y = curY + (nextY - prevY) / 6;
-    const cp2x = nextX - (next2X - curX) / 6;
-    const cp2y = nextY - (next2Y - curY) / 6;
-    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${nextX} ${nextY}`;
+    let cp1x = curX + (nextX - prevX) / 6;
+    let cp1y = curY + (nextY - prevY) / 6;
+    let cp2x = nextX - (next2X - curX) / 6;
+    let cp2y = nextY - (next2Y - curY) / 6;
+    // 制御点がターンマーク内側に入らないよう押し出す
+    const [cp1, cp2] = enforceMarkClearance(
+      [{ x: cp1x, y: cp1y }, { x: cp2x, y: cp2y }], M, MIN_CP
+    );
+    d += ` C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${nextX} ${nextY}`;
   }
   return d;
 }
 
-// ゴール位置を順位順に割り当て（1着が最先頭、2着が次、…）
-// 反時計回り: マーク上方を左旋回後、バックストレッチ（左上）方向へ抜ける
+// ゴール位置を順位順に割り当て（バックストレッチ方向＝左上）
 function getExitPosition(rankOrder, M) {
   const exitPositions = [
-    { x: M.x - 80, y: M.y - 70 },  // 1着: 最先頭（バックストレッチ方向）
-    { x: M.x - 55, y: M.y - 55 },  // 2着
-    { x: M.x - 35, y: M.y - 42 },  // 3着
-    { x: M.x - 15, y: M.y - 30 },  // 4着
-    { x: M.x + 5, y: M.y - 20 },   // 5着
-    { x: M.x + 20, y: M.y - 10 },  // 6着
+    { x: M.x - 80, y: M.y - 70 },  // 1着: バックストレッチ最先頭
+    { x: M.x - 60, y: M.y - 60 },  // 2着
+    { x: M.x - 45, y: M.y - 55 },  // 3着
+    { x: M.x - 30, y: M.y - 50 },  // 4着
+    { x: M.x - 15, y: M.y - 45 },  // 5着
+    { x: M.x - 5, y: M.y - 40 },   // 6着
   ];
   return exitPositions[Math.min(rankOrder, 5)];
 }
 
-// 決まり手ごとのアニメーションパスを生成（7点: 接近→旋回弧→離脱）
-// ボートは左から右へ進み、1マーク(280,160)で反時計回り（左旋回）。
-// 旋回後はマーク上方を通ってバックストレッチ（左上）方向へ抜ける。
+// 決まり手ごとのアニメーションパスを生成
+// ボートは左→右に進み、1マーク(280,160)を反時計回りに旋回。
+// 極座標で弧を生成し、全艇がマークを確実に回る。
 function getAnimationPaths(technique, winnerCourse, secondCourse, thirdCourse, boatStrengths) {
   const winIdx = winnerCourse - 1;
   const secIdx = secondCourse ? secondCourse - 1 : -1;
   const thdIdx = thirdCourse ? thirdCourse - 1 : -1;
   const M = TURN_MARK; // (280, 160)
 
-  // 残り3艇を強さ順にソート（事前計算）
+  // ターンマーク周りの弧上の点を算出
+  // angleDeg: 0°=右, 90°=上, 180°=左（反時計回りが正）
+  function arc(angleDeg, R) {
+    const rad = angleDeg * Math.PI / 180;
+    return { x: M.x + R * Math.cos(rad), y: M.y - R * Math.sin(rad) };
+  }
+
+  // 残り3艇を強さ順にソート
   const remaining = [];
   for (let c = 0; c < 6; c++) {
     if (c === winIdx || c === secIdx || c === thdIdx) continue;
@@ -220,7 +246,6 @@ function getAnimationPaths(technique, winnerCourse, secondCourse, thirdCourse, b
     remaining.sort((a, b) => boatStrengths[b] - boatStrengths[a]);
   }
 
-  // コースindex → 順位順序（0=1着, 1=2着, ...）
   function getRankOrder(i) {
     if (i === winIdx) return 0;
     if (i === secIdx) return 1;
@@ -228,35 +253,47 @@ function getAnimationPaths(technique, winnerCourse, secondCourse, thirdCourse, b
     return 3 + remaining.indexOf(i);
   }
 
-  // 汎用: 反時計回り旋回パス（左から右へ進み、マーク上方を左旋回）
+  // 汎用: 反時計回り旋回パス（極座標ベース）
+  // 全艇がマーク右下から進入し、反時計回りに旋回して左上へ離脱
   function standardTurnPath(i, r) {
     const offset = i * 10;
-    const R = r + offset;
+    const R = Math.max(r + offset, 28);
     const exit = getExitPosition(getRankOrder(i), M);
+    const startY = START_POSITIONS[i].y;
+    // 全コースがマーク付近のy位置に収束（内枠はやや下、外枠はマーク付近）
+    const approachY = M.y + 5 + Math.max((startY - M.y) * 0.15, -5);
     return [
-      { x: 150 + i * 5, y: START_POSITIONS[i].y },
-      { x: M.x - 60, y: M.y - R * 0.3 },
-      { x: M.x - 5, y: M.y - R * 0.7 },
-      { x: M.x + R * 0.35, y: M.y - R * 0.8 },
-      { x: M.x + R * 0.3, y: M.y - R * 0.6 },
-      { x: M.x - 10, y: M.y - R * 0.85 },
-      exit,
+      { x: 150 + i * 5, y: startY },           // スタート
+      { x: M.x, y: approachY },                 // 接近（マーク付近に収束）
+      arc(-10, R),                               // 旋回開始（マーク右下）
+      arc(40, R),                                // 旋回中（右上）
+      arc(85, R),                                // 旋回中（上方）
+      arc(130, R),                               // 旋回終了（左上）
+      exit,                                      // バックストレッチへ
     ];
+  }
+
+  // 接近y位置を算出（全コースがマーク付近に収束）
+  function getApproachY(i) {
+    const startY = START_POSITIONS[i].y;
+    return M.y + 5 + Math.max((startY - M.y) * 0.15, -5);
   }
 
   switch (technique) {
     case "nige": {
-      // 逃げ: 1号艇が最内を素早く反時計回りで旋回、先頭でバックストレッチへ
+      // 逃げ: 1号艇が最内を鋭く旋回し先頭でバックストレッチへ
       const exit1st = getExitPosition(0, M);
       return Array.from({ length: 6 }, (_, i) => {
         if (i === 0) {
+          // 1号艇: 最内の鋭いターン（R=25, 最もマークに近い）
+          const R = 25;
           return [
             { x: 150, y: 220 },
-            { x: M.x - 55, y: M.y - 10 },
-            { x: M.x, y: M.y - 22 },
-            { x: M.x + 15, y: M.y - 28 },
-            { x: M.x + 10, y: M.y - 35 },
-            { x: M.x - 25, y: M.y - 50 },
+            { x: M.x, y: M.y + 14 },
+            arc(-15, R),
+            arc(35, R),
+            arc(85, R),
+            arc(130, R),
             exit1st,
           ];
         }
@@ -265,31 +302,33 @@ function getAnimationPaths(technique, winnerCourse, secondCourse, thirdCourse, b
     }
 
     case "sashi": {
-      // 差し: 勝者が内側を差して1号艇の内を抜く
+      // 差し: 勝者がインを差して1号艇の内を抜く
       const exit1st = getExitPosition(0, M);
       const exitInner = getExitPosition(getRankOrder(0), M);
       return Array.from({ length: 6 }, (_, i) => {
         if (i === 0) {
-          // 1号艇: 旋回が膨らむ（外に流れる）
+          // 1号艇: 旋回が膨らむ（R=40, 外に流れる）
+          const R = 40;
           return [
             { x: 150, y: 220 },
-            { x: M.x - 55, y: M.y - 8 },
-            { x: M.x, y: M.y - 20 },
-            { x: M.x + 25, y: M.y - 35 },
-            { x: M.x + 30, y: M.y - 50 },
-            { x: M.x + 10, y: M.y - 60 },
+            { x: M.x, y: M.y + 16 },
+            arc(-15, R),
+            arc(30, R),
+            arc(80, R),
+            arc(130, R),
             exitInner,
           ];
         }
         if (i === winIdx) {
-          // 差す側: 内側を鋭く旋回
+          // 差す側: 内側を鋭くターン（1号艇より小さいR）
+          const R = 25;
           return [
             { x: 150, y: START_POSITIONS[i].y },
-            { x: M.x - 50, y: M.y - 5 },
-            { x: M.x, y: M.y - 18 },
-            { x: M.x + 12, y: M.y - 25 },
-            { x: M.x + 8, y: M.y - 35 },
-            { x: M.x - 20, y: M.y - 48 },
+            { x: M.x, y: getApproachY(i) },
+            arc(-10, R),
+            arc(40, R),
+            arc(85, R),
+            arc(130, R),
             exit1st,
           ];
         }
@@ -303,28 +342,29 @@ function getAnimationPaths(technique, winnerCourse, secondCourse, thirdCourse, b
       const exit1st = getExitPosition(0, M);
       return Array.from({ length: 6 }, (_, i) => {
         if (i === makuriIdx) {
-          // まくる側: 大外から一気に先頭へ
+          // まくる側: 大外から一気に先頭へ（大きなR）
+          const R = 55 + i * 5;
           return [
             { x: 135, y: START_POSITIONS[i].y },
-            { x: M.x - 75, y: M.y - 20 },
-            { x: M.x - 10, y: M.y - 45 },
-            { x: M.x + 20, y: M.y - 55 },
-            { x: M.x + 10, y: M.y - 65 },
-            { x: M.x - 25, y: M.y - 70 },
+            { x: M.x, y: getApproachY(i) },
+            arc(-10, R),
+            arc(40, R),
+            arc(85, R),
+            arc(130, R),
             exit1st,
           ];
         }
         if (i < makuriIdx) {
           // 内側の艇: まくられて後退
-          const R = 30 + i * 10;
+          const R = Math.max(25 + i * 8, 28);
           const exit = getExitPosition(getRankOrder(i), M);
           return [
             { x: 155, y: START_POSITIONS[i].y },
-            { x: M.x - 55, y: M.y - R * 0.2 },
-            { x: M.x, y: M.y - R * 0.5 },
-            { x: M.x + R * 0.3, y: M.y - R * 0.6 },
-            { x: M.x + R * 0.25, y: M.y - R * 0.5 },
-            { x: M.x - 5, y: M.y - R * 0.7 },
+            { x: M.x, y: getApproachY(i) },
+            arc(-10, R),
+            arc(40, R),
+            arc(85, R),
+            arc(130, R),
             exit,
           ];
         }
@@ -339,27 +379,29 @@ function getAnimationPaths(technique, winnerCourse, secondCourse, thirdCourse, b
       const exit1st = getExitPosition(0, M);
       return Array.from({ length: 6 }, (_, i) => {
         if (i === sasuIdx) {
-          // まくり差す側: 外から加速し内に切り込む
+          // まくり差す側: 外から内に切り込む（中間のR）
+          const R = 30;
           return [
             { x: 145, y: START_POSITIONS[i].y },
-            { x: M.x - 65, y: M.y - 15 },
-            { x: M.x - 5, y: M.y - 25 },
-            { x: M.x + 10, y: M.y - 30 },
-            { x: M.x + 5, y: M.y - 42 },
-            { x: M.x - 25, y: M.y - 55 },
+            { x: M.x, y: getApproachY(i) },
+            arc(-10, R),
+            arc(40, R),
+            arc(85, R),
+            arc(130, R),
             exit1st,
           ];
         }
         if (i === makuriTargetIdx) {
-          // まくられる側: 旋回が膨らむ
+          // まくられる側: 旋回が膨らむ（大きなR）
+          const R = 42;
           const exit = getExitPosition(getRankOrder(i), M);
           return [
             { x: 150, y: START_POSITIONS[i].y },
-            { x: M.x - 55, y: M.y - 10 },
-            { x: M.x, y: M.y - 22 },
-            { x: M.x + 22, y: M.y - 38 },
-            { x: M.x + 18, y: M.y - 52 },
-            { x: M.x - 5, y: M.y - 58 },
+            { x: M.x, y: getApproachY(i) },
+            arc(-15, R),
+            arc(30, R),
+            arc(80, R),
+            arc(130, R),
             exit,
           ];
         }
@@ -371,18 +413,18 @@ function getAnimationPaths(technique, winnerCourse, secondCourse, thirdCourse, b
     }
 
     case "nuki": {
-      // 抜き: ターン後に追い抜く
+      // 抜き: ターン後のバックストレッチで追い抜く
       const exit1st = getExitPosition(0, M);
       return Array.from({ length: 6 }, (_, i) => {
         if (i === winIdx) {
-          const R = 25 + i * 8;
+          const R = Math.max(25 + i * 8, 28);
           return [
             { x: 150, y: START_POSITIONS[i].y },
-            { x: M.x - 60, y: M.y - R * 0.3 },
-            { x: M.x - 5, y: M.y - R * 0.6 },
-            { x: M.x + R * 0.3, y: M.y - R * 0.7 },
-            { x: M.x + R * 0.2, y: M.y - R * 0.8 },
-            { x: M.x - 15, y: M.y - R * 0.9 },
+            { x: M.x, y: getApproachY(i) },
+            arc(-10, R),
+            arc(40, R),
+            arc(85, R),
+            arc(130, R),
             exit1st,
           ];
         }
@@ -396,19 +438,21 @@ function getAnimationPaths(technique, winnerCourse, secondCourse, thirdCourse, b
       const exit1st = getExitPosition(0, M);
       return Array.from({ length: 6 }, (_, i) => {
         if (i === 0) {
-          // 1号艇: ターンが大きく膨らむ（失敗）
+          // 1号艇: ターンが大きく膨らむ（失敗、R=50）
+          const R = 50;
           const exit = getExitPosition(getRankOrder(0), M);
           return [
             { x: 150, y: 220 },
-            { x: M.x - 50, y: M.y - 10 },
-            { x: M.x + 5, y: M.y - 25 },
-            { x: M.x + 30, y: M.y - 50 },
-            { x: M.x + 35, y: M.y - 65 },
-            { x: M.x + 20, y: M.y - 70 },
+            { x: M.x, y: M.y + 16 },
+            arc(-15, R),
+            arc(30, R),
+            arc(80, R),
+            arc(130, R),
             exit,
           ];
         }
         if (i === winIdx) {
+          // 恵まれた側: 標準旋回で先着
           return [
             ...standardTurnPath(i, 22).slice(0, 6),
             exit1st,
@@ -767,7 +811,9 @@ function FirstMarkAnimationInner({ patterns, distribution, players, boatStrength
 
   // パスの事前計算（航跡・ボート共通）
   const precomputedPaths = boatNumbers.map((_, i) => {
-    const interpPath = catmullRomSubdivide(paths[i]);
+    const MIN_CLEARANCE = 30; // ターンマーク外側リング(12px) + ボート楕円(15px) + 余裕(3px)
+    const clearedKeyframes = enforceMarkClearance(paths[i], TURN_MARK, MIN_CLEARANCE);
+    const interpPath = enforceMarkClearance(catmullRomSubdivide(clearedKeyframes), TURN_MARK, MIN_CLEARANCE);
     const xValues = [START_POSITIONS[i].x, ...interpPath.map((p) => p.x)];
     const yValues = [START_POSITIONS[i].y, ...interpPath.map((p) => p.y)];
     return { xValues, yValues };
