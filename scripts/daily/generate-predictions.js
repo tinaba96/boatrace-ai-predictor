@@ -33,104 +33,129 @@ function calculateStdDev(values) {
     return Math.sqrt(avgSquareDiff);
 }
 
-// 荒れ度スコアを計算（0-100、高いほど荒れやすい）
-// reasonsを含むオブジェクトを返す
-function calculateVolatilityScore(racers, placeCd) {
+// 会場別1コース1着率（全国平均: 約53%）
+const VENUE_1COURSE_WIN_RATE = {
+    '01': 0.52, '02': 0.43, '03': 0.44, '04': 0.45, '05': 0.53, '06': 0.54,
+    '07': 0.52, '08': 0.55, '09': 0.54, '10': 0.50, '11': 0.49, '12': 0.54,
+    '13': 0.56, '14': 0.55, '15': 0.56, '16': 0.52, '17': 0.54, '18': 0.59,
+    '19': 0.55, '20': 0.53, '21': 0.57, '22': 0.51, '23': 0.54, '24': 0.62,
+};
+const VENUE_1COURSE_AVG = 0.53;
+
+// 荒れ度スコア v2（展開予測・展示・気象を統合）
+function calculateVolatilityScore(racers, placeCd, turnPrediction, race) {
     if (!racers || racers.length < 6) {
-        return {
-            score: 50,
-            reasons: ['選手データが不足しています']
-        };
+        return { score: 50, reasons: ['選手データが不足しています'] };
     }
 
     let volatility = 0;
     const reasons = [];
 
-    // 1. 実力差の小ささ（最重要）- 拮抗しているほど荒れる
-    const winRates = racers.map(r => r.globalWinRate);
-    const winRateStdDev = calculateStdDev(winRates);
-    const avgWinRate = winRates.reduce((sum, rate) => sum + rate, 0) / winRates.length;
-    const powerBalanceScore = Math.max(0, (1.5 - winRateStdDev) * 20);
+    // デフォルト予測かどうか判定（データ不足時）
+    const isDefault = turnPrediction.probability === 0.55 &&
+        turnPrediction.boatStrengths.every(v => v === turnPrediction.boatStrengths[0]);
 
-    if (powerBalanceScore > 10) {
-        volatility += powerBalanceScore;
-        reasons.push(`選手間の実力差が小さい（勝率の標準偏差: ${winRateStdDev.toFixed(2)}%、平均: ${avgWinRate.toFixed(1)}%）`);
+    // ===== Factor A: 展開予測エントロピー（0-45点）=====
+    if (!isDefault) {
+        const probs = Object.values(turnPrediction.distribution).filter(p => p > 0);
+        const entropy = -probs.reduce((sum, p) => sum + p * Math.log2(p), 0);
+        const maxEntropy = Math.log2(probs.length);
+        const normalizedEntropy = maxEntropy > 0 ? entropy / maxEntropy : 0;
+
+        let entropyScore = normalizedEntropy * 35;
+        const topProb = turnPrediction.patterns[0].probability;
+        const uncertaintyBonus = Math.max(0, (0.55 - topProb) * 25);
+        entropyScore = Math.min(45, entropyScore + uncertaintyBonus);
+        volatility += entropyScore;
+
+        const nigeProb = turnPrediction.distribution.nige || 0;
+        const nigePct = (nigeProb * 100).toFixed(0);
+        if (normalizedEntropy > 0.7) {
+            reasons.push(`展開予測が拮抗（逃げ確率: ${nigePct}%、複数の決まり手が有力）`);
+        } else if (normalizedEntropy > 0.5) {
+            reasons.push(`複数の展開パターンが想定される（逃げ確率: ${nigePct}%）`);
+        }
+    } else {
+        // データ不足時のベース不確実性
+        volatility += 20;
+        reasons.push('展開予測データが不足（ベース不確実性を加算）');
     }
 
-    // 2. 1号艇の強さ（逆相関）- 1号艇が弱いほど荒れる
-    const lane1 = racers[0];
-    let lane1Weakness = 0;
-    const lane1Factors = [];
+    // ===== Factor B: boatStrengths分散（0-20点）=====
+    if (!isDefault) {
+        const strengthStdDev = calculateStdDev(turnPrediction.boatStrengths);
+        const strengthScore = Math.max(0, (0.08 - strengthStdDev) / 0.08 * 20);
+        volatility += strengthScore;
 
-    if (lane1.grade !== 'A1') {
-        lane1Weakness += 20;
-        lane1Factors.push(`グレード: ${lane1.grade}`);
-    }
-    if (lane1.globalWinRate < 6.0) {
-        lane1Weakness += 15;
-        lane1Factors.push(`勝率: ${lane1.globalWinRate.toFixed(1)}%`);
-    }
-    if (lane1.globalWinRate < 5.5) {
-        lane1Weakness += 10;
-    }
-
-    if (lane1Weakness > 0) {
-        volatility += lane1Weakness;
-        const avgWinRate = winRates.reduce((sum, r) => sum + r, 0) / winRates.length;
-        const diff = ((avgWinRate - lane1.globalWinRate) / avgWinRate * 100).toFixed(0);
-        reasons.push(`1号艇が平均より${diff}%弱い（${lane1Factors.join('、')}）`);
-    }
-
-    // 3. モーター性能の均等さ - 均等なほど荒れる
-    const motorRates = racers.map(r => r.motor2Rate);
-    const motorStdDev = calculateStdDev(motorRates);
-    const motorBalanceScore = Math.max(0, (15 - motorStdDev) * 1.5);
-
-    if (motorBalanceScore > 5 && motorStdDev < 12) {
-        volatility += motorBalanceScore;
-        reasons.push(`モーター性能が均等（2連率の標準偏差: ${motorStdDev.toFixed(1)}%）`);
-    }
-
-    // 4. 外枠の好機材 - 外枠に良いモーターがあると荒れる
-    const outsideGoodMotors = racers.slice(3).filter(r => r.motor2Rate > 40).length;
-    if (outsideGoodMotors > 0) {
-        volatility += outsideGoodMotors * 8;
-        const motorNumbers = racers.slice(3)
-            .map((r, index) => ({ ...r, boatNumber: index + 4 }))
-            .filter(r => r.motor2Rate > 40)
-            .map(r => `${r.boatNumber}号艇(${r.motor2Rate.toFixed(1)}%)`)
-            .join('、');
-        reasons.push(`外枠に好機材が${outsideGoodMotors}艇（${motorNumbers}）`);
-    }
-
-    // 5. ボートレース場特性（荒れやすい場）
-    // 戸田(02)、江戸川(03)、平和島(04)は荒れやすい
-    const roughVenues = {
-        '02': '戸田',
-        '03': '江戸川',
-        '04': '平和島'
-    };
-    const venueCode = String(placeCd).padStart(2, '0');
-    if (roughVenues[venueCode]) {
-        volatility += 12;
-        reasons.push(`${roughVenues[venueCode]}は荒れやすいボートレース場`);
-    }
-
-    const finalScore = Math.min(100, Math.max(0, Math.round(volatility)));
-
-    // スコアに応じた総評を追加
-    if (reasons.length === 0) {
-        if (finalScore < 35) {
-            reasons.push('1号艇が安定して有利な展開');
-        } else {
-            reasons.push('標準的なレース展開');
+        if (strengthScore > 8) {
+            reasons.push('各艇の総合力が接近している');
         }
     }
 
-    return {
-        score: finalScore,
-        reasons: reasons
-    };
+    // ===== Factor C: 展示アノマリー（0-15点）=====
+    let exhibitionScore = 0;
+    if (race.exhibitionData && race.exhibitionData.length > 0) {
+        // 1号艇の展示STが他艇より遅い
+        const exSTs = race.exhibitionData
+            .filter(e => e.startTiming != null)
+            .map(e => ({ boat: e.boatNumber, st: e.startTiming }));
+        if (exSTs.length >= 4) {
+            const lane1ST = exSTs.find(e => e.boat === 1);
+            const otherSTs = exSTs.filter(e => e.boat !== 1);
+            if (lane1ST && otherSTs.length > 0) {
+                const avgOtherST = otherSTs.reduce((s, e) => s + e.st, 0) / otherSTs.length;
+                const stDiff = lane1ST.st - avgOtherST;
+                if (stDiff > 0.02) {
+                    exhibitionScore += Math.min(8, stDiff * 120);
+                    reasons.push(`1号艇の展示STが他艇より遅い（${lane1ST.st.toFixed(2)}秒 vs 平均${avgOtherST.toFixed(2)}秒）`);
+                }
+            }
+        }
+
+        // 外枠に展示タイム上位の艇
+        const exTimes = race.exhibitionData
+            .filter(e => e.exhibitionTime != null)
+            .map(e => ({ boat: e.boatNumber, time: e.exhibitionTime }));
+        if (exTimes.length >= 4) {
+            const avgExTime = exTimes.reduce((s, e) => s + e.time, 0) / exTimes.length;
+            const fastOutside = exTimes.filter(e => e.boat >= 4 && e.time < avgExTime - 0.03);
+            if (fastOutside.length > 0) {
+                exhibitionScore += fastOutside.length * 4;
+                reasons.push(`外枠に展示タイム上位の艇あり（${fastOutside.map(e => `${e.boat}号艇`).join('、')}）`);
+            }
+        }
+    }
+    volatility += Math.min(15, exhibitionScore);
+
+    // ===== Factor D: 会場・気象（0-20点）=====
+    const venueCode = String(placeCd).padStart(2, '0');
+    const venueWinRate = VENUE_1COURSE_WIN_RATE[venueCode] || VENUE_1COURSE_AVG;
+    let venueScore = Math.max(0, (VENUE_1COURSE_AVG - venueWinRate) / 0.10 * 12);
+    venueScore = Math.min(12, venueScore);
+
+    if (venueScore > 4) {
+        reasons.push(`${race.placeName || venueCode}は1コース勝率が低く荒れやすい（${(venueWinRate * 100).toFixed(0)}%）`);
+    }
+
+    let weatherScore = 0;
+    if (race.windVelocity != null && race.windVelocity >= 5) {
+        weatherScore += Math.min(5, (race.windVelocity - 4) * 2);
+        reasons.push(`風速${race.windVelocity}mで荒れやすい`);
+    }
+    if (race.waveHeight != null && race.waveHeight >= 5) {
+        weatherScore += Math.min(3, race.waveHeight - 4);
+        reasons.push(`波高${race.waveHeight}cmで水面不安定`);
+    }
+    volatility += Math.min(20, venueScore + weatherScore);
+
+    // 最終スコア
+    const finalScore = Math.min(100, Math.max(0, Math.round(volatility)));
+
+    if (reasons.length === 0) {
+        reasons.push(finalScore < 35 ? '1号艇が安定して有利な展開' : '標準的なレース展開');
+    }
+
+    return { score: finalScore, reasons };
 }
 
 // 荒れ度レベルを判定
@@ -550,11 +575,6 @@ function generateRacePrediction(race, date, racerStatsMap) {
         return null;
     }
 
-    // 荒れ度スコアを計算
-    const volatilityData = calculateVolatilityScore(race.racers, race.placeCd);
-    const volatilityLevel = getVolatilityLevel(volatilityData.score);
-    const recommendedModel = getRecommendedModel(volatilityData.score);
-
     // 1マーク展開予測を算出（racer_aggregated_stats のデータを使用）
     // ※ 展開予測ボーナスをスコア計算に反映するため、モデル処理の前に実行する
     const turnPredictionPlayers = race.racers.map((racer) => {
@@ -579,6 +599,11 @@ function generateRacePrediction(race, date, racerStatsMap) {
         };
     });
     const turnPrediction = predictFirstMark(turnPredictionPlayers);
+
+    // 荒れ度スコアを計算（展開予測の結果を活用）
+    const volatilityData = calculateVolatilityScore(race.racers, race.placeCd, turnPrediction, race);
+    const volatilityLevel = getVolatilityLevel(volatilityData.score);
+    const recommendedModel = getRecommendedModel(volatilityData.score);
 
     // 3つのモデルで予想を生成（展開予測・展示データを反映）
     const standardPlayers = processRacersWithScoreFn(race.racers, calculateStandardScoreV2, turnPrediction, race.exhibitionData);
