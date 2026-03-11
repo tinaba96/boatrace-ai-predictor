@@ -1,6 +1,16 @@
 // Blog post metadata
 export const blogPosts = [
     {
+        id: 'first-mark-prediction-guide',
+        title: '1マーク展開予測とは？AIが読み解くレース展開の仕組み',
+        description: 'BoatAIの展開予測機能を徹底解説。選手の決まり手分布・ST・モーター性能から1マーク旋回の展開をAIが統計予測する仕組みと、舟券戦略への活用法を紹介。',
+        date: '2026-03-12',
+        category: '使い方',
+        tags: ['展開予測', '1マーク', '決まり手', 'AI予想', '使い方'],
+        readTime: '10分',
+        featured: true
+    },
+    {
         id: 'picks-performance-report',
         title: '「今日のおすすめ」が回収率104%を達成 - 2,577レースの実績データ',
         description: 'BoatAIの「今日のおすすめ」機能が累計2,577レースで回収率104%を記録。25%の控除率を逆転してプラス収支を実現した仕組みと、正直な課題を公開。',
