@@ -108,32 +108,51 @@ function scrapeWinningTechnique($) {
   return winningTechnique || null;
 }
 
-// 結果ページをスクレイピング
-async function scrapeRaceResult(date, placeCd, raceNo) {
-  try {
-    const url = getUrl(date, placeCd, raceNo);
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent":
-          "BoatraceAIBot/1.0 (+https://github.com/rhapsody0919/boatrace-ai-predictor)",
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "ja,en-US;q=0.7,en;q=0.3",
-      },
-    });
+// sleep関数
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-    if (!response.ok) return null;
+// 結果ページをスクレイピング（リトライ付き）
+async function scrapeRaceResult(date, placeCd, raceNo, maxRetries = 3) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const url = getUrl(date, placeCd, raceNo);
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          Accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "ja,en-US;q=0.7,en;q=0.3",
+        },
+      });
 
-    const html = await response.text();
-    const $ = cheerio.load(html);
+      if (response.status === 429 || response.status === 503) {
+        const wait = (attempt + 1) * 5000;
+        console.warn(`  レート制限 (${response.status}), ${wait / 1000}秒待機...`);
+        await sleep(wait);
+        continue;
+      }
 
-    const startTimings = scrapeStartTimings($);
-    const winningTechnique = scrapeWinningTechnique($);
+      if (!response.ok) return null;
 
-    return { startTimings, winningTechnique };
-  } catch (error) {
-    return null;
+      const html = await response.text();
+      const $ = cheerio.load(html);
+
+      const startTimings = scrapeStartTimings($);
+      const winningTechnique = scrapeWinningTechnique($);
+
+      return { startTimings, winningTechnique };
+    } catch (error) {
+      if (attempt < maxRetries - 1) {
+        await sleep((attempt + 1) * 2000);
+        continue;
+      }
+      return null;
+    }
   }
+  return null;
 }
 
 // race_start_timingsをupsert
@@ -282,7 +301,8 @@ async function main() {
   let errors = 0;
   let processed = 0;
 
-  const CONCURRENCY = 10;
+  const CONCURRENCY = 5;
+  const BATCH_DELAY_MS = 1000;
 
   async function processRace(race) {
     const result = await scrapeRaceResult(
@@ -343,10 +363,13 @@ async function main() {
     }
   }
 
-  // 並列実行（CONCURRENCY件ずつ）
+  // 並列実行（CONCURRENCY件ずつ、バッチ間ディレイ付き）
   for (let i = 0; i < targetRaces.length; i += CONCURRENCY) {
     const batch = targetRaces.slice(i, i + CONCURRENCY);
     await Promise.all(batch.map((race) => processRace(race)));
+    if (i + CONCURRENCY < targetRaces.length) {
+      await sleep(BATCH_DELAY_MS);
+    }
   }
 
   console.log("");

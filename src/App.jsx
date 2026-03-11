@@ -16,6 +16,7 @@ import { STADIUM_NAMES, WEEKDAYS } from './constants'
 import { TECHNIQUE_NAMES } from './utils/turnPrediction'
 import { BOAT_COLORS } from './utils/colors'
 import { getTodayJST, formatDateJP } from './utils/dateUtils'
+import LoadingScreen from './components/LoadingScreen'
 
 function App({ tab = 'races' }) {
     const navigate = useNavigate()
@@ -533,10 +534,10 @@ function App({ tab = 'races' }) {
                                 />
 
                                 {loading ? (
-                                    <div className="analyzing">
-                                        <div className="spinner"></div>
-                                        <p>レースデータを読み込み中...</p>
-                                    </div>
+                                    <LoadingScreen
+                                        title="レースデータを読み込み中..."
+                                        description="本日のレース情報を取得しています"
+                                    />
                                 ) : (
                                     <>
                                         {error && (
