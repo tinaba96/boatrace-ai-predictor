@@ -1,6 +1,21 @@
 import { BOAT_COLORS } from "../../utils/colors";
 import "./AttackDefenseTable.css";
 
+// 全国平均 攻撃分布（14,155レース集計）
+const DEFAULT_ATTACK = {
+  1: { nige: 0.954, nuki: 0.044, megumare: 0.002 },
+  2: { sashi: 0.531, makuri: 0.352, nuki: 0.063, nige: 0.039, makurizashi: 0.015 },
+  3: { makuri: 0.45, makurizashi: 0.341, sashi: 0.124, nuki: 0.054, nige: 0.031 },
+  4: { makuri: 0.486, makurizashi: 0.248, sashi: 0.193, nuki: 0.046, nige: 0.027 },
+  5: { makurizashi: 0.548, makuri: 0.177, nuki: 0.113, sashi: 0.097, nige: 0.065 },
+  6: { makuri: 0.4, makurizashi: 0.267, nuki: 0.167, sashi: 0.133, nige: 0.033 },
+};
+
+// 全国平均 防御分布
+const DEFAULT_DEFENSE = {
+  1: { sashi: 0.28, makuri: 0.25, makurizashi: 0.22, nuki: 0.15, megumare: 0.10 },
+};
+
 // 表示する行の定義
 const TECHNIQUE_ROWS = [
   { key: "nige", label1: "逃げ", labelOther: null, course1Only: true },
@@ -43,41 +58,91 @@ function getTotalWins(stats) {
   return sum;
 }
 
+// 全国平均値のデフォルト率を取得
+function getDefaultRate(row, course) {
+  if (course === 1) {
+    if (row.key === "nige") return DEFAULT_ATTACK[1]?.nige || 0;
+    if (row.composite) {
+      let sum = 0;
+      for (const k of row.composite) sum += DEFAULT_DEFENSE[1]?.[k] || 0;
+      return sum;
+    }
+    return DEFAULT_DEFENSE[1]?.[row.key] || 0;
+  }
+  if (row.composite) {
+    let sum = 0;
+    for (const k of row.composite) sum += DEFAULT_ATTACK[course]?.[k] || 0;
+    return sum;
+  }
+  return DEFAULT_ATTACK[course]?.[row.key] || 0;
+}
+
 // セルの値: 回数/分母
-// 1コース逃げ: attackDist × wins / total
-// 1コース防御: defenseDist × losses / total  (losses = total - wins)
-// 2-6コース攻撃: attackDist × wins / total
+// 戻り値: string | { type: 'default'|'reference', value: string }
 function getCellValue(row, course, stats, courseStr, wins, total) {
   if (row.course1Only && course !== 1) return "-";
   if (!total) return "-";
 
-  // 全コース合計勝利5回未満 → デフォルト分布のため攻撃データは非表示
-  const isDefaultDist = getTotalWins(stats) < 5;
+  const totalWins = getTotalWins(stats);
+  const isInsufficient = totalWins < 2;
+  const isReference = totalWins >= 2 && totalWins < 5;
+
+  // データ不足: 全国平均値を%で薄字表示
+  if (isInsufficient) {
+    const rate = getDefaultRate(row, course);
+    if (rate === 0) return "-";
+    return { type: "default", value: `${Math.round(rate * 100)}%` };
+  }
 
   if (course === 1) {
     if (row.key === "nige") {
-      if (isDefaultDist) return "-";
       const dist = stats.attackDistribution?.[courseStr];
       const count = calcCount(dist, "nige", wins);
-      return count != null ? `${count}/${total}` : "-";
+      const val = count != null ? `${count}/${total}` : "-";
+      return isReference ? { type: "reference", value: val } : val;
     }
     // 防御: 負けた回数が分母
     const losses = total - wins;
     const dist = stats.defenseDistribution?.[courseStr];
-    if (!dist || !losses) return `0/${total}`;
+    if (!dist || !losses) {
+      const val = `0/${total}`;
+      return isReference ? { type: "reference", value: val } : val;
+    }
     const count = row.composite
       ? calcCompositeCount(dist, row.composite, losses)
       : calcCount(dist, row.key, losses);
-    return count != null ? `${count}/${total}` : "-";
+    const val = count != null ? `${count}/${total}` : "-";
+    return isReference ? { type: "reference", value: val } : val;
   } else {
-    if (isDefaultDist) return "-";
     const dist = stats.attackDistribution?.[courseStr];
-    if (!dist || !wins) return `0/${total}`;
+    if (!dist || !wins) {
+      const val = `0/${total}`;
+      return isReference ? { type: "reference", value: val } : val;
+    }
     const count = row.composite
       ? calcCompositeCount(dist, row.composite, wins)
       : calcCount(dist, row.key, wins);
-    return count != null ? `${count}/${total}` : "-";
+    const val = count != null ? `${count}/${total}` : "-";
+    return isReference ? { type: "reference", value: val } : val;
   }
+}
+
+// getCellValueの戻り値をReact要素に変換
+function renderCellValue(val) {
+  if (typeof val === "object" && val !== null) {
+    if (val.type === "default") {
+      return <span className="ad-default-value">{val.value}</span>;
+    }
+    if (val.type === "reference") {
+      return (
+        <span className="ad-reference-value">
+          {val.value}
+          <sup>※</sup>
+        </span>
+      );
+    }
+  }
+  return val;
 }
 
 const TECH_LABELS = {
@@ -240,7 +305,7 @@ export default function AttackDefenseTable({ racerStats, players }) {
 
                   return (
                     <td key={s.boatNumber}>
-                      {getCellValue(row, course, s, courseStr, wins, total)}
+                      {renderCellValue(getCellValue(row, course, s, courseStr, wins, total))}
                     </td>
                   );
                 })}
@@ -307,7 +372,7 @@ export default function AttackDefenseTable({ racerStats, players }) {
 
                   return (
                     <td key={s.boatNumber}>
-                      {getCellValue(row, course, s, courseStr, wins, total)}
+                      {renderCellValue(getCellValue(row, course, s, courseStr, wins, total))}
                     </td>
                   );
                 })}
@@ -341,6 +406,11 @@ function Legend({ sorted }) {
           ))}
         </div>
       )}
+      <div className="ad-legend-supplement">
+        <span className="ad-default-value">28%</span> … 全国平均値（個人データ不足のため参考値を表示）
+        <br />
+        3/5<sup className="ad-reference-sup">※</sup> … 参考データ（データ数が少ないため精度が低い可能性があります）
+      </div>
     </div>
   );
 }

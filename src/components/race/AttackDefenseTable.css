@@ -109,6 +109,38 @@
   color: var(--color-gray-700, #334155);
 }
 
+/* 全国平均値（薄字表示） */
+.ad-default-value {
+  color: var(--color-gray-400, #94a3b8);
+  font-style: italic;
+  font-size: 0.8em;
+}
+
+/* 参考データ（※マーク付き） */
+.ad-reference-value {
+  opacity: 0.7;
+}
+.ad-reference-value sup {
+  color: var(--color-warning, #f59e0b);
+  font-weight: bold;
+  margin-left: 1px;
+}
+
+/* 凡例の補足セクション */
+.ad-legend-supplement {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-gray-200, #e2e8f0);
+  font-size: 0.78rem;
+  color: var(--color-gray-500, #64748b);
+  line-height: 1.8;
+}
+
+.ad-reference-sup {
+  color: var(--color-warning, #f59e0b);
+  font-weight: bold;
+}
+
 /* Desktop: show full table, hide mobile */
 .ad-table-desktop {
   overflow-x: auto;
