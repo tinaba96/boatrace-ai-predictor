@@ -232,10 +232,21 @@ AIスコア = 全国勝率 × 重み
     ▼
 [4. 精度統計更新]
     │ calculate-accuracy.js (continue-on-error)
-    │ → models テーブル更新
+    │ → models テーブル更新（3モデル×4券種）
     ▼
 [5. git commit & push → Vercel deploy]
 ```
+
+#### calculate-accuracy.js の処理
+
+`predictions` テーブルから全モデル（standard/safeBet/upsetFocus）の成績を集計し、`models` テーブルを更新。
+
+| 券種 | 的中判定カラム | 配当カラム | models保存先 |
+|------|-------------|----------|-------------|
+| 単勝 | is_hit_win | payout_win | hit_rate_win / recovery_rate_win |
+| 複勝 | is_hit_place | payout_place | hit_rate_place / recovery_rate_place |
+| 3連複 | is_hit_trifecta | payout_trifecta | hit_rate_trifecta / recovery_rate_trifecta |
+| 3連単 | is_hit_trio | payout_trio | hit_rate_trio / recovery_rate_trio |
 
 ### 選手統計集計パイプライン（aggregate-stats.yml）
 

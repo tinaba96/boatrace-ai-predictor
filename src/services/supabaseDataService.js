@@ -699,7 +699,7 @@ export const supabaseDataService = {
     // モデル情報を取得
     const { data: models, error: modelsError } = await supabase
       .from('models')
-      .select('model_id, display_name, total_predictions, hit_rate_win, recovery_rate_win');
+      .select('model_id, display_name, total_predictions, hit_rate_win, hit_rate_place, hit_rate_trifecta, hit_rate_trio, recovery_rate_win, recovery_rate_place, recovery_rate_trifecta, recovery_rate_trio');
 
     if (modelsError) {
       console.error('Supabase getAccuracy error:', modelsError.message);
@@ -924,10 +924,14 @@ export const supabaseDataService = {
           totalRaces: modelInfo?.total_predictions || 0,
           finishedRaces: modelInfo?.total_predictions || 0,
           topPickHitRate: modelInfo?.hit_rate_win || 0,
+          topPickPlaceRate: modelInfo?.hit_rate_place || 0,
+          top3HitRate: modelInfo?.hit_rate_trifecta || 0,
+          top3ExactHitRate: modelInfo?.hit_rate_trio || 0,
           actualRecovery: {
-            win: {
-              recoveryRate: modelInfo?.recovery_rate_win || 0
-            }
+            win: { recoveryRate: modelInfo?.recovery_rate_win || 0 },
+            place: { recoveryRate: modelInfo?.recovery_rate_place || 0 },
+            trifecta: { recoveryRate: modelInfo?.recovery_rate_trifecta || 0 },
+            trio: { recoveryRate: modelInfo?.recovery_rate_trio || 0 },
           }
         },
         thisMonth: {
