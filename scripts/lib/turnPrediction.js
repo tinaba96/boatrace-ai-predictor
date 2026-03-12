@@ -1,9 +1,12 @@
 /**
- * 1マーク展開予測ロジック v3（バックエンド用）
+ * 1マーク展開予測ロジック v4（バックエンド用）
  *
- * v3: 選手力スコア・ST標準偏差・展示タイムを統合し、決まり手別の補正を分化
+ * v4: 統一コース勝率フレームワーク + レースコンディション統合
+ *   - 逃げ/非逃げを同一スケール（COURSE_BASE_WIN_RATE × techniqueRate）で計算し、逃げバイアスを解消
+ *   - 会場特性・気象条件を upsetFactor として取り込み、荒れやすいレースの非逃げ確率を引き上げ
  *
  * 入力: 6艇の選手データ（枠番, 進入コース, 展示ST, 平均ST, 決まり手分布, 被攻撃分布, モーター性能, 選手基本データ）
+ *       + raceConditions（会場コード, 風速, 波高）
  * 出力: 上位3パターン + 決まり手確率分布
  */
 
@@ -12,6 +15,7 @@ import {
   COURSE_DEFAULT_DEFENSE,
 } from "./winningTechniques.js";
 import { getPlacementBaseline } from "./placementDistribution.js";
+import { VENUE_1COURSE_WIN_RATE, VENUE_1COURSE_AVG } from "./venueParameters.js";
 
 const DEFAULT_ST = 0.15;
 
@@ -30,6 +34,7 @@ const GRADE_SCORE = { A1: 1.0, A2: 0.75, B1: 0.45, B2: 0.2 };
 
 // Phase 5B: 決まり手別モーター補正ウェイト
 const MOTOR_WEIGHT = {
+  nige: 0.04,
   sashi: 0.015,
   makuri: 0.06,
   makurizashi: 0.045,
@@ -39,6 +44,7 @@ const MOTOR_WEIGHT = {
 
 // Phase 5C: 決まり手別選手力補正ウェイト
 const SKILL_WEIGHT = {
+  nige: 0.06,
   sashi: 0.1,
   makuri: 0.03,
   makurizashi: 0.06,
@@ -52,6 +58,35 @@ function sigmoid(x) {
 
 function clamp(val, min, max) {
   return Math.max(min, Math.min(max, val));
+}
+
+/**
+ * レースコンディションから upsetFactor を算出（0〜1）
+ * 0 = 堅いレース（逃げ有利）、1 = 荒れやすい（非逃げ有利）
+ * turnPrediction非依存の要素のみ使用（循環依存回避）
+ */
+function calcUpsetFactor(raceConditions) {
+  if (!raceConditions) return 0;
+
+  let factor = 0;
+
+  // 会場の1コース勝率が低い → 荒れやすい（最大0.4）
+  const venueCode = String(raceConditions.venueCode || "").padStart(2, "0");
+  const venueWinRate = VENUE_1COURSE_WIN_RATE[venueCode] || VENUE_1COURSE_AVG;
+  const venueDiff = VENUE_1COURSE_AVG - venueWinRate;
+  factor += clamp(venueDiff / 0.10 * 0.4, 0, 0.4);
+
+  // 風速5m以上 → 荒れやすい（最大0.3）
+  if (raceConditions.windSpeed != null && raceConditions.windSpeed >= 5) {
+    factor += clamp((raceConditions.windSpeed - 4) * 0.08, 0, 0.3);
+  }
+
+  // 波高5cm以上 → 荒れやすい（最大0.3）
+  if (raceConditions.waveHeight != null && raceConditions.waveHeight >= 5) {
+    factor += clamp((raceConditions.waveHeight - 4) * 0.06, 0, 0.3);
+  }
+
+  return clamp(factor, 0, 1);
 }
 
 function average(arr) {
@@ -96,9 +131,11 @@ function calcPlayerSkill(p) {
 }
 
 /**
- * 1マーク展開予測 v3
+ * 1マーク展開予測 v4
+ * @param {Array} players - 6艇の選手データ
+ * @param {Object} [raceConditions] - レースコンディション { venueCode, windSpeed, waveHeight }
  */
-export function predictFirstMarkV2(players) {
+export function predictFirstMarkV2(players, raceConditions) {
   if (!players || players.length < 6) {
     return getDefaultPrediction();
   }
@@ -162,103 +199,95 @@ export function predictFirstMarkV2(players) {
     clamp((v - skillAvg) / skillStdDev, -2, 2),
   );
 
-  // Step 3: 1コースの逃げ確率
+  // v4: upsetFactor算出（レースコンディションベース）
+  const upsetFactor = calcUpsetFactor(raceConditions);
+
+  // Step 3: 全コース・全決まり手の統一確率計算
   const course1 = sorted[0];
   const c1Course = String(course1.course);
-  const c1AttackDist = course1.attackDistribution || {};
-  const c1CourseDist = c1AttackDist[c1Course] || COURSE_DEFAULT_DISTRIBUTION[1];
-  const personalNigeRate = c1CourseDist.nige != null ? c1CourseDist.nige : 0.55;
 
-  // ベイズ縮小: 出走数に応じて個人データの信頼度を調整
-  const courseRaceCounts = course1.courseRaceCounts || {};
-  const c1Races = courseRaceCounts[c1Course]?.total || 0;
-  const blendWeight = Math.min(1, c1Races / 50);
-  const defaultNige = COURSE_DEFAULT_DISTRIBUTION[1].nige || 0.954;
-  const nigeBase =
-    personalNigeRate * blendWeight + defaultNige * (1 - blendWeight);
-
-  // Phase 4A: ST比較を全5コースに拡大
-  const stFactor =
-    stAdvantage[0][1] * 0.4 +
-    stAdvantage[0][2] * 0.3 +
-    stAdvantage[0][3] * 0.2 +
-    stAdvantage[0][4] * 0.07 +
-    stAdvantage[0][5] * 0.03;
-
-  // モーター補正
-  const motorFactor = 1 + motorZ[0] * 0.05;
-
-  // Phase 4B: 選手力補正
-  const playerFactor = 1 + playerSkillZ[0] * 0.08;
-
-  // 逃げ確率算出
-  let nigeProb =
-    0.55 *
-    (nigeBase / defaultNige) *
-    (stFactor / 0.5) *
-    motorFactor *
-    playerFactor;
-  nigeProb = clamp(nigeProb, 0.1, 0.9);
-
-  // Step 4: 2-6コースの各攻撃パターン確率
-  const patterns = [
-    { technique: "nige", winnerCourse: sorted[0].course, rawProb: nigeProb },
-  ];
-
-  // 1コースの被攻撃分布
+  // 1コースの被攻撃分布（非逃げの defense adjustment に使用）
   const c1DefenseDist = course1.defenseDistribution || {};
   const c1DefenseForCourse =
     c1DefenseDist[c1Course] || COURSE_DEFAULT_DEFENSE[1];
+  const avgDefenseRate =
+    Object.values(c1DefenseForCourse).reduce((s, v) => s + v, 0) /
+    Object.keys(c1DefenseForCourse).length;
 
-  const techniques = ["sashi", "makuri", "makurizashi", "nuki", "megumare"];
+  const allTechniques = ["nige", "sashi", "makuri", "makurizashi", "nuki", "megumare"];
+  const patterns = [];
 
-  for (let cIdx = 1; cIdx < 6; cIdx++) {
+  for (let cIdx = 0; cIdx < 6; cIdx++) {
     const player = sorted[cIdx];
     const courseNum = String(player.course);
     const courseInt = player.course;
+
+    // コース別基本勝率
+    const courseWinRate = COURSE_BASE_WIN_RATE[courseInt] || 0.05;
+
+    // 攻撃分布（ベイズ縮小）
     const playerAttackDist = player.attackDistribution || {};
     const playerCourseDist =
       playerAttackDist[courseNum] ||
       COURSE_DEFAULT_DISTRIBUTION[courseInt] ||
       {};
-
-    // コース別基本勝率（絶対確率へのスケーリング用）
-    const courseWinRate = COURSE_BASE_WIN_RATE[courseInt] || 0.05;
-
-    // ベイズ縮小用: このコースの出走数
     const playerCourseRaces = player.courseRaceCounts?.[courseNum]?.total || 0;
     const playerBlend = Math.min(1, playerCourseRaces / 50);
 
-    for (const t of techniques) {
-      // 攻撃率・被攻撃率をベイズ縮小で算出
-      const personalAttackRate = playerCourseDist[t] || 0;
-      const defaultAttackRate =
+    for (const t of allTechniques) {
+      // 逃げは1コースのみ（2-6コースの逃げはスキップ）
+      if (t === "nige" && courseInt !== 1) continue;
+
+      // ベイズ縮小で決まり手率を算出
+      const personalRate = playerCourseDist[t] || 0;
+      const defaultRate =
         (COURSE_DEFAULT_DISTRIBUTION[courseInt] || {})[t] || 0;
-      const attackRate =
-        personalAttackRate * playerBlend +
-        defaultAttackRate * (1 - playerBlend);
+      const techniqueRate =
+        personalRate * playerBlend + defaultRate * (1 - playerBlend);
 
-      const defenseRate = c1DefenseForCourse[t] || 0;
+      if (techniqueRate <= 0.001) continue;
 
-      if (attackRate <= 0 && defenseRate <= 0) continue;
+      // 統一ベース確率: コース勝率 × 決まり手率
+      let rawProb = courseWinRate * techniqueRate;
 
-      // 攻守の幾何平均 x コース勝率で絶対確率にスケーリング
-      let rawProb =
-        Math.sqrt(Math.max(attackRate, 0.001) * Math.max(defenseRate, 0.001)) *
-        courseWinRate;
+      // v4: 非逃げの defense adjustment（1コースの被攻撃脆弱性で補正）
+      if (t !== "nige" && avgDefenseRate > 0) {
+        const defenseRate = c1DefenseForCourse[t] || 0;
+        const defenseAdjust = 0.6 + 0.4 * (defenseRate / avgDefenseRate);
+        rawProb *= defenseAdjust;
+      }
 
-      // Phase 5A: まくり系ST補正の緩和（フロア30%保証）
-      if (t === "makuri" || t === "makurizashi") {
+      // ST補正（決まり手ごとに異なるウェイト）
+      if (t === "nige") {
+        // 逃げ: 1コースの全5コースに対するST優位性
+        const stFactor =
+          stAdvantage[0][1] * 0.4 +
+          stAdvantage[0][2] * 0.3 +
+          stAdvantage[0][3] * 0.2 +
+          stAdvantage[0][4] * 0.07 +
+          stAdvantage[0][5] * 0.03;
+        // stFactor: 0.5 = 同等、>0.5 = 1コース有利
+        rawProb *= 0.4 + 1.2 * stFactor;
+      } else if (t === "makuri" || t === "makurizashi") {
         rawProb *= 0.3 + 0.7 * stAdvantage[cIdx][0];
       } else if (t === "sashi") {
         rawProb *= 0.7 + 0.3 * stAdvantage[cIdx][0];
       }
 
-      // Phase 5B: 決まり手別モーター補正
+      // 決まり手別モーター補正
       rawProb *= 1 + motorZ[cIdx] * (MOTOR_WEIGHT[t] || 0.03);
 
-      // Phase 5C: 決まり手別選手力補正
+      // 決まり手別選手力補正
       rawProb *= 1 + playerSkillZ[cIdx] * (SKILL_WEIGHT[t] || 0.05);
+
+      // v4: upsetFactor による逃げ抑制・非逃げ押し上げ
+      if (upsetFactor > 0) {
+        if (t === "nige") {
+          rawProb *= 1 - upsetFactor * 0.25; // 最大25%抑制
+        } else {
+          rawProb *= 1 + upsetFactor * 0.15; // 最大15%押し上げ
+        }
+      }
 
       // megumare のフロア値
       if (t === "megumare") {
@@ -401,8 +430,8 @@ export function predictFirstMarkV2(players) {
 }
 
 // 旧API互換のラッパー
-export function predictFirstMark(players) {
-  return predictFirstMarkV2(players);
+export function predictFirstMark(players, raceConditions) {
+  return predictFirstMarkV2(players, raceConditions);
 }
 
 /**
