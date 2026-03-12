@@ -15,6 +15,7 @@ import {
   COURSE_DEFAULT_DEFENSE,
 } from "./winningTechniques.js";
 import { getPlacementBaseline } from "./placementDistribution.js";
+import { VENUE_1COURSE_WIN_RATE, VENUE_1COURSE_AVG } from "./venueParameters.js";
 
 const DEFAULT_ST = 0.15;
 
@@ -51,14 +52,13 @@ const SKILL_WEIGHT = {
   megumare: 0.01,
 };
 
-// 会場別1コース1着率（全国平均: 約53%）
-const VENUE_1COURSE_WIN_RATE = {
-  "01": 0.52, "02": 0.43, "03": 0.44, "04": 0.45, "05": 0.53, "06": 0.54,
-  "07": 0.52, "08": 0.55, "09": 0.54, "10": 0.50, "11": 0.49, "12": 0.54,
-  "13": 0.56, "14": 0.55, "15": 0.56, "16": 0.52, "17": 0.54, "18": 0.59,
-  "19": 0.55, "20": 0.53, "21": 0.57, "22": 0.51, "23": 0.54, "24": 0.62,
-};
-const VENUE_1COURSE_AVG = 0.53;
+function sigmoid(x) {
+  return 1 / (1 + Math.exp(-x));
+}
+
+function clamp(val, min, max) {
+  return Math.max(min, Math.min(max, val));
+}
 
 /**
  * レースコンディションから upsetFactor を算出（0〜1）
@@ -87,14 +87,6 @@ function calcUpsetFactor(raceConditions) {
   }
 
   return clamp(factor, 0, 1);
-}
-
-function sigmoid(x) {
-  return 1 / (1 + Math.exp(-x));
-}
-
-function clamp(val, min, max) {
-  return Math.max(min, Math.min(max, val));
 }
 
 function average(arr) {
@@ -243,9 +235,8 @@ export function predictFirstMarkV2(players, raceConditions) {
     const playerBlend = Math.min(1, playerCourseRaces / 50);
 
     for (const t of allTechniques) {
-      // 逃げは1コースのみ、それ以外は2-6コースのみ
+      // 逃げは1コースのみ（2-6コースの逃げはスキップ）
       if (t === "nige" && courseInt !== 1) continue;
-      if (t !== "nige" && courseInt === 1) continue;
 
       // ベイズ縮小で決まり手率を算出
       const personalRate = playerCourseDist[t] || 0;
