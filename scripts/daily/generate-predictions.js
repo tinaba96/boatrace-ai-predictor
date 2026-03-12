@@ -598,7 +598,12 @@ function generateRacePrediction(race, date, racerStatsMap) {
             grade: racer.grade || null,
         };
     });
-    const turnPrediction = predictFirstMark(turnPredictionPlayers);
+    const raceConditions = {
+        venueCode: race.placeCd,
+        windSpeed: race.windVelocity,
+        waveHeight: race.waveHeight,
+    };
+    const turnPrediction = predictFirstMark(turnPredictionPlayers, raceConditions);
 
     // 荒れ度スコアを計算（展開予測の結果を活用）
     const volatilityData = calculateVolatilityScore(race.racers, race.placeCd, turnPrediction, race);
