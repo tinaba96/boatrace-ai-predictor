@@ -200,6 +200,7 @@ function PredictionPanel({
             <PredictionTable
               prediction={prediction}
               showExhibition={showExhibition}
+              volatility={volatility}
             />
           </motion.div>
 

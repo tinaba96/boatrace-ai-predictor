@@ -2,40 +2,141 @@
  * PredictionTable - AIデータ予想テーブル + 統計的な注目ポイント + データの見方
  */
 
-function generateInsights(players) {
-  const insights = [];
+import { TECHNIQUE_NAMES } from "../../utils/turnPrediction";
 
-  const topLocalWinRate = [...players].sort(
-    (a, b) => parseFloat(b.localWinRate) - parseFloat(a.localWinRate),
-  )[0];
+function generateInsights(prediction, showExhibition, volatility) {
+  const candidates = [];
+  const players = prediction.allPlayers || [];
+  const racerStats = prediction.racerStats || [];
+  const exhibition = prediction.exhibitionData || [];
+  const turn = prediction.turnPrediction;
+  const top3 = prediction.top3 || [];
 
-  if (topLocalWinRate) {
-    insights.push(
-      `${topLocalWinRate.number}号艇の${topLocalWinRate.name}選手は` +
-        `当レース場での勝率が${topLocalWinRate.localWinRate}と最も高い`,
-    );
+  // ルール1: スタート力の差（avgST <= 0.12 & stStddev <= 0.04）
+  for (const s of racerStats) {
+    if (s.avgST != null && s.avgST <= 0.12 && s.stStddev != null && s.stStddev <= 0.04) {
+      const boost = top3.includes(s.boatNumber) ? 1 : 0;
+      candidates.push({
+        priority: 7 + boost,
+        text: `${s.boatNumber}号艇は平均ST ${s.avgST.toFixed(2)}と非常にスタートが速く、安定感も高い（標準偏差${s.stStddev.toFixed(2)}）`,
+      });
+    }
   }
 
+  // ルール2: 荒れ度の示唆
+  if (volatility?.score != null) {
+    if (volatility.score >= 65) {
+      candidates.push({
+        priority: 7,
+        text: `荒れ度スコア${volatility.score} — 波乱の可能性が高いレース。穴目にも注目`,
+      });
+    } else if (volatility.score <= 35) {
+      candidates.push({
+        priority: 7,
+        text: `荒れ度スコア${volatility.score} — 堅いレース予測。本命筋が安定`,
+      });
+    }
+  }
+
+  // ルール3: 展開予測の決まり手（probability >= 0.35）
+  if (turn?.technique && turn.probability >= 0.35) {
+    const techName = TECHNIQUE_NAMES[turn.technique] || turn.technique;
+    const pct = Math.round(turn.probability * 100);
+    candidates.push({
+      priority: 6,
+      text: `AIは「${techName}」決着の確率を${pct}%と予測。${turn.winnerCourse}号艇が有力`,
+    });
+  }
+
+  // ルール4: 展示タイムの優位性
+  if (showExhibition && exhibition.length >= 6) {
+    const valid = exhibition.filter((e) => e.exhibition_time != null);
+    if (valid.length >= 6) {
+      const sorted = [...valid].sort((a, b) => a.exhibition_time - b.exhibition_time);
+      const best = sorted[0];
+      const othersAvg =
+        sorted.slice(1).reduce((sum, e) => sum + e.exhibition_time, 0) / (sorted.length - 1);
+      const diff = othersAvg - best.exhibition_time;
+      if (diff >= 0.05) {
+        const boost = top3.includes(best.boat_number) ? 1 : 0;
+        candidates.push({
+          priority: 6 + boost,
+          text: `${best.boat_number}号艇の展示タイム${best.exhibition_time.toFixed(2)}は他艇平均より${diff.toFixed(2)}秒速く、当日の機力が際立つ`,
+        });
+      }
+    }
+  }
+
+  // ルール5: コース勝率の注目（当該コース勝率 >= 40%、10走以上）
+  for (const s of racerStats) {
+    const courseStr = String(s.boatNumber);
+    const counts = s.courseRaceCounts?.[courseStr];
+    if (counts && counts.total >= 10 && counts.wins / counts.total >= 0.4) {
+      const pct = Math.round((counts.wins / counts.total) * 100);
+      const boost = top3.includes(s.boatNumber) ? 1 : 0;
+      candidates.push({
+        priority: 5 + boost,
+        text: `${s.boatNumber}号艇は${courseStr}コースでの勝率${pct}%（${counts.wins}/${counts.total}）と突出した実績`,
+      });
+    }
+  }
+
+  // ルール6: 当地勝率の優位性（>= 6.0 かつ 2位と1.0以上差）
+  const sortedByLocal = [...players].sort(
+    (a, b) => parseFloat(b.localWinRate) - parseFloat(a.localWinRate),
+  );
+  if (sortedByLocal.length >= 2) {
+    const top = parseFloat(sortedByLocal[0].localWinRate);
+    const second = parseFloat(sortedByLocal[1].localWinRate);
+    if (top >= 6.0 && top - second >= 1.0) {
+      const p = sortedByLocal[0];
+      const boost = top3.includes(p.number) ? 1 : 0;
+      candidates.push({
+        priority: 5 + boost,
+        text: `${p.number}号艇の${p.name}選手は当地勝率${p.localWinRate}で、2位と${(top - second).toFixed(1)}差の得意レース場`,
+      });
+    }
+  }
+
+  // ルール7: 好モーター（motor2Rate > 40）
   const goodMotors = players.filter((p) => parseFloat(p.motor2Rate) > 40);
   if (goodMotors.length > 0) {
-    const motorList = goodMotors
-      .map((p) => `${p.number}号艇（${p.motor2Rate}%）`)
-      .join("、");
-    insights.push(`${motorList}のモーターは2連率が高く好調`);
+    const motorList = goodMotors.map((p) => `${p.number}号艇（${p.motor2Rate}%）`).join("、");
+    candidates.push({
+      priority: 4,
+      text: `${motorList}のモーターは2連率が高く好調`,
+    });
   }
 
+  // ルール8: 総合力の大差（boatStrengths 1位と2位が0.20以上差）
+  if (turn?.boatStrengths?.length === 6) {
+    const indexed = turn.boatStrengths.map((s, i) => ({ boat: i + 1, strength: s }));
+    indexed.sort((a, b) => b.strength - a.strength);
+    const gap = indexed[0].strength - indexed[1].strength;
+    if (gap >= 0.2) {
+      candidates.push({
+        priority: 4,
+        text: `${indexed[0].boat}号艇の総合力${Math.round(indexed[0].strength * 100)}%は2位と${Math.round(gap * 100)}ポイント差。圧倒的に有利`,
+      });
+    }
+  }
+
+  // ルール9: 高全国勝率（winRate >= 7.0）
   const topRacers = players.filter((p) => parseFloat(p.winRate) >= 7.0);
   if (topRacers.length > 0) {
-    const racerList = topRacers
-      .map((p) => `${p.number}号艇（勝率${p.winRate}）`)
-      .join("、");
-    insights.push(`${racerList}は全国勝率が高い実力者`);
+    const racerList = topRacers.map((p) => `${p.number}号艇（勝率${p.winRate}）`).join("、");
+    candidates.push({
+      priority: 3,
+      text: `${racerList}は全国勝率が高い実力者`,
+    });
   }
 
-  return insights;
+  // priority 降順ソート → 上位5件
+  candidates.sort((a, b) => b.priority - a.priority);
+  return candidates.slice(0, 5).map((c) => c.text);
 }
 
-function PredictionTable({ prediction, showExhibition = false }) {
+function PredictionTable({ prediction, showExhibition = false, volatility }) {
   if (!prediction?.allPlayers || prediction.allPlayers.length === 0)
     return null;
 
@@ -50,7 +151,7 @@ function PredictionTable({ prediction, showExhibition = false }) {
     return (strengths[b.number - 1] || 0) - (strengths[a.number - 1] || 0);
   });
 
-  const insights = generateInsights(prediction.allPlayers);
+  const insights = generateInsights(prediction, showExhibition, volatility);
 
   return (
     <div className="detailed-analysis">
