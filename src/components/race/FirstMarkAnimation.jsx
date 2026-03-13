@@ -221,13 +221,13 @@ function getExitPosition(rankOrder, M) {
 }
 
 // 決まり手ごとのアニメーションパスを生成
-// ボートは左→右に進み、1マーク(280,160)を反時計回りに旋回。
+// ボートは左→右に進み、1マークを反時計回りに旋回。
 // 極座標で弧を生成し、全艇がマークを確実に回る。
 function getAnimationPaths(technique, winnerCourse, secondCourse, thirdCourse, boatStrengths) {
   const winIdx = winnerCourse - 1;
   const secIdx = secondCourse ? secondCourse - 1 : -1;
   const thdIdx = thirdCourse ? thirdCourse - 1 : -1;
-  const M = TURN_MARK; // (280, 160)
+  const M = TURN_MARK;
 
   // ターンマーク周りの弧上の点を算出
   // angleDeg: 0°=右, 90°=上, 180°=左（反時計回りが正）
