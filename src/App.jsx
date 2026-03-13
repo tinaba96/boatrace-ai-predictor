@@ -249,16 +249,6 @@ function App({ tab = 'races' }) {
         }
     }, [selectedVenueId, allVenuesData])
 
-    // AI予想が完了したら自動的にスクロール
-    useEffect(() => {
-        if (prediction && !isAnalyzing && predictionRef.current) {
-            predictionRef.current.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            })
-        }
-    }, [prediction, isAnalyzing])
-
     // レース一覧が読み込まれたら、次に開催されるレースに自動スクロール
     useEffect(() => {
         if (races.length === 0 || loading) return
@@ -374,6 +364,16 @@ function App({ tab = 'races' }) {
         setSelectedRace(race)
         setIsAnalyzing(true)
         setPrediction(null)
+
+        // 次フレームで即座にスクロール（selectedRaceセットによりsectionがレンダリングされた後）
+        requestAnimationFrame(() => {
+            if (predictionRef.current) {
+                predictionRef.current.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                })
+            }
+        })
 
         try {
             // JSONファイルから予想データを読み込み
