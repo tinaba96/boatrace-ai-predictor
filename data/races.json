@@ -18209,7 +18209,7 @@
           "raceNo": 1,
           "weather": "晴",
           "airTemp": 8,
-          "windDirection": 15,
+          "windDirection": 1,
           "windVelocity": 1,
           "waterTemp": 12,
           "waveHeight": 1,
@@ -20057,11 +20057,48 @@
           "raceNo": 12,
           "weather": "晴",
           "airTemp": 8,
-          "windDirection": 15,
+          "windDirection": 1,
           "windVelocity": 1,
           "waterTemp": 12,
           "waveHeight": 1,
-          "exhibitionData": null,
+          "exhibitionData": [
+            {
+              "boatNumber": 1,
+              "exhibitionTime": 6.78,
+              "startTiming": 0.06,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 2,
+              "exhibitionTime": 6.71,
+              "startTiming": 0.15,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 3,
+              "exhibitionTime": 6.75,
+              "startTiming": 0.05,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 4,
+              "exhibitionTime": 6.68,
+              "startTiming": 0.19,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 5,
+              "exhibitionTime": 6.67,
+              "startTiming": 0.1,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 6,
+              "exhibitionTime": 6.77,
+              "startTiming": 0.13,
+              "isFlying": false
+            }
+          ],
           "startTime": "22:30",
           "racers": [
             {
@@ -26251,5 +26288,5 @@
       ]
     }
   ],
-  "scrapedAt": "2026-03-14T13:03:45.127Z"
+  "scrapedAt": "2026-03-14T13:56:12.246Z"
 }
