@@ -232,7 +232,7 @@ export function predictFirstMarkV2(players, raceConditions) {
       COURSE_DEFAULT_DISTRIBUTION[courseInt] ||
       {};
     const playerCourseRaces = player.courseRaceCounts?.[courseNum]?.total || 0;
-    const playerBlend = Math.min(1, playerCourseRaces / 50);
+    const playerBlend = Math.min(1, playerCourseRaces / 20);
 
     for (const t of allTechniques) {
       // 逃げは1コースのみ（2-6コースの逃げはスキップ）
