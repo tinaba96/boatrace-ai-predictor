@@ -1,6 +1,10 @@
 /**
  * 的中判定ユーティリティ
- * 競艇の各種買い方の的中判定と配当計算を一元管理
+ * ボートレースの各種買い方の的中判定と配当計算を一元管理
+ *
+ * ⚠️ 命名注意: DB列名と英語名が逆転している（歴史的経緯）
+ *   trifecta / is_hit_trifecta / payout_trifecta → 実態: 3連複（順不同）
+ *   trio / is_hit_trio / payout_trio             → 実態: 3連単（順序一致）
  */
 
 /**
@@ -17,14 +21,14 @@ export function calculateHits(prediction, result) {
   const isHitPlace = prediction.top_pick === result.rank1 ||
                      prediction.top_pick === result.rank2;
 
-  // 3連複: 同じ3艇が入っていれば順不同で的中
+  // isHitTrifecta → 実態: 3連複的中（順不同で3艇一致）
   const predTop3 = [prediction.top_pick, prediction.top_2nd, prediction.top_3rd].sort((a, b) => a - b);
   const resultTop3 = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b);
   const isHitTrifecta = predTop3[0] === resultTop3[0] &&
                         predTop3[1] === resultTop3[1] &&
                         predTop3[2] === resultTop3[2];
 
-  // 3連単: 完全順序一致
+  // isHitTrio → 実態: 3連単的中（完全順序一致）
   const isHitTrio = prediction.top_pick === result.rank1 &&
                     prediction.top_2nd === result.rank2 &&
                     prediction.top_3rd === result.rank3;
@@ -78,7 +82,8 @@ export function isPlaceHit(topPick, rank1, rank2) {
 }
 
 /**
- * 3連複的中判定（順不同で3艇一致）
+ * 実態: 3連複的中判定（順不同で3艇一致）
+ * ⚠️ 関数名は trifecta だが、実態は3連複（DB列名に合わせた歴史的命名）
  * @param {number[]} predTop3 - 予想上位3艇 [1着予想, 2着予想, 3着予想]
  * @param {number} rank1 - 実際の1着
  * @param {number} rank2 - 実際の2着
@@ -95,7 +100,8 @@ export function isTrifectaHit(predTop3, rank1, rank2, rank3) {
 }
 
 /**
- * 3連単的中判定（順序一致で3艇一致）
+ * 実態: 3連単的中判定（順序一致で3艇一致）
+ * ⚠️ 関数名は trio だが、実態は3連単（DB列名に合わせた歴史的命名）
  * @param {number[]} predTop3 - 予想上位3艇 [1着予想, 2着予想, 3着予想]
  * @param {number} rank1 - 実際の1着
  * @param {number} rank2 - 実際の2着

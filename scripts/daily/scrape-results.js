@@ -101,11 +101,14 @@ function scrapeWinningTechnique($) {
 
 // Scrape payout data
 function scrapePayouts($) {
+  // ⚠️ 命名注意: DB列名と英語名が逆転している（歴史的経緯）
+  //   trifecta (英語=3連単) → 実際は3連複の値を格納
+  //   trio (英語=3連複)     → 実際は3連単の値を格納
   const payouts = {
     win: {},      // 単勝
     place: {},    // 複勝
-    trifecta: {}, // 3連複
-    trio: {}      // 3連単
+    trifecta: {}, // → DB: payout_trifecta（実態: 3連複の払戻金）
+    trio: {}      // → DB: payout_trio（実態: 3連単の払戻金）
   };
 
   try {
@@ -419,12 +422,13 @@ async function scrapeResults(dateStr = null) {
         const predTop3 = [pred.top_pick, pred.top_2nd, pred.top_3rd].sort((a, b) => a - b);
         const resultTop3 = [result.rank1, result.rank2, result.rank3].sort((a, b) => a - b);
 
-        // 3連複: 順序関係なく同じ3艇なら的中
+        // ⚠️ 命名注意: 変数名の英語と日本語が逆転（DB列名に合わせている）
+        // isTrifectaHit → 実態: 3連複的中（順不同）
         const isTrifectaHit = predTop3[0] === resultTop3[0] &&
                               predTop3[1] === resultTop3[1] &&
                               predTop3[2] === resultTop3[2];
 
-        // 3連単: 順序も一致なら的中
+        // isTrioHit → 実態: 3連単的中（順序一致）
         const isTrioHit = pred.top_pick === result.rank1 &&
                           pred.top_2nd === result.rank2 &&
                           pred.top_3rd === result.rank3;
