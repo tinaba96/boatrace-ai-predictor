@@ -1,360 +1,285 @@
-# データ取得の課題と改善提案
-
-現在のスクレイピングで取得しているデータと、取得すべきだが未取得のデータを整理。
+# スクレイピング仕様と既知の課題
 
 > **関連ドキュメント**: [DATA_ACQUISITION_STRATEGY.md](../proposal/DATA_ACQUISITION_STRATEGY.md)
 
 ---
 
-## 現状のデータ取得フロー
+## 実行スケジュール
+
+### GitHub Actions (`scrape.yml`)
 
 ```
-[毎時0分] GitHub Actions
-    │
-    ├─ scrape-to-json.js ─────────────────────┐
-    │   ├─ 開催会場一覧                         │
-    │   ├─ 出走表（選手情報）                    │ → data/races.json
-    │   ├─ 天候情報（朝時点）                    │    + Supabase
-    │   └─ レース開始時刻                        │
-    │                                          │
-    ├─ generate-predictions.js ───────────────┤
-    │   └─ AI予測生成                           │ → Supabase (predictions)
-    │                                          │
-    └─ scrape-results.js ─────────────────────┤
-        ├─ 着順（1-3着）                        │
-        ├─ 配当（単勝/複勝/3連複/3連単）          │ → Supabase (race_results)
-        └─ 決まり手                             │
+cron: '0 0-13,18-23 * * *' (UTC)
 ```
+
+| UTC | JST | 状態 |
+|-----|-----|------|
+| 18:00-23:00 | 3:00-8:00 | 実行（早朝） |
+| 0:00-13:00 | 9:00-22:00 | 実行（日中〜夜間） |
+| 14:00-17:00 | 23:00-2:00 | 停止 |
+
+**実質**: JST 3:00〜22:00 の間、**1時間間隔**で実行
+
+### 実行ステップの順序
+
+```
+[1] scrape-to-json.js        ← 出走表・天候・展示データ取得
+    ↓ data/races.json 生成
+[2] generate-predictions.js   ← AI予想生成 + Supabase書込
+    ↓ races, race_entries, predictions, exhibition_data, race_conditions
+[3] scrape-results.js         ← レース結果取得 (continue-on-error)
+    ↓ race_results, predictions(的中判定)
+[4] calculate-accuracy.js     ← 精度統計更新 (continue-on-error)
+    ↓ models テーブル更新
+[5] git commit & push
+[6] Vercel deploy
+```
+
+- Step 1-2 は失敗するとワークフロー停止
+- Step 3-4 は失敗しても続行（`continue-on-error: true`）
+
+---
+
+## 各スクリプトの仕様
+
+### 1. scrape-to-json.js
+
+**対象**: 本日（JST）開催中の全会場・全レース
+**出力**: `data/races.json`
+
+#### スクレイピング対象ページ（レースごと）
+
+| ページ | URL | 取得データ |
+|--------|-----|----------|
+| beforeinfo | `/race/beforeinfo?rno=X&jcd=XX&hd=YYYYMMDD` | 天候、展示タイム、展示ST |
+| racelist | `/race/racelist?rno=X&jcd=XX&hd=YYYYMMDD` | 選手情報、成績 |
+| raceindex | `/race/raceindex?jcd=XX&hd=YYYYMMDD` | 発走時刻（会場単位） |
+
+#### 展示データの取得
+
+beforeinfo ページから抽出:
+- **展示タイム** (`exhibitionTime`): `.table1`（2番目）の各 tbody の tr[0] td[4] から取得（6.XX秒台）
+- **展示ST** (`startTiming`): `.table1`（3番目）の `.table1_boatImage1` → `.table1_boatImage1Time` から取得（0.XX秒）
+  - フライング判定（`F.14` 等）にも対応
+- 展示未実施の場合: HTMLにデータなし → `null` を返す
+
+### 2. generate-predictions.js
+
+**入力**: `data/races.json` + Supabase `racer_aggregated_stats`
+**出力**: 複数テーブルに upsert
+
+#### 展示データがない場合の挙動
+
+```javascript
+function calculateExhibitionBonus(exhibitionEntry, avgExTime, modelType) {
+    if (!exhibitionEntry) return 0;  // 展示データなし → ボーナス0
+    // ...
+}
+```
+
+- 展示データなし → 展示ボーナス = 0（選手基礎成績のみで予想生成）
+- 展開予測（turnPrediction）の `exhibitionST` も null → デフォルトST（0.15）を使用
+
+### 3. scrape-results.js
+
+**対象**: Supabase `races` テーブルにある当日レースの結果
+**取得元**: `/race/raceresult` ページ
+
+取得データ: 1-3着艇番、配当、決まり手、進入コース、各艇ST
+結果未公開のレースはスキップ → 次回スクレイピングで再試行
+
+---
+
+## 展示データのタイミング問題
+
+### ボートレースのタイムライン
+
+```
+     レース開催の1日の流れ（例: デイレース）
+
+10:00  1R展示航走（約5分間）
+10:20  1R発走
+10:30  1R結果公開
+  :
+10:50  2R展示航走
+11:10  2R発走
+  :
+16:00  11R展示航走
+16:20  11R発走
+  :
+16:50  12R展示航走
+17:10  12R発走
+17:20  12R結果公開（最終）
+```
+
+### 展示データが取得できる条件
+
+```
+beforeinfo ページに展示データが表示されるタイミング:
+
+  展示航走    beforeinfoに反映    発走     結果ページに切替
+  ──●───────────●──────────────●──────────●──────→
+    ↑           ↑              ↑          ↑
+  約30分前    〜25分前        レース開始   5-15分後
+
+  ※ 発走後もbeforinfoに展示データが残っているケースもあるが
+    確実ではない
+```
+
+### 1時間間隔スクレイピングで発生するギャップ
+
+```
+時刻      スクレイピング  レースの状況
+─────────────────────────────────────────────────
+09:00  ← [スクレイピング①] 1R〜3R: 展示済み ✅ 取得可能
+                           4R以降: 展示前 ❌ 取得不可
+  :
+09:20     1R展示航走
+09:40     1R発走 → 結果確定
+09:50     2R展示航走
+  :
+10:00  ← [スクレイピング②] 1R: 発走済み（beforeinfoデータ不明）
+                           2R〜5R: 展示済み ✅ 取得可能
+                           6R以降: 展示前 ❌ 取得不可
+  :
+10:10     2R発走
+10:20     3R展示航走
+10:30     3R発走  ← 展示〜発走の間にスクレイピングなし
+  :
+11:00  ← [スクレイピング③] ...
+```
+
+### 取り逃すパターン
+
+| パターン | 例 | 発生頻度 |
+|---------|-----|---------|
+| **展示〜発走の間にスクレイピングなし** | 展示10:05、発走10:25、次回スクレイプ11:00 | 高（毎日複数レース） |
+| **最初のスクレイピングの時点でまだ展示前** | 9:00スクレイプ時に6R以降は未展示 | 必ず発生 |
+
+**影響**: 展示データが取得できなかったレースは、展示ボーナスなし（=0）で予想が生成される。
+展開予測のST優位性計算でもデフォルト値（0.15）が使われ、精度が低下する。
+
+### ただし: 毎時上書きにより改善されるケース
+
+generate-predictions.js は毎回 **upsert**（上書き）するため:
+- 9:00 時点: 6Rの展示データなしで予想生成
+- 10:00 時点: 6Rの展示データありで予想を**上書き** → 改善
+
+**問題が残るのは**: 展示から発走までの間にスクレイピングが1回もないレース
+
+---
+
+## 背景: なぜ展示データの取得漏れが問題か
+
+フロントエンドの「詳細データ分析」テーブルに展示タイム・展示STを表示する機能を追加した。
+しかし、1時間間隔のスクレイピングでは展示データを取り逃すレースが毎日複数発生し、
+ユーザーに「-」表示が頻出してしまう。
+
+展示データはAI予想の精度にも直結する（展示ボーナス・展開予測のST優位性計算）ため、
+漏れなく取得することが重要。
+
+## 検討した改善案
+
+| 案 | 内容 | 展示取得率 | 実行時間 | 問題点 |
+|----|------|-----------|---------|--------|
+| A: 30分間隔（フル） | 既存ワークフローを30分間隔に | ~80% | 平均27分 | 実行が重複する（平均27分 vs 30分間隔） |
+| B: 15分間隔（展示専用） | beforeinfo取得+予想再生成のみの軽量ワークフロー | ~95% | 2-3分 | 新規ワークフロー追加 |
+| C: 発走時刻ベース | 発走時刻から逆算して動的スケジュール | ~98% | 最小 | 実装が複雑、cron精度の問題 |
+
+### 不採用: 公式サイトからのプッシュ通知
+
+公式サイト（boatrace.jp）の beforeinfo ページは完全に静的なサーバーサイドレンダリング。
+WebSocket、EventSource、meta refresh、Ajax ポーリングは一切なし。
+「展示が公開されたら通知を受ける」仕組みは存在しないため、ポーリング方式が必須。
+
+### 展示データの公開状態の判別方法
+
+beforeinfo ページの HTML は展示前後でテーブル構造が同一。セルの値で判別する:
+
+| 状態 | 展示タイム（table[1] td[4]） | 展示ST（table[2] .table1_boatImage1Time） |
+|------|---------------------------|----------------------------------------|
+| 前検前 | 空 | 空 |
+| 前検後・展示前 | 空 | 空 |
+| 展示後 | 数値（例: 6.84） | 数値（例: .09、F.14） |
+
+## 採用: 案B — 15分間隔の展示専用軽量ワークフロー
+
+**ステータス: ✅ 実装済み・運用中**
+
+### 理由
+
+- 既存の scrape.yml（1時間間隔）は結果取得（scrape-results.js）が平均24分かかるため間隔を縮められない
+- 展示データ取得（scrape-to-json.js: ~4分）+ 予想再生成（generate-predictions.js: ~4秒）= 約4分で完了し、15分間隔でも余裕がある
+- 既存ワークフローへの影響がない（独立して動作）
+
+### 実装内容
+
+```
+.github/workflows/scrape-exhibition.yml
+  cron: '*/15 0-8 * * *' (UTC) = JST 9:00-17:00、15分間隔
+  concurrency: scrape-pipeline（既存ワークフローとの同時実行防止）
+
+  ステップ:
+  1. scrape-to-json.js — 全会場の出走表・天候・展示データを取得（~4分）
+  2. generate-predictions.js — 予想生成 + Supabase upsert（~4秒）
+  ※ git push・deploy なし（Supabaseへの書き込みのみ）
+```
+
+既存の scrape.yml にも同じ `concurrency: scrape-pipeline` を追加済み。
+
+### 実行時間の内訳（実測値）
+
+| ステップ | scrape.yml（既存） | scrape-exhibition.yml（新規） |
+|---------|-------------------|------------------------------|
+| scrape-to-json.js | ~4分 | ~4分 |
+| generate-predictions.js | ~4秒 | ~4秒 |
+| scrape-results.js | ~23分 | なし |
+| calculate-accuracy.js | ~39秒 | なし |
+| git push + deploy | ~2秒 | なし |
+| **合計** | **~28分** | **~4分** |
 
 ---
 
 ## 取得データ一覧
 
-### 出走表スクレイピング (scrape-to-json.js)
+### 出走表 (scrape-to-json.js / racelist)
 
-**取得URL**: `https://www.boatrace.jp/owpc/pc/race/racelist`
+| データ | 取得状況 | 保存先 |
+|--------|---------|--------|
+| 選手名 | ✅ | race_entries.player_name |
+| 級別 | ✅ | race_entries.grade |
+| 年齢 | ✅ | race_entries.age |
+| 全国勝率/2連率/3連率 | ✅ | race_entries.win_rate, global_2rate, global_3rate |
+| 当地勝率/2連率/3連率 | ✅ | race_entries.local_win_rate, local_2rate, local_3rate |
+| モーター番号/2連率/3連率 | ✅ | race_entries.motor_number, motor_2rate, motor_3rate |
+| ボート番号/2連率/3連率 | ✅ | race_entries.boat_number_id, boat_2rate, boat_3rate |
+| 選手登録番号 | ✅ | race_entries.racer_id |
+| 支部・出身地 | ❌ | ページ上に存在するが未取得 |
+| 体重 | ❌ | ページ上に存在するが未取得 |
 
-| データ | 取得状況 | 保存先 | 備考 |
-|--------|---------|--------|------|
-| 選手名 | ✅ 取得中 | race_entries.player_name | |
-| 級別 | ✅ 取得中 | race_entries.grade | A1/A2/B1/B2 |
-| 年齢 | ✅ 取得中 | race_entries.age | |
-| 全国勝率 | ✅ 取得中 | race_entries.win_rate | |
-| 当地勝率 | ✅ 取得中 | race_entries.local_win_rate | |
-| 全国2連率 | ✅ 取得中 | race_entries.global_2rate | |
-| 当地2連率 | ✅ 取得中 | race_entries.local_2rate | |
-| モーター番号 | ✅ 取得中 | race_entries.motor_number | |
-| モーター2連率 | ✅ 取得中 | race_entries.motor_2rate | |
-| ボート番号 | ✅ 取得中 | race_entries.boat_number_id | |
-| ボート2連率 | ✅ 取得中 | race_entries.boat_2rate | |
-| 全国3連率 | ✅ 取得中 | race_entries.global_3rate | 2026-02-12実装完了 |
-| 当地3連率 | ✅ 取得中 | race_entries.local_3rate | 2026-02-12実装完了 |
-| モーター3連率 | ✅ 取得中 | race_entries.motor_3rate | 2026-02-12実装完了 |
-| ボート3連率 | ✅ 取得中 | race_entries.boat_3rate | 2026-02-12実装完了 |
-| 選手登録番号 | ✅ 取得中 | race_entries.racer_id | 2026-02-12実装完了 |
-| **支部・出身地** | ❌ 未取得 | - | ページ上に存在 |
-| **体重** | ❌ 未取得 | - | ページ上に存在 |
+### 天候 (scrape-to-json.js / beforeinfo)
 
-### 天候情報 (scrape-to-json.js)
+| データ | 取得状況 | 保存先 |
+|--------|---------|--------|
+| 天気/気温/風向/風速/水温/波高 | ✅ | race_conditions |
+| グレード/レースタイトル | ✅ | race_conditions.race_grade, race_title |
+| 節情報（何日目か） | ❌ | 未取得 |
 
-**取得URL**: `https://www.boatrace.jp/owpc/pc/race/beforeinfo`
+### 展示データ (scrape-to-json.js / beforeinfo)
 
 | データ | 取得状況 | 保存先 | 備考 |
 |--------|---------|--------|------|
-| 天気 | ✅ 取得中 | race_conditions.weather | |
-| 気温 | ✅ 取得中 | race_conditions.temperature | |
-| 風向 | ✅ 取得中 | race_conditions.wind_direction | |
-| 風速 | ✅ 取得中 | race_conditions.wind_speed | |
-| 水温 | ✅ 取得中 | race_conditions.water_temperature | |
-| 波高 | ✅ 取得中 | race_conditions.wave_height | |
+| 展示タイム | ✅ | exhibition_data.exhibition_time | タイミング問題あり（上記参照） |
+| 展示ST | ✅ | exhibition_data.start_timing | 同上 |
 
-**課題**: 朝1回の取得のため、ナイターレースの天候変化を反映できない
+### 結果 (scrape-results.js / raceresult)
 
-### レースグレード (scrape-to-json.js)
-
-| データ | 取得状況 | 保存先 | 備考 |
-|--------|---------|--------|------|
-| グレード | ✅ 取得中 | race_conditions.race_grade | SG/G1/G2/G3/ippan |
-| レースタイトル | ✅ 取得中 | race_conditions.race_title | |
-| **節情報** | ❌ 未取得 | - | 何日目かの情報 |
-| **最終日フラグ** | ❌ 未取得 | - | 優勝戦かどうか |
-
-### 結果スクレイピング (scrape-results.js)
-
-**取得URL**: `https://www.boatrace.jp/owpc/pc/race/raceresult`
-
-| データ | 取得状況 | 保存先 | 備考 |
-|--------|---------|--------|------|
-| 1着艇番 | ✅ 取得中 | race_results.rank1 | |
-| 2着艇番 | ✅ 取得中 | race_results.rank2 | |
-| 3着艇番 | ✅ 取得中 | race_results.rank3 | |
-| 単勝配当 | ✅ 取得中 | race_results.payout_win | |
-| 複勝配当（1着） | ✅ 取得中 | race_results.payout_place_1 | |
-| 複勝配当（2着） | ✅ 取得中 | race_results.payout_place_2 | |
-| 3連複配当 | ✅ 取得中 | race_results.payout_trifecta | |
-| 3連単配当 | ✅ 取得中 | race_results.payout_trio | |
-| 決まり手 | ✅ 取得中 | race_results.winning_technique | |
-| 進入コース | ✅ 取得中 | race_results.course_1〜6 | 2026-02-11実装完了 |
-| **2連単配当** | ❌ 未取得 | - | カラムなし |
-| **2連複配当** | ❌ 未取得 | - | カラムなし |
-| **拡連複配当** | ❌ 未取得 | - | カラムなし |
-| **単勝オッズ** | ❌ 未取得 | race_odds | テーブルは存在するが未使用 |
-| **スタートタイミング** | ❌ 未取得 | - | 結果ページに存在 |
-
-### 展示情報
-
-**取得URL**: `https://www.boatrace.jp/owpc/pc/race/beforeinfo`
-
-| データ | 取得状況 | 保存先 | 備考 |
-|--------|---------|--------|------|
-| **展示タイム** | ❌ 未取得 | exhibition_data | テーブルは存在するが未使用 |
-| **展示ST** | ❌ 未取得 | exhibition_data | テーブルは存在するが未使用 |
-
----
-
-## 優先度別の改善提案
-
-### 優先度: 高（追加負荷なし）
-
-同一ページから取得可能なため、スクリプト修正のみで対応可能。
-
-| 項目 | 現状 | 改善内容 | 期待効果 |
-|------|------|---------|---------|
-| ~~進入コース~~ | ✅ 完了 | - | 2026-02-11実装完了 |
-| ~~3連率（全国/当地/モーター/ボート）~~ | ✅ 完了 | - | 2026-02-12実装完了 |
-| ~~選手登録番号~~ | ✅ 完了 | - | 2026-02-12実装完了 |
-
-### 優先度: 中（軽微な追加負荷）
-
-結果取得時に追加ページアクセスが必要。
-
-| 項目 | 追加負荷 | 改善内容 | 期待効果 |
-|------|---------|---------|---------|
-| 展示タイム・ST | +288リクエスト/日 | beforeinfoページから取得 | モデル改善の分析材料 |
-| 確定天候 | +288リクエスト/日 | 結果取得時にbeforeinfoも取得 | ナイター天候の正確な記録 |
-| 単勝オッズ | 追加なし | raceresultページから取得 | 期待値分析 |
-
-### 優先度: 低（大きな追加負荷）
-
-リアルタイム取得は負荷が高く、費用対効果が低い。
-
-| 項目 | 追加負荷 | 現実的な対応 |
-|------|---------|-------------|
-| リアルタイム天候 | +288リクエスト/日 | 結果取得時の確定値で代替 |
-| リアルタイム展示 | +288リクエスト/日 | 将来検討（外部APIがあれば） |
-| リアルタイムオッズ | +288〜576リクエスト/日 | 対応不要（確定配当で十分） |
-
----
-
-## DBスキーマとの乖離
-
-### テーブル別レコード数（2026-02-20時点）
-
-| テーブル | レコード数 | 状態 |
-|---------|-----------|------|
-| venues | 24 | ✅ マスタ完備 |
-| races | 12,720 | ✅ 稼働中 |
-| race_entries | 76,320 | ✅ 稼働中 |
-| race_results | 11,969 | ✅ 稼働中 |
-| race_conditions | 2,424 | ⚠️ 一部のみ（19%） |
-| predictions | 33,552 | ✅ 稼働中 |
-| models | 3 | ✅ マスタ完備 |
-| race_odds | 0 | ❌ 未使用 |
-| exhibition_data | 0 | ❌ 未使用 |
-| bet_filters | 0 | ❌ 未使用 |
-| bet_recommendations | 0 | ❌ 未使用 |
-| daily_bet_summary | 0 | ❌ 未使用 |
-| user_visible_summary | 0 | ❌ 未使用 |
-| model_performance_daily | 0 | ❌ 未使用 |
-| model_experiments | 0 | ❌ 未使用 |
-
-### カラム別データ格納率
-
-#### venues（24件）
-
-| カラム | 格納数 | 格納率 | 備考 |
-|--------|--------|--------|------|
-| code, name, water_type | 24 | 100% | ✅ マスタ |
-| cluster | 24 | 100% | ✅ |
-| avg_first_win_rate | 20 | 83% | ⚠️ 4会場欠損 |
-| avg_volatility_score | 20 | 83% | ⚠️ 4会場欠損 |
-
-#### races（12,720件）
-
-| カラム | 格納数 | 格納率 | 備考 |
-|--------|--------|--------|------|
-| race_id, race_date, venue_code, race_number | 12,720 | 100% | ✅ |
-| start_time | 12,720 | 100% | ✅ |
-| volatility_score | 10,398 | 81.7% | ✅ |
-| volatility_level, recommended_model | 10,416 | 81.9% | ✅ |
-| volatility_reasons | 10,416 | 81.9% | ✅ |
-| first_boat_grade | 12,720 | 100% | ✅ |
-| first_boat_win_rate | 12,720 | 100% | ✅ |
-| first_boat_motor_2rate | 12,720 | 100% | ✅ |
-| win_rate_stddev | 12,720 | 100% | ✅ |
-| win_rate_avg | 12,720 | 100% | ✅ |
-| motor_2rate_stddev | 12,720 | 100% | ✅ |
-
-#### race_entries（76,320件）
-
-| カラム | 格納数 | 格納率 | 備考 |
-|--------|--------|--------|------|
-| race_id, boat_number | 76,320 | 100% | ✅ PK |
-| player_name | 76,320 | 100% | ✅ |
-| grade | 76,320 | 100% | ✅ |
-| age | 76,320 | 100% | ✅ |
-| win_rate | 76,298 | 100.0% | ✅ |
-| local_win_rate | 73,950 | 96.9% | ✅ |
-| global_2rate | 27,690 | 36.3% | ✅ 日次取得中 |
-| local_2rate | 25,580 | 33.5% | ✅ 日次取得中 |
-| global_3rate | 24,168 | 31.7% | ✅ 日次取得中 |
-| local_3rate | 22,326 | 29.3% | ✅ 日次取得中 |
-| motor_number | 76,320 | 100% | ✅ |
-| motor_2rate | 74,384 | 97.5% | ✅ |
-| motor_3rate | 23,985 | 31.4% | ✅ 日次取得中 |
-| boat_number_id | 76,320 | 100% | ✅ |
-| boat_2rate | 75,173 | 98.5% | ✅ |
-| boat_3rate | 24,258 | 31.8% | ✅ 日次取得中 |
-| racer_id | 24,408 | 32.0% | ✅ 日次取得中 |
-| ai_score_standard | 76,320 | 100% | ✅ |
-| ai_score_safe_bet | 62,496 | 81.9% | ✅ |
-| ai_score_upset_focus | 62,496 | 81.9% | ✅ |
-
-#### race_results（11,969件）
-
-| カラム | 格納数 | 格納率 | 備考 |
-|--------|--------|--------|------|
-| race_id | 11,969 | 100% | ✅ PK |
-| rank1, rank2, rank3 | 11,969 | 100% | ✅ |
-| payout_win | 11,969 | 100% | ✅ |
-| payout_place_1 | 11,964 | 100.0% | ✅ |
-| payout_place_2 | 11,940 | 99.8% | ✅ |
-| payout_trifecta | 11,969 | 100% | ✅ |
-| payout_trio | 11,969 | 100% | ✅ |
-| course_1〜6 | 11,010〜11,014 | 92.0% | ✅ 日次取得中 |
-| winning_technique | 4,310 | 36.0% | ✅ 日次取得中 |
-| is_cancelled | 11,969 | 100% | 全てFALSE（判定ロジック未実装） |
-| is_no_race | 11,969 | 100% | 全てFALSE（判定ロジック未実装） |
-| result_at | 11,969 | 100% | ✅ |
-
-#### race_conditions（2,424件）
-
-| カラム | 格納数 | 格納率 | 備考 |
-|--------|--------|--------|------|
-| race_id | 2,424 | 100% | ✅ PK |
-| weather | 2,399 | 99.0% | ✅ |
-| wind_direction | 2,191 | 90.4% | ✅ |
-| wind_speed | 2,388 | 98.5% | ✅ |
-| wave_height | 2,388 | 98.5% | ✅ |
-| temperature | 2,388 | 98.5% | ✅ |
-| water_temperature | 2,388 | 98.5% | ✅ |
-| race_grade | 2,280 | 94.1% | ✅ |
-| race_title | 2,280 | 94.1% | ✅ |
-| series_day | 0 | 0% | ❌ 未実装 |
-| is_final_day | 0 | 0% | ❌ 未実装 |
-
-#### predictions（33,552件）
-
-| カラム | 格納数 | 格納率 | 備考 |
-|--------|--------|--------|------|
-| race_id, model_id | 33,552 | 100% | ✅ |
-| top_pick, top_2nd, top_3rd | 33,552 | 100% | ✅ |
-| confidence | 33,552 | 100% | ✅ |
-| scores | 14,184 | 42.3% | ⚠️ 一部のみ |
-| feature_contributions | 0 | 0% | ❌ 未実装 |
-| is_hit_win | 31,767 | 94.7% | ✅ トリガー自動更新 |
-| is_hit_place | 31,767 | 94.7% | ✅ |
-| is_hit_trifecta | 31,767 | 94.7% | ✅ |
-| is_hit_trio | 31,767 | 94.7% | ✅ |
-| payout_win | 14,484 | 43.2% | 的中分のみ |
-| payout_place | 19,858 | 59.2% | 的中分のみ |
-| payout_trifecta | 8,435 | 25.1% | 的中分のみ |
-| payout_trio | 5,473 | 16.3% | 的中分のみ |
-| is_shadow | 33,552 | 100% | ✅ |
-
-#### models（3件）
-
-| カラム | 格納数 | 格納率 | 備考 |
-|--------|--------|--------|------|
-| model_id, display_name, model_type | 3 | 100% | ✅ |
-| description | 3 | 100% | ✅ |
-| version | 3 | 100% | ✅ |
-| hyperparameters, feature_list | 3 | 100% | ✅ |
-| status, is_public | 3 | 100% | ✅ |
-| total_predictions, hit_rate_win, recovery_rate_win | 3 | 100% | ✅ |
-| last_evaluated_at | 3 | 100% | ✅ |
-| parent_model_id | 0 | 0% | ❌ 未使用 |
-| target_venues | 0 | 0% | ❌ 未使用 |
-| target_volatility_min/max | 0 | 0% | ❌ 未使用 |
-| trained_at | 0 | 0% | ❌ 未使用 |
-| training_data_from/to | 0 | 0% | ❌ 未使用 |
-| training_race_count | 0 | 0% | ❌ 未使用 |
-
-### 定義済みだが未使用のテーブル
-
-| テーブル | 用途 | 未使用理由 |
-|---------|------|-----------|
-| race_odds | オッズ情報 | スクレイピング未実装 |
-| exhibition_data | 展示タイム・ST | スクレイピング未実装 |
-| bet_filters | フィルタ条件 | 機能未実装 |
-| bet_recommendations | 賭け推奨 | 機能未実装 |
-| daily_bet_summary | 日次集計 | 機能未実装 |
-| user_visible_summary | ユーザー表示サマリー | 機能未実装 |
-| model_performance_daily | モデル日次パフォーマンス | 機能未実装 |
-| model_experiments | A/Bテスト | 機能未実装 |
-
----
-
-## 推奨アクション
-
-### 短期（1週間以内）
-
-1. ~~**進入コース取得の実装**~~ ✅ 完了（2026-02-11）
-   - `scrape-results.js` に `scrapeCourseInfo()` 関数を追加
-   - 過去データも96.7%補完済み
-
-2. ~~**3連率の取得追加**~~ ✅ 完了（2026-02-12）
-   - `scrape-to-json.js` を修正済み
-   - 全国/当地/モーター/ボートの3連率を取得
-   - `race_entries` テーブルに4カラム追加済み
-
-3. ~~**選手登録番号の取得追加**~~ ✅ 完了（2026-02-12）
-   - `scrape-to-json.js` を修正済み
-   - `race_entries.racer_id` カラム追加済み
-
-4. ~~**過去データ補完**~~ ✅ 完了（2026-02-12）
-   - `scripts/maintenance/backfill-race-data.js` を作成
-   - 2025-12〜2026-02の過去データを補完
-   - racer_id: 792件 → 24,408件 (32.0%)
-   - global_3rate等: 792件 → 24,000件超 (31%)
-   - winning_technique: 1,133件 → 4,310件 (36.0%)
-
-### 中期（1ヶ月以内）
-
-5. **展示タイム・STの取得**
-   - `scrape-results.js` に追加
-   - 結果取得後に `beforeinfo` ページをフェッチ
-   - `exhibition_data` テーブルに保存
-
-6. **単勝オッズの取得**
-   - 結果ページに確定オッズがあるか確認
-   - あれば `race_odds` テーブルに保存
-
-### 長期（要検討）
-
-7. **外部データソースの調査**
-   - ボートレース公式API（存在確認）
-   - サードパーティデータプロバイダー
-   - コスト vs 価値の評価
-
----
-
-## 参考: 取得可能なURLパターン
-
-| ページ | URL | 取得可能データ |
-|--------|-----|---------------|
-| 出走表 | `/race/racelist?rno=X&jcd=XX&hd=YYYYMMDD` | 選手情報、グレード |
-| 直前情報 | `/race/beforeinfo?rno=X&jcd=XX&hd=YYYYMMDD` | 天候、展示タイム、ST |
-| オッズ | `/race/odds?rno=X&jcd=XX&hd=YYYYMMDD` | 各種オッズ |
-| 結果 | `/race/raceresult?rno=X&jcd=XX&hd=YYYYMMDD` | 着順、配当、決まり手、進入 |
-| 節間成績 | `/race/setsuki?jcd=XX&hd=YYYYMMDD` | 節情報 |
+| データ | 取得状況 | 保存先 |
+|--------|---------|--------|
+| 1-3着艇番 | ✅ | race_results.rank1/2/3 |
+| 配当（単勝/複勝/3連複/3連単） | ✅ | race_results.payout_* |
+| 決まり手 | ✅ | race_results.winning_technique |
+| 進入コース | ✅ | race_results.course_1〜6 |
+| 各艇ST | ✅ | race_start_timings |
+| 2連単/2連複/拡連複配当 | ❌ | 未取得 |
+| 単勝オッズ | ❌ | race_odds テーブル存在するが未使用 |

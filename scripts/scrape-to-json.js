@@ -27,6 +27,68 @@ function getUrl(date, placeCd, raceNo, content) {
   return url;
 }
 
+// 展示データ（展示タイム・展示ST）を取得する関数
+function scrapeExhibitionData($) {
+  const exhibitionData = [];
+
+  // beforeinfoページの構造:
+  //   table[1] (選手テーブル): 6つのtbody、各4行
+  //     tbody[n]/tr[0] = 選手情報行 (td[0]=枠番, td[4]=展示タイム)
+  //   table[2] (スタート展示テーブル): .table1_boatImage1 でコース順のST
+  const tables = $('.table1');
+  if (tables.length < 2) return null;
+
+  // 展示タイムを各選手から取得（table[1]）
+  const exTable = tables.eq(1);
+  const tbodies = exTable.find('tbody');
+
+  tbodies.each((i, tbody) => {
+    if (i >= 6) return;
+    const rows = $(tbody).find('tr');
+    if (rows.length < 1) return;
+
+    const mainCells = rows.eq(0).find('td');
+    const boatNumber = parseInt(mainCells.eq(0).text().trim());
+    const exhibitionTime = parseFloat(mainCells.eq(4).text().trim());
+
+    if (boatNumber >= 1 && boatNumber <= 6) {
+      exhibitionData.push({
+        boatNumber,
+        exhibitionTime: !isNaN(exhibitionTime) && exhibitionTime > 0 ? exhibitionTime : null,
+        startTiming: null,
+      });
+    }
+  });
+
+  // 展示ST（スタート展示テーブル table[2]）
+  if (tables.length >= 3) {
+    const startTable = tables.eq(2);
+    startTable.find('.table1_boatImage1').each((i, el) => {
+      // 艇番（画像またはテキストから取得）
+      const boatText = $(el).find('.table1_boatImage1Number').text().trim()
+        || $(el).text().trim().split('\n')[0].trim();
+      const boatNum = parseInt(boatText);
+
+      // ST値（.table1_boatImage1Time）
+      const stText = $(el).find('.table1_boatImage1Time').text().trim();
+      const isFlying = stText.includes('F');
+      const numMatch = stText.match(/[FL]?\.(\d+)/);
+      const stValue = numMatch ? parseFloat('0.' + numMatch[1]) : null;
+
+      if (boatNum >= 1 && boatNum <= 6 && stValue !== null) {
+        const entry = exhibitionData.find(e => e.boatNumber === boatNum);
+        if (entry) {
+          entry.startTiming = stValue;
+          entry.isFlying = isFlying;
+        }
+      }
+    });
+  }
+
+  const hasData = exhibitionData.some(e => e.exhibitionTime !== null || e.startTiming !== null);
+  return hasData ? exhibitionData : null;
+}
+
 // 直前情報を取得する関数
 async function getBeforeinfo(date, placeCd, raceNo) {
   try {
@@ -73,6 +135,9 @@ async function getBeforeinfo(date, placeCd, raceNo) {
       }
     }
 
+    // 展示データを取得
+    const exhibitionData = scrapeExhibitionData($);
+
     // データを統合
     const result = {
       date: date,
@@ -84,6 +149,7 @@ async function getBeforeinfo(date, placeCd, raceNo) {
       windVelocity: weatherData[1] ? parseFloat(weatherData[1].replace('m', '')) : null,
       waterTemp: weatherData[2] ? parseFloat(weatherData[2].replace('℃', '')) : null,
       waveHeight: weatherData[3] ? parseFloat(weatherData[3].replace('cm', '')) : null,
+      exhibitionData: exhibitionData,
     };
 
     return result;

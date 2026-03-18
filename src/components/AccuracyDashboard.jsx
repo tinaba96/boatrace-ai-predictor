@@ -15,6 +15,7 @@ import {
   VenueStrategyTable,
   VenueDetailedAnalysis
 } from './accuracy'
+import LoadingScreen from './LoadingScreen'
 import './AccuracyDashboard.css'
 
 function AccuracyDashboard({ onRefresh, isRefreshing }) {
@@ -44,7 +45,10 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
     return (
       <div className="accuracy-dashboard">
         <h2>📊 成績</h2>
-        <div className="loading">的中率データを読み込み中...</div>
+        <LoadingScreen
+          title="的中率データを読み込み中..."
+          description="成績データを集計しています"
+        />
       </div>
     )
   }

@@ -15,7 +15,9 @@ export const STADIUM_NAMES = {
 export const MODEL_NAMES = {
   standard: 'スタンダード',
   safeBet: '本命狙い',
-  upsetFocus: '穴狙い'
+  upsetFocus: '穴狙い',
+  'safe-bet': '本命狙い',
+  'upset-focus': '穴狙い'
 };
 
 // モデルキー配列（イテレーション用）

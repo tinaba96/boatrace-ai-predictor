@@ -9,14 +9,14 @@ import Contact from './components/Contact'
 import HitRaces from './components/HitRaces'
 import TodaysPicks from './components/TodaysPicks'
 import UpdateStatus from './components/UpdateStatus'
-import { ShareButton } from './components/ShareButton'
-import { SocialShareButtons } from './components/SocialShareButtons'
-import { shareRacePredictionToX, generatePredictionShareText } from './utils/share'
-import { getVenueGuidePath } from './utils/venueUtils'
 import { getFeaturedPosts, getLatestPosts } from './data/blogPosts'
 import { dataService } from './services/dataService'
+import { PredictionPanel } from './components/race'
 import { STADIUM_NAMES, WEEKDAYS } from './constants'
+import { TECHNIQUE_NAMES } from './utils/turnPrediction'
+import { BOAT_COLORS } from './utils/colors'
 import { getTodayJST, formatDateJP } from './utils/dateUtils'
+import LoadingScreen from './components/LoadingScreen'
 
 function App({ tab = 'races' }) {
     const navigate = useNavigate()
@@ -35,6 +35,7 @@ function App({ tab = 'races' }) {
     const [volatility, setVolatility] = useState(null) // 荒れ度情報
     const [lastUpdated, setLastUpdated] = useState(null) // データ更新時刻
     const [isRefreshing, setIsRefreshing] = useState(false) // 手動更新中フラグ
+    const [turnPredictionMap, setTurnPredictionMap] = useState({}) // レースID→展開予測のマップ
     const predictionRef = useRef(null)
     const raceCardRefs = useRef({}) // 各レースカードへの参照を保持
 
@@ -176,6 +177,25 @@ function App({ tab = 'races' }) {
                 setSelectedVenueId(result.data[0].placeCd)
             }
 
+            // 展開予測プレビュー用: 予測データをバックグラウンドで取得
+            const today = (() => {
+                const now = new Date()
+                const jstOffset = 9 * 60
+                const jstDate = new Date(now.getTime() + jstOffset * 60 * 1000)
+                return jstDate.toISOString().split('T')[0]
+            })()
+            dataService.getPredictions(today).then(predData => {
+                if (predData?.races) {
+                    const map = {}
+                    for (const race of predData.races) {
+                        if (race.turnPrediction) {
+                            map[race.raceId] = race.turnPrediction
+                        }
+                    }
+                    setTurnPredictionMap(map)
+                }
+            }).catch(() => {})
+
         } catch (err) {
             console.error('API取得エラー:', err)
             setError(err.message)
@@ -211,7 +231,7 @@ function App({ tab = 'races' }) {
                 // レースデータを表示用に変換
                 const formattedRaces = venueData.races.map(race => {
                     return {
-                        id: `${race.date}-${race.placeCd}-${race.raceNo}`,
+                        id: `${race.date}-${String(race.placeCd).padStart(2, '0')}-${String(race.raceNo).padStart(2, '0')}`,
                         venue: venueData.placeName,
                         raceNumber: race.raceNo,
                         startTime: race.startTime || '未定', // スクレイピングした締切予定時刻を使用
@@ -228,16 +248,6 @@ function App({ tab = 'races' }) {
             }
         }
     }, [selectedVenueId, allVenuesData])
-
-    // AI予想が完了したら自動的にスクロール
-    useEffect(() => {
-        if (prediction && !isAnalyzing && predictionRef.current) {
-            predictionRef.current.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            })
-        }
-    }, [prediction, isAnalyzing])
 
     // レース一覧が読み込まれたら、次に開催されるレースに自動スクロール
     useEffect(() => {
@@ -355,6 +365,16 @@ function App({ tab = 'races' }) {
         setIsAnalyzing(true)
         setPrediction(null)
 
+        // 次フレームで即座にスクロール（selectedRaceセットによりsectionがレンダリングされた後）
+        requestAnimationFrame(() => {
+            if (predictionRef.current) {
+                predictionRef.current.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                })
+            }
+        })
+
         try {
             // JSONファイルから予想データを読み込み
             const racePrediction = await loadPredictionData(race)
@@ -420,7 +440,10 @@ function App({ tab = 'races' }) {
                     reasoning: modelPrediction.reasoning || [], // 未設定の場合は空配列
                     top3: modelPrediction.top3 || [], // トップ3の艇番（number配列）
                     result: racePrediction.result, // レース結果
-                    predictions: racePrediction.predictions // 全モデルの予想データ
+                    predictions: racePrediction.predictions, // 全モデルの予想データ
+                    turnPrediction: racePrediction.turnPrediction || null,
+                    racerStats: racePrediction.racerStats || null,
+                    exhibitionData: racePrediction.exhibitionData || null,
                 }
                 setPrediction(aiPrediction)
                 setIsAnalyzing(false)
@@ -470,46 +493,6 @@ function App({ tab = 'races' }) {
     }
 
     // 統計的な注目ポイントを自動生成
-    const generateInsights = (players) => {
-        const insights = []
-
-        // 当地勝率が最も高い選手
-        const topLocalWinRate = [...players].sort((a, b) =>
-            parseFloat(b.localWinRate) - parseFloat(a.localWinRate)
-        )[0]
-
-        if (topLocalWinRate) {
-            insights.push(
-                `${topLocalWinRate.number}号艇の${topLocalWinRate.name}選手は` +
-                `当レース場での勝率が${topLocalWinRate.localWinRate}と最も高い`
-            )
-        }
-
-        // モーター2率が40%以上の選手
-        const goodMotors = players.filter(p => parseFloat(p.motor2Rate) > 40)
-        if (goodMotors.length > 0) {
-            const motorList = goodMotors.map(p =>
-                `${p.number}号艇（${p.motor2Rate}%）`
-            ).join('、')
-            insights.push(
-                `${motorList}のモーターは2連率が高く好調`
-            )
-        }
-
-        // 全国勝率が7.0以上の選手
-        const topRacers = players.filter(p => parseFloat(p.winRate) >= 7.0)
-        if (topRacers.length > 0) {
-            const racerList = topRacers.map(p =>
-                `${p.number}号艇（勝率${p.winRate}）`
-            ).join('、')
-            insights.push(
-                `${racerList}は全国勝率が高い実力者`
-            )
-        }
-
-        return insights
-    }
-
     return (
         <div className="app">
             <Header />
@@ -551,10 +534,10 @@ function App({ tab = 'races' }) {
                                 />
 
                                 {loading ? (
-                                    <div className="analyzing">
-                                        <div className="spinner"></div>
-                                        <p>レースデータを読み込み中...</p>
-                                    </div>
+                                    <LoadingScreen
+                                        title="レースデータを読み込み中..."
+                                        description="本日のレース情報を取得しています"
+                                    />
                                 ) : (
                                     <>
                                         {error && (
@@ -638,6 +621,9 @@ function App({ tab = 'races' }) {
                                                         return raceTimeInMinutes < currentTimeInMinutes
                                                     })()
 
+                                                    const turnPreview = turnPredictionMap[race.id]
+                                                    const topPattern = turnPreview?.patterns?.[0]
+
                                                     return (
                                                         <div
                                                             key={race.id}
@@ -668,6 +654,28 @@ function App({ tab = 'races' }) {
                                                                     </div>
                                                                 )}
                                                             </div>
+                                                            {topPattern && (
+                                                                <div className="race-card-turn-preview">
+                                                                    <span className="turn-preview-label">展開予測</span>
+                                                                    <div className="turn-preview-content">
+                                                                        <span
+                                                                            className="turn-preview-course"
+                                                                            style={{
+                                                                                backgroundColor: (BOAT_COLORS[topPattern.winnerCourse] || BOAT_COLORS[1]).bg,
+                                                                                color: (BOAT_COLORS[topPattern.winnerCourse] || BOAT_COLORS[1]).text,
+                                                                            }}
+                                                                        >
+                                                                            {topPattern.winnerCourse}
+                                                                        </span>
+                                                                        <span className="turn-preview-technique">
+                                                                            {TECHNIQUE_NAMES[topPattern.technique] || topPattern.technique}
+                                                                        </span>
+                                                                        <span className="turn-preview-prob">
+                                                                            {Math.round(topPattern.probability * 100)}%
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                             <button
                                                                 className="predict-btn"
                                                                 onClick={() => analyzeRace(race)}
@@ -685,665 +693,16 @@ function App({ tab = 'races' }) {
 
                             {selectedRace && (
                                 <section ref={predictionRef} className="prediction-section">
-                                    <h2>📊 AI予想結果 - {selectedRace.venue} {selectedRace.raceNumber}R</h2>
-
-                                    {selectedRace.rawData && selectedRace.rawData.placeCd && selectedRace.rawData.date && (
-                                        <div style={{
-                                            marginTop: '1rem',
-                                            marginBottom: '1.5rem',
-                                            padding: '0.75rem 1rem',
-                                            background: '#e3f2fd',
-                                            borderRadius: '8px',
-                                            borderLeft: '4px solid #2196f3'
-                                        }}>
-                                            <span style={{ marginRight: '0.5rem' }}>🔗</span>
-                                            <a
-                                                href={`https://www.boatrace.jp/owpc/pc/race/racelist?rno=${selectedRace.raceNumber}&jcd=${String(selectedRace.rawData.placeCd).padStart(2, '0')}&hd=${selectedRace.rawData.date.replace(/-/g, '')}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                style={{
-                                                    color: '#0ea5e9',
-                                                    textDecoration: 'none',
-                                                    fontWeight: '500'
-                                                }}
-                                            >
-                                                公式サイトでレース情報を見る
-                                            </a>
-                                            <span style={{ marginLeft: '0.5rem', fontSize: '0.9rem', color: '#475569' }}>
-                                                （新しいタブで開きます）
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {/* 荒れ度表示とモデル選択（予想表示時のみ） */}
-                                    {prediction && !prediction.error && prediction.predictions && (
-                                        <>
-                                            {/* 荒れ度表示 */}
-                                            {volatility && (
-                                                <div style={{
-                                                    padding: '1rem 1.5rem',
-                                                    background: volatility.level === 'high' ? '#fff3e0' :
-                                                        volatility.level === 'low' ? '#e8f5e9' : '#e3f2fd',
-                                                    borderRadius: '8px',
-                                                    marginBottom: '1.5rem',
-                                                    borderLeft: `4px solid ${volatility.level === 'high' ? '#ff9800' :
-                                                        volatility.level === 'low' ? '#4caf50' : '#2196f3'
-                                                        }`
-                                                }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: volatility.reasons && volatility.reasons.length > 0 ? '0.75rem' : '0' }}>
-                                                        <span style={{ fontSize: '1.2rem' }}>
-                                                            {volatility.level === 'high' ? '🌪️' :
-                                                                volatility.level === 'low' ? '🎯' : '⚖️'}
-                                                        </span>
-                                                        <span style={{ fontWeight: '600', color: '#333' }}>
-                                                            荒れ度: {volatility.score}
-                                                        </span>
-                                                        <span style={{
-                                                            padding: '0.25rem 0.75rem',
-                                                            borderRadius: '12px',
-                                                            fontSize: '0.85rem',
-                                                            fontWeight: '500',
-                                                            background: volatility.level === 'high' ? '#ff9800' :
-                                                                volatility.level === 'low' ? '#4caf50' : '#2196f3',
-                                                            color: 'white'
-                                                        }}>
-                                                            {volatility.level === 'high' ? '荒れる' :
-                                                                volatility.level === 'low' ? '堅い' : '標準'}
-                                                        </span>
-                                                    </div>
-
-                                                    {/* 荒れ度の根拠 */}
-                                                    {volatility.reasons && volatility.reasons.length > 0 && (
-                                                        <div style={{
-                                                            fontSize: '0.9rem',
-                                                            color: '#555',
-                                                            paddingLeft: '1.7rem',
-                                                            marginTop: '0.75rem'
-                                                        }}>
-                                                            <ul style={{
-                                                                margin: '0',
-                                                                paddingLeft: '1.2rem',
-                                                                listStyleType: 'disc'
-                                                            }}>
-                                                                {volatility.reasons.map((reason, index) => (
-                                                                    <li key={index} style={{ marginBottom: '0.25rem' }}>
-                                                                        {reason}
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                        </div>
-                                                    )}
-
-                                                    {/* おすすめモデル */}
-                                                    {volatility.recommendedModel && (
-                                                        <div style={{
-                                                            marginTop: '0.75rem',
-                                                            padding: '0.75rem',
-                                                            background: 'rgba(255, 255, 255, 0.5)',
-                                                            borderRadius: '6px',
-                                                            fontSize: '0.9rem'
-                                                        }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                                <span style={{ fontSize: '1.1rem' }}>💡</span>
-                                                                <span style={{ fontWeight: '600', color: '#333' }}>
-                                                                    おすすめモデル:
-                                                                </span>
-                                                                <span style={{
-                                                                    color: volatility.recommendedModel === 'upset-focus' ? '#ff6b00' :
-                                                                        volatility.recommendedModel === 'safe-bet' ? '#2e7d32' : '#0ea5e9',
-                                                                    fontWeight: '600'
-                                                                }}>
-                                                                    {volatility.recommendedModel === 'standard' && 'スタンダード'}
-                                                                    {volatility.recommendedModel === 'safe-bet' && '本命狙い'}
-                                                                    {volatility.recommendedModel === 'upset-focus' && '穴狙い'}
-                                                                </span>
-                                                            </div>
-                                                            <div style={{
-                                                                marginTop: '0.35rem',
-                                                                paddingLeft: '1.6rem',
-                                                                fontSize: '0.85rem',
-                                                                color: '#475569'
-                                                            }}>
-                                                                {volatility.level === 'high' && '荒れ度が高いため、高配当を狙える穴狙い型がおすすめです'}
-                                                                {volatility.level === 'low' && '堅いレースのため、的中率重視の本命狙い型がおすすめです'}
-                                                                {volatility.level === 'medium' && '標準的なレースのため、バランス型のスタンダードがおすすめです'}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {/* モデルについて（説明セクション） */}
-                                            <div style={{
-                                                padding: '1.25rem 1.5rem',
-                                                background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-                                                borderRadius: '8px',
-                                                marginBottom: '1.5rem',
-                                                border: '1px solid #e0e0e0'
-                                            }}>
-                                                <h4 style={{
-                                                    margin: '0 0 1rem 0',
-                                                    fontSize: '1.05rem',
-                                                    fontWeight: '700',
-                                                    color: '#333',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '0.5rem'
-                                                }}>
-                                                    <span>📚</span>
-                                                    予想モデルについて
-                                                </h4>
-                                                <div style={{
-                                                    display: 'grid',
-                                                    gap: '1rem',
-                                                    fontSize: '0.9rem'
-                                                }}>
-                                                    {/* スタンダード */}
-                                                    <div style={{
-                                                        padding: '1rem',
-                                                        background: 'white',
-                                                        borderRadius: '6px',
-                                                        borderLeft: '4px solid #0ea5e9'
-                                                    }}>
-                                                        <div style={{
-                                                            fontWeight: '700',
-                                                            color: '#0ea5e9',
-                                                            marginBottom: '0.5rem',
-                                                            fontSize: '0.95rem'
-                                                        }}>
-                                                            ⚖️ スタンダード（バランス型）
-                                                        </div>
-                                                        <div style={{ color: '#555', lineHeight: '1.6' }}>
-                                                            <strong>特徴：</strong>的中率と配当のバランスを重視した万能型<br/>
-                                                            <strong>重視する要素：</strong>全国勝率、当地成績、モーター性能を総合的に評価<br/>
-                                                            <strong>適したレース：</strong>標準的な展開が予想されるレース<br/>
-                                                            <strong>こんな人におすすめ：</strong>安定した的中を狙いつつ、適度な配当も期待したい方
-                                                        </div>
-                                                    </div>
-
-                                                    {/* 本命狙い */}
-                                                    <div style={{
-                                                        padding: '1rem',
-                                                        background: 'white',
-                                                        borderRadius: '6px',
-                                                        borderLeft: '4px solid #4caf50'
-                                                    }}>
-                                                        <div style={{
-                                                            fontWeight: '700',
-                                                            color: '#4caf50',
-                                                            marginBottom: '0.5rem',
-                                                            fontSize: '0.95rem'
-                                                        }}>
-                                                            🎯 本命狙い（安全型）
-                                                        </div>
-                                                        <div style={{ color: '#555', lineHeight: '1.6' }}>
-                                                            <strong>特徴：</strong>的中率を最優先した堅実型<br/>
-                                                            <strong>重視する要素：</strong>インコース有利性、A級選手、実績重視<br/>
-                                                            <strong>適したレース：</strong>1号艇やA級選手が有力な堅い展開<br/>
-                                                            <strong>こんな人におすすめ：</strong>的中率を重視し、コツコツ当てたい方
-                                                        </div>
-                                                    </div>
-
-                                                    {/* 穴狙い */}
-                                                    <div style={{
-                                                        padding: '1rem',
-                                                        background: 'white',
-                                                        borderRadius: '6px',
-                                                        borderLeft: '4px solid #ff9800'
-                                                    }}>
-                                                        <div style={{
-                                                            fontWeight: '700',
-                                                            color: '#ff9800',
-                                                            marginBottom: '0.5rem',
-                                                            fontSize: '0.95rem'
-                                                        }}>
-                                                            🌪️ 穴狙い（高配当型）
-                                                        </div>
-                                                        <div style={{ color: '#555', lineHeight: '1.6' }}>
-                                                            <strong>特徴：</strong>高配当を狙った攻撃型<br/>
-                                                            <strong>重視する要素：</strong>好調なモーター、展開の妙、外枠の可能性<br/>
-                                                            <strong>適したレース：</strong>混戦模様や荒れる展開が予想されるレース<br/>
-                                                            <strong>こんな人におすすめ：</strong>大きな配当を狙いたい、一発逆転を狙う方
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div style={{
-                                                    marginTop: '1rem',
-                                                    padding: '0.75rem',
-                                                    background: 'rgba(255, 255, 255, 0.7)',
-                                                    borderRadius: '6px',
-                                                    fontSize: '0.85rem',
-                                                    color: '#475569',
-                                                    lineHeight: '1.5'
-                                                }}>
-                                                    💡 <strong>ヒント：</strong>荒れ度スコアを参考に、レースの特性に合ったモデルを選択すると、より精度の高い予想が可能です。
-                                                </div>
-                                            </div>
-
-                                            {/* モデル選択ボタン */}
-                                            <div style={{
-                                                display: 'flex',
-                                                gap: '0.75rem',
-                                                marginBottom: '1.5rem',
-                                                flexWrap: 'wrap'
-                                            }}>
-                                                <button
-                                                    onClick={() => switchModel('standard')}
-                                                    title="バランス型：的中率と配当のバランスを重視。全国勝率・当地成績・モーター性能を総合的に評価します。"
-                                                    style={{
-                                                        flex: '1',
-                                                        minWidth: '140px',
-                                                        padding: '0.75rem 1rem',
-                                                        background: selectedModel === 'standard' ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : 'white',
-                                                        color: selectedModel === 'standard' ? 'white' : '#333',
-                                                        border: selectedModel === 'standard' ? 'none' : '2px solid #e0e0e0',
-                                                        borderRadius: '8px',
-                                                        fontSize: '0.95rem',
-                                                        fontWeight: '600',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.3s ease',
-                                                        boxShadow: selectedModel === 'standard' ? '0 4px 12px rgba(14, 165, 233, 0.3)' : 'none'
-                                                    }}
-                                                >
-                                                    ⚖️ スタンダード
-                                                </button>
-                                                <button
-                                                    onClick={() => switchModel('safe-bet')}
-                                                    title="安全型：的中率を最重視。1号艇とA級選手を優先し、堅いレースで力を発揮します。"
-                                                    style={{
-                                                        flex: '1',
-                                                        minWidth: '140px',
-                                                        padding: '0.75rem 1rem',
-                                                        background: selectedModel === 'safe-bet' ? 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)' : 'white',
-                                                        color: selectedModel === 'safe-bet' ? 'white' : '#333',
-                                                        border: selectedModel === 'safe-bet' ? 'none' : '2px solid #e0e0e0',
-                                                        borderRadius: '8px',
-                                                        fontSize: '0.95rem',
-                                                        fontWeight: '600',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.3s ease',
-                                                        boxShadow: selectedModel === 'safe-bet' ? '0 4px 12px rgba(76, 175, 80, 0.3)' : 'none'
-                                                    }}
-                                                >
-                                                    🎯 本命狙い
-                                                </button>
-                                                <button
-                                                    onClick={() => switchModel('upset-focus')}
-                                                    title="高配当型：大穴を狙って高配当を目指す。外枠の好モーターや展開の妙を重視し、荒れるレースで力を発揮します。"
-                                                    style={{
-                                                        flex: '1',
-                                                        minWidth: '140px',
-                                                        padding: '0.75rem 1rem',
-                                                        background: selectedModel === 'upset-focus' ? 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)' : 'white',
-                                                        color: selectedModel === 'upset-focus' ? 'white' : '#333',
-                                                        border: selectedModel === 'upset-focus' ? 'none' : '2px solid #e0e0e0',
-                                                        borderRadius: '8px',
-                                                        fontSize: '0.95rem',
-                                                        fontWeight: '600',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.3s ease',
-                                                        boxShadow: selectedModel === 'upset-focus' ? '0 4px 12px rgba(255, 152, 0, 0.3)' : 'none'
-                                                    }}
-                                                >
-                                                    🌪️ 穴狙い
-                                                </button>
-                                            </div>
-                                        </>
-                                    )}
-
-                                    {isAnalyzing ? (
-                                        <div className="analyzing">
-                                            <div className="spinner"></div>
-                                            <p>AIが分析中...</p>
-                                            <p className="analyzing-detail">過去データ、モーター性能、気象条件を解析しています</p>
-                                        </div>
-                                    ) : prediction && prediction.error ? (
-                                        <div className="prediction-error" style={{
-                                            padding: '2rem',
-                                            background: '#fff3cd',
-                                            borderRadius: '12px',
-                                            border: '2px solid #ffc107',
-                                            textAlign: 'center'
-                                        }}>
-                                            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
-                                            <h3 style={{ color: '#856404', marginBottom: '1rem' }}>予想データが利用できません</h3>
-                                            <p style={{ color: '#856404', marginBottom: '1.5rem' }}>{prediction.errorMessage}</p>
-                                            <button
-                                                onClick={() => setPrediction(null)}
-                                                style={{
-                                                    padding: '0.75rem 1.5rem',
-                                                    background: '#ffc107',
-                                                    color: '#000',
-                                                    border: 'none',
-                                                    borderRadius: '6px',
-                                                    cursor: 'pointer',
-                                                    fontWeight: 'bold',
-                                                    fontSize: '1rem'
-                                                }}
-                                            >
-                                                戻る
-                                            </button>
-                                        </div>
-                                    ) : prediction && (
-                                        <div className="prediction-result">
-                                            <div className="confidence-bar">
-                                                <div className="confidence-label">
-                                                    AI信頼度: <strong>{prediction.confidence}%</strong>
-                                                </div>
-                                                <div className="bar">
-                                                    <div
-                                                        className="bar-fill"
-                                                        style={{ width: `${prediction.confidence}%` }}
-                                                    ></div>
-                                                </div>
-                                            </div>
-
-                                            <div className="top-pick">
-                                                <h3>🥇 AI推奨</h3>
-                                                <div className="player-card featured">
-                                                    <div className="player-number">{prediction.topPick.number}</div>
-                                                    <div className="player-details">
-                                                        <h4>{prediction.topPick.name}</h4>
-                                                        <div className="stats">
-                                                            <span>級別: {prediction.topPick.grade}</span>
-                                                            <span>年齢: {prediction.topPick.age}歳</span>
-                                                            <span>勝率: {prediction.topPick.winRate}</span>
-                                                            <span>モーター: {prediction.topPick.motorNumber} ({prediction.topPick.motor2Rate}%)</span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="ai-score">
-                                                        <div className="score-label">AIスコア</div>
-                                                        <div className="score-value">{prediction.topPick.aiScore}</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="reasoning">
-                                                <h4>📌 予想根拠</h4>
-                                                <ul>
-                                                    {prediction.reasoning.map((reason, idx) => (
-                                                        <li key={idx}>{reason}</li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-
-                                            {/* SNSシェアボタン */}
-                                            <div className="social-share-wrapper">
-                                                <SocialShareButtons
-                                                    shareUrl="https://www.boat-ai.jp/"
-                                                    title={(() => {
-                                                        // レースIDから日付を抽出 (YYYY-MM-DD-PlaceCode-RaceNo)
-                                                        const raceId = selectedRace?.id || '';
-                                                        const dateParts = raceId.split('-').slice(0, 3);
-                                                        const date = dateParts.length === 3 ? dateParts.join('-') : '';
-
-                                                        return generatePredictionShareText({
-                                                            venue: selectedRace?.venue || '不明',
-                                                            raceNo: selectedRace?.raceNumber || '?',
-                                                            date: date,
-                                                            prediction: {
-                                                                topPick: prediction.topPick.number,
-                                                                top3: [1, 2, 3].map(i => prediction.allPlayers[i - 1]?.number).filter(Boolean),
-                                                                aiScores: [prediction.topPick.aiScore]
-                                                            }
-                                                        }, selectedModel);
-                                                    })()}
-                                                    hashtags={['ボートレース', 'AI予想', 'BoatAI']}
-                                                    size={40}
-                                                />
-                                            </div>
-
-                                            <div className="all-players">
-                                                <h4><span aria-hidden="true">🏆</span> AI予想順位</h4>
-                                                <div className="table-wrapper">
-                                                <table className="players-table" aria-label="AI予想順位一覧">
-                                                    <thead>
-                                                        <tr>
-                                                            <th scope="col">艇番</th>
-                                                            <th scope="col">選手名</th>
-                                                            <th scope="col">級別</th>
-                                                            <th scope="col">年齢</th>
-                                                            <th scope="col">勝率</th>
-                                                            <th scope="col">モーター</th>
-                                                            <th scope="col">AIスコア</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {prediction.allPlayers.map(player => (
-                                                            <tr key={player.number} className={player.number <= 3 ? 'recommended' : ''}>
-                                                                <th scope="row"><strong>{player.number}</strong></th>
-                                                                <td>{player.name}</td>
-                                                                <td>{player.grade}</td>
-                                                                <td>{player.age}歳</td>
-                                                                <td>{player.winRate}</td>
-                                                                <td>{player.motorNumber} ({player.motor2Rate}%)</td>
-                                                                <td><span className="score-badge">{player.aiScore}</span></td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                                </div>
-                                            </div>
-
-                                            {/* レース結果セクション */}
-                                            {prediction.result && prediction.result.finished && (
-                                                <div className="race-result">
-                                                    <h4><span aria-hidden="true">🏁</span> レース結果</h4>
-
-                                                    <div className="result-podium">
-                                                        <div className="podium-item first">
-                                                            <div className="rank">1着</div>
-                                                            <div className="boat-number">{prediction.result.rank1}</div>
-                                                        </div>
-                                                        <div className="podium-item second">
-                                                            <div className="rank">2着</div>
-                                                            <div className="boat-number">{prediction.result.rank2}</div>
-                                                        </div>
-                                                        <div className="podium-item third">
-                                                            <div className="rank">3着</div>
-                                                            <div className="boat-number">{prediction.result.rank3}</div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* 的中判定 */}
-                                                    <div className="accuracy-check">
-                                                        {/* 単勝 */}
-                                                        <div className="check-item">
-                                                            {prediction.topPick.number === prediction.result.rank1 ? (
-                                                                <div className="hit">
-                                                                    ✅ 単勝的中！
-                                                                    {prediction.result.payouts?.win?.[prediction.topPick.number] && (
-                                                                        <span style={{ marginLeft: '0.5rem', color: '#2196f3', fontWeight: 'bold' }}>
-                                                                            配当: {prediction.result.payouts.win[prediction.topPick.number]}円
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            ) : (
-                                                                <div className="miss">❌ 単勝不的中（予測: {prediction.topPick.number}号艇 → 実際: {prediction.result.rank1}号艇）</div>
-                                                            )}
-                                                        </div>
-
-                                                        {/* 複勝 */}
-                                                        <div className="check-item">
-                                                            {(prediction.topPick.number === prediction.result.rank1 ||
-                                                                prediction.topPick.number === prediction.result.rank2) ? (
-                                                                <div className="hit">
-                                                                    ✅ 複勝的中！
-                                                                    {prediction.result.payouts?.place?.[prediction.topPick.number] && (
-                                                                        <span style={{ marginLeft: '0.5rem', color: '#2196f3', fontWeight: 'bold' }}>
-                                                                            配当: {prediction.result.payouts.place[prediction.topPick.number]}円
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            ) : (
-                                                                <div className="miss">❌ 複勝不的中</div>
-                                                            )}
-                                                        </div>
-
-                                                        {/* 3連複 */}
-                                                        <div className="check-item">
-                                                            {prediction.top3.includes(prediction.result.rank1) &&
-                                                                prediction.top3.includes(prediction.result.rank2) &&
-                                                                prediction.top3.includes(prediction.result.rank3) ? (
-                                                                <div className="hit">
-                                                                    ✅ 3連複的中！
-                                                                    {(() => {
-                                                                        const sorted = [prediction.result.rank1, prediction.result.rank2, prediction.result.rank3].sort((a, b) => a - b);
-                                                                        const key = sorted.join('-');
-                                                                        const payout = prediction.result.payouts?.trifecta?.[key];
-                                                                        return payout && (
-                                                                            <span style={{ marginLeft: '0.5rem', color: '#2196f3', fontWeight: 'bold' }}>
-                                                                                配当: {payout}円
-                                                                            </span>
-                                                                        );
-                                                                    })()}
-                                                                </div>
-                                                            ) : (
-                                                                <div className="miss">❌ 3連複不的中</div>
-                                                            )}
-                                                        </div>
-
-                                                        {/* 3連単 */}
-                                                        <div className="check-item">
-                                                            {prediction.top3[0] === prediction.result.rank1 &&
-                                                                prediction.top3[1] === prediction.result.rank2 &&
-                                                                prediction.top3[2] === prediction.result.rank3 ? (
-                                                                <div className="hit">
-                                                                    ✅ 3連単的中！
-                                                                    {(() => {
-                                                                        const key = `${prediction.result.rank1}-${prediction.result.rank2}-${prediction.result.rank3}`;
-                                                                        const payout = prediction.result.payouts?.trio?.[key];
-                                                                        return payout && (
-                                                                            <span style={{ marginLeft: '0.5rem', color: '#2196f3', fontWeight: 'bold' }}>
-                                                                                配当: {payout}円
-                                                                            </span>
-                                                                        );
-                                                                    })()}
-                                                                </div>
-                                                            ) : (
-                                                                <div className="miss">❌ 3連単不的中</div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* 予想と結果の比較 */}
-                                                    <div className="comparison">
-                                                        <h5>予想と結果の比較</h5>
-                                                        <div className="comparison-grid">
-                                                            <div className="comparison-item">
-                                                                <div className="comparison-label">AI予想トップ3</div>
-                                                                <div className="comparison-value">
-                                                                    {prediction.top3.map((num, idx) => (
-                                                                        <span key={idx} className="boat-badge">{num}</span>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                            <div className="comparison-item">
-                                                                <div className="comparison-label">実際の結果</div>
-                                                                <div className="comparison-value">
-                                                                    <span className="boat-badge gold">{prediction.result.rank1}</span>
-                                                                    <span className="boat-badge silver">{prediction.result.rank2}</span>
-                                                                    <span className="boat-badge bronze">{prediction.result.rank3}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* 詳細データ分析セクション（新規追加） */}
-                                            <div className="detailed-analysis">
-                                                <h3><span aria-hidden="true">📊</span> 詳細データ分析</h3>
-
-                                                {/* 強化されたテーブル */}
-                                                <div className="enhanced-table">
-                                                    <table className="players-table-detailed" aria-label="選手詳細データ">
-                                                        <thead>
-                                                            <tr>
-                                                                <th scope="col">艇番</th>
-                                                                <th scope="col">選手名</th>
-                                                                <th scope="col">級別</th>
-                                                                <th scope="col">全国勝率</th>
-                                                                <th scope="col">当地勝率</th>
-                                                                <th scope="col">モーター番号</th>
-                                                                <th scope="col">モーター2率</th>
-                                                                <th scope="col">ボート番号</th>
-                                                                <th scope="col">ボート2率</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {prediction.allPlayers.map(player => (
-                                                                <tr key={player.number}>
-                                                                    <th scope="row"><strong>{player.number}</strong></th>
-                                                                    <td>{player.name}</td>
-                                                                    <td>{player.grade}</td>
-                                                                    <td>{player.winRate}</td>
-                                                                    <td>
-                                                                        {player.localWinRate}
-                                                                        {parseFloat(player.localWinRate) > 7.0 && <span className="fire" aria-label="優秀">🔥</span>}
-                                                                    </td>
-                                                                    <td>{player.motorNumber}</td>
-                                                                    <td>
-                                                                        {player.motor2Rate}%
-                                                                        {parseFloat(player.motor2Rate) > 40 && <span className="fire" aria-label="優秀">🔥</span>}
-                                                                    </td>
-                                                                    <td>{player.boatNumber}</td>
-                                                                    <td>{player.boat2Rate}%</td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-
-                                                {/* 統計的な注目ポイント */}
-                                                <div className="statistical-insights">
-                                                    <h4><span aria-hidden="true">📌</span> 統計的な注目ポイント</h4>
-                                                    <ul>
-                                                        {generateInsights(prediction.allPlayers).map((insight, idx) => (
-                                                            <li key={idx}>{insight}</li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-
-                                                {/* データの見方（解説） */}
-                                                <div className="data-guide">
-                                                    <h4><span aria-hidden="true">💡</span> データの見方</h4>
-                                                    <div className="guide-grid">
-                                                        <div className="guide-item">
-                                                            <strong>全国勝率</strong>
-                                                            <p>選手の全国での勝率。6.0以上でA級レベル。</p>
-                                                        </div>
-                                                        <div className="guide-item">
-                                                            <strong>当地勝率</strong>
-                                                            <p>このレース場での勝率。得意度を示す。</p>
-                                                        </div>
-                                                        <div className="guide-item">
-                                                            <strong>モーター2率</strong>
-                                                            <p>モーターの2連率。40%以上なら好機。</p>
-                                                        </div>
-                                                        <div className="guide-item">
-                                                            <strong>🔥マーク</strong>
-                                                            <p>特に優れた数値（平均より大きく上回る）。</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* 会場攻略ガイドリンク */}
-                                            {selectedRace?.rawData?.placeCd && getVenueGuidePath(selectedRace.rawData.placeCd) && (
-                                                <div className="venue-guide-link">
-                                                    <Link to={getVenueGuidePath(selectedRace.rawData.placeCd)}>
-                                                        <span className="venue-guide-icon">📖</span>
-                                                        <div className="venue-guide-content">
-                                                            <span className="venue-guide-title">{selectedRace.venue}の攻略ガイドを見る</span>
-                                                            <span className="venue-guide-desc">会場の特徴と狙い目を詳しく解説</span>
-                                                        </div>
-                                                        <span className="venue-guide-arrow">→</span>
-                                                    </Link>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
+                                    <h2>&#x1F4CA; AI予想結果 - {selectedRace.venue} {selectedRace.raceNumber}R</h2>
+                                    <PredictionPanel
+                                        prediction={prediction}
+                                        selectedRace={selectedRace}
+                                        selectedModel={selectedModel}
+                                        onSwitchModel={switchModel}
+                                        volatility={volatility}
+                                        isAnalyzing={isAnalyzing}
+                                        showExhibition={true}
+                                    />
                                 </section>
                             )}
 

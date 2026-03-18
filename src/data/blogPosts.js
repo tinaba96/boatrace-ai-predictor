@@ -1,6 +1,146 @@
 // Blog post metadata
 export const blogPosts = [
     {
+        id: 'ai-prediction-accuracy-review',
+        title: 'ボートレースAI予想は本当に当たるのか？ — 3ヶ月15,000レースの検証結果',
+        description: 'AI予想の的中率・回収率を15,000レースで検証。モデル別の強み弱み、他サービスとの違い、AI予想の限界まで正直に公開。',
+        date: '2026-03-12',
+        category: 'データ分析',
+        tags: ['AI予想', '的中率', '回収率', '検証', '透明性'],
+        readTime: '10分',
+        featured: true
+    },
+    {
+        id: 'popular-patterns-analysis',
+        title: '出目買いは有効か？ — 全24場の出目データをAIが分析した結果',
+        description: '出目買いの回収率を全24場のデータで検証。出目ランキング、会場別の傾向、出目買いよりデータ分析が有効な理由を解説。',
+        date: '2026-03-12',
+        category: 'データ分析',
+        tags: ['出目', '出目買い', 'データ分析', '会場別', '回収率'],
+        readTime: '8分',
+        featured: false
+    },
+    {
+        id: 'win-place-comparison',
+        title: '2連単と2連複、どちらが儲かるか？ — 控除率・的中率・回収率のデータ比較',
+        description: '2連単と2連複の違いをデータで徹底比較。的中確率、控除率、回収率から初心者〜中級者に最適な舟券種別を解説。',
+        date: '2026-03-12',
+        category: '初心者向け',
+        tags: ['2連単', '2連複', '舟券', '初心者', '回収率'],
+        readTime: '7分',
+        featured: false
+    },
+    {
+        id: 'weather-wind-impact',
+        title: '天候・風向きがレースを変える — 気象データとボートレース予想の関係',
+        description: '追い風・向かい風でイン勝率が変わる？風速・波高・雨がレース展開に与える影響を会場別データで解説。',
+        date: '2026-03-12',
+        category: 'データ分析',
+        tags: ['天候', '風', '波', '気象', 'データ分析'],
+        readTime: '8分',
+        featured: false
+    },
+    {
+        id: 'motor-performance-deep-dive',
+        title: 'モーター抽選日から勝負が始まる — モーター2連率の正しい読み方と落とし穴',
+        description: 'モーター2連率の正しい見方、節序盤の信頼性問題、部品交換の読み方、展示タイムとの組み合わせ評価をデータで解説。',
+        date: '2026-03-12',
+        category: 'データ分析',
+        tags: ['モーター', '2連率', '部品交換', '展示タイム', 'データ分析'],
+        readTime: '9分',
+        featured: false
+    },
+    {
+        id: 'odds-expected-value-guide',
+        title: 'ボートレースのオッズの見方 — 期待値で舟券を選ぶ方法',
+        description: 'オッズの仕組みと期待値の考え方をデータで解説。過剰人気の罠、オッズの歪みを狙う方法、舟券種別ごとの損益分岐オッズまで。',
+        date: '2026-03-12',
+        category: 'データ分析',
+        tags: ['オッズ', '期待値', '過剰人気', '舟券', 'データ分析'],
+        readTime: '9分',
+        featured: true
+    },
+    {
+        id: 'night-race-strategy',
+        title: 'ナイターレース攻略法 — 昼間とは違う5つの特徴とデータ分析',
+        description: 'ナイターレースの5つの特徴（気温変化・水面安定・イン勝率上昇など）と各開催場の攻略ポイントをデータで解説。',
+        date: '2026-03-12',
+        category: '戦略',
+        tags: ['ナイター', '攻略', '蒲郡', '丸亀', '大村', 'モーター'],
+        readTime: '9分',
+        featured: true
+    },
+    {
+        id: 'sg-race-guide-2026',
+        title: '2026年SGレース完全ガイド — 各レースの特徴と舟券攻略のポイント',
+        description: '2026年のSGレース全8戦の特徴と攻略ポイントを解説。総理杯からグランプリまで、SG特有の予想の注意点とBoatAI活用法。',
+        date: '2026-03-12',
+        category: '上級者向け',
+        tags: ['SG', 'グランプリ', 'オールスター', 'グレードレース', '2026年'],
+        readTime: '10分',
+        featured: true
+    },
+    {
+        id: 'womens-race-strategy',
+        title: '女子レーサー戦（ヴィーナスシリーズ）の予想法 — 混合戦との違いとデータ分析',
+        description: '女子戦は混合戦とここが違う！イン勝率・決まり手傾向・モーター依存度の差をデータで解説。ヴィーナスシリーズの攻略法。',
+        date: '2026-03-12',
+        category: '戦略',
+        tags: ['女子戦', 'ヴィーナスシリーズ', 'オールレディース', '攻略'],
+        readTime: '9分',
+        featured: false
+    },
+    {
+        id: 'how-to-predict-races',
+        title: 'ボートレース予想の仕方 完全ガイド — データとAIで的中率を上げる方法',
+        description: 'ボートレース予想に必要な6つの要素を1万レース超のデータで解説。選手勝率・モーター・コース・ST・展示・天候の見方と、AI予想の活用法を初心者にもわかりやすく紹介。',
+        date: '2026-03-12',
+        category: '初心者向け',
+        tags: ['予想', 'コツ', '的中率', '初心者', 'AI予想', 'データ分析'],
+        readTime: '12分',
+        featured: true
+    },
+    {
+        id: 'trifecta-betting-guide',
+        title: '3連単の買い方 完全攻略 — 買い目の絞り方から資金配分まで',
+        description: '3連単で回収率を上げるための買い目の絞り方、フォーメーション・ボックスの使い分け、点数別の回収率データ、資金配分の考え方をデータで解説。',
+        date: '2026-03-12',
+        category: '戦略',
+        tags: ['3連単', '買い方', 'フォーメーション', '資金管理', '舟券'],
+        readTime: '10分',
+        featured: true
+    },
+    {
+        id: 'improve-recovery-rate',
+        title: 'ボートレースの回収率を100%以上にする方法 — 1万レースのデータが示す現実',
+        description: '控除率25%の壁を越えるための5つの戦略。レース選び・舟券種別・点数管理・資金管理・AI活用をデータで解説。BoatAIが回収率104%を達成した実績も公開。',
+        date: '2026-03-12',
+        category: '戦略',
+        tags: ['回収率', '勝ち方', '資金管理', 'データ分析', '控除率'],
+        readTime: '10分',
+        featured: true
+    },
+    {
+        id: 'beginners-start-guide',
+        title: 'ボートレース初心者の始め方ガイド — 舟券の買い方からAI予想の活用まで',
+        description: 'ボートレースを始めたい人向けの完全ガイド。基本ルール、舟券7種類の解説、テレボート登録方法、初心者おすすめの買い方、予算の考え方まで。',
+        date: '2026-03-12',
+        category: '初心者向け',
+        tags: ['初心者', '始め方', '舟券', 'テレボート', '入門'],
+        readTime: '10分',
+        featured: true
+    },
+    {
+        id: 'first-mark-prediction-guide',
+        title: '1マーク展開予測とは？AIが読み解くレース展開の仕組み',
+        description: 'BoatAIの展開予測機能を徹底解説。選手の決まり手分布・ST・モーター性能から1マーク旋回の展開をAIが統計予測する仕組みと、舟券戦略への活用法を紹介。',
+        date: '2026-03-12',
+        category: '使い方',
+        tags: ['展開予測', '1マーク', '決まり手', 'AI予想', '使い方'],
+        readTime: '10分',
+        featured: true
+    },
+    {
         id: 'picks-performance-report',
         title: '「今日のおすすめ」が回収率104%を達成 - 2,577レースの実績データ',
         description: 'BoatAIの「今日のおすすめ」機能が累計2,577レースで回収率104%を記録。25%の控除率を逆転してプラス収支を実現した仕組みと、正直な課題を公開。',

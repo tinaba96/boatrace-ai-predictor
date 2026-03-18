@@ -1,0 +1,47 @@
+name: Slack PR Notification
+
+on:
+  pull_request:
+    types: [opened, merged]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_USER: ${{ github.event.pull_request.user.login }}
+          PR_ACTION: ${{ github.event.action }}
+          PR_BASE: ${{ github.event.pull_request.base.ref }}
+          PR_HEAD: ${{ github.event.pull_request.head.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ "$PR_ACTION" = "opened" ]; then
+            EMOJI=":rocket:"
+            ACTION_TEXT="PRが作成されました"
+            COLOR="#2196f3"
+          else
+            EMOJI=":white_check_mark:"
+            ACTION_TEXT="PRがマージされました"
+            COLOR="#4caf50"
+          fi
+
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"attachments\": [{
+                \"color\": \"${COLOR}\",
+                \"blocks\": [
+                  {
+                    \"type\": \"section\",
+                    \"text\": {
+                      \"type\": \"mrkdwn\",
+                      \"text\": \"${EMOJI} *${ACTION_TEXT}*\n<${PR_URL}|#${PR_NUMBER} ${PR_TITLE}>\n\`${PR_HEAD}\` → \`${PR_BASE}\` by ${PR_USER}\"
+                    }
+                  }
+                ]
+              }]
+            }"

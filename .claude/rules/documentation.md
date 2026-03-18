@@ -12,9 +12,10 @@
 | リファレンス資料 | `docs/reference/` | 設計書、仕様書、分析ガイド |
 | 運用ガイド | `docs/operation/` | ルール運用手順 |
 | 既知の問題 | `docs/issues/` | バグ調査・対応状況 |
-| 提案・検討 | `docs/proposal/` | 新機能提案、比較検討 |
+| 提案・検討 | `docs/proposal/` | 新機能提案、比較検討（未採用） |
+| 設計・実装資料 | `docs/design/` | 採用され実装中 or 実装済みの設計書 |
 | セットアップ | `docs/setup/` | 環境構築手順 |
-| 古いドキュメント | `docs/archive/` | 参照用に保持 |
+| 廃案・不要 | `docs/archive/` | 廃案になった提案、古くなった資料 |
 | 分析結果 | `data/analysis/` | JSON形式で保存 |
 | ブログ記事 | `public/blog/` | Markdown形式 |
 | note.com記事 | `note-articles/` | Markdown形式 |

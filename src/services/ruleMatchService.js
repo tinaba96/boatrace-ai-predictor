@@ -568,6 +568,8 @@ export function getMatchingRules(prediction, venueCode, raceNo) {
  * 賭け方の日本語名を取得
  */
 export function getBetTypeName(betType) {
+  // ⚠️ 命名注意: DB列名と英語名が逆転（歴史的経緯）
+  //   trio → 実態: 3連複, trifecta → 実態: 3連単
   const names = {
     'trio': '3連複',
     'trifecta': '3連単',

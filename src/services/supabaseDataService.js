@@ -394,6 +394,7 @@ export const supabaseDataService = {
           age,
           win_rate,
           local_win_rate,
+          global_2rate,
           motor_number,
           motor_2rate,
           boat_number_id,
@@ -484,6 +485,7 @@ export const supabaseDataService = {
           age,
           win_rate,
           local_win_rate,
+          global_2rate,
           motor_number,
           motor_2rate,
           boat_number_id,
@@ -499,7 +501,8 @@ export const supabaseDataService = {
           top_3rd,
           confidence,
           is_hit_win,
-          is_hit_place
+          is_hit_place,
+          feature_contributions
         ),
         race_results (
           rank1,
@@ -510,6 +513,11 @@ export const supabaseDataService = {
           payout_place_2,
           payout_trifecta,
           payout_trio
+        ),
+        exhibition_data (
+          boat_number,
+          exhibition_time,
+          start_timing
         )
       `)
       .eq('race_date', date)
@@ -532,6 +540,15 @@ export const supabaseDataService = {
       const safeBetPred = predictions.find(p => p.model_id === 'safeBet');
       const upsetPred = predictions.find(p => p.model_id === 'upsetFocus');
 
+      // turnPredictionを取得（standardのfeature_contributionsに格納）
+      const rawTurn = standardPred?.feature_contributions?.turnPrediction || null;
+      const turnPrediction = rawTurn ? {
+        ...rawTurn,
+        patterns: rawTurn.patterns || [
+          { technique: rawTurn.technique, winnerCourse: rawTurn.winnerCourse, probability: rawTurn.probability }
+        ],
+      } : null;
+
       // players配列を作成（aiScoreで降順ソート）
       const createPlayers = (pred, scoreField) => entries.map(e => ({
         number: e.boat_number,
@@ -540,6 +557,7 @@ export const supabaseDataService = {
         age: e.age,
         winRate: String(e.win_rate || ''),
         localWinRate: String(e.local_win_rate || ''),
+        global2Rate: e.global_2rate != null ? String(e.global_2rate) : null,
         motorNumber: e.motor_number,
         motor2Rate: String(e.motor_2rate || ''),
         boatNumber: e.boat_number_id,
@@ -558,7 +576,10 @@ export const supabaseDataService = {
           level: race.volatility_level,
           recommendedModel: race.recommended_model,
           reasons: race.volatility_reasons || []
-        } : null
+        } : null,
+        turnPrediction: turnPrediction,
+        racerStats: standardPred?.feature_contributions?.racerStats || null,
+        exhibitionData: race.exhibition_data || null,
       };
 
       // 予測データ（新形式: predictions）
@@ -678,7 +699,7 @@ export const supabaseDataService = {
     // モデル情報を取得
     const { data: models, error: modelsError } = await supabase
       .from('models')
-      .select('model_id, display_name, total_predictions, hit_rate_win, recovery_rate_win');
+      .select('model_id, display_name, total_predictions, hit_rate_win, hit_rate_place, hit_rate_trifecta, hit_rate_trio, recovery_rate_win, recovery_rate_place, recovery_rate_trifecta, recovery_rate_trio');
 
     if (modelsError) {
       console.error('Supabase getAccuracy error:', modelsError.message);
@@ -903,10 +924,14 @@ export const supabaseDataService = {
           totalRaces: modelInfo?.total_predictions || 0,
           finishedRaces: modelInfo?.total_predictions || 0,
           topPickHitRate: modelInfo?.hit_rate_win || 0,
+          topPickPlaceRate: modelInfo?.hit_rate_place || 0,
+          top3HitRate: modelInfo?.hit_rate_trifecta || 0,
+          top3ExactHitRate: modelInfo?.hit_rate_trio || 0,
           actualRecovery: {
-            win: {
-              recoveryRate: modelInfo?.recovery_rate_win || 0
-            }
+            win: { recoveryRate: modelInfo?.recovery_rate_win || 0 },
+            place: { recoveryRate: modelInfo?.recovery_rate_place || 0 },
+            trifecta: { recoveryRate: modelInfo?.recovery_rate_trifecta || 0 },
+            trio: { recoveryRate: modelInfo?.recovery_rate_trio || 0 },
           }
         },
         thisMonth: {

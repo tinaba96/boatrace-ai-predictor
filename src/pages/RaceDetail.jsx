@@ -7,17 +7,11 @@ import ModelComparisonTable from '../components/ModelComparisonTable'
 import {
   VenueSelector,
   RaceCard,
-  VolatilityDisplay,
-  ModelDescription,
-  ModelSwitcher,
-  RaceResult,
-  PlayerTable
+  PredictionPanel
 } from '../components/race'
 import { dataService } from '../services/dataService'
 import { STADIUM_NAMES } from '../constants'
-import { formatDate, formatPercent } from '../utils/formatters'
-import { getRecoveryColor } from '../utils/colors'
-import { getVenueGuidePath } from '../utils/venueUtils'
+import { formatDate } from '../utils/formatters'
 import './RaceDetail.css'
 
 function RaceDetail() {
@@ -31,6 +25,7 @@ function RaceDetail() {
   const [prediction, setPrediction] = useState(null)
   const [selectedModel, setSelectedModel] = useState('standard')
   const [volatility, setVolatility] = useState(null)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
   const predictionRef = useRef(null)
 
   // レースデータを取得（Supabaseから）
@@ -123,7 +118,19 @@ function RaceDetail() {
   // レース分析
   const analyzeRace = (race) => {
     setSelectedRace(race)
+    setIsAnalyzing(true)
+    setPrediction(null)
 
+    setTimeout(() => {
+      setIsAnalyzing(false)
+      processRacePrediction(race)
+      setTimeout(() => {
+        predictionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
+    }, 500)
+  }
+
+  const processRacePrediction = (race) => {
     const racePrediction = race.rawData
     const hasNewFormat = !!racePrediction?.predictions
     const hasOldFormat = !!racePrediction?.prediction
@@ -176,12 +183,10 @@ function RaceDetail() {
       reasoning: modelPrediction.reasoning || ['予想根拠データなし'],
       top3: modelPrediction.top3,
       result: racePrediction.result,
-      predictions: racePrediction.predictions || { standard: racePrediction.prediction }
+      predictions: racePrediction.predictions || { standard: racePrediction.prediction },
+      turnPrediction: racePrediction.turnPrediction || null,
+      racerStats: racePrediction.racerStats || null,
     })
-
-    setTimeout(() => {
-      predictionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 100)
   }
 
   const breadcrumbItems = [
@@ -353,111 +358,16 @@ function RaceDetail() {
 
               {selectedRace && (
                 <section ref={predictionRef} className="prediction-section">
-                  <h2>📊 AI予想結果 - {selectedRace.venue} {selectedRace.raceNumber}R</h2>
-
-                  {prediction && prediction.error ? (
-                    <div className="prediction-error">
-                      <p>{prediction.errorMessage}</p>
-                    </div>
-                  ) : prediction && (
-                    <>
-                      {/* 公式サイトリンク */}
-                      {selectedRace.rawData?.venueCode && date && (
-                        <div style={{
-                          marginTop: '1rem',
-                          marginBottom: '1.5rem',
-                          padding: '0.75rem 1rem',
-                          background: '#e3f2fd',
-                          borderRadius: '8px',
-                          borderLeft: '4px solid #2196f3'
-                        }}>
-                          <span style={{ marginRight: '0.5rem' }}>🔗</span>
-                          <a
-                            href={`https://www.boatrace.jp/owpc/pc/race/racelist?rno=${selectedRace.raceNumber}&jcd=${String(selectedRace.rawData.venueCode).padStart(2, '0')}&hd=${date.replace(/-/g, '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ color: '#0ea5e9', textDecoration: 'none', fontWeight: '500' }}
-                          >
-                            公式サイトでレース情報を見る
-                          </a>
-                          <span style={{ marginLeft: '0.5rem', fontSize: '0.9rem', color: '#475569' }}>
-                            （新しいタブで開きます）
-                          </span>
-                        </div>
-                      )}
-
-                      {prediction.predictions && (
-                        <>
-                          <VolatilityDisplay volatility={volatility} />
-                          <ModelDescription />
-                        </>
-                      )}
-
-                      {prediction.predictions && (
-                        <ModelSwitcher
-                          selectedModel={selectedModel}
-                          onSwitchModel={switchModel}
-                        />
-                      )}
-
-                      <div className="prediction-result">
-                        <div className="confidence-bar">
-                          <div className="confidence-label">
-                            AI信頼度: <strong>{prediction.confidence}%</strong>
-                          </div>
-                          <div className="bar">
-                            <div className="bar-fill" style={{ width: `${prediction.confidence}%` }}></div>
-                          </div>
-                        </div>
-
-                        <div className="top-pick">
-                          <h3>🥇 AI推奨</h3>
-                          <div className="player-card featured">
-                            <div className="player-number">{prediction.topPick.number}</div>
-                            <div className="player-details">
-                              <h4>{prediction.topPick.name}</h4>
-                              <div className="stats">
-                                <span>級別: {prediction.topPick.grade}</span>
-                                <span>年齢: {prediction.topPick.age}歳</span>
-                                <span>勝率: {prediction.topPick.winRate}</span>
-                                <span>モーター: {prediction.topPick.motorNumber} ({prediction.topPick.motor2Rate}%)</span>
-                              </div>
-                            </div>
-                            <div className="ai-score">
-                              <div className="score-label">AIスコア</div>
-                              <div className="score-value">{prediction.topPick.aiScore}</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="reasoning">
-                          <h4>📌 予想根拠</h4>
-                          <ul>
-                            {(prediction.reasoning || []).map((reason, idx) => (
-                              <li key={idx}>{reason}</li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        <RaceResult prediction={prediction} />
-                        <PlayerTable allPlayers={prediction.allPlayers} top3={prediction.top3} />
-
-                        {/* 会場攻略ガイドリンク */}
-                        {selectedRace?.rawData?.venueCode && getVenueGuidePath(selectedRace.rawData.venueCode) && (
-                          <div className="venue-guide-link">
-                            <Link to={getVenueGuidePath(selectedRace.rawData.venueCode)}>
-                              <span className="venue-guide-icon">📖</span>
-                              <div className="venue-guide-content">
-                                <span className="venue-guide-title">{selectedRace.venue}の攻略ガイドを見る</span>
-                                <span className="venue-guide-desc">会場の特徴と狙い目を詳しく解説</span>
-                              </div>
-                              <span className="venue-guide-arrow">→</span>
-                            </Link>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
+                  <h2>&#x1F4CA; AI予想結果 - {selectedRace.venue} {selectedRace.raceNumber}R</h2>
+                  <PredictionPanel
+                    prediction={prediction}
+                    selectedRace={selectedRace}
+                    selectedModel={selectedModel}
+                    onSwitchModel={switchModel}
+                    volatility={volatility}
+                    isAnalyzing={isAnalyzing}
+                    date={date}
+                  />
                 </section>
               )}
             </>
