@@ -11,10 +11,10 @@
           "raceNo": 1,
           "weather": "曇り",
           "airTemp": 8,
-          "windDirection": 12,
-          "windVelocity": 1,
+          "windDirection": 17,
+          "windVelocity": 0,
           "waterTemp": 11,
-          "waveHeight": 1,
+          "waveHeight": 0,
           "exhibitionData": [
             {
               "boatNumber": 1,
@@ -20229,7 +20229,7 @@
           "placeCd": 24,
           "raceNo": 1,
           "weather": "雨",
-          "airTemp": 14,
+          "airTemp": 13,
           "windDirection": 9,
           "windVelocity": 2,
           "waterTemp": 13,
@@ -21578,7 +21578,44 @@
           "windVelocity": 2,
           "waterTemp": 13,
           "waveHeight": 1,
-          "exhibitionData": null,
+          "exhibitionData": [
+            {
+              "boatNumber": 1,
+              "exhibitionTime": 6.92,
+              "startTiming": 0.18,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 2,
+              "exhibitionTime": 6.83,
+              "startTiming": 0.2,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 3,
+              "exhibitionTime": 6.86,
+              "startTiming": 0.21,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 4,
+              "exhibitionTime": 6.85,
+              "startTiming": 0.13,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 5,
+              "exhibitionTime": 6.86,
+              "startTiming": 0.05,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 6,
+              "exhibitionTime": 6.86,
+              "startTiming": 0.09,
+              "isFlying": false
+            }
+          ],
           "startTime": "21:25",
           "racers": [
             {
@@ -21704,12 +21741,49 @@
           "placeCd": 24,
           "raceNo": 10,
           "weather": "雨",
-          "airTemp": 14,
+          "airTemp": 13,
           "windDirection": 9,
           "windVelocity": 2,
           "waterTemp": 13,
           "waveHeight": 1,
-          "exhibitionData": null,
+          "exhibitionData": [
+            {
+              "boatNumber": 1,
+              "exhibitionTime": 6.87,
+              "startTiming": 0.01,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 2,
+              "exhibitionTime": 6.92,
+              "startTiming": 0,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 3,
+              "exhibitionTime": 6.85,
+              "startTiming": 0.05,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 4,
+              "exhibitionTime": 6.86,
+              "startTiming": 0.01,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 5,
+              "exhibitionTime": 6.83,
+              "startTiming": 0.11,
+              "isFlying": true
+            },
+            {
+              "boatNumber": 6,
+              "exhibitionTime": 6.88,
+              "startTiming": 0.06,
+              "isFlying": true
+            }
+          ],
           "startTime": "21:51",
           "racers": [
             {
@@ -21835,12 +21909,49 @@
           "placeCd": 24,
           "raceNo": 11,
           "weather": "雨",
-          "airTemp": 14,
+          "airTemp": 13,
           "windDirection": 9,
           "windVelocity": 2,
           "waterTemp": 13,
           "waveHeight": 1,
-          "exhibitionData": null,
+          "exhibitionData": [
+            {
+              "boatNumber": 1,
+              "exhibitionTime": 6.84,
+              "startTiming": 0.04,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 2,
+              "exhibitionTime": 6.83,
+              "startTiming": 0.25,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 3,
+              "exhibitionTime": 6.87,
+              "startTiming": 0.14,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 4,
+              "exhibitionTime": 6.89,
+              "startTiming": 0.15,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 5,
+              "exhibitionTime": 6.81,
+              "startTiming": 0.13,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 6,
+              "exhibitionTime": 6.88,
+              "startTiming": 0.1,
+              "isFlying": false
+            }
+          ],
           "startTime": "22:16",
           "racers": [
             {
@@ -21966,7 +22077,7 @@
           "placeCd": 24,
           "raceNo": 12,
           "weather": "雨",
-          "airTemp": 14,
+          "airTemp": 13,
           "windDirection": 9,
           "windVelocity": 2,
           "waterTemp": 13,
@@ -22095,5 +22206,5 @@
       ]
     }
   ],
-  "scrapedAt": "2026-03-18T11:52:15.917Z"
+  "scrapedAt": "2026-03-18T13:24:40.377Z"
 }
