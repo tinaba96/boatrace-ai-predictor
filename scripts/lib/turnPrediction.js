@@ -19,6 +19,9 @@ import { VENUE_1COURSE_WIN_RATE, VENUE_1COURSE_AVG } from "./venueParameters.js"
 
 const DEFAULT_ST = 0.15;
 
+// 正規化時のsoftmax温度パラメータ（T>1で高確率帯の過大評価を抑制）
+const SOFTMAX_TEMP = 1.3;
+
 // コース別の基本勝率（全国平均）
 const COURSE_BASE_WIN_RATE = {
   1: 0.55,
@@ -305,9 +308,12 @@ export function predictFirstMarkV2(players, raceConditions) {
   }
 
   // Step 5: 正規化 & 上位3パターン選出
-  const totalRaw = patterns.reduce((s, p) => s + p.rawProb, 0);
-  for (const p of patterns) {
-    p.probability = Math.round((p.rawProb / totalRaw) * 100) / 100;
+  // softmax温度パラメータで高確率帯の過大評価を抑制
+  const scaledProbs = patterns.map((p) => Math.pow(p.rawProb, 1 / SOFTMAX_TEMP));
+  const totalScaled = scaledProbs.reduce((s, v) => s + v, 0);
+  for (let i = 0; i < patterns.length; i++) {
+    patterns[i].probability =
+      Math.round((scaledProbs[i] / totalScaled) * 100) / 100;
   }
 
   patterns.sort((a, b) => b.probability - a.probability);
