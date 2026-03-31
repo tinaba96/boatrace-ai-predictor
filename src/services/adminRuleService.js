@@ -42,7 +42,7 @@ export async function getRuleApplicationHistory(startDate, endDate, limit = 50, 
     // race_id形式: YYYY-MM-DD-venueCode-raceNo
     const { data: predictions, error: predError, count } = await supabase
       .from('predictions')
-      .select('*', { count: 'exact' })
+      .select('race_id, model_id, confidence, top_pick, top_2nd, top_3rd, predicted_at', { count: 'exact' })
       .gte('race_id', startDate)
       .lt('race_id', endDateNextStr)
       .eq('model_id', 'standard')
@@ -62,7 +62,7 @@ export async function getRuleApplicationHistory(startDate, endDate, limit = 50, 
     const raceIds = predictions.map(p => p.race_id)
     const { data: results } = await supabase
       .from('race_results')
-      .select('*')
+      .select('race_id, rank1, rank2, rank3, payout_win, payout_place_1, payout_place_2, payout_trifecta, payout_trio')
       .in('race_id', raceIds)
 
     const resultsMap = {}
@@ -301,7 +301,7 @@ async function fetchAllPredictionsForWeekly(startDate) {
   while (true) {
     const { data: page, error } = await supabase
       .from('predictions')
-      .select('*')
+      .select('race_id, model_id, confidence, top_pick, top_2nd, top_3rd, predicted_at')
       .gte('predicted_at', startDate)
       .eq('model_id', 'standard')
       .range(offset, offset + pageSize - 1)
@@ -332,7 +332,7 @@ async function fetchResultsByRaceIdsForWeekly(raceIds) {
     const batch = raceIds.slice(i, i + batchSize)
     const { data, error } = await supabase
       .from('race_results')
-      .select('*')
+      .select('race_id, rank1, rank2, rank3, payout_win, payout_place_1, payout_place_2, payout_trifecta, payout_trio')
       .in('race_id', batch)
 
     if (error) {

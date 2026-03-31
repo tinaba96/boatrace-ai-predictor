@@ -20,7 +20,7 @@ async function fetchAllPredictions(startDate, modelId = 'standard') {
   while (true) {
     const { data: page, error } = await supabase
       .from('predictions')
-      .select('*')
+      .select('race_id, model_id, confidence, top_pick, top_2nd, top_3rd, predicted_at')
       .gte('predicted_at', startDate)
       .eq('model_id', modelId)
       .range(offset, offset + pageSize - 1)
@@ -54,7 +54,7 @@ async function fetchResultsByRaceIds(raceIds) {
     const batch = raceIds.slice(i, i + batchSize)
     const { data, error } = await supabase
       .from('race_results')
-      .select('*')
+      .select('race_id, rank1, rank2, rank3, payout_win, payout_place_1, payout_place_2, payout_trifecta, payout_trio')
       .in('race_id', batch)
 
     if (error) {
@@ -628,7 +628,7 @@ export async function getTodaysMatchingRaces(date) {
   // 予測データを取得（standardモデルのみ）
   const { data: predictions, error: predError } = await supabase
     .from('predictions')
-    .select('*')
+    .select('race_id, model_id, confidence, top_pick, top_2nd, top_3rd, predicted_at')
     .like('race_id', `${date}-%`)
     .eq('model_id', 'standard')
 
@@ -645,7 +645,7 @@ export async function getTodaysMatchingRaces(date) {
   const raceIds = predictions.map(p => p.race_id)
   const { data: results, error: resError } = await supabase
     .from('race_results')
-    .select('*')
+    .select('race_id, rank1, rank2, rank3, payout_win, payout_place_1, payout_place_2, payout_trifecta, payout_trio')
     .in('race_id', raceIds)
 
   const resultsMap = {}
@@ -797,7 +797,7 @@ export async function getRulePerformanceByVenue(venueCode, startDate = '2026-01-
   // 予測データを取得（クエリレベルで会場フィルタ）
   const { data: predictions, error: predError } = await supabase
     .from('predictions')
-    .select('*')
+    .select('race_id, model_id, confidence, top_pick, top_2nd, top_3rd, predicted_at')
     .like('race_id', `%-${venueCode}-%`)
     .gte('predicted_at', startDate)
     .eq('model_id', 'standard')
@@ -827,7 +827,7 @@ export async function getRulePerformanceByVenue(venueCode, startDate = '2026-01-
 
   const { data: results } = await supabase
     .from('race_results')
-    .select('*')
+    .select('race_id, rank1, rank2, rank3, payout_win, payout_place_1, payout_place_2, payout_trifecta, payout_trio')
     .in('race_id', raceIds)
 
   const resultsMap = {}
