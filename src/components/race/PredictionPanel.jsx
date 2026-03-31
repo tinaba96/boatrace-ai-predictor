@@ -152,6 +152,7 @@ function PredictionPanel({
               <PredictionFlash
                 prediction={prediction}
                 selectedRace={selectedRace}
+                selectedPatternIndex={selectedPatternIndex}
               />
             </motion.div>
           )}
