@@ -47,7 +47,8 @@
       "WebFetch(domain:zenn.dev)",
       "Bash(python3:*)",
       "Bash(npm install:*)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(gh pr:*)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
