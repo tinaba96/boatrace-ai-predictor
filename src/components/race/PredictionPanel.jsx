@@ -11,6 +11,7 @@ import VolatilityDisplay from "./VolatilityDisplay";
 import ModelDescription from "./ModelDescription";
 import ModelSwitcher from "./ModelSwitcher";
 import FirstMarkAnimation from "./FirstMarkAnimation";
+import PredictionFlash from "./PredictionFlash";
 import AttackDefenseTable from "./AttackDefenseTable";
 import RaceResult from "./RaceResult";
 import PredictionTable from "./PredictionTable";
@@ -145,9 +146,20 @@ function PredictionPanel({
           exit={{ opacity: 0, x: -10 }}
           transition={{ duration: 0.2 }}
         >
+          {/* AI予想根拠フラッシュ + 買い目表示 */}
+          {prediction.turnPrediction && prediction.allPlayers && (
+            <motion.div {...staggerItem(0)}>
+              <PredictionFlash
+                prediction={prediction}
+                selectedRace={selectedRace}
+                selectedPatternIndex={selectedPatternIndex}
+              />
+            </motion.div>
+          )}
+
           {/* 1マーク展開予測 */}
           {prediction.turnPrediction && (
-            <motion.div {...staggerItem(0)}>
+            <motion.div {...staggerItem(0.1)}>
               <FirstMarkAnimation
                 patterns={prediction.turnPrediction.patterns}
                 technique={prediction.turnPrediction.technique}
@@ -166,7 +178,7 @@ function PredictionPanel({
 
           {/* 超展開データ */}
           {prediction.racerStats && (
-            <motion.div {...staggerItem(0.2)}>
+            <motion.div {...staggerItem(0.3)}>
               <AttackDefenseTable
                 racerStats={prediction.racerStats}
                 players={prediction.allPlayers}
@@ -175,7 +187,7 @@ function PredictionPanel({
           )}
 
           {/* SNSシェアボタン */}
-          <motion.div className="social-share-wrapper" {...staggerItem(0.4)}>
+          <motion.div className="social-share-wrapper" {...staggerItem(0.5)}>
             <SocialShareButtons
               shareUrl="https://www.boat-ai.jp/"
               title={generatePredictionShareText(
@@ -196,7 +208,7 @@ function PredictionPanel({
           </motion.div>
 
           {/* AIデータ予想テーブル */}
-          <motion.div {...staggerItem(0.5)}>
+          <motion.div {...staggerItem(0.6)}>
             <PredictionTable
               prediction={prediction}
               showExhibition={showExhibition}
@@ -205,13 +217,13 @@ function PredictionPanel({
           </motion.div>
 
           {/* レース結果 */}
-          <motion.div {...staggerItem(0.6)}>
+          <motion.div {...staggerItem(0.7)}>
             <RaceResult prediction={prediction} />
           </motion.div>
 
           {/* 会場攻略ガイドリンク */}
           {venueCode && getVenueGuidePath(venueCode) && (
-            <motion.div {...staggerItem(0.8)}>
+            <motion.div {...staggerItem(0.9)}>
               <div className="venue-guide-link">
                 <Link to={getVenueGuidePath(venueCode)}>
                   <span className="venue-guide-icon">&#x1F4D6;</span>
