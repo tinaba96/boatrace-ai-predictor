@@ -111,7 +111,9 @@ function AccuracyHistory() {
 
     // 月ごとのモデル比較データを生成
     const getModelComparisonForMonth = (monthInfo) => {
-        return Object.entries(MODEL_NAMES).map(([key, name]) => {
+        const modelIds = ['standard', 'safeBet', 'upsetFocus'];
+        return modelIds.map(key => {
+            const name = MODEL_NAMES[key] || key;
             const data = monthInfo.models[key]
             if (!data) {
                 return {
