@@ -180,6 +180,115 @@ const VENUE_NAMES = {
 };
 
 /**
+ * Edge APIレスポンスをフロント期待形式に変換
+ * Edge API(RPC)とSupabase直接クエリの構造差異を吸収する
+ */
+function transformEdgeResponse(edgeData, date) {
+  const transformedRaces = (edgeData.races || []).map(race => {
+    const entries = race.entries || [];
+    const predictions = race.predictions || {};
+
+    // players配列を作成（entriesからaiScoreでソート）
+    const createPlayers = (modelPred, scoreField) =>
+      entries.map(e => ({
+        number: e.number,
+        name: e.name,
+        grade: e.grade,
+        age: e.age,
+        winRate: String(e.winRate || ''),
+        localWinRate: String(e.localWinRate || ''),
+        global2Rate: null,
+        motorNumber: e.motorNumber,
+        motor2Rate: String(e.motor2Rate || ''),
+        boatNumber: e.boatNumber,
+        boat2Rate: String(e.boat2Rate || ''),
+        aiScore: e[scoreField] || 0
+      })).sort((a, b) => b.aiScore - a.aiScore);
+
+    // turnPrediction を取得（standardの予測に含まれる）
+    const stdPred = predictions.standard;
+    const rawTurn = stdPred?.turnPrediction || null;
+    const turnPrediction = rawTurn ? {
+      ...rawTurn,
+      patterns: rawTurn.patterns || [
+        { technique: rawTurn.technique, winnerCourse: rawTurn.winnerCourse, probability: rawTurn.probability }
+      ],
+    } : null;
+
+    const raceData = {
+      raceId: race.raceId,
+      venue: race.venue || VENUE_NAMES[race.venueCode] || `会場${race.venueCode}`,
+      venueCode: race.venueCode,
+      raceNumber: race.raceNumber,
+      startTime: race.startTime || '',
+      volatility: race.volatility || null,
+      turnPrediction,
+      racerStats: stdPred?.racerStats || null,
+      exhibitionData: null,
+    };
+
+    // 予測データ（モデル別）
+    raceData.predictions = {};
+    for (const [modelId, pred] of Object.entries(predictions)) {
+      if (!pred) continue;
+      const scoreField = modelId === 'standard' ? 'aiScoreStandard'
+        : modelId === 'safeBet' ? 'aiScoreSafeBet' : 'aiScoreUpsetFocus';
+      const players = createPlayers(pred, scoreField);
+      const topPickPlayer = players.find(p => p.number === pred.topPick);
+      raceData.predictions[modelId] = {
+        topPick: pred.topPick,
+        top3: pred.top3 || [pred.topPick],
+        confidence: Number(pred.confidence) || 0,
+        players,
+        reasoning: generateReasoning(topPickPlayer, modelId)
+      };
+    }
+
+    // 結果データ
+    if (race.result && race.result.rank1) {
+      const r = race.result;
+      const trifectaKey = [r.rank1, r.rank2, r.rank3].sort((a, b) => a - b).join('-');
+      const trioKey = `${r.rank1}-${r.rank2}-${r.rank3}`;
+
+      raceData.result = {
+        finished: true,
+        rank1: r.rank1,
+        rank2: r.rank2,
+        rank3: r.rank3,
+        payouts: {
+          win: r.payoutWin ? { [r.rank1]: r.payoutWin } : {},
+          place: {},
+          trifecta: r.payoutTrifecta ? { [trifectaKey]: r.payoutTrifecta } : {},
+          trio: r.payoutTrio ? { [trioKey]: r.payoutTrio } : {}
+        }
+      };
+      if (r.payoutPlace1) raceData.result.payouts.place[r.rank1] = r.payoutPlace1;
+      if (r.payoutPlace2) raceData.result.payouts.place[r.rank2] = r.payoutPlace2;
+
+      // 的中情報
+      const stdHit = predictions.standard;
+      if (stdHit) {
+        raceData.accuracy = {
+          standard: {
+            isHitWin: stdHit.isHitWin,
+            isHitPlace: stdHit.isHitPlace
+          }
+        };
+      }
+    }
+
+    return raceData;
+  });
+
+  return {
+    date,
+    generatedAt: edgeData.generatedAt || new Date().toISOString(),
+    updatedAt: edgeData.updatedAt || new Date().toISOString(),
+    races: transformedRaces
+  };
+}
+
+/**
  * 予想根拠を生成する関数
  * 各モデルの特性に基づいた詳細な分析結果を生成
  */
@@ -457,9 +566,25 @@ export const supabaseDataService = {
 
   /**
    * 予測データを取得（predictions/YYYY-MM-DD.json形式で返す）
+   * Phase 2: Edge API経由でCDNキャッシュを活用
    */
   async getPredictions(date) {
     return withCache(`predictions-${date}`, async () => {
+      // Phase 2: まずEdge APIを試行（CDNキャッシュ活用）
+      try {
+        const edgeResponse = await fetch(`${EDGE_API_BASE}/api/predictions/${date}`);
+        if (edgeResponse.ok) {
+          const edgeData = await edgeResponse.json();
+          if (edgeData.races && edgeData.races.length > 0) {
+            console.log(`[getPredictions] Edge API success: ${edgeData.races.length} races`);
+            return transformEdgeResponse(edgeData, date);
+          }
+        }
+      } catch (edgeError) {
+        console.log('[getPredictions] Edge API failed, falling back to direct query:', edgeError.message);
+      }
+
+      // フォールバック: 従来のSupabase直接クエリ
       if (!supabase) {
         console.error('Supabase client not initialized');
         return { date, generatedAt: null, updatedAt: null, races: [] };
