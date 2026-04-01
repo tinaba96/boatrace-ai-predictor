@@ -803,6 +803,21 @@ export const supabaseDataService = {
    */
   async getAccuracy() {
     return withCache('accuracy', async () => {
+      // Phase D: まずEdge APIを試行（CDNキャッシュ活用）
+      try {
+        const edgeResponse = await fetch(`${EDGE_API_BASE}/api/accuracy`);
+        if (edgeResponse.ok) {
+          const edgeData = await edgeResponse.json();
+          if (edgeData.models) {
+            console.log('[getAccuracy] Edge API success');
+            return edgeData;
+          }
+        }
+      } catch (edgeError) {
+        console.log('[getAccuracy] Edge API failed, falling back to direct query:', edgeError.message);
+      }
+
+      // フォールバック: 従来のSupabase直接クエリ
       if (!supabase) {
         console.error('Supabase client not initialized');
         return { lastUpdated: null, models: {} };
