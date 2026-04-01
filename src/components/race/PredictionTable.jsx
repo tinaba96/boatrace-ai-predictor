@@ -281,10 +281,12 @@ function PredictionTable({ prediction, showExhibition = false, volatility }) {
         </div>
       )}
 
-      <div className="data-guide">
-        <h4>
-          <span aria-hidden="true">💡</span> データの見方
-        </h4>
+      <details className="data-guide">
+        <summary>
+          <h4>
+            <span aria-hidden="true">💡</span> データの見方
+          </h4>
+        </summary>
         <div className="guide-grid">
           <div className="guide-item">
             <strong>全国勝率</strong>
@@ -331,7 +333,7 @@ function PredictionTable({ prediction, showExhibition = false, volatility }) {
             <p>そのコースでの過去の勝利数と出走数。</p>
           </div>
         </div>
-      </div>
+      </details>
     </div>
   );
 }
