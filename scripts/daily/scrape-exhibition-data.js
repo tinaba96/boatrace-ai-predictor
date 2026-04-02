@@ -227,39 +227,47 @@ async function main() {
     let venueFetched = 0;
     let venueSkipped = 0;
 
+    // 取得対象のレースを特定
+    const targetRaces = [];
     for (let raceNo = 1; raceNo <= 12; raceNo++) {
       const raceId = makeRaceId(date, venueCode, raceNo);
 
-      // 取得済みならスキップ
       if (existingExhibitionIds.has(raceId)) {
         venueSkipped++;
         continue;
       }
-
-      // races テーブルに未登録ならスキップ（FK 制約）
       if (!racesInDb.has(raceId)) {
         totalNoRaceRecord++;
         continue;
       }
+      targetRaces.push({ raceNo, raceId });
+    }
 
-      const exhibitionData = await fetchExhibitionForRace(
-        date,
-        venueCode,
-        raceNo,
+    // 会場内の全対象レースを並列取得
+    if (targetRaces.length > 0) {
+      const results = await Promise.all(
+        targetRaces.map((r) =>
+          fetchExhibitionForRace(date, venueCode, r.raceNo).then((data) => ({
+            raceId: r.raceId,
+            data,
+          })),
+        ),
       );
 
-      if (exhibitionData) {
-        for (const ex of exhibitionData) {
-          if (ex.exhibitionTime != null || ex.startTiming != null) {
-            allRows.push({
-              race_id: raceId,
-              boat_number: ex.boatNumber,
-              exhibition_time: ex.exhibitionTime,
-              start_timing: ex.startTiming,
-            });
+      for (const { raceId, data } of results) {
+        if (data) {
+          for (const ex of data) {
+            if (ex.exhibitionTime != null || ex.startTiming != null) {
+              allRows.push({
+                race_id: raceId,
+                boat_number: ex.boatNumber,
+                exhibition_time: ex.exhibitionTime,
+                start_timing: ex.startTiming,
+              });
+            }
           }
+          venueFetched++;
         }
-        venueFetched++;
       }
     }
 
