@@ -89,7 +89,9 @@ BEGIN
                   'payoutWin', p.payout_win,
                   'payoutPlace', p.payout_place,
                   'payoutTrifecta', p.payout_trifecta,
-                  'payoutTrio', p.payout_trio
+                  'payoutTrio', p.payout_trio,
+                  'turnPrediction', p.feature_contributions->'turnPrediction',
+                  'racerStats', p.feature_contributions->'racerStats'
                 )
               )
               FROM predictions p
