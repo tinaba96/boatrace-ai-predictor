@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/generate-sitemap.js && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "deploy": "gh-pages -d dist",
@@ -17,6 +17,7 @@
     "linear:get": "node scripts/linear-cli.js get"
   },
   "dependencies": {
+    "@mseep/linear-mcp": "^78.0.1",
     "@sendgrid/mail": "^8.1.6",
     "@supabase/supabase-js": "^2.89.0",
     "cheerio": "^1.1.2",
