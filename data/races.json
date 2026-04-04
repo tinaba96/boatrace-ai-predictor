@@ -1527,7 +1527,44 @@
           "windVelocity": 3,
           "waterTemp": 14,
           "waveHeight": 2,
-          "exhibitionData": null,
+          "exhibitionData": [
+            {
+              "boatNumber": 1,
+              "exhibitionTime": 6.8,
+              "startTiming": 0.05,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 2,
+              "exhibitionTime": 6.92,
+              "startTiming": 0.13,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 3,
+              "exhibitionTime": 6.9,
+              "startTiming": 0.09,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 4,
+              "exhibitionTime": 6.72,
+              "startTiming": 0.1,
+              "isFlying": true
+            },
+            {
+              "boatNumber": 5,
+              "exhibitionTime": 6.77,
+              "startTiming": 0.1,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 6,
+              "exhibitionTime": 6.71,
+              "startTiming": 0.1,
+              "isFlying": true
+            }
+          ],
           "startTime": "19:25",
           "racers": [
             {
@@ -5966,8 +6003,8 @@
           "raceNo": 1,
           "weather": "雨",
           "airTemp": 16,
-          "windDirection": 17,
-          "windVelocity": 0,
+          "windDirection": 11,
+          "windVelocity": 1,
           "waterTemp": 17,
           "waveHeight": 1,
           "exhibitionData": [
@@ -7310,11 +7347,48 @@
           "raceNo": 9,
           "weather": "雨",
           "airTemp": 16,
-          "windDirection": 17,
-          "windVelocity": 0,
+          "windDirection": 11,
+          "windVelocity": 1,
           "waterTemp": 17,
           "waveHeight": 1,
-          "exhibitionData": null,
+          "exhibitionData": [
+            {
+              "boatNumber": 1,
+              "exhibitionTime": 6.89,
+              "startTiming": 0.09,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 2,
+              "exhibitionTime": 6.94,
+              "startTiming": 0.17,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 3,
+              "exhibitionTime": 6.92,
+              "startTiming": 0.2,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 4,
+              "exhibitionTime": 6.9,
+              "startTiming": 0.02,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 5,
+              "exhibitionTime": 6.96,
+              "startTiming": 0.06,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 6,
+              "exhibitionTime": 6.83,
+              "startTiming": 0.12,
+              "isFlying": false
+            }
+          ],
           "startTime": "19:11",
           "racers": [
             {
@@ -7441,8 +7515,8 @@
           "raceNo": 10,
           "weather": "雨",
           "airTemp": 16,
-          "windDirection": 17,
-          "windVelocity": 0,
+          "windDirection": 11,
+          "windVelocity": 1,
           "waterTemp": 17,
           "waveHeight": 1,
           "exhibitionData": null,
@@ -7572,8 +7646,8 @@
           "raceNo": 11,
           "weather": "雨",
           "airTemp": 16,
-          "windDirection": 17,
-          "windVelocity": 0,
+          "windDirection": 11,
+          "windVelocity": 1,
           "waterTemp": 17,
           "waveHeight": 1,
           "exhibitionData": null,
@@ -7703,8 +7777,8 @@
           "raceNo": 12,
           "weather": "雨",
           "airTemp": 16,
-          "windDirection": 17,
-          "windVelocity": 0,
+          "windDirection": 11,
+          "windVelocity": 1,
           "waterTemp": 17,
           "waveHeight": 1,
           "exhibitionData": null,
@@ -7838,12 +7912,12 @@
           "date": "2026-04-04",
           "placeCd": 15,
           "raceNo": 1,
-          "weather": "曇り",
+          "weather": "雨",
           "airTemp": 16,
           "windDirection": 13,
-          "windVelocity": 1,
+          "windVelocity": 2,
           "waterTemp": 13,
-          "waveHeight": 1,
+          "waveHeight": 2,
           "exhibitionData": [
             {
               "boatNumber": 1,
@@ -9182,12 +9256,12 @@
           "date": "2026-04-04",
           "placeCd": 15,
           "raceNo": 9,
-          "weather": "曇り",
+          "weather": "雨",
           "airTemp": 16,
           "windDirection": 13,
-          "windVelocity": 1,
+          "windVelocity": 2,
           "waterTemp": 13,
-          "waveHeight": 1,
+          "waveHeight": 2,
           "exhibitionData": [
             {
               "boatNumber": 1,
@@ -9350,12 +9424,12 @@
           "date": "2026-04-04",
           "placeCd": 15,
           "raceNo": 10,
-          "weather": "曇り",
+          "weather": "雨",
           "airTemp": 16,
           "windDirection": 13,
-          "windVelocity": 1,
+          "windVelocity": 2,
           "waterTemp": 13,
-          "waveHeight": 1,
+          "waveHeight": 2,
           "exhibitionData": null,
           "startTime": "19:31",
           "racers": [
@@ -9481,12 +9555,12 @@
           "date": "2026-04-04",
           "placeCd": 15,
           "raceNo": 11,
-          "weather": "曇り",
+          "weather": "雨",
           "airTemp": 16,
           "windDirection": 13,
-          "windVelocity": 1,
+          "windVelocity": 2,
           "waterTemp": 13,
-          "waveHeight": 1,
+          "waveHeight": 2,
           "exhibitionData": null,
           "startTime": "20:01",
           "racers": [
@@ -9612,12 +9686,12 @@
           "date": "2026-04-04",
           "placeCd": 15,
           "raceNo": 12,
-          "weather": "曇り",
+          "weather": "雨",
           "airTemp": 16,
           "windDirection": 13,
-          "windVelocity": 1,
+          "windVelocity": 2,
           "waterTemp": 13,
-          "waveHeight": 1,
+          "waveHeight": 2,
           "exhibitionData": null,
           "startTime": "20:37",
           "racers": [
@@ -19407,5 +19481,5 @@
       ]
     }
   ],
-  "scrapedAt": "2026-04-04T09:45:28.459Z"
+  "scrapedAt": "2026-04-04T10:13:19.040Z"
 }
