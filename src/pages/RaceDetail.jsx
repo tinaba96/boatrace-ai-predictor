@@ -28,62 +28,102 @@ function RaceDetail() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const predictionRef = useRef(null)
 
-  // レースデータを取得（Supabaseから）
+  // 会場・レースマップを構築する共通関数
+  const applyRaceData = (data) => {
+    setRaceData(data)
+
+    const venueMap = {}
+    data.races?.forEach(race => {
+      const venueCode = race.venueCode
+      if (!venueMap[venueCode]) {
+        venueMap[venueCode] = {
+          placeCd: venueCode,
+          placeName: race.venue,
+          races: []
+        }
+      }
+      venueMap[venueCode].races.push({
+        id: race.raceId,
+        venue: race.venue,
+        raceNumber: race.raceNumber,
+        venueCode: race.venueCode,
+        rawData: race
+      })
+    })
+
+    Object.values(venueMap).forEach(venue => {
+      venue.races.sort((a, b) => a.raceNumber - b.raceNumber)
+    })
+
+    return Object.values(venueMap).sort((a, b) => a.placeCd - b.placeCd)
+  }
+
+  // レースデータを取得（2段階ロード: 軽量版 → フル版）
   useEffect(() => {
+    let cancelled = false
+
     const fetchRaceData = async () => {
       try {
         setLoading(true)
         setError(null)
 
-        const data = await dataService.getPredictions(date)
+        // Phase 1: 軽量版で即座に一覧表示
+        const lightData = await dataService.getPredictions(date, { light: true })
+        if (cancelled) return
 
-        if (!data.races || data.races.length === 0) {
+        if (!lightData.races || lightData.races.length === 0) {
           throw new Error('データが見つかりません')
         }
 
-        setRaceData(data)
-
-        // 会場ごとにレースをグループ化
-        const venueMap = {}
-        data.races?.forEach(race => {
-          const venueCode = race.venueCode
-          if (!venueMap[venueCode]) {
-            venueMap[venueCode] = {
-              placeCd: venueCode,
-              placeName: race.venue,
-              races: []
-            }
-          }
-          venueMap[venueCode].races.push({
-            id: race.raceId,
-            venue: race.venue,
-            raceNumber: race.raceNumber,
-            venueCode: race.venueCode,
-            rawData: race
-          })
-        })
-
-        Object.values(venueMap).forEach(venue => {
-          venue.races.sort((a, b) => a.raceNumber - b.raceNumber)
-        })
-
-        const venues = Object.values(venueMap).sort((a, b) => a.placeCd - b.placeCd)
+        const venues = applyRaceData(lightData)
         setVenuesData(venues)
-
         if (venues.length > 0) {
           setSelectedVenueId(venues[0].placeCd)
+        }
+        setLoading(false)
+
+        // Phase 2: バックグラウンドでフル版を取得（turnPrediction/racerStats含む）
+        const fullData = await dataService.getPredictions(date)
+        if (cancelled) return
+
+        if (fullData.races && fullData.races.length > 0) {
+          const fullVenues = applyRaceData(fullData)
+          setVenuesData(fullVenues)
         }
 
       } catch (err) {
         console.error('データ取得エラー:', err)
-        setError(err.message)
-      } finally {
-        setLoading(false)
+        if (!cancelled) {
+          setError(err.message)
+          setLoading(false)
+        }
       }
     }
 
     fetchRaceData()
+    return () => { cancelled = true }
   }, [date])
+
+  // フル版到着時 or レース選択時に selectedRace を最新データと同期
+  // （2段階ロードで軽量版 → フル版に切り替わった時の自動リフレッシュ）
+  useEffect(() => {
+    if (!raceData?.races || !selectedRace) return
+
+    const latestRawData = raceData.races.find(r => r.raceId === selectedRace.id)
+    // 参照が同じなら何もしない（無限ループ防止 & 不要な再描画防止）
+    if (!latestRawData || latestRawData === selectedRace.rawData) return
+
+    // 新しい rawData で selectedRace を更新
+    const upgradedRace = { ...selectedRace, rawData: latestRawData }
+    setSelectedRace(upgradedRace)
+
+    // prediction が表示中なら新データで再計算（turnPrediction / racerStats 反映）
+    if (prediction && !prediction.error && !isAnalyzing) {
+      processRacePrediction(upgradedRace)
+    }
+    // raceData と selectedRace.id を監視し、最新の state を closure で取得
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [raceData, selectedRace?.id])
 
   // モデル切り替え
   const switchModel = (model) => {
