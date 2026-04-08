@@ -4053,11 +4053,11 @@
           "placeCd": 7,
           "raceNo": 1,
           "weather": "晴",
-          "airTemp": 13,
-          "windDirection": 9,
-          "windVelocity": 2,
+          "airTemp": 12,
+          "windDirection": 5,
+          "windVelocity": 1,
           "waterTemp": 13,
-          "waveHeight": 1,
+          "waveHeight": 0,
           "exhibitionData": [
             {
               "boatNumber": 1,
@@ -5901,12 +5901,49 @@
           "placeCd": 7,
           "raceNo": 12,
           "weather": "晴",
-          "airTemp": 13,
-          "windDirection": 9,
-          "windVelocity": 2,
+          "airTemp": 12,
+          "windDirection": 5,
+          "windVelocity": 1,
           "waterTemp": 13,
           "waveHeight": 1,
-          "exhibitionData": null,
+          "exhibitionData": [
+            {
+              "boatNumber": 1,
+              "exhibitionTime": 6.74,
+              "startTiming": 0.15,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 2,
+              "exhibitionTime": 6.76,
+              "startTiming": 0.14,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 3,
+              "exhibitionTime": 6.71,
+              "startTiming": 0.19,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 4,
+              "exhibitionTime": 6.79,
+              "startTiming": 0.22,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 5,
+              "exhibitionTime": 6.75,
+              "startTiming": 0.21,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 6,
+              "exhibitionTime": 6.73,
+              "startTiming": 0.21,
+              "isFlying": false
+            }
+          ],
           "startTime": "20:38",
           "racers": [
             {
@@ -12105,8 +12142,8 @@
           "raceNo": 1,
           "weather": "晴",
           "airTemp": 14,
-          "windDirection": 17,
-          "windVelocity": 0,
+          "windDirection": 13,
+          "windVelocity": 2,
           "waterTemp": 17,
           "waveHeight": 1,
           "exhibitionData": [
@@ -13953,11 +13990,48 @@
           "raceNo": 12,
           "weather": "晴",
           "airTemp": 14,
-          "windDirection": 17,
-          "windVelocity": 0,
+          "windDirection": 13,
+          "windVelocity": 2,
           "waterTemp": 17,
           "waveHeight": 1,
-          "exhibitionData": null,
+          "exhibitionData": [
+            {
+              "boatNumber": 1,
+              "exhibitionTime": 6.76,
+              "startTiming": 0.11,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 2,
+              "exhibitionTime": 6.74,
+              "startTiming": 0.06,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 3,
+              "exhibitionTime": 6.75,
+              "startTiming": 0.14,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 4,
+              "exhibitionTime": 6.76,
+              "startTiming": 0.02,
+              "isFlying": false
+            },
+            {
+              "boatNumber": 5,
+              "exhibitionTime": 6.78,
+              "startTiming": 0.07,
+              "isFlying": true
+            },
+            {
+              "boatNumber": 6,
+              "exhibitionTime": 6.78,
+              "startTiming": 0.01,
+              "isFlying": false
+            }
+          ],
           "startTime": "20:45",
           "racers": [
             {
@@ -18133,9 +18207,9 @@
           "placeCd": 24,
           "raceNo": 1,
           "weather": "晴",
-          "airTemp": 15,
+          "airTemp": 13,
           "windDirection": 3,
-          "windVelocity": 1,
+          "windVelocity": 2,
           "waterTemp": 16,
           "waveHeight": 1,
           "exhibitionData": [
@@ -19981,9 +20055,9 @@
           "placeCd": 24,
           "raceNo": 12,
           "weather": "晴",
-          "airTemp": 15,
+          "airTemp": 14,
           "windDirection": 3,
-          "windVelocity": 1,
+          "windVelocity": 2,
           "waterTemp": 16,
           "waveHeight": 1,
           "exhibitionData": [
@@ -20147,5 +20221,5 @@
       ]
     }
   ],
-  "scrapedAt": "2026-04-08T11:04:09.797Z"
+  "scrapedAt": "2026-04-08T12:04:22.857Z"
 }
