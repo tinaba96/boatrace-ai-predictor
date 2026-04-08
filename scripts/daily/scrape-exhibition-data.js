@@ -15,6 +15,7 @@ import {
   isSupabaseEnabled,
   VENUE_NAMES,
 } from "../lib/supabaseClient.js";
+import { getRaceSchedule, getRacesInWindow } from "../lib/raceSchedule.js";
 
 const USER_AGENT =
   "BoatraceAIBot/1.0 (+https://github.com/rhapsody0919/boatrace-ai-predictor)";
@@ -202,86 +203,80 @@ async function main() {
   const date = parseDateArg() || getTodayDateJST();
   console.log(`📅 対象日: ${date}`);
 
-  // 本日の開催会場を取得
-  const venues = await getTodayVenues();
-  if (venues.length === 0) {
-    console.log("本日の開催はありません。");
+  // 発走30分前ウィンドウのレースのみ対象
+  const schedule = await getRaceSchedule(date);
+  if (schedule.length === 0) {
+    console.log("📭 対象レースなし（スケジュール未登録）");
     return;
   }
+  console.log(`📊 当日レース数: ${schedule.length}件`);
 
-  // races テーブルに存在する race_id（FK 制約のため、これがないと書き込めない）
-  const racesInDb = await getExistingRaceIds(date);
-  console.log(`📊 races テーブル: ${racesInDb.size}件`);
+  // ±8分ウィンドウ（22〜38分前）: 5分毎実行 + cron-job.org 遅延を考慮した安全マージン
+  const windowRaces = getRacesInWindow(schedule, 30, 8);
+  if (windowRaces.length === 0) {
+    console.log("📭 発走22〜38分前ウィンドウの対象レースなし");
+    return;
+  }
+  console.log(`🎯 取得対象: ${windowRaces.length}レース（発走22〜38分前ウィンドウ）`);
 
   // 展示データ取得済みの race_id（スキップ判定用）
   const existingExhibitionIds = await getExistingExhibitionRaceIds(date);
-  console.log(`📊 取得済み展示データ: ${existingExhibitionIds.size}件`);
+
+  // 会場ごとにグループ化
+  const byVenue = new Map();
+  for (const r of windowRaces) {
+    if (existingExhibitionIds.has(r.race_id)) continue; // 取得済みはスキップ
+    if (!byVenue.has(r.venue_code)) byVenue.set(r.venue_code, []);
+    byVenue.get(r.venue_code).push(r);
+  }
+
+  if (byVenue.size === 0) {
+    console.log("📭 全レース取得済み（スキップ）");
+    return;
+  }
 
   let totalFetched = 0;
-  let totalSkipped = 0;
-  let totalNoRaceRecord = 0;
   const allRows = [];
 
-  for (const venueCode of venues) {
+  const venueEntries = [...byVenue.entries()];
+  for (let vi = 0; vi < venueEntries.length; vi++) {
+    const [venueCode, races] = venueEntries[vi];
     const venueName = VENUE_NAMES[venueCode];
-    let venueFetched = 0;
-    let venueSkipped = 0;
-
-    // 取得対象のレースを特定
-    const targetRaces = [];
-    for (let raceNo = 1; raceNo <= 12; raceNo++) {
-      const raceId = makeRaceId(date, venueCode, raceNo);
-
-      if (existingExhibitionIds.has(raceId)) {
-        venueSkipped++;
-        continue;
-      }
-      if (!racesInDb.has(raceId)) {
-        totalNoRaceRecord++;
-        continue;
-      }
-      targetRaces.push({ raceNo, raceId });
-    }
 
     // 会場内の全対象レースを並列取得
-    if (targetRaces.length > 0) {
-      const results = await Promise.all(
-        targetRaces.map((r) =>
-          fetchExhibitionForRace(date, venueCode, r.raceNo).then((data) => ({
-            raceId: r.raceId,
-            data,
-          })),
-        ),
-      );
+    const results = await Promise.all(
+      races.map((r) =>
+        fetchExhibitionForRace(date, venueCode, r.race_no).then((data) => ({
+          raceId: r.race_id,
+          data,
+        })),
+      ),
+    );
 
-      for (const { raceId, data } of results) {
-        if (data) {
-          for (const ex of data) {
-            if (ex.exhibitionTime != null || ex.startTiming != null) {
-              allRows.push({
-                race_id: raceId,
-                boat_number: ex.boatNumber,
-                exhibition_time: ex.exhibitionTime,
-                start_timing: ex.startTiming,
-              });
-            }
+    let venueFetched = 0;
+    for (const { raceId, data } of results) {
+      if (data) {
+        for (const ex of data) {
+          if (ex.exhibitionTime != null || ex.startTiming != null) {
+            allRows.push({
+              race_id: raceId,
+              boat_number: ex.boatNumber,
+              exhibition_time: ex.exhibitionTime,
+              start_timing: ex.startTiming,
+            });
           }
-          venueFetched++;
         }
+        venueFetched++;
       }
     }
 
-    totalFetched += venueFetched;
-    totalSkipped += venueSkipped;
-
-    if (venueFetched > 0 || venueSkipped > 0) {
-      console.log(
-        `  ${venueName}: 取得${venueFetched}R / スキップ${venueSkipped}R`,
-      );
+    if (venueFetched > 0) {
+      console.log(`  ✅ ${venueName}: ${venueFetched}R 取得`);
     }
+    totalFetched += venueFetched;
 
     // 会場間1秒待機（サーバー負荷配慮）
-    if (venueCode !== venues[venues.length - 1]) {
+    if (vi < venueEntries.length - 1) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
@@ -301,19 +296,12 @@ async function main() {
       }
     }
 
-    console.log(`✅ 書き込み完了`);
+    console.log(`✅ ${allRows.length}件 書き込み完了`);
   } else {
     console.log("\n📭 新規データなし");
   }
 
-  if (totalNoRaceRecord > 0) {
-    console.log(
-      `⚠️ races未登録のためスキップ: ${totalNoRaceRecord}R（scrape.yml の実行後に再取得されます）`,
-    );
-  }
-  console.log(
-    `\n📊 結果: 取得${totalFetched}R / スキップ${totalSkipped}R / データ${allRows.length}件`,
-  );
+  console.log(`\n📊 結果: 取得${totalFetched}R / データ${allRows.length}件`);
   console.log("🏁 完了");
 }
 
