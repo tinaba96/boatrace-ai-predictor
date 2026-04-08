@@ -1,0 +1,47 @@
+name: Scrape Scheduled
+
+on:
+  workflow_dispatch:
+  schedule:
+    # フォールバック: JST 7:00-22:00 の10分間隔 (UTC換算)
+    - cron: '*/10 22-23,0-13 * * *'
+
+concurrency:
+  group: scrape-scheduled
+  cancel-in-progress: false  # 朝の初期化を完走させるため
+
+permissions:
+  contents: read
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Phase 1: オッズ取得（発走前60/30/15/10/5分前のウィンドウ）
+      - name: Scrape odds for upcoming races
+        run: node scripts/daily/scrape-odds.js
+        env:
+          TZ: 'Asia/Tokyo'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        continue-on-error: true
+
+      # Phase 2 以降で追加予定:
+      # - update-race-info.js  (BOA-56: 欠場・中止対応)
+      # - scrape-exhibition-data.js (BOA-57: 展示データ統合)
+      # - scrape-results.js (BOA-57: 結果即時取得)
+      # - generate-predictions.js --refresh (BOA-54: 予測リフレッシュ)
+      # - Vercel Deploy Hook トリガー（データ更新時のみ）
