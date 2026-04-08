@@ -110,24 +110,27 @@ function scrapeRacers($) {
       .map((s) => s.trim())
       .filter(Boolean);
 
+    const toFloat = (s) => { const v = parseFloat(s); return isNaN(v) ? null : v; };
+    const toInt = (s) => { const v = parseInt(s, 10); return isNaN(v) ? null : v; };
+
     racers.push({
       boatNumber: index + 1,
       racerId,
       playerName: name || null,
       grade,
       age,
-      winRate: parseFloat(globalStats[0]) || null,
-      localWinRate: parseFloat(localStats[0]) || null,
-      global2Rate: parseFloat(globalStats[1]) || null,
-      local2Rate: parseFloat(localStats[1]) || null,
-      global3Rate: parseFloat(globalStats[2]) || null,
-      local3Rate: parseFloat(localStats[2]) || null,
-      motorNumber: parseInt(motorStats[0]) || null,
-      motor2Rate: parseFloat(motorStats[1]) || null,
-      motor3Rate: parseFloat(motorStats[2]) || null,
-      boatNumberId: parseInt(boatStats[0]) || null,
-      boat2Rate: parseFloat(boatStats[1]) || null,
-      boat3Rate: parseFloat(boatStats[2]) || null,
+      winRate: toFloat(globalStats[0]),
+      localWinRate: toFloat(localStats[0]),
+      global2Rate: toFloat(globalStats[1]),
+      local2Rate: toFloat(localStats[1]),
+      global3Rate: toFloat(globalStats[2]),
+      local3Rate: toFloat(localStats[2]),
+      motorNumber: toInt(motorStats[0]),
+      motor2Rate: toFloat(motorStats[1]),
+      motor3Rate: toFloat(motorStats[2]),
+      boatNumberId: toInt(boatStats[0]),
+      boat2Rate: toFloat(boatStats[1]),
+      boat3Rate: toFloat(boatStats[2]),
     });
   });
   return racers;
