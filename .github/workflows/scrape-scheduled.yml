@@ -3,7 +3,8 @@ name: Scrape Scheduled
 on:
   workflow_dispatch:
   schedule:
-    # フォールバック: JST 7:00-22:00 の10分間隔 (UTC換算)
+    # フォールバック用（プライマリは cron-job.org から workflow_dispatch で5分毎にトリガー）
+    # cron-job.org 障害時のバックアップとして JST 7:00-22:00 の10分間隔で実行 (UTC換算)
     - cron: '*/10 22-23,0-13 * * *'
 
 concurrency:

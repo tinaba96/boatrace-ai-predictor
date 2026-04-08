@@ -49,16 +49,9 @@ export async function getRaceSchedule(date) {
       const venueCode = parseInt(r.race_id.substring(11, 13), 10);
       const raceNo = parseInt(r.race_id.substring(14, 16), 10);
 
-      const [hour, minute] = r.start_time.split(":").map(Number);
-      const startTime = new Date(
-        Date.UTC(
-          parseInt(targetDate.substring(0, 4)),
-          parseInt(targetDate.substring(5, 7)) - 1,
-          parseInt(targetDate.substring(8, 10)),
-          hour - 9, // JST(UTC+9) → UTC
-          minute,
-        ),
-      );
+      // "HH:MM:00" → JST の ISO 文字列経由で Date を生成（hour - 9 の負値リスクを回避）
+      const timeStr = r.start_time.substring(0, 5); // "HH:MM"
+      const startTime = new Date(`${targetDate}T${timeStr}:00+09:00`);
 
       return {
         race_id: r.race_id,

@@ -182,7 +182,7 @@ async function main() {
   }
 
   console.log(
-    `🎯 取得対象: ${targetRaces.size}レース (${[...ODDS_WINDOWS].map((m) => `${m}分前`).join("/")} ウィンドウ)`,
+    `🎯 取得対象: ${targetRaces.size}レース (${ODDS_WINDOWS.map((m) => `${m}分前`).join("/")} ウィンドウ)`,
   );
 
   // 会場ごとにグループ化して並列取得
