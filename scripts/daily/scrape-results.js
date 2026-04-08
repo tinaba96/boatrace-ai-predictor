@@ -259,15 +259,20 @@ async function scrapeResults(dateStr = null) {
   console.log(`Starting race result scraping: ${targetDate}`);
 
   // 発走後5分以上経過したレースのみ対象
+  // スケジュール取得失敗時はフィルタなしで全レースを対象にフォールバック
   const schedule = await getRaceSchedule(targetDate);
-  const startedRaces = getRacesAfterStart(schedule, 5);
-  const startedRaceIds = new Set(startedRaces.map((r) => r.race_id));
-
-  if (startedRaceIds.size === 0) {
-    console.log('📭 発走後5分以上経過したレースなし');
-    return;
+  let startedRaceIds = null;
+  if (schedule.length > 0) {
+    const startedRaces = getRacesAfterStart(schedule, 5);
+    startedRaceIds = new Set(startedRaces.map((r) => r.race_id));
+    if (startedRaceIds.size === 0) {
+      console.log('📭 発走後5分以上経過したレースなし');
+      return;
+    }
+    console.log(`🎯 取得対象: ${startedRaceIds.size}レース（発走後5分以上）`);
+  } else {
+    console.warn('⚠️ スケジュール取得失敗: フィルタなしで全レースを対象');
   }
-  console.log(`🎯 取得対象: ${startedRaceIds.size}レース（発走後5分以上）`);
 
   // Supabaseから対象日のレース一覧を取得
   const { data: allRaces, error: racesError } = await supabase
@@ -281,8 +286,10 @@ async function scrapeResults(dateStr = null) {
     process.exit(1);
   }
 
-  // 発走後5分以上のレースに絞り込む
-  const races = (allRaces || []).filter((r) => startedRaceIds.has(r.race_id));
+  // 発走後5分以上のレースに絞り込む（スケジュール取得失敗時は全レース対象）
+  const races = startedRaceIds
+    ? (allRaces || []).filter((r) => startedRaceIds.has(r.race_id))
+    : (allRaces || []);
 
   if (races.length === 0) {
     console.log('⚠️  対象レースがありません');

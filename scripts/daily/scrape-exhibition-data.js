@@ -211,12 +211,13 @@ async function main() {
   }
   console.log(`📊 当日レース数: ${schedule.length}件`);
 
-  const windowRaces = getRacesInWindow(schedule, 30);
+  // ±8分ウィンドウ（22〜38分前）: 5分毎実行 + cron-job.org 遅延を考慮した安全マージン
+  const windowRaces = getRacesInWindow(schedule, 30, 8);
   if (windowRaces.length === 0) {
-    console.log("📭 発走30分前ウィンドウの対象レースなし");
+    console.log("📭 発走22〜38分前ウィンドウの対象レースなし");
     return;
   }
-  console.log(`🎯 取得対象: ${windowRaces.length}レース（発走30分前ウィンドウ）`);
+  console.log(`🎯 取得対象: ${windowRaces.length}レース（発走22〜38分前ウィンドウ）`);
 
   // 展示データ取得済みの race_id（スキップ判定用）
   const existingExhibitionIds = await getExistingExhibitionRaceIds(date);
