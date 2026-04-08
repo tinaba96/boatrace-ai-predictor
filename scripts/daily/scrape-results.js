@@ -5,6 +5,7 @@ import * as cheerio from 'cheerio';
 import { supabase, isSupabaseEnabled, VENUE_NAMES } from '../lib/supabaseClient.js';
 import { getTodayDateJST, formatDateForUrl, parseDateArg } from '../lib/dateUtils.js';
 import { calculateHits } from '../lib/hitCalculator.js';
+import { getRaceSchedule, getRacesAfterStart } from '../lib/raceSchedule.js';
 
 // Generate race result page URL
 function getRaceResultUrl(venueCode, raceNo, dateStr) {
@@ -257,8 +258,19 @@ async function scrapeResults(dateStr = null) {
   const targetDate = dateStr || getTodayDateJST();
   console.log(`Starting race result scraping: ${targetDate}`);
 
-  // Supabaseから対象日のレース一覧を取得（結果がないもの）
-  const { data: races, error: racesError } = await supabase
+  // 発走後5分以上経過したレースのみ対象
+  const schedule = await getRaceSchedule(targetDate);
+  const startedRaces = getRacesAfterStart(schedule, 5);
+  const startedRaceIds = new Set(startedRaces.map((r) => r.race_id));
+
+  if (startedRaceIds.size === 0) {
+    console.log('📭 発走後5分以上経過したレースなし');
+    return;
+  }
+  console.log(`🎯 取得対象: ${startedRaceIds.size}レース（発走後5分以上）`);
+
+  // Supabaseから対象日のレース一覧を取得
+  const { data: allRaces, error: racesError } = await supabase
     .from('races')
     .select('race_id, venue_code, race_number')
     .eq('race_date', targetDate)
@@ -269,8 +281,11 @@ async function scrapeResults(dateStr = null) {
     process.exit(1);
   }
 
-  if (!races || races.length === 0) {
-    console.log('⚠️  対象日のレースがありません');
+  // 発走後5分以上のレースに絞り込む
+  const races = (allRaces || []).filter((r) => startedRaceIds.has(r.race_id));
+
+  if (races.length === 0) {
+    console.log('⚠️  対象レースがありません');
     process.exit(0);
   }
 

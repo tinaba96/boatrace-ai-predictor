@@ -52,8 +52,24 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         continue-on-error: true
 
-      # Phase 3 以降で追加予定:
-      # - scrape-exhibition-data.js (BOA-57: 展示データ統合)
-      # - scrape-results.js (BOA-57: 結果即時取得)
+      # Phase 3: 展示データ取得（発走30分前ウィンドウ）
+      - name: Scrape exhibition data for upcoming races
+        run: node scripts/daily/scrape-exhibition-data.js
+        env:
+          TZ: 'Asia/Tokyo'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        continue-on-error: true
+
+      # Phase 3: 結果取得（発走後5分以上経過レース）
+      - name: Scrape race results for finished races
+        run: node scripts/daily/scrape-results.js
+        env:
+          TZ: 'Asia/Tokyo'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        continue-on-error: true
+
+      # Phase 4 以降で追加予定:
       # - generate-predictions.js --refresh (BOA-54: 予測リフレッシュ)
       # - Vercel Deploy Hook トリガー（データ更新時のみ）
