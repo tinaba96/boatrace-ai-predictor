@@ -43,8 +43,16 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         continue-on-error: true
 
-      # Phase 2 以降で追加予定:
-      # - update-race-info.js  (BOA-56: 欠場・中止対応)
+      # Phase 2: レース情報更新（発走1時間前: 欠場・代替・天候）
+      - name: Update race info for upcoming races
+        run: node scripts/daily/update-race-info.js
+        env:
+          TZ: 'Asia/Tokyo'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        continue-on-error: true
+
+      # Phase 3 以降で追加予定:
       # - scrape-exhibition-data.js (BOA-57: 展示データ統合)
       # - scrape-results.js (BOA-57: 結果即時取得)
       # - generate-predictions.js --refresh (BOA-54: 予測リフレッシュ)
