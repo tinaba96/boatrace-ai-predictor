@@ -34,6 +34,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # 朝の初期化（races テーブルが空の場合のみ scrape-to-json + generate-predictions フルモードを実行）
+      - name: Morning initialization
+        run: node scripts/daily/morning-init.js
+        env:
+          TZ: 'Asia/Tokyo'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        continue-on-error: true
+
       # Phase 1: オッズ取得（発走前60/30/15/10/5分前のウィンドウ）
       - name: Scrape odds for upcoming races
         run: node scripts/daily/scrape-odds.js
