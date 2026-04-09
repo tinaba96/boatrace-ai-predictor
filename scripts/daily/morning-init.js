@@ -65,6 +65,17 @@ async function main() {
   );
 
   console.log("\n✅ 朝の初期化完了");
+
+  // Vercel Deploy Hook をトリガー（フロントエンドの CDN キャッシュをリセット）
+  const deployHook = process.env.VERCEL_DEPLOY_HOOK;
+  if (deployHook) {
+    try {
+      await fetch(deployHook, { method: "POST" });
+      console.log("🚀 Vercel Deploy Hook トリガー済み");
+    } catch (e) {
+      console.warn("⚠️ Vercel Deploy Hook 失敗:", e.message);
+    }
+  }
 }
 
 main().catch((error) => {
