@@ -1101,7 +1101,7 @@ async function mainRefresh({ isDryRun, specificRaceIds }) {
         const WINDOWS = [60, 30, 15, 10, 5];
         const seen = new Set();
         for (const min of WINDOWS) {
-            for (const r of getRacesInWindow(schedule, min)) {
+            for (const r of getRacesInWindow(schedule, min, 8)) {
                 if (!seen.has(r.race_id)) {
                     seen.add(r.race_id);
                     targetRaceIds.push(r.race_id);
@@ -1159,9 +1159,13 @@ async function mainRefresh({ isDryRun, specificRaceIds }) {
     console.log(`\n💾 predictions を更新中...`);
     const updatedRaceIds = allPredictions.map(r => r.raceId);
 
-    await supabase.from('predictions').delete()
+    const { error: deleteError } = await supabase.from('predictions').delete()
         .in('race_id', updatedRaceIds)
         .eq('is_shadow', false);
+    if (deleteError) {
+        console.error('❌ predictions削除エラー:', deleteError.message);
+        return;
+    }
 
     const predictionsData = [];
     for (const race of allPredictions) {
