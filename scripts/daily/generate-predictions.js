@@ -5,8 +5,9 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { supabase, isSupabaseEnabled, VENUE_CODES } from '../lib/supabaseClient.js';
-import { getTodayDateJST } from '../lib/dateUtils.js';
+import { supabase, isSupabaseEnabled, VENUE_CODES, VENUE_NAMES } from '../lib/supabaseClient.js';
+import { getTodayDateJST, parseDateArg } from '../lib/dateUtils.js';
+import { getRaceSchedule, getRacesInWindow } from '../lib/raceSchedule.js';
 import { predictFirstMark } from '../lib/turnPrediction.js';
 import { COURSE_DEFAULT_DISTRIBUTION, COURSE_DEFAULT_DEFENSE } from '../lib/winningTechniques.js';
 import { VENUE_1COURSE_WIN_RATE, VENUE_1COURSE_AVG } from '../lib/venueParameters.js';
@@ -982,6 +983,226 @@ async function writeToSupabase(allPredictions, date) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// リフレッシュモード（--refresh）
+// Supabase から直接データを読んで対象レースの predictions を更新する
+// ---------------------------------------------------------------------------
+
+/**
+ * Supabase から対象レースのデータを取得し、generateRacePrediction が期待する
+ * race オブジェクト形式に変換する
+ */
+async function fetchRaceDataFromSupabase(raceIds) {
+    const [entriesRes, conditionsRes, exhibitionRes] = await Promise.all([
+        supabase.from('race_entries').select('*').in('race_id', raceIds),
+        supabase.from('race_conditions').select('*').in('race_id', raceIds),
+        supabase.from('exhibition_data').select('*').in('race_id', raceIds),
+    ]);
+
+    if (entriesRes.error) throw new Error(`race_entries取得エラー: ${entriesRes.error.message}`);
+
+    // race_id ごとにグループ化
+    const entriesByRace = new Map();
+    for (const e of entriesRes.data || []) {
+        if (!entriesByRace.has(e.race_id)) entriesByRace.set(e.race_id, []);
+        entriesByRace.get(e.race_id).push(e);
+    }
+    const conditionsByRace = new Map(
+        (conditionsRes.data || []).map(c => [c.race_id, c])
+    );
+    const exhibitionByRace = new Map();
+    for (const ex of exhibitionRes.data || []) {
+        if (!exhibitionByRace.has(ex.race_id)) exhibitionByRace.set(ex.race_id, []);
+        exhibitionByRace.get(ex.race_id).push(ex);
+    }
+
+    const races = [];
+    for (const raceId of raceIds) {
+        const entries = entriesByRace.get(raceId);
+        if (!entries || entries.length === 0) continue;
+
+        // race_id から venue_code と race_number を復元（YYYY-MM-DD-VV-RR）
+        const parts = raceId.split('-');
+        const venueCode = parseInt(parts[3], 10);
+        const raceNo = parseInt(parts[4], 10);
+        const cond = conditionsByRace.get(raceId) || {};
+
+        // race_entries → racers 配列（generateRacePrediction が期待する形式）
+        const racers = entries
+            .sort((a, b) => a.boat_number - b.boat_number)
+            .map(e => ({
+                lane: e.boat_number,
+                racerId: e.racer_id,
+                name: e.player_name,
+                grade: e.grade,
+                age: e.age,
+                globalWinRate: e.win_rate,
+                global2Rate: e.global_2rate,
+                global3Rate: e.global_3rate,
+                localWinRate: e.local_win_rate,
+                local2Rate: e.local_2rate,
+                local3Rate: e.local_3rate,
+                motorNumber: e.motor_number,
+                motor2Rate: e.motor_2rate,
+                motor3Rate: e.motor_3rate,
+                boatNumber: e.boat_number_id,
+                boat2Rate: e.boat_2rate,
+                boat3Rate: e.boat_3rate,
+            }));
+
+        // exhibition_data → exhibitionData 配列
+        const exhibitionData = (exhibitionByRace.get(raceId) || []).map(ex => ({
+            boatNumber: ex.boat_number,
+            exhibitionTime: ex.exhibition_time,
+            startTiming: ex.start_timing,
+        }));
+
+        races.push({
+            raceId,
+            placeCd: venueCode,
+            placeName: VENUE_NAMES[venueCode] || `会場${venueCode}`,
+            raceNo,
+            racers,
+            exhibitionData: exhibitionData.length > 0 ? exhibitionData : null,
+            // 天候情報（race_conditions から）
+            weather: cond.weather || null,
+            airTemp: cond.temperature ?? null,
+            windDirection: null, // race_conditions は文字列保存のため省略（予測スコアに影響しない）
+            windVelocity: cond.wind_speed ?? null,
+            waterTemp: cond.water_temperature ?? null,
+            waveHeight: cond.wave_height ?? null,
+            raceGrade: cond.race_grade || null,
+            raceTitle: cond.race_title || null,
+        });
+    }
+    return races;
+}
+
+/**
+ * リフレッシュモードのメイン処理
+ */
+async function mainRefresh({ isDryRun, specificRaceIds }) {
+    console.log(`🔄 予測リフレッシュモード${isDryRun ? ' [DRY-RUN]' : ''}`);
+    console.log(`⏰ ${new Date().toISOString()}`);
+
+    if (!isSupabaseEnabled()) {
+        console.error('❌ Supabase環境変数が未設定です。');
+        process.exit(1);
+    }
+
+    const date = parseDateArg() || getTodayDateJST();
+    console.log(`📅 対象日: ${date}`);
+
+    // 対象 race_ids を決定
+    let targetRaceIds = specificRaceIds || [];
+    if (targetRaceIds.length === 0) {
+        // 自動検出: 発走60/30/15/10/5分前ウィンドウのレース
+        const schedule = await getRaceSchedule(date);
+        const WINDOWS = [60, 30, 15, 10, 5];
+        const seen = new Set();
+        for (const min of WINDOWS) {
+            for (const r of getRacesInWindow(schedule, min, 8)) {
+                if (!seen.has(r.race_id)) {
+                    seen.add(r.race_id);
+                    targetRaceIds.push(r.race_id);
+                }
+            }
+        }
+    }
+
+    if (targetRaceIds.length === 0) {
+        console.log('📭 更新対象レースなし（全ウィンドウ外）');
+        return;
+    }
+    console.log(`🎯 更新対象: ${targetRaceIds.length}レース`);
+
+    // Supabase からレースデータを取得
+    const races = await fetchRaceDataFromSupabase(targetRaceIds);
+    if (races.length === 0) {
+        console.log('📭 対象レースのデータが未登録（race_entries なし）');
+        return;
+    }
+
+    // 選手 ID を収集して racer_aggregated_stats を一括取得
+    const allRacerIds = new Set();
+    for (const race of races) {
+        for (const racer of race.racers) {
+            if (racer.racerId) allRacerIds.add(racer.racerId);
+        }
+    }
+    const racerStatsMap = await fetchRacerStats([...allRacerIds]);
+
+    // 各レースの予測を生成
+    const allPredictions = [];
+    for (const race of races) {
+        const prediction = generateRacePrediction(race, date, racerStatsMap);
+        if (prediction) {
+            allPredictions.push(prediction);
+            const exInfo = race.exhibitionData ? `（展示あり）` : `（展示なし）`;
+            console.log(`  ✅ ${race.placeName} ${race.raceNo}R — 本命: ${prediction.predictions.standard.topPick}号艇 ${exInfo}`);
+        } else {
+            console.log(`  ❌ ${race.placeName} ${race.raceNo}R — 予測生成失敗`);
+        }
+    }
+
+    if (allPredictions.length === 0) {
+        console.log('📭 更新データなし');
+        return;
+    }
+
+    if (isDryRun) {
+        console.log(`\n[DRY-RUN] ${allPredictions.length}レースの予測を生成（Supabase書き込みはスキップ）`);
+        return;
+    }
+
+    // predictions テーブルを更新（対象 race_id のみ delete → insert）
+    console.log(`\n💾 predictions を更新中...`);
+    const updatedRaceIds = allPredictions.map(r => r.raceId);
+
+    const { error: deleteError } = await supabase.from('predictions').delete()
+        .in('race_id', updatedRaceIds)
+        .eq('is_shadow', false);
+    if (deleteError) {
+        console.error('❌ predictions削除エラー:', deleteError.message);
+        return;
+    }
+
+    const predictionsData = [];
+    for (const race of allPredictions) {
+        const { standard: std, safeBet: safe, upsetFocus: upset } = race.predictions;
+        const featureContrib = (race.turnPrediction || race.racerStats) ? {
+            turnPrediction: race.turnPrediction || null,
+            racerStats: race.racerStats || null,
+        } : null;
+
+        predictionsData.push(
+            { race_id: race.raceId, model_id: 'standard',    top_pick: std.topPick,   top_2nd: std.top3[1]||null,   top_3rd: std.top3[2]||null,   confidence: std.confidence,   is_shadow: false, feature_contributions: featureContrib },
+            { race_id: race.raceId, model_id: 'safeBet',     top_pick: safe.topPick,  top_2nd: safe.top3[1]||null,  top_3rd: safe.top3[2]||null,  confidence: safe.confidence,  is_shadow: false, feature_contributions: featureContrib },
+            { race_id: race.raceId, model_id: 'upsetFocus',  top_pick: upset.topPick, top_2nd: upset.top3[1]||null, top_3rd: upset.top3[2]||null, confidence: upset.confidence, is_shadow: false, feature_contributions: featureContrib },
+        );
+    }
+
+    for (let i = 0; i < predictionsData.length; i += 1000) {
+        const batch = predictionsData.slice(i, i + 1000);
+        const { error } = await supabase.from('predictions').insert(batch);
+        if (error) console.error('❌ predictions書き込みエラー:', error.message);
+    }
+    console.log(`  ✅ predictions: ${predictionsData.length}件（${allPredictions.length}レース）`);
+
+    // Vercel Deploy Hook をトリガー
+    const deployHook = process.env.VERCEL_DEPLOY_HOOK;
+    if (deployHook) {
+        try {
+            await fetch(deployHook, { method: 'POST' });
+            console.log('🚀 Vercel Deploy Hook トリガー済み');
+        } catch (e) {
+            console.warn('⚠️ Vercel Deploy Hook 失敗:', e.message);
+        }
+    }
+
+    console.log('🏁 リフレッシュ完了');
+}
+
 // メイン処理
 async function main() {
     try {
@@ -1062,4 +1283,17 @@ async function main() {
 }
 
 // スクリプト実行
-main();
+const args = process.argv.slice(2);
+const isRefresh = args.includes('--refresh');
+const isDryRun = args.includes('--dry-run');
+const raceIdsArg = args.find((a) => a.startsWith('--race-ids='));
+const specificRaceIds = raceIdsArg ? raceIdsArg.split('=')[1].split(',') : null;
+
+if (isRefresh) {
+    mainRefresh({ isDryRun, specificRaceIds }).catch((error) => {
+        console.error('❌ エラー:', error);
+        process.exit(1);
+    });
+} else {
+    main();
+}

@@ -70,6 +70,12 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         continue-on-error: true
 
-      # Phase 4 以降で追加予定:
-      # - generate-predictions.js --refresh (BOA-54: 予測リフレッシュ)
-      # - Vercel Deploy Hook トリガー（データ更新時のみ）
+      # Phase 4: 予測リフレッシュ（各ウィンドウのレースを再予測）
+      - name: Refresh predictions for upcoming races
+        run: node scripts/daily/generate-predictions.js --refresh
+        env:
+          TZ: 'Asia/Tokyo'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        continue-on-error: true
