@@ -86,19 +86,21 @@ export function getRacesInWindow(schedule, minutesBefore, windowMin = 3) {
 }
 
 /**
- * 発走後 minutesAfter 分以上経過したレースを返す
+ * 発走後 minutesAfter 分以上、maxMinutesAfter 分以内のレースを返す
  *
- * 例: getRacesAfterStart(schedule, 5)
- *   → 発走5分以上経ったレースを返す（結果取得対象）
+ * 例: getRacesAfterStart(schedule, 5, 90)
+ *   → 発走5〜90分後のレースを返す（結果取得対象）
+ * レース結果は通常30分以内に公開される。90分経過後も未公開のレースはスキップ。
  *
  * @param {Array} schedule - getRaceSchedule() の返り値
- * @param {number} [minutesAfter=5] - 発走後何分以上経過したか
+ * @param {number} [minutesAfter=5] - 発走後何分以上経過したか（下限）
+ * @param {number} [maxMinutesAfter=90] - 発走後何分以内か（上限）。90分超は取得を諦める
  * @returns {Array}
  */
-export function getRacesAfterStart(schedule, minutesAfter = 5) {
+export function getRacesAfterStart(schedule, minutesAfter = 5, maxMinutesAfter = 90) {
   const now = new Date();
   return schedule.filter((r) => {
     const minAfterStart = (now - r.start_time) / 1000 / 60;
-    return minAfterStart >= minutesAfter;
+    return minAfterStart >= minutesAfter && minAfterStart <= maxMinutesAfter;
   });
 }
