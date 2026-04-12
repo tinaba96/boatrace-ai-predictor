@@ -312,6 +312,7 @@ function PredictionFlash({
           </div>
         </>
       )}
+
     </div>
   );
 }

@@ -16,6 +16,7 @@ import AttackDefenseTable from "./AttackDefenseTable";
 import RaceResult from "./RaceResult";
 import PredictionTable from "./PredictionTable";
 import PredictionLoadingOverlay from "./PredictionLoadingOverlay";
+import BettingValueSection from "./BettingValueSection";
 
 const staggerItem = (delay) => ({
   initial: { opacity: 0, y: 20 },
@@ -172,6 +173,16 @@ function PredictionPanel({
                   name: p.name,
                 }))}
                 selectedPatternIndex={selectedPatternIndex}
+              />
+            </motion.div>
+          )}
+
+          {/* 配当妙味 */}
+          {prediction.predictionOdds && (
+            <motion.div {...staggerItem(0.2)}>
+              <BettingValueSection
+                prediction={prediction}
+                selectedModel={selectedModel}
               />
             </motion.div>
           )}
