@@ -9,7 +9,6 @@
  */
 
 import { chromium } from "playwright";
-import { TwitterApi } from "twitter-api-v2";
 import { execFileSync } from "child_process";
 import fs from "fs";
 import path from "path";
@@ -21,6 +20,7 @@ const FLASH_DISPLAY_SEC = 3;
 const AFTER_ANIM_WAIT_SEC = 1;
 const ANIM_TIMEOUT_MS = 15000;
 const OUT_DIR = path.join(os.tmpdir(), "pw-x-animation");
+const ARTIFACT_DIR = path.resolve("animation-output");
 
 const MODELS = [
   { key: "standard", label: "スタンダード", btnText: "スタンダード" },
@@ -295,20 +295,12 @@ async function main() {
     `    ✅ MP4: ${outMp4} (${(fs.statSync(outMp4).size / 1024).toFixed(0)} KB)`,
   );
 
-  // [7] X に投稿
-  console.log("\n[7] X に動画をアップロード中...");
-  const twitterClient = new TwitterApi({
-    appKey: process.env.X_API_KEY,
-    appSecret: process.env.X_API_SECRET,
-    accessToken: process.env.X_ACCESS_TOKEN,
-    accessSecret: process.env.X_ACCESS_TOKEN_SECRET,
-  });
-  const mp4SizeBytes = fs.statSync(outMp4).size;
-  const mediaId = await twitterClient.v1.uploadMedia(outMp4, {
-    mimeType: "video/mp4",
-    longVideo: mp4SizeBytes > 5 * 1024 * 1024,
-  });
-  console.log(`    media_id: ${mediaId}`);
+  // [7] 成果物を artifact ディレクトリに出力
+  console.log("\n[7] 成果物を出力中...");
+  fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
+
+  const artifactMp4 = path.join(ARTIFACT_DIR, "animation.mp4");
+  fs.copyFileSync(outMp4, artifactMp4);
 
   const venueTrimmed = venue?.trim() || "";
   const raceNoTrimmed = raceNo ? `${raceNo}R` : "";
@@ -323,11 +315,10 @@ async function main() {
     "#ボートレース #AI予想 #BoatAI",
   ].join("\n");
 
-  const tweet = await twitterClient.v2.tweet({
-    text: caption,
-    media: { media_ids: [mediaId] },
-  });
-  console.log(`    ✅ 投稿完了: https://x.com/i/web/status/${tweet.data.id}`);
+  fs.writeFileSync(path.join(ARTIFACT_DIR, "caption.txt"), caption, "utf8");
+
+  console.log(`    ✅ 動画: ${artifactMp4}`);
+  console.log(`    ✅ キャプション:\n${caption}`);
 
   // [8] 一時ファイル削除
   fs.rmSync(OUT_DIR, { recursive: true, force: true });
