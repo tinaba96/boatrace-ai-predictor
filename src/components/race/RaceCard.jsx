@@ -12,7 +12,7 @@ function RaceCard({ race, selectedModel, onAnalyzeRace }) {
   const isLowVolatility = volatility?.level === "low";
   const showBadge = isHighVolatility || isLowVolatility;
   const badgeColor = isHighVolatility ? "#c62828" : "#2e7d32";
-  const badgeLabel = isHighVolatility ? "💰 高配当期待" : "🎯 本命有利";
+  const badgeLabel = isHighVolatility ? "🌪️ イン崩れ確率高" : "🎯 本命有利";
 
   // 的中判定（買い方別）
   let hitBadges = [];

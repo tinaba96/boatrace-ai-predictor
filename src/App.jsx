@@ -629,7 +629,7 @@ function App({ tab = 'races' }) {
                                                     const isLowVol = volatility?.level === 'low'
                                                     const showVolBadge = isHighVol || isLowVol
                                                     const volBadgeColor = isHighVol ? '#c62828' : '#2e7d32'
-                                                    const volBadgeLabel = isHighVol ? '💰 高配当期待' : '🎯 本命有利'
+                                                    const volBadgeLabel = isHighVol ? '🌪️ イン崩れ確率高' : '🎯 本命有利'
 
                                                     return (
                                                         <div
