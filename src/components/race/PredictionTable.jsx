@@ -136,10 +136,31 @@ function generateInsights(prediction, showExhibition, volatility) {
   return candidates.slice(0, 5).map((c) => c.text);
 }
 
-function getRecommendSymbol(number, top3) {
-  if (top3[0] === number) return { symbol: "◎", className: "boat-symbol symbol-top", ariaLabel: "本命" };
-  if (top3[1] === number) return { symbol: "○", className: "boat-symbol symbol-2nd", ariaLabel: "対抗" };
-  if (top3[2] === number) return { symbol: "△", className: "boat-symbol symbol-3rd", ariaLabel: "連下" };
+// 各列内でのランク（1=最良）を計算して返す
+function computeColumnRanks(players, racerStats) {
+  const rank = (items, higherIsBetter = true) => {
+    const valid = items.filter(({ val }) => val != null && !isNaN(val));
+    const sorted = [...valid].sort((a, b) =>
+      higherIsBetter ? b.val - a.val : a.val - b.val
+    );
+    const map = {};
+    sorted.forEach(({ key }, i) => { map[key] = i + 1; });
+    return map;
+  };
+
+  return {
+    winRate:     rank(players.map(p => ({ key: p.number, val: parseFloat(p.winRate) }))),
+    global2Rate: rank(players.map(p => ({ key: p.number, val: parseFloat(p.global2Rate) }))),
+    localWinRate:rank(players.map(p => ({ key: p.number, val: parseFloat(p.localWinRate) }))),
+    motor2Rate:  rank(players.map(p => ({ key: p.number, val: parseFloat(p.motor2Rate) }))),
+    avgST:       rank(racerStats.filter(s => s.avgST != null).map(s => ({ key: s.boatNumber, val: s.avgST })), false),
+  };
+}
+
+function colSymbol(rank) {
+  if (rank === 1) return { symbol: "◎", className: "col-symbol symbol-top", label: "1位" };
+  if (rank === 2) return { symbol: "○", className: "col-symbol symbol-2nd", label: "2位" };
+  if (rank === 3) return { symbol: "△", className: "col-symbol symbol-3rd", label: "3位" };
   return null;
 }
 
@@ -149,6 +170,7 @@ function PredictionTable({ prediction, showExhibition = false, volatility }) {
 
   const top3 = prediction.top3 || [];
   const strengths = prediction.turnPrediction?.boatStrengths || [];
+  const racerStats = prediction.racerStats || [];
   const sorted = [...prediction.allPlayers].sort((a, b) => {
     const aIdx = top3.indexOf(a.number);
     const bIdx = top3.indexOf(b.number);
@@ -158,6 +180,7 @@ function PredictionTable({ prediction, showExhibition = false, volatility }) {
     return (strengths[b.number - 1] || 0) - (strengths[a.number - 1] || 0);
   });
 
+  const colRanks = computeColumnRanks(prediction.allPlayers, racerStats);
   const insights = generateInsights(prediction, showExhibition, volatility);
 
   return (
@@ -187,48 +210,34 @@ function PredictionTable({ prediction, showExhibition = false, volatility }) {
           </thead>
           <tbody>
             {sorted.map((player) => {
-              const sym = getRecommendSymbol(player.number, top3);
+              const stats = racerStats.find((s) => s.boatNumber === player.number);
+              const Sym = (col) => {
+                const s = colSymbol(colRanks[col]?.[player.number]);
+                return s ? <span className={s.className} aria-label={s.label}>{s.symbol}</span> : null;
+              };
               return (
               <tr
                 key={player.number}
                 className={top3.includes(player.number) ? "recommended" : ""}
               >
                 <th scope="row">
-                  {sym && <span className={sym.className} aria-label={sym.ariaLabel}>{sym.symbol}</span>}
                   <strong>{player.number}</strong>
                 </th>
                 <td>{player.name}</td>
                 <td>{player.grade}</td>
                 <td>{player.age || "-"}</td>
-                <td>{player.winRate}</td>
+                <td>{player.winRate}{Sym("winRate")}</td>
                 <td>
-                  {player.global2Rate ? `${player.global2Rate}%` : "-"}
+                  {player.global2Rate ? `${player.global2Rate}%` : "-"}{Sym("global2Rate")}
                 </td>
                 <td>
-                  {player.localWinRate}
-                  {parseFloat(player.localWinRate) > 7.0 && (
-                    <span className="fire" aria-label="優秀">
-                      🔥
-                    </span>
-                  )}
+                  {player.localWinRate}{Sym("localWinRate")}
                 </td>
                 <td>
-                  {player.motor2Rate}%
-                  {parseFloat(player.motor2Rate) > 40 && (
-                    <span className="fire" aria-label="優秀">
-                      🔥
-                    </span>
-                  )}
+                  {player.motor2Rate}%{Sym("motor2Rate")}
                 </td>
                 <td>
-                  {(() => {
-                    const stats = prediction.racerStats?.find(
-                      (s) => s.boatNumber === player.number,
-                    );
-                    return stats?.avgST != null
-                      ? stats.avgST.toFixed(2)
-                      : "-";
-                  })()}
+                  {stats?.avgST != null ? stats.avgST.toFixed(2) : "-"}{Sym("avgST")}
                 </td>
                 {showExhibition && (
                   <td>
@@ -263,11 +272,7 @@ function PredictionTable({ prediction, showExhibition = false, volatility }) {
                 </td>
                 <td>
                   {(() => {
-                    const stats = prediction.racerStats?.find(
-                      (s) => s.boatNumber === player.number,
-                    );
-                    const courseCounts =
-                      stats?.courseRaceCounts?.[String(player.number)];
+                    const courseCounts = stats?.courseRaceCounts?.[String(player.number)];
                     if (!courseCounts) return "-";
                     return `${courseCounts.wins || 0}/${courseCounts.total || 0}`;
                   })()}

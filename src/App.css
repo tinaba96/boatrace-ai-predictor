@@ -806,18 +806,18 @@ input:focus-visible,
   border-bottom: none;
 }
 
-/* 推奨記号（◎○△） */
-.boat-symbol {
+/* 列内ランク記号（◎○△） */
+.col-symbol {
   display: inline-block;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 700;
-  margin-right: 2px;
+  margin-left: 2px;
   vertical-align: middle;
   line-height: 1;
 }
-.boat-symbol.symbol-top { color: var(--color-warning); }
-.boat-symbol.symbol-2nd { color: var(--color-primary-500); }
-.boat-symbol.symbol-3rd { color: var(--color-gray-500); }
+.col-symbol.symbol-top { color: var(--color-warning); }
+.col-symbol.symbol-2nd { color: var(--color-primary-500); }
+.col-symbol.symbol-3rd { color: var(--color-gray-500); }
 
 .fire {
   margin-left: 0.25rem;
