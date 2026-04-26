@@ -806,18 +806,21 @@ input:focus-visible,
   border-bottom: none;
 }
 
-/* 列内ランク記号（◎○△） */
+/* 列内ランク記号（◎○△）バッジスタイル */
 .col-symbol {
   display: inline-block;
-  font-size: 0.85rem;
-  font-weight: 800;
+  font-size: 0.75rem;
+  font-weight: 900;
   margin-left: 3px;
   vertical-align: middle;
   line-height: 1;
+  padding: 1px 3px;
+  border-radius: 3px;
+  color: #fff;
 }
-.col-symbol.symbol-top { color: var(--color-warning); }
-.col-symbol.symbol-2nd { color: var(--color-primary-600); }
-.col-symbol.symbol-3rd { color: var(--color-gray-500); }
+.col-symbol.symbol-top { background: #ea580c; }
+.col-symbol.symbol-2nd { background: #0284c7; }
+.col-symbol.symbol-3rd { background: #64748b; }
 
 .fire {
   margin-left: 0.25rem;
