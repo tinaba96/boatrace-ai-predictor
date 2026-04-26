@@ -1,6 +1,7 @@
 /**
  * Vercel Edge Function: 精度統計サマリ
- * Supabase RPC関数 get_accuracy_summary を呼び出し、CDNでキャッシュ
+ * accuracy_cache テーブルから pre-compute 済みデータを読み込み、CDN でキャッシュ
+ * データは calculate-accuracy.js（夜間バッチ）が毎日更新する
  */
 
 export const config = {
@@ -24,24 +25,27 @@ export default async function handler(req) {
   }
 
   try {
+    // accuracy_cache テーブルから単一行読み込み（重い get_accuracy_summary RPC を廃止）
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/rpc/get_accuracy_summary`,
+      `${SUPABASE_URL}/rest/v1/accuracy_cache?key=eq.accuracy_summary&select=data`,
       {
-        method: "POST",
+        method: "GET",
         headers: {
           apikey: SUPABASE_KEY,
           Authorization: `Bearer ${SUPABASE_KEY}`,
-          "Content-Type": "application/json",
         },
-        body: "{}",
       },
     );
 
     if (!response.ok) {
-      throw new Error(`Supabase RPC error: ${response.status}`);
+      throw new Error(`Supabase accuracy_cache error: ${response.status}`);
     }
 
-    const data = await response.json();
+    const rows = await response.json();
+    if (!rows || rows.length === 0) {
+      throw new Error("accuracy_cache is empty — run calculate-accuracy.js first");
+    }
+    const data = rows[0].data;
 
     return new Response(JSON.stringify(data), {
       status: 200,

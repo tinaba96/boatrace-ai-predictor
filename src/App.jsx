@@ -194,7 +194,7 @@ function App({ tab = 'races' }) {
                     }
                     setTurnPredictionMap(map)
                 }
-            }).catch(() => {})
+            }).catch(() => { })
 
         } catch (err) {
             console.error('API取得エラー:', err)
