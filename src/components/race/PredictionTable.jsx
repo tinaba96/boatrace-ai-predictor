@@ -137,9 +137,9 @@ function generateInsights(prediction, showExhibition, volatility) {
 }
 
 function getRecommendSymbol(number, top3) {
-  if (top3[0] === number) return { symbol: "◎", className: "boat-symbol symbol-top" };
-  if (top3[1] === number) return { symbol: "○", className: "boat-symbol symbol-2nd" };
-  if (top3[2] === number) return { symbol: "△", className: "boat-symbol symbol-3rd" };
+  if (top3[0] === number) return { symbol: "◎", className: "boat-symbol symbol-top", ariaLabel: "本命" };
+  if (top3[1] === number) return { symbol: "○", className: "boat-symbol symbol-2nd", ariaLabel: "対抗" };
+  if (top3[2] === number) return { symbol: "△", className: "boat-symbol symbol-3rd", ariaLabel: "連下" };
   return null;
 }
 
@@ -186,20 +186,16 @@ function PredictionTable({ prediction, showExhibition = false, volatility }) {
             </tr>
           </thead>
           <tbody>
-            {sorted.map((player) => (
+            {sorted.map((player) => {
+              const sym = getRecommendSymbol(player.number, top3);
+              return (
               <tr
                 key={player.number}
                 className={top3.includes(player.number) ? "recommended" : ""}
               >
                 <th scope="row">
-                  {(() => {
-                    const sym = getRecommendSymbol(player.number, top3);
-                    return sym ? (
-                      <><span className={sym.className} aria-label={sym.symbol}>{sym.symbol}</span><strong>{player.number}</strong></>
-                    ) : (
-                      <strong>{player.number}</strong>
-                    );
-                  })()}
+                  {sym && <span className={sym.className} aria-label={sym.ariaLabel}>{sym.symbol}</span>}
+                  <strong>{player.number}</strong>
                 </th>
                 <td>{player.name}</td>
                 <td>{player.grade}</td>
@@ -277,7 +273,8 @@ function PredictionTable({ prediction, showExhibition = false, volatility }) {
                   })()}
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

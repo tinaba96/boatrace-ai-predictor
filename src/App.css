@@ -815,7 +815,7 @@ input:focus-visible,
   vertical-align: middle;
   line-height: 1;
 }
-.boat-symbol.symbol-top { color: #b8860b; }
+.boat-symbol.symbol-top { color: var(--color-warning); }
 .boat-symbol.symbol-2nd { color: var(--color-primary-500); }
 .boat-symbol.symbol-3rd { color: var(--color-gray-500); }
 
