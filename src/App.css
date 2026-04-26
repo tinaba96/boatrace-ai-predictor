@@ -809,15 +809,15 @@ input:focus-visible,
 /* 列内ランク記号（◎○△） */
 .col-symbol {
   display: inline-block;
-  font-size: 0.65rem;
-  font-weight: 700;
-  margin-left: 2px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  margin-left: 3px;
   vertical-align: middle;
   line-height: 1;
 }
-.col-symbol.symbol-top { color: var(--color-warning); }
-.col-symbol.symbol-2nd { color: var(--color-primary-500); }
-.col-symbol.symbol-3rd { color: var(--color-gray-500); }
+.col-symbol.symbol-top { color: #e07b00; }
+.col-symbol.symbol-2nd { color: #0284c7; }
+.col-symbol.symbol-3rd { color: #64748b; }
 
 .fire {
   margin-left: 0.25rem;
