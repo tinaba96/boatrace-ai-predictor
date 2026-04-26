@@ -215,12 +215,12 @@ async function buildAndStoreAccuracyCache() {
 
   console.log("\n📊 accuracy_cache 用データ取得中...");
 
-  // 取得バッチ（今月 / 先月 / 過去6ヶ月各月 / 過去7日 / 過去90日）
   // 過去90日を1回取得すれば 7日・今月・先月・6ヶ月分すべてカバーできる
-  const [allRecentPredictions, thisMonthPredictions] = await Promise.all([
-    fetchPredictionsRange(ninetyDaysAgoStr, null),
-    fetchPredictionsRange(thisMonthStart, thisMonthEnd),
-  ]);
+  const allRecentPredictions = await fetchPredictionsRange(ninetyDaysAgoStr, null);
+  const thisMonthEnd = `${thisYear}-${pad(thisMonth)}-31`;
+  const thisMonthPredictions = allRecentPredictions.filter(
+    (p) => p.race_id >= thisMonthStart && p.race_id <= `${thisMonthEnd}-99-99`,
+  );
 
   // 各月の predictions をメモリでフィルタ
   const getPredsByMonth = (year, month) => {
