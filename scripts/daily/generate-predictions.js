@@ -35,6 +35,18 @@ function calculateStdDev(values) {
     return Math.sqrt(avgSquareDiff);
 }
 
+// 会場別イン崩れ指数 重みオーバーライド
+// 根拠: analyze-volatility-by-venue.js による90日・会場別因子予測力分析（2026-04-26）
+// デフォルト重み: 全国勝率36% / avgST28% / AI逃げ11% / σ11% / 会場8% / モーター6%
+const VENUE_VOLATILITY_WEIGHTS = {
+    '05': { sigma: 0.25 },              // 多摩川: σが突出して強い(+29.8pt、平均の2.7倍)
+    '15': { motor: 0.15, sigma: 0.04 }, // 丸亀: モーター強い(+15.8pt)、σ弱い(+3.3pt)
+    '24': { motor: 0.15, sigma: 0.04 }, // 大村: モーター強い(+15.8pt)、σ弱い(+7.8pt)
+    '06': { motor: 0.12 },              // 浜名湖: モーターやや強い(+13.5pt)
+    '16': { motor: 0.12 },              // 児島: モーターやや強い(+12.1pt)
+    '03': { winRate: 0.22, motor: 0.09 }, // 江戸川: 全国勝率が弱い(+17.1pt、平均34.8ptの半分)
+};
+
 // イン崩れ指数（6因子の重み付き複合スコア）
 // 分析根拠: 過去90日13,094件の実データで各因子の予測力を検証（analyze-upset-factors.js）
 // 複合スコアで現行スコアの約2倍（36.6pt差）の予測力を確認済み
@@ -43,9 +55,22 @@ function calculateVolatilityScore(racers, placeCd, turnPrediction, racerStatsLis
         return { score: 50, reasons: ['選手データが不足しています'], boat1AvgST: null };
     }
 
+    const venueCode = String(placeCd).padStart(2, '0');
+    const venueOverride = VENUE_VOLATILITY_WEIGHTS[venueCode] || {};
+
+    // 会場別重みを適用（オーバーライドがなければデフォルト値）
+    const W = {
+        winRate: venueOverride.winRate ?? 0.364,
+        avgST:   0.277,
+        nigeProb: 0.112,
+        sigma:   venueOverride.sigma   ?? 0.107,
+        venue:   0.084,
+        motor:   venueOverride.motor   ?? 0.055,
+    };
+
     const factors = []; // { value, weight, reason }
 
-    // A. 1号艇の全国勝率（重み36%）— 低いほどイン崩れしやすい
+    // A. 1号艇の全国勝率 — 低いほどイン崩れしやすい
     // 観測レンジ: 0〜8.49。予測力 35.2pt差（最強因子）
     const boat1 = racers.find(r => r.number === 1);
     const boat1WinRate = boat1 ? parseFloat(boat1.winRate) : null;
@@ -57,10 +82,10 @@ function calculateVolatilityScore(racers, placeCd, turnPrediction, racerStatsLis
         else if (boat1WinRate >= 7.0) reason = `1号艇の全国勝率が非常に高い（${boat1WinRate.toFixed(2)}）→ 逃げ鉄板`;
         else if (boat1WinRate >= 6.0) reason = `1号艇の全国勝率が高い（${boat1WinRate.toFixed(2)}）→ 逃げ安定`;
         else                          reason = `1号艇の全国勝率は標準（${boat1WinRate.toFixed(2)}）`;
-        factors.push({ value: norm, weight: 0.364, reason });
+        factors.push({ value: norm, weight: W.winRate, reason });
     }
 
-    // B. 1号艇の今節avgST（重み28%）— 遅いほどイン崩れしやすい
+    // B. 1号艇の今節avgST — 遅いほどイン崩れしやすい
     // 観測レンジ: 0.07〜0.34。予測力 26.7pt差
     const boat1ST = racerStatsList?.find(s => s.boatNumber === 1)?.avgST ?? null;
     if (boat1ST != null) {
@@ -71,10 +96,10 @@ function calculateVolatilityScore(racers, placeCd, turnPrediction, racerStatsLis
         else if (boat1ST <= 0.10) reason = `1号艇の今節STが非常に速い（平均${boat1ST.toFixed(3)}秒）→ 逃げ鉄板`;
         else if (boat1ST <= 0.14) reason = `1号艇の今節STが速い（平均${boat1ST.toFixed(3)}秒）→ スタート安定`;
         else                      reason = `1号艇の今節STは標準（平均${boat1ST.toFixed(3)}秒）`;
-        factors.push({ value: norm, weight: 0.277, reason });
+        factors.push({ value: norm, weight: W.avgST, reason });
     }
 
-    // C. AI逃げ確率（重み11%）— 低いほどイン崩れしやすい
+    // C. AI逃げ確率 — 低いほどイン崩れしやすい
     // 観測レンジ: 0.20〜0.99。予測力 10.8pt差
     const nigeProb = turnPrediction?.distribution?.nige ?? null;
     if (nigeProb != null) {
@@ -86,10 +111,10 @@ function calculateVolatilityScore(racers, placeCd, turnPrediction, racerStatsLis
         else if (nigeProb >= 0.75) reason = `AI逃げ確率が非常に高い（${nigePct}%）→ 逃げ鉄板`;
         else if (nigeProb >= 0.60) reason = `AI逃げ確率が高い（${nigePct}%）→ 逃げ安定`;
         else                       reason = `AI逃げ確率は標準（${nigePct}%）`;
-        factors.push({ value: norm, weight: 0.112, reason });
+        factors.push({ value: norm, weight: W.nigeProb, reason });
     }
 
-    // D. 選手間の勝率σ（重み11%）— 高いほどイン崩れしやすい（外枠に実力者の可能性）
+    // D. 選手間の勝率σ — 高いほどイン崩れしやすい（外枠に実力者の可能性）
     // 観測レンジ: 0.06〜2.75。予測力 10.4pt差
     const winRates = racers.map(r => parseFloat(r.winRate)).filter(v => !isNaN(v));
     if (winRates.length >= 4) {
@@ -100,12 +125,11 @@ function calculateVolatilityScore(racers, placeCd, turnPrediction, racerStatsLis
         else if (stddev >= 1.0) reason = `選手間の実力差がやや大きい（σ=${stddev.toFixed(2)}）→ 波乱の要因`;
         else if (stddev < 0.5)  reason = `選手間の実力が拮抗（σ=${stddev.toFixed(2)}）→ 接戦になりやすい`;
         else                    reason = `選手間の実力差は標準（σ=${stddev.toFixed(2)}）`;
-        factors.push({ value: norm, weight: 0.107, reason });
+        factors.push({ value: norm, weight: W.sigma, reason });
     }
 
-    // E. 会場の1コース勝率（重み8%）— 低いほどイン崩れしやすい
+    // E. 会場の1コース勝率 — 低いほどイン崩れしやすい
     // 観測レンジ: 0.43〜0.62。予測力 8.1pt差
-    const venueCode = String(placeCd).padStart(2, '0');
     const venueWinRate = VENUE_1COURSE_WIN_RATE[venueCode] || VENUE_1COURSE_AVG;
     {
         const norm = 1 - Math.min(1, Math.max(0, (venueWinRate - 0.43) / (0.62 - 0.43)));
@@ -116,11 +140,11 @@ function calculateVolatilityScore(racers, placeCd, turnPrediction, racerStatsLis
         else if (venueWinRate <= 0.48) reason = `${venueName}は1コース勝率がやや低い（${venuePct}%）`;
         else if (venueWinRate >= 0.58) reason = `${venueName}は1コース勝率が高い（${venuePct}%）→ インが堅い会場`;
         else                           reason = `${venueName}の1コース勝率は標準（${venuePct}%）`;
-        factors.push({ value: norm, weight: 0.084, reason });
+        factors.push({ value: norm, weight: W.venue, reason });
     }
 
-    // F. 1号艇のモーター2連率（重み6%）— 低いほどイン崩れしやすい
-    // 観測レンジ: 0〜100。予測力 5.3pt差
+    // F. 1号艇のモーター2連率 — 低いほどイン崩れしやすい
+    // 観測レンジ: 0〜100。予測力 5.3pt差（大村・丸亀・浜名湖・児島では特に強い）
     const boat1MotorRate = boat1 ? parseFloat(boat1.motor2Rate) : null;
     if (boat1MotorRate != null) {
         const norm = 1 - Math.min(1, Math.max(0, boat1MotorRate / 100));
@@ -130,7 +154,7 @@ function calculateVolatilityScore(racers, placeCd, turnPrediction, racerStatsLis
         else if (boat1MotorRate >= 45) reason = `1号艇のモーターが好調（${boat1MotorRate.toFixed(1)}%）→ 機力で有利`;
         else if (boat1MotorRate >= 35) reason = `1号艇のモーターがやや好調（${boat1MotorRate.toFixed(1)}%）`;
         else                           reason = `1号艇のモーターは標準（${boat1MotorRate.toFixed(1)}%）`;
-        factors.push({ value: norm, weight: 0.055, reason });
+        factors.push({ value: norm, weight: W.motor, reason });
     }
 
     // 利用可能な因子の重み合計で正規化（avgSTがない場合も対応）
