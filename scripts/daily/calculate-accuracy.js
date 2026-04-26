@@ -176,7 +176,7 @@ function addMonths(date, n) {
 }
 
 // accuracy_cache テーブルに全統計を書き込む
-async function buildAndStoreAccuracyCache(modelOverallStats) {
+async function buildAndStoreAccuracyCache() {
   const now = new Date();
   const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
 
@@ -185,14 +185,11 @@ async function buildAndStoreAccuracyCache(modelOverallStats) {
   const pad = (n) => String(n).padStart(2, "0");
 
   const thisMonthStart = `${thisYear}-${pad(thisMonth)}-01`;
-  const thisMonthEnd = `${thisYear}-${pad(thisMonth)}-31`;
 
   // 先月
   const lastMonthDate = addMonths(new Date(thisYear, thisMonth - 1, 1), -1);
   const lastYear = lastMonthDate.getFullYear();
   const lastMonth = lastMonthDate.getMonth() + 1;
-  const lastMonthStart = `${lastYear}-${pad(lastMonth)}-01`;
-  const lastMonthEnd = `${lastYear}-${pad(lastMonth)}-31`;
 
   // 過去6ヶ月
   const monthsToFetch = [];
@@ -426,7 +423,7 @@ async function calculateAccuracy() {
   }
 
   // accuracy_cache テーブルに全統計を保存（API のキャッシュミス時に高速参照するため）
-  await buildAndStoreAccuracyCache(modelStats);
+  await buildAndStoreAccuracyCache();
 
   console.log("\n✅ 統計更新完了");
 }
