@@ -212,6 +212,9 @@ function PredictionTable({ prediction, showExhibition = false, volatility }) {
             {sorted.map((player) => {
               const stats = racerStats.find((s) => s.boatNumber === player.number);
               const rc = (col) => rankClass(colRanks[col]?.[player.number]);
+              const fire = (col) => colRanks[col]?.[player.number] === 1
+                ? <span className="fire" aria-label="1位">🔥</span>
+                : null;
               return (
               <tr
                 key={player.number}
@@ -223,18 +226,18 @@ function PredictionTable({ prediction, showExhibition = false, volatility }) {
                 <td>{player.name}</td>
                 <td>{player.grade}</td>
                 <td>{player.age || "-"}</td>
-                <td><span className={rc("winRate")}>{player.winRate}</span></td>
+                <td><span className={rc("winRate")}>{player.winRate}</span>{fire("winRate")}</td>
                 <td>
-                  <span className={rc("global2Rate")}>{player.global2Rate ? `${player.global2Rate}%` : "-"}</span>
+                  <span className={rc("global2Rate")}>{player.global2Rate ? `${player.global2Rate}%` : "-"}</span>{fire("global2Rate")}
                 </td>
                 <td>
-                  <span className={rc("localWinRate")}>{player.localWinRate}</span>
+                  <span className={rc("localWinRate")}>{player.localWinRate}</span>{fire("localWinRate")}
                 </td>
                 <td>
-                  <span className={rc("motor2Rate")}>{player.motor2Rate}%</span>
+                  <span className={rc("motor2Rate")}>{player.motor2Rate}%</span>{fire("motor2Rate")}
                 </td>
                 <td>
-                  <span className={rc("avgST")}>{stats?.avgST != null ? stats.avgST.toFixed(2) : "-"}</span>
+                  <span className={rc("avgST")}>{stats?.avgST != null ? stats.avgST.toFixed(2) : "-"}</span>{fire("avgST")}
                 </td>
                 {showExhibition && (
                   <td>
