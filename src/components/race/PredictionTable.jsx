@@ -1,5 +1,5 @@
 /**
- * PredictionTable - AIデータ予想テーブル + 統計的な注目ポイント + データの見方
+ * PredictionTable - AIデータ予想テーブル + データの見方
  */
 
 import { TECHNIQUE_NAMES } from "../../utils/turnPrediction";
@@ -181,7 +181,6 @@ function PredictionTable({ prediction, showExhibition = false, volatility }) {
   });
 
   const colRanks = computeColumnRanks(prediction.allPlayers, racerStats);
-  const insights = generateInsights(prediction, showExhibition, volatility);
 
   return (
     <div className="detailed-analysis">
@@ -283,19 +282,6 @@ function PredictionTable({ prediction, showExhibition = false, volatility }) {
           </tbody>
         </table>
       </div>
-
-      {insights.length > 0 && (
-        <div className="statistical-insights">
-          <h4>
-            <span aria-hidden="true">📌</span> 統計的な注目ポイント
-          </h4>
-          <ul>
-            {insights.map((insight, idx) => (
-              <li key={idx}>{insight}</li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       <details className="data-guide">
         <summary>
