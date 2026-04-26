@@ -157,11 +157,11 @@ function computeColumnRanks(players, racerStats) {
   };
 }
 
-function colSymbol(rank) {
-  if (rank === 1) return { symbol: "◎", className: "col-symbol symbol-top", label: "1位" };
-  if (rank === 2) return { symbol: "○", className: "col-symbol symbol-2nd", label: "2位" };
-  if (rank === 3) return { symbol: "△", className: "col-symbol symbol-3rd", label: "3位" };
-  return null;
+function rankClass(rank) {
+  if (rank === 1) return "rank-1st";
+  if (rank === 2) return "rank-2nd";
+  if (rank === 3) return "rank-3rd";
+  return "";
 }
 
 function PredictionTable({ prediction, showExhibition = false, volatility }) {
@@ -211,10 +211,7 @@ function PredictionTable({ prediction, showExhibition = false, volatility }) {
           <tbody>
             {sorted.map((player) => {
               const stats = racerStats.find((s) => s.boatNumber === player.number);
-              const Sym = (col) => {
-                const s = colSymbol(colRanks[col]?.[player.number]);
-                return s ? <span className={s.className} aria-label={s.label}>{s.symbol}</span> : null;
-              };
+              const rc = (col) => rankClass(colRanks[col]?.[player.number]);
               return (
               <tr
                 key={player.number}
@@ -226,18 +223,18 @@ function PredictionTable({ prediction, showExhibition = false, volatility }) {
                 <td>{player.name}</td>
                 <td>{player.grade}</td>
                 <td>{player.age || "-"}</td>
-                <td>{player.winRate}{Sym("winRate")}</td>
+                <td><span className={rc("winRate")}>{player.winRate}</span></td>
                 <td>
-                  {player.global2Rate ? `${player.global2Rate}%` : "-"}{Sym("global2Rate")}
+                  <span className={rc("global2Rate")}>{player.global2Rate ? `${player.global2Rate}%` : "-"}</span>
                 </td>
                 <td>
-                  {player.localWinRate}{Sym("localWinRate")}
+                  <span className={rc("localWinRate")}>{player.localWinRate}</span>
                 </td>
                 <td>
-                  {player.motor2Rate}%{Sym("motor2Rate")}
+                  <span className={rc("motor2Rate")}>{player.motor2Rate}%</span>
                 </td>
                 <td>
-                  {stats?.avgST != null ? stats.avgST.toFixed(2) : "-"}{Sym("avgST")}
+                  <span className={rc("avgST")}>{stats?.avgST != null ? stats.avgST.toFixed(2) : "-"}</span>
                 </td>
                 {showExhibition && (
                   <td>

@@ -806,21 +806,10 @@ input:focus-visible,
   border-bottom: none;
 }
 
-/* 列内ランク記号（◎○△）バッジスタイル */
-.col-symbol {
-  display: inline-block;
-  font-size: 1rem;
-  font-weight: 900;
-  margin-left: 4px;
-  vertical-align: middle;
-  line-height: 1;
-  padding: 2px 4px;
-  border-radius: 3px;
-  color: #fff;
-}
-.col-symbol.symbol-top { background: #ea580c; }
-.col-symbol.symbol-2nd { background: #0284c7; }
-.col-symbol.symbol-3rd { background: #64748b; }
+/* 列内ランク色付け（太字＋色） */
+.rank-1st { font-weight: 800; color: #ea580c; }
+.rank-2nd { font-weight: 700; color: #0284c7; }
+.rank-3rd { font-weight: 600; color: #64748b; }
 
 .fire {
   margin-left: 0.25rem;
