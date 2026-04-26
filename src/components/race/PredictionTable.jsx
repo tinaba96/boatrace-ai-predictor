@@ -136,6 +136,13 @@ function generateInsights(prediction, showExhibition, volatility) {
   return candidates.slice(0, 5).map((c) => c.text);
 }
 
+function getRecommendSymbol(number, top3) {
+  if (top3[0] === number) return { symbol: "◎", className: "boat-symbol symbol-top" };
+  if (top3[1] === number) return { symbol: "○", className: "boat-symbol symbol-2nd" };
+  if (top3[2] === number) return { symbol: "△", className: "boat-symbol symbol-3rd" };
+  return null;
+}
+
 function PredictionTable({ prediction, showExhibition = false, volatility }) {
   if (!prediction?.allPlayers || prediction.allPlayers.length === 0)
     return null;
@@ -185,7 +192,14 @@ function PredictionTable({ prediction, showExhibition = false, volatility }) {
                 className={top3.includes(player.number) ? "recommended" : ""}
               >
                 <th scope="row">
-                  <strong>{player.number}</strong>
+                  {(() => {
+                    const sym = getRecommendSymbol(player.number, top3);
+                    return sym ? (
+                      <><span className={sym.className} aria-label={sym.symbol}>{sym.symbol}</span><strong>{player.number}</strong></>
+                    ) : (
+                      <strong>{player.number}</strong>
+                    );
+                  })()}
                 </th>
                 <td>{player.name}</td>
                 <td>{player.grade}</td>
