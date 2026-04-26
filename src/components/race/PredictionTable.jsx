@@ -1,147 +1,42 @@
 /**
- * PredictionTable - AIデータ予想テーブル + 統計的な注目ポイント + データの見方
+ * PredictionTable - AIデータ予想テーブル + データの見方
  */
 
-import { TECHNIQUE_NAMES } from "../../utils/turnPrediction";
+// 各列内でのランク（1=最良）を計算して返す
+function computeColumnRanks(players, racerStats) {
+  const rank = (items, higherIsBetter = true) => {
+    const valid = items.filter(({ val }) => val != null && !isNaN(val));
+    const sorted = [...valid].sort((a, b) =>
+      higherIsBetter ? b.val - a.val : a.val - b.val
+    );
+    const map = {};
+    sorted.forEach(({ key }, i) => { map[key] = i + 1; });
+    return map;
+  };
 
-function generateInsights(prediction, showExhibition, volatility) {
-  const candidates = [];
-  const players = prediction.allPlayers || [];
-  const racerStats = prediction.racerStats || [];
-  const exhibition = prediction.exhibitionData || [];
-  const turn = prediction.turnPrediction;
-  const top3 = prediction.top3 || [];
-
-  // ルール1: スタート力の差（avgST <= 0.12 & stStddev <= 0.04）
-  for (const s of racerStats) {
-    if (s.avgST != null && s.avgST <= 0.12 && s.stStddev != null && s.stStddev <= 0.04) {
-      const boost = top3.includes(s.boatNumber) ? 1 : 0;
-      candidates.push({
-        priority: 7 + boost,
-        text: `${s.boatNumber}号艇は平均ST ${s.avgST.toFixed(2)}と非常にスタートが速く、安定感も高い（標準偏差${s.stStddev.toFixed(2)}）`,
-      });
-    }
-  }
-
-  // ルール2: イン崩れ指数の示唆
-  if (volatility?.score != null) {
-    if (volatility.score >= 55) {
-      candidates.push({
-        priority: 7,
-        text: `イン崩れ指数${volatility.score} — 1コースが崩れやすい。まくり・差しに注目`,
-      });
-    } else if (volatility.score < 42) {
-      candidates.push({
-        priority: 7,
-        text: `イン崩れ指数${volatility.score} — 1コースが安定。本命筋が有利`,
-      });
-    }
-  }
-
-  // ルール3: 展開予測の決まり手（probability >= 0.35）
-  if (turn?.technique && turn.probability >= 0.35) {
-    const techName = TECHNIQUE_NAMES[turn.technique] || turn.technique;
-    const pct = Math.round(turn.probability * 100);
-    candidates.push({
-      priority: 6,
-      text: `AIは「${techName}」決着の確率を${pct}%と予測。${turn.winnerCourse}号艇が有力`,
-    });
-  }
-
-  // ルール4: 展示タイムの優位性
-  if (showExhibition && exhibition.length >= 6) {
-    const valid = exhibition.filter((e) => e.exhibition_time != null);
-    if (valid.length >= 6) {
-      const sorted = [...valid].sort((a, b) => a.exhibition_time - b.exhibition_time);
-      const best = sorted[0];
-      const othersAvg =
-        sorted.slice(1).reduce((sum, e) => sum + e.exhibition_time, 0) / (sorted.length - 1);
-      const diff = othersAvg - best.exhibition_time;
-      if (diff >= 0.05) {
-        const boost = top3.includes(best.boat_number) ? 1 : 0;
-        candidates.push({
-          priority: 6 + boost,
-          text: `${best.boat_number}号艇の展示タイム${best.exhibition_time.toFixed(2)}は他艇平均より${diff.toFixed(2)}秒速く、当日の機力が際立つ`,
-        });
-      }
-    }
-  }
-
-  // ルール5: コース勝率の注目（当該コース勝率 >= 40%、10走以上）
-  for (const s of racerStats) {
-    const courseStr = String(s.boatNumber);
-    const counts = s.courseRaceCounts?.[courseStr];
-    if (counts && counts.total >= 10 && counts.wins / counts.total >= 0.4) {
-      const pct = Math.round((counts.wins / counts.total) * 100);
-      const boost = top3.includes(s.boatNumber) ? 1 : 0;
-      candidates.push({
-        priority: 5 + boost,
-        text: `${s.boatNumber}号艇は${courseStr}コースでの勝率${pct}%（${counts.wins}/${counts.total}）と突出した実績`,
-      });
-    }
-  }
-
-  // ルール6: 当地勝率の優位性（>= 6.0 かつ 2位と1.0以上差）
-  const sortedByLocal = [...players].sort(
-    (a, b) => parseFloat(b.localWinRate) - parseFloat(a.localWinRate),
-  );
-  if (sortedByLocal.length >= 2) {
-    const top = parseFloat(sortedByLocal[0].localWinRate);
-    const second = parseFloat(sortedByLocal[1].localWinRate);
-    if (top >= 6.0 && top - second >= 1.0) {
-      const p = sortedByLocal[0];
-      const boost = top3.includes(p.number) ? 1 : 0;
-      candidates.push({
-        priority: 5 + boost,
-        text: `${p.number}号艇の${p.name}選手は当地勝率${p.localWinRate}で、2位と${(top - second).toFixed(1)}差の得意レース場`,
-      });
-    }
-  }
-
-  // ルール7: 好モーター（motor2Rate > 40）
-  const goodMotors = players.filter((p) => parseFloat(p.motor2Rate) > 40);
-  if (goodMotors.length > 0) {
-    const motorList = goodMotors.map((p) => `${p.number}号艇（${p.motor2Rate}%）`).join("、");
-    candidates.push({
-      priority: 4,
-      text: `${motorList}のモーターは2連率が高く好調`,
-    });
-  }
-
-  // ルール8: 総合力の大差（boatStrengths 1位と2位が0.20以上差）
-  if (turn?.boatStrengths?.length === 6) {
-    const indexed = turn.boatStrengths.map((s, i) => ({ boat: i + 1, strength: s }));
-    indexed.sort((a, b) => b.strength - a.strength);
-    const gap = indexed[0].strength - indexed[1].strength;
-    if (gap >= 0.2) {
-      candidates.push({
-        priority: 4,
-        text: `${indexed[0].boat}号艇の総合力${Math.round(indexed[0].strength * 100)}%は2位と${Math.round(gap * 100)}ポイント差。圧倒的に有利`,
-      });
-    }
-  }
-
-  // ルール9: 高全国勝率（winRate >= 7.0）
-  const topRacers = players.filter((p) => parseFloat(p.winRate) >= 7.0);
-  if (topRacers.length > 0) {
-    const racerList = topRacers.map((p) => `${p.number}号艇（勝率${p.winRate}）`).join("、");
-    candidates.push({
-      priority: 3,
-      text: `${racerList}は全国勝率が高い実力者`,
-    });
-  }
-
-  // priority 降順ソート → 上位5件
-  candidates.sort((a, b) => b.priority - a.priority);
-  return candidates.slice(0, 5).map((c) => c.text);
+  return {
+    winRate:     rank(players.map(p => ({ key: p.number, val: parseFloat(p.winRate) }))),
+    global2Rate: rank(players.map(p => ({ key: p.number, val: parseFloat(p.global2Rate) }))),
+    localWinRate:rank(players.map(p => ({ key: p.number, val: parseFloat(p.localWinRate) }))),
+    motor2Rate:  rank(players.map(p => ({ key: p.number, val: parseFloat(p.motor2Rate) }))),
+    avgST:       rank(racerStats.filter(s => s.avgST != null).map(s => ({ key: s.boatNumber, val: s.avgST })), false),
+  };
 }
 
-function PredictionTable({ prediction, showExhibition = false, volatility }) {
+function rankClass(rank) {
+  if (rank === 1) return "rank-1st";
+  if (rank === 2) return "rank-2nd";
+  if (rank === 3) return "rank-3rd";
+  return "";
+}
+
+function PredictionTable({ prediction, showExhibition = false }) {
   if (!prediction?.allPlayers || prediction.allPlayers.length === 0)
     return null;
 
   const top3 = prediction.top3 || [];
   const strengths = prediction.turnPrediction?.boatStrengths || [];
+  const racerStats = prediction.racerStats || [];
   const sorted = [...prediction.allPlayers].sort((a, b) => {
     const aIdx = top3.indexOf(a.number);
     const bIdx = top3.indexOf(b.number);
@@ -151,7 +46,7 @@ function PredictionTable({ prediction, showExhibition = false, volatility }) {
     return (strengths[b.number - 1] || 0) - (strengths[a.number - 1] || 0);
   });
 
-  const insights = generateInsights(prediction, showExhibition, volatility);
+  const colRanks = computeColumnRanks(prediction.allPlayers, racerStats);
 
   return (
     <div className="detailed-analysis">
@@ -179,7 +74,13 @@ function PredictionTable({ prediction, showExhibition = false, volatility }) {
             </tr>
           </thead>
           <tbody>
-            {sorted.map((player) => (
+            {sorted.map((player) => {
+              const stats = racerStats.find((s) => s.boatNumber === player.number);
+              const rc = (col) => rankClass(colRanks[col]?.[player.number]);
+              const fire = (col) => colRanks[col]?.[player.number] === 1
+                ? <span className="fire" aria-label="1位">🔥</span>
+                : null;
+              return (
               <tr
                 key={player.number}
                 className={top3.includes(player.number) ? "recommended" : ""}
@@ -190,35 +91,18 @@ function PredictionTable({ prediction, showExhibition = false, volatility }) {
                 <td>{player.name}</td>
                 <td>{player.grade}</td>
                 <td>{player.age || "-"}</td>
-                <td>{player.winRate}</td>
+                <td><span className={rc("winRate")}>{player.winRate}</span>{fire("winRate")}</td>
                 <td>
-                  {player.global2Rate ? `${player.global2Rate}%` : "-"}
+                  <span className={rc("global2Rate")}>{player.global2Rate ? `${player.global2Rate}%` : "-"}</span>{fire("global2Rate")}
                 </td>
                 <td>
-                  {player.localWinRate}
-                  {parseFloat(player.localWinRate) > 7.0 && (
-                    <span className="fire" aria-label="優秀">
-                      🔥
-                    </span>
-                  )}
+                  <span className={rc("localWinRate")}>{player.localWinRate}</span>{fire("localWinRate")}
                 </td>
                 <td>
-                  {player.motor2Rate}%
-                  {parseFloat(player.motor2Rate) > 40 && (
-                    <span className="fire" aria-label="優秀">
-                      🔥
-                    </span>
-                  )}
+                  <span className={rc("motor2Rate")}>{player.motor2Rate}%</span>{fire("motor2Rate")}
                 </td>
                 <td>
-                  {(() => {
-                    const stats = prediction.racerStats?.find(
-                      (s) => s.boatNumber === player.number,
-                    );
-                    return stats?.avgST != null
-                      ? stats.avgST.toFixed(2)
-                      : "-";
-                  })()}
+                  <span className={rc("avgST")}>{stats?.avgST != null ? stats.avgST.toFixed(2) : "-"}</span>{fire("avgST")}
                 </td>
                 {showExhibition && (
                   <td>
@@ -253,33 +137,17 @@ function PredictionTable({ prediction, showExhibition = false, volatility }) {
                 </td>
                 <td>
                   {(() => {
-                    const stats = prediction.racerStats?.find(
-                      (s) => s.boatNumber === player.number,
-                    );
-                    const courseCounts =
-                      stats?.courseRaceCounts?.[String(player.number)];
+                    const courseCounts = stats?.courseRaceCounts?.[String(player.number)];
                     if (!courseCounts) return "-";
                     return `${courseCounts.wins || 0}/${courseCounts.total || 0}`;
                   })()}
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
-
-      {insights.length > 0 && (
-        <div className="statistical-insights">
-          <h4>
-            <span aria-hidden="true">📌</span> 統計的な注目ポイント
-          </h4>
-          <ul>
-            {insights.map((insight, idx) => (
-              <li key={idx}>{insight}</li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       <details className="data-guide">
         <summary>

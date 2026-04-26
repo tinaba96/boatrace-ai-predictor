@@ -806,6 +806,11 @@ input:focus-visible,
   border-bottom: none;
 }
 
+/* 列内ランク色付け（太字＋色） */
+.rank-1st { font-weight: 800; color: #dc2626; }
+.rank-2nd { font-weight: 800; color: #16a34a; }
+.rank-3rd { font-weight: 800; color: #0284c7; }
+
 .fire {
   margin-left: 0.25rem;
   font-size: 1.1rem;
@@ -1650,7 +1655,13 @@ input:focus-visible,
   }
 
   .players-table-detailed {
-    min-width: 650px;
+    min-width: 540px;
+    font-size: 0.72rem;
+  }
+
+  .players-table-detailed th,
+  .players-table-detailed td {
+    padding: 0.4rem 0.2rem;
   }
 }
 
