@@ -556,7 +556,7 @@ export const supabaseDataService = {
         } : null,
         racers: (race.race_entries || []).map(entry => ({
           waku: entry.boat_number,
-          name: entry.player_name,
+          name: (entry.player_name || '').replace(/\s+/g, ''),
           rank: entry.grade,
           age: entry.age,
           winRate: entry.win_rate,
@@ -710,7 +710,7 @@ export const supabaseDataService = {
       // players配列を作成（aiScoreで降順ソート）
       const createPlayers = (pred, scoreField) => entries.map(e => ({
         number: e.boat_number,
-        name: e.player_name,
+        name: (e.player_name || '').replace(/\s+/g, ''),
         grade: e.grade,
         age: e.age,
         winRate: String(e.win_rate || ''),
