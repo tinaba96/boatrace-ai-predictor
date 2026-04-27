@@ -668,7 +668,7 @@ function FirstMarkAnimationInner({ patterns, distribution, players, boatStrength
     return () => clearTimeout(timer);
   }, [animKey]);
 
-  const svgViewBox = isMobile ? "55 30 290 220" : "0 0 400 280";
+  const svgViewBox = isMobile ? "30 15 332 233" : "0 0 400 280";
 
   // SVG共通部分（水面・マーク・スタートライン）
   const svgBackground = (
