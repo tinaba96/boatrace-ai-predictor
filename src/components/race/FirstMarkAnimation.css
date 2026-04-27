@@ -304,12 +304,6 @@
     padding: 0.75rem 0.5rem;
   }
 
-  /* SVGをモバイル専用で拡大（中心にズームイン、端はクリップ） */
-  .first-mark-animation__svg-container svg {
-    transform: scale(1.35);
-    transform-origin: center center;
-  }
-
   .result-cards {
     gap: 0.4rem;
   }
