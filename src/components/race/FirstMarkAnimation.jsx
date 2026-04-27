@@ -20,8 +20,8 @@ function BoatIcon({ color, textColor, number, x, y, rotation = 0, glow }) {
       {glow && (
         <>
           <ellipse
-            rx={20}
-            ry={12}
+            rx={25}
+            ry={15}
             fill="none"
             stroke={color}
             strokeWidth={2}
@@ -35,19 +35,19 @@ function BoatIcon({ color, textColor, number, x, y, rotation = 0, glow }) {
         </>
       )}
       <ellipse
-        rx={15}
-        ry={8}
+        rx={18}
+        ry={10}
         fill={color}
         stroke="rgba(255,255,255,0.4)"
         strokeWidth={1.5}
       />
-      <polygon points="15,0 11,-4 11,4" fill={color} />
+      <polygon points="18,0 14,-5 14,5" fill={color} />
       <text
         x={0}
         y={1}
         textAnchor="middle"
         dominantBaseline="central"
-        fontSize="9"
+        fontSize="11"
         fontWeight="700"
         fill={textColor}
       >
@@ -62,19 +62,19 @@ function StaticBoatIcon({ color, textColor, number, x, y }) {
   return (
     <g transform={`translate(${x},${y})`}>
       <ellipse
-        rx={15}
-        ry={8}
+        rx={18}
+        ry={10}
         fill={color}
         stroke="rgba(255,255,255,0.4)"
         strokeWidth={1.5}
       />
-      <polygon points="15,0 11,-4 11,4" fill={color} />
+      <polygon points="18,0 14,-5 14,5" fill={color} />
       <text
         x={0}
         y={1}
         textAnchor="middle"
         dominantBaseline="central"
-        fontSize="9"
+        fontSize="11"
         fontWeight="700"
         fill={textColor}
       >

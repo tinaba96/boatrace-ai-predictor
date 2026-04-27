@@ -300,45 +300,53 @@
 /* モバイル対応 */
 @media (max-width: 480px) {
   .first-mark-animation {
-    margin: 1rem 0;
-    padding: 1rem;
+    margin: 0.75rem 0;
+    padding: 0.75rem 0.5rem;
   }
 
   .result-cards {
-    gap: 0.35rem;
+    gap: 0.4rem;
   }
 
   .result-card {
-    padding: 0.4rem 0.15rem;
+    padding: 0.5rem 0.2rem;
   }
 
   .result-rank {
-    font-size: 0.65rem;
+    font-size: 0.75rem;
   }
 
   .result-course {
-    width: 24px;
-    height: 24px;
-    font-size: 0.8rem;
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
   }
 
   .result-technique,
   .result-prob {
-    font-size: 0.65rem;
+    font-size: 0.75rem;
   }
 
   .technique-bar__label {
     width: 4rem;
-    font-size: 0.75rem;
+    font-size: 0.78rem;
   }
 
   .technique-bar__course {
     width: 3rem;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
   }
 
   .technique-bar__prob {
     width: 2rem;
-    font-size: 0.75rem;
+    font-size: 0.78rem;
+  }
+
+  .technique-distribution__header {
+    font-size: 0.88rem;
+  }
+
+  .technique-bar__track {
+    height: 20px;
   }
 }
