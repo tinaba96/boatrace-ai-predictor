@@ -110,6 +110,23 @@ function VolatilityDisplay({ volatility }) {
         </div>
       )}
 
+      {/* 1コース勝率（固定表示） */}
+      {volatility.venueWinRate != null && (
+        <div
+          style={{
+            fontSize: "0.85rem",
+            color: "#555",
+            paddingLeft: "1.7rem",
+            marginTop: "0.5rem",
+          }}
+        >
+          1コース勝率（直近90日）:{" "}
+          <span style={{ fontWeight: "600" }}>
+            {(volatility.venueWinRate * 100).toFixed(1)}%
+          </span>
+        </div>
+      )}
+
       {/* おすすめモデル */}
       {volatility.recommendedModel && (
         <div

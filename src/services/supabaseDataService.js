@@ -529,6 +529,14 @@ export const supabaseDataService = {
       return { success: false, data: [], scrapedAt: null };
     }
 
+    // 会場別1コース勝率（直近90日）を取得
+    const { data: venueData } = await supabase
+      .from('venues')
+      .select('code, avg_first_win_rate');
+    const venueWinRateMap = Object.fromEntries(
+      (venueData || []).map(v => [v.code, v.avg_first_win_rate])
+    );
+
     // 会場ごとにグループ化
     const venueMap = new Map();
 
@@ -553,6 +561,7 @@ export const supabaseDataService = {
           score: race.volatility_score,
           level: race.volatility_level,
           reasons: race.volatility_reasons || [],
+          venueWinRate: venueWinRateMap[race.venue_code] ?? null,
         } : null,
         racers: (race.race_entries || []).map(entry => ({
           waku: entry.boat_number,
@@ -688,6 +697,14 @@ export const supabaseDataService = {
       return { date, generatedAt: null, updatedAt: null, races: [] };
     }
 
+    // 会場別1コース勝率（直近90日）を取得
+    const { data: venueData } = await supabase
+      .from('venues')
+      .select('code, avg_first_win_rate');
+    const venueWinRateMap = Object.fromEntries(
+      (venueData || []).map(v => [v.code, v.avg_first_win_rate])
+    );
+
     // JSON形式に変換
     const transformedRaces = races.map(race => {
       const entries = race.race_entries || [];
@@ -755,7 +772,8 @@ export const supabaseDataService = {
           level: race.volatility_level,
           recommendedModel: race.recommended_model,
           reasons: race.volatility_reasons || [],
-          boat1AvgST: race.first_boat_avg_st ?? null
+          boat1AvgST: race.first_boat_avg_st ?? null,
+          venueWinRate: venueWinRateMap[race.venue_code] ?? null,
         } : null,
         turnPrediction: turnPrediction,
         racerStats: standardPred?.feature_contributions?.racerStats || null,
