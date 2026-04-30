@@ -152,16 +152,18 @@ function calculateVolatilityScore(racers, placeCd, turnPrediction, racerStatsLis
     // E. 会場の1コース勝率 — 低いほどイン崩れしやすい
     // 観測レンジ: 0.43〜0.62。予測力 8.1pt差
     // 動的実績値（直近90日）を優先し、未取得時は静的定数にフォールバック
-    const venueWinRate = venueWinRateCache[parseInt(venueCode, 10)] ?? VENUE_1COURSE_WIN_RATE[venueCode] ?? VENUE_1COURSE_AVG;
+    const dynamicVenueRate = venueWinRateCache[parseInt(venueCode, 10)] ?? null;
+    const venueWinRate = dynamicVenueRate ?? VENUE_1COURSE_WIN_RATE[venueCode] ?? VENUE_1COURSE_AVG;
     {
         const norm = 1 - Math.min(1, Math.max(0, (venueWinRate - 0.43) / (0.62 - 0.43)));
         const venueName = VENUE_NAMES[String(parseInt(venueCode, 10))] || venueCode;
         const venuePct = (venueWinRate * 100).toFixed(0);
+        const label = dynamicVenueRate !== null ? `${venuePct}%・直近90日` : `${venuePct}%`;
         let reason;
-        if (venueWinRate <= 0.44)      reason = `${venueName}は1コース勝率が低い（${venuePct}%）→ 荒れやすい会場`;
-        else if (venueWinRate <= 0.48) reason = `${venueName}は1コース勝率がやや低い（${venuePct}%）`;
-        else if (venueWinRate >= 0.58) reason = `${venueName}は1コース勝率が高い（${venuePct}%）→ インが堅い会場`;
-        else                           reason = `${venueName}の1コース勝率は標準（${venuePct}%）`;
+        if (venueWinRate <= 0.44)      reason = `${venueName}は1コース勝率が低い（${label}）→ 荒れやすい会場`;
+        else if (venueWinRate <= 0.48) reason = `${venueName}は1コース勝率がやや低い（${label}）`;
+        else if (venueWinRate >= 0.58) reason = `${venueName}は1コース勝率が高い（${label}）→ インが堅い会場`;
+        else                           reason = `${venueName}の1コース勝率は標準（${label}）`;
         factors.push({ value: norm, weight: W.venue, reason });
     }
 
