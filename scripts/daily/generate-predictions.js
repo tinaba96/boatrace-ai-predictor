@@ -10,7 +10,10 @@ import { getTodayDateJST, parseDateArg } from '../lib/dateUtils.js';
 import { getRaceSchedule, getRacesInWindow } from '../lib/raceSchedule.js';
 import { predictFirstMark } from '../lib/turnPrediction.js';
 import { COURSE_DEFAULT_DISTRIBUTION, COURSE_DEFAULT_DEFENSE } from '../lib/winningTechniques.js';
-import { VENUE_1COURSE_WIN_RATE, VENUE_1COURSE_AVG } from '../lib/venueParameters.js';
+import {
+    VENUE_1COURSE_WIN_RATE, VENUE_1COURSE_AVG,
+    VENUE_VOLATILITY_THRESHOLD, VENUE_VOLATILITY_THRESHOLD_DEFAULT,
+} from '../lib/venueParameters.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,31 +39,19 @@ function calculateStdDev(values) {
 }
 
 // 会場別イン崩れ指数 重みオーバーライド
-// 根拠: analyze-volatility-by-venue.js による90日・会場別因子予測力分析（2026-04-26）
-// デフォルト重み: 全国勝率36% / avgST28% / AI逃げ11% / σ11% / 会場8% / モーター6%
-// 基準: σ lift > +15pt → sigma増、モーター lift > +8pt → motor増、全国勝率 lift < 25pt → winRate減
+// 根拠: redesign-volatility-by-venue.js による180日・会場別スピアマン相関分析（2026-04-30）
+// デフォルト重み: 全国勝率42% / avgST38% / AI逃げ12% / σ5% / 会場3%（モーター除外）
+// 基準: avgST の ρ が全国勝率の ρ を上回る会場 → avgST 増・winRate 微減
 const VENUE_VOLATILITY_WEIGHTS = {
-    // ── σが特に強い会場（lift > +15pt）sigma を増やし winRate を微減 ──
-    '05': { sigma: 0.25, winRate: 0.30 }, // 多摩川: σ+29.8pt（全会場最強）
-    '09': { sigma: 0.19, winRate: 0.32 }, // 津:    σ+19.1pt
-    '07': { sigma: 0.19, winRate: 0.32 }, // 蒲郡:  σ+18.9pt
-    '13': { sigma: 0.19, winRate: 0.32 }, // 尼崎:  σ+18.7pt
-    '19': { sigma: 0.18, winRate: 0.32 }, // 下関:  σ+17.7pt
-    '20': { sigma: 0.18, winRate: 0.32 }, // 若松:  σ+16.7pt
-    '01': { sigma: 0.18, winRate: 0.32 }, // 桐生:  σ+16.1pt
-    '11': { sigma: 0.17, winRate: 0.33 }, // びわこ: σ+15.9pt
-
-    // ── モーターが特に強い会場（lift > +8pt）motor を増やし sigma を微減 ──
-    '15': { motor: 0.15, sigma: 0.04 }, // 丸亀:  モーター+15.8pt、σ弱い(+3.3pt)
-    '24': { motor: 0.15, sigma: 0.06 }, // 大村:  モーター+15.8pt
-    '06': { motor: 0.12 },              // 浜名湖: モーター+13.5pt
-    '16': { motor: 0.12 },              // 児島:  モーター+12.1pt
-    '08': { motor: 0.10 },              // 常滑:  モーター+8.8pt
-    '04': { motor: 0.10 },              // 平和島: モーター+8.6pt
-
-    // ── 全国勝率が平均より弱い会場（lift < +25pt）winRate を減らし他を補完 ──
-    '03': { winRate: 0.22, motor: 0.09 }, // 江戸川: 全国勝率+17.1pt（平均34.8ptの半分）
-    '21': { winRate: 0.28, motor: 0.08 }, // 芦屋:  全国勝率+19.4pt
+    // ── avgSTが全国勝率より強い会場 ──
+    '14': { avgST: 0.52, winRate: 0.30 }, // 鳴門:  avgST ρ=0.615（全会場最強）
+    '24': { avgST: 0.50, winRate: 0.32 }, // 大村:  avgST ρ=0.444
+    '20': { avgST: 0.48, winRate: 0.32 }, // 若松:  avgST ρ=0.366
+    '15': { avgST: 0.46, winRate: 0.34 }, // 丸亀:  avgST ρ=0.294
+    '03': { avgST: 0.46, winRate: 0.34 }, // 江戸川: avgST ρ=0.288
+    '17': { avgST: 0.44, winRate: 0.36 }, // 宮島:  avgST ρ=0.250
+    '16': { avgST: 0.44, winRate: 0.36 }, // 児島:  avgST ρ=0.261
+    '09': { avgST: 0.44, winRate: 0.36 }, // 津:    avgST ρ=0.279
 };
 
 // イン崩れ指数（6因子の重み付き複合スコア）
@@ -75,13 +66,14 @@ function calculateVolatilityScore(racers, placeCd, turnPrediction, racerStatsLis
     const venueOverride = VENUE_VOLATILITY_WEIGHTS[venueCode] || {};
 
     // 会場別重みを適用（オーバーライドがなければデフォルト値）
+    // デフォルト: 全国勝率42% / avgST38% / AI逃げ12% / σ5% / 会場3%
+    // モーター2連率は全会場でρ<0.10のため除外（2026-04-30分析）
     const W = {
-        winRate: venueOverride.winRate ?? 0.364,
-        avgST:   0.277,
-        nigeProb: 0.112,
-        sigma:   venueOverride.sigma   ?? 0.107,
-        venue:   0.084,
-        motor:   venueOverride.motor   ?? 0.055,
+        winRate:  venueOverride.winRate  ?? 0.42,
+        avgST:    venueOverride.avgST    ?? 0.38,
+        nigeProb: 0.12,
+        sigma:    venueOverride.sigma    ?? 0.05,
+        venue:    0.03,
     };
 
     const factors = []; // { value, weight, reason }
@@ -159,20 +151,6 @@ function calculateVolatilityScore(racers, placeCd, turnPrediction, racerStatsLis
         factors.push({ value: norm, weight: W.venue, reason });
     }
 
-    // F. 1号艇のモーター2連率 — 低いほどイン崩れしやすい
-    // 観測レンジ: 0〜100。予測力 5.3pt差（大村・丸亀・浜名湖・児島では特に強い）
-    const boat1MotorRate = boat1 ? parseFloat(boat1.motor2Rate) : null;
-    if (boat1MotorRate != null) {
-        const norm = 1 - Math.min(1, Math.max(0, boat1MotorRate / 100));
-        let reason;
-        if (boat1MotorRate < 20)      reason = `1号艇のモーターが不調（${boat1MotorRate.toFixed(1)}%）→ スタート・周回に不安`;
-        else if (boat1MotorRate < 28) reason = `1号艇のモーターがやや低調（${boat1MotorRate.toFixed(1)}%）`;
-        else if (boat1MotorRate >= 45) reason = `1号艇のモーターが好調（${boat1MotorRate.toFixed(1)}%）→ 機力で有利`;
-        else if (boat1MotorRate >= 35) reason = `1号艇のモーターがやや好調（${boat1MotorRate.toFixed(1)}%）`;
-        else                           reason = `1号艇のモーターは標準（${boat1MotorRate.toFixed(1)}%）`;
-        factors.push({ value: norm, weight: W.motor, reason });
-    }
-
     // 利用可能な因子の重み合計で正規化（avgSTがない場合も対応）
     const totalWeight = factors.reduce((s, f) => s + f.weight, 0);
     if (totalWeight === 0) return { score: 50, reasons: ['データ不足'], boat1AvgST: boat1ST ?? null };
@@ -191,18 +169,21 @@ function calculateVolatilityScore(racers, placeCd, turnPrediction, racerStatsLis
     return { score: finalScore, reasons, boat1AvgST: boat1ST };
 }
 
-// イン崩れ指数のレベルを判定
-function getVolatilityLevel(score) {
-    if (score < 42) return 'low';    // 堅い
-    if (score < 55) return 'medium'; // 標準
-    return 'high';                    // 崩れやすい
+// イン崩れ指数のレベルを会場別閾値で判定
+// 根拠: VENUE_VOLATILITY_THRESHOLD（実績ベース、2026-04-30分析）
+function getVolatilityLevel(score, venueCode) {
+    const highThr = VENUE_VOLATILITY_THRESHOLD[venueCode] ?? VENUE_VOLATILITY_THRESHOLD_DEFAULT;
+    const lowThr  = Math.max(30, highThr - 15); // high閾値から15pt下がlow上限
+    if (score < lowThr)  return 'low';    // 堅い
+    if (score < highThr) return 'medium'; // 標準
+    return 'high';                         // 崩れやすい
 }
 
-// 推奨モデルを判定
-function getRecommendedModel(score) {
-    if (score < 35) return 'safe-bet';      // 本命狙い
-    if (score < 65) return 'standard';      // スタンダード
-    return 'upset-focus';                   // 穴狙い
+// 推奨モデルを volatility level から判定
+function getRecommendedModel(level) {
+    if (level === 'low')  return 'safe-bet';    // 本命狙い
+    if (level === 'high') return 'upset-focus'; // 穴狙い
+    return 'standard';                          // スタンダード
 }
 
 // スタンダード版AIスコア（従来のロジック）
@@ -640,8 +621,8 @@ function generateRacePrediction(race, date, racerStatsMap) {
 
     // 荒れ度スコアを計算（展開予測の結果を活用）
     const volatilityData = calculateVolatilityScore(race.racers, race.placeCd, turnPrediction, turnPredictionPlayers);
-    const volatilityLevel = getVolatilityLevel(volatilityData.score);
-    const recommendedModel = getRecommendedModel(volatilityData.score);
+    const volatilityLevel = getVolatilityLevel(volatilityData.score, String(race.placeCd).padStart(2, '0'));
+    const recommendedModel = getRecommendedModel(volatilityLevel);
 
     // 3つのモデルで予想を生成（展開予測・展示データを反映）
     const standardPlayers = processRacersWithScoreFn(race.racers, calculateStandardScoreV2, turnPrediction, race.exhibitionData);
