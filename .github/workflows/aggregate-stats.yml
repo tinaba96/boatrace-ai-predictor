@@ -24,3 +24,9 @@ jobs:
           TZ: 'Asia/Tokyo'
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      - name: Update venue stats (90-day rolling)
+        run: node scripts/maintenance/update-venue-stats.js
+        env:
+          TZ: 'Asia/Tokyo'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}

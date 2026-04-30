@@ -18,6 +18,19 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// 起動時に venues テーブルから取得した90日実績値（キー: 整数の venue_code）
+let venueWinRateCache = {};
+
+async function fetchVenueWinRates() {
+    if (!isSupabaseEnabled()) return {};
+    const { data, error } = await supabase
+        .from('venues')
+        .select('code, avg_first_win_rate')
+        .not('avg_first_win_rate', 'is', null);
+    if (error || !data) return {};
+    return Object.fromEntries(data.map(v => [v.code, v.avg_first_win_rate]));
+}
+
 // 風向の度数（16方位）をテキストに変換
 function convertWindDirection(direction) {
     const directions16 = [
@@ -138,7 +151,8 @@ function calculateVolatilityScore(racers, placeCd, turnPrediction, racerStatsLis
 
     // E. 会場の1コース勝率 — 低いほどイン崩れしやすい
     // 観測レンジ: 0.43〜0.62。予測力 8.1pt差
-    const venueWinRate = VENUE_1COURSE_WIN_RATE[venueCode] || VENUE_1COURSE_AVG;
+    // 動的実績値（直近90日）を優先し、未取得時は静的定数にフォールバック
+    const venueWinRate = venueWinRateCache[parseInt(venueCode, 10)] ?? VENUE_1COURSE_WIN_RATE[venueCode] ?? VENUE_1COURSE_AVG;
     {
         const norm = 1 - Math.min(1, Math.max(0, (venueWinRate - 0.43) / (0.62 - 0.43)));
         const venueName = VENUE_NAMES[String(parseInt(venueCode, 10))] || venueCode;
@@ -1156,6 +1170,11 @@ export async function mainRefresh({ isDryRun, specificRaceIds }) {
     }
     const racerStatsMap = await fetchRacerStats([...allRacerIds]);
 
+    venueWinRateCache = await fetchVenueWinRates();
+    if (Object.keys(venueWinRateCache).length > 0) {
+        console.log(`🏟️  ${Object.keys(venueWinRateCache).length}会場の1コース勝率（90日実績）を取得しました`);
+    }
+
     // 各レースの予測を生成
     const allPredictions = [];
     for (const race of races) {
@@ -1293,6 +1312,11 @@ async function main() {
         const racerStatsMap = await fetchRacerStats([...allRacerIds]);
         if (racerStatsMap.size > 0) {
             console.log(`📊 ${racerStatsMap.size}人の選手統計を取得しました`);
+        }
+
+        venueWinRateCache = await fetchVenueWinRates();
+        if (Object.keys(venueWinRateCache).length > 0) {
+            console.log(`🏟️  ${Object.keys(venueWinRateCache).length}会場の1コース勝率（90日実績）を取得しました`);
         }
 
         for (const venue of racesData.data) {
