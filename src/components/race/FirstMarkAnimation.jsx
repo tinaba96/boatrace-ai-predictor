@@ -20,8 +20,8 @@ function BoatIcon({ color, textColor, number, x, y, rotation = 0, glow }) {
       {glow && (
         <>
           <ellipse
-            rx={20}
-            ry={12}
+            rx={25}
+            ry={15}
             fill="none"
             stroke={color}
             strokeWidth={2}
@@ -35,19 +35,19 @@ function BoatIcon({ color, textColor, number, x, y, rotation = 0, glow }) {
         </>
       )}
       <ellipse
-        rx={15}
-        ry={8}
+        rx={18}
+        ry={10}
         fill={color}
         stroke="rgba(255,255,255,0.4)"
         strokeWidth={1.5}
       />
-      <polygon points="15,0 11,-4 11,4" fill={color} />
+      <polygon points="18,0 14,-5 14,5" fill={color} />
       <text
         x={0}
         y={1}
         textAnchor="middle"
         dominantBaseline="central"
-        fontSize="9"
+        fontSize="11"
         fontWeight="700"
         fill={textColor}
       >
@@ -62,19 +62,19 @@ function StaticBoatIcon({ color, textColor, number, x, y }) {
   return (
     <g transform={`translate(${x},${y})`}>
       <ellipse
-        rx={15}
-        ry={8}
+        rx={18}
+        ry={10}
         fill={color}
         stroke="rgba(255,255,255,0.4)"
         strokeWidth={1.5}
       />
-      <polygon points="15,0 11,-4 11,4" fill={color} />
+      <polygon points="18,0 14,-5 14,5" fill={color} />
       <text
         x={0}
         y={1}
         textAnchor="middle"
         dominantBaseline="central"
-        fontSize="9"
+        fontSize="11"
         fontWeight="700"
         fill={textColor}
       >
@@ -557,9 +557,16 @@ function FirstMarkAnimationInner({ patterns, distribution, players, boatStrength
   const [animKey, setAnimKey] = useState(0);
   const [phase, setPhase] = useState("");
   const [animationDone, setAnimationDone] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 480);
   const phaseTimers = useRef([]);
   const motionMod = useMotion();
   const prevPatternIndex = useRef(selectedPatternIndex);
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth <= 480);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
 
   const handleReplay = useCallback(() => {
     setAnimKey((prev) => prev + 1);
@@ -660,6 +667,8 @@ function FirstMarkAnimationInner({ patterns, distribution, players, boatStrength
     const timer = setTimeout(() => setShowNames(false), PLAYER_NAME_HIDE * ANIM_DURATION_MS);
     return () => clearTimeout(timer);
   }, [animKey]);
+
+  const svgViewBox = isMobile ? "30 15 332 233" : "0 0 400 280";
 
   // SVG共通部分（水面・マーク・スタートライン）
   const svgBackground = (
@@ -770,7 +779,7 @@ function FirstMarkAnimationInner({ patterns, distribution, players, boatStrength
 
         <div className="first-mark-animation__svg-container">
           <svg
-            viewBox="0 0 400 280"
+            viewBox={svgViewBox}
             width="100%"
             height="100%"
             style={{
@@ -857,7 +866,7 @@ function FirstMarkAnimationInner({ patterns, distribution, players, boatStrength
 
       <div className="first-mark-animation__svg-container">
         <svg
-          viewBox="0 0 400 280"
+          viewBox={svgViewBox}
           width="100%"
           height="100%"
           style={{
