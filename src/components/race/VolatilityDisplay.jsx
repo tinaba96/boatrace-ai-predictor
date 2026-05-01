@@ -2,6 +2,117 @@
  * VolatilityDisplay - イン崩れ指数表示コンポーネント
  */
 
+const NATIONAL_AVG_WIN_RATE = 53;
+const WIN_RATE_BAR_MIN = 40;
+const WIN_RATE_BAR_MAX = 65;
+
+function WinRateGauge({ rate }) {
+  const pct = rate * 100;
+  const diff = pct - NATIONAL_AVG_WIN_RATE;
+  const color =
+    pct < 47 ? "#ef5350" : pct < NATIONAL_AVG_WIN_RATE ? "#ff9800" : "#4caf50";
+  const barFill = Math.min(
+    100,
+    Math.max(
+      0,
+      ((pct - WIN_RATE_BAR_MIN) / (WIN_RATE_BAR_MAX - WIN_RATE_BAR_MIN)) * 100,
+    ),
+  );
+  const avgMarkerPos =
+    ((NATIONAL_AVG_WIN_RATE - WIN_RATE_BAR_MIN) /
+      (WIN_RATE_BAR_MAX - WIN_RATE_BAR_MIN)) *
+    100;
+
+  return (
+    <div
+      style={{
+        marginTop: "0.75rem",
+        marginBottom: "0.25rem",
+        padding: "0.6rem 0.75rem",
+        background: "rgba(255,255,255,0.55)",
+        borderRadius: "6px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "0.4rem",
+        }}
+      >
+        <span style={{ fontSize: "0.82rem", color: "#555" }}>
+          1コース勝率（直近90日）
+        </span>
+        <div
+          style={{ display: "flex", alignItems: "baseline", gap: "0.35rem" }}
+        >
+          <span
+            style={{
+              fontSize: "1.25rem",
+              fontWeight: "700",
+              color,
+              lineHeight: 1,
+            }}
+          >
+            {pct.toFixed(1)}%
+          </span>
+          <span style={{ fontSize: "0.72rem", color, fontWeight: "600" }}>
+            ({diff >= 0 ? "+" : ""}
+            {diff.toFixed(1)}pt)
+          </span>
+        </div>
+      </div>
+
+      <div
+        style={{
+          position: "relative",
+          height: "6px",
+          background: "#e0e0e0",
+          borderRadius: "3px",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            width: `${barFill}%`,
+            height: "100%",
+            background: color,
+            borderRadius: "3px",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            left: `${avgMarkerPos}%`,
+            top: "-3px",
+            bottom: "-3px",
+            width: "2px",
+            background: "#616161",
+            borderRadius: "1px",
+            transform: "translateX(-50%)",
+          }}
+        />
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: "0.68rem",
+          color: "#999",
+          marginTop: "0.25rem",
+        }}
+      >
+        <span>{WIN_RATE_BAR_MIN}%</span>
+        <span>全国平均 {NATIONAL_AVG_WIN_RATE}%</span>
+        <span>{WIN_RATE_BAR_MAX}%</span>
+      </div>
+    </div>
+  );
+}
+
 function VolatilityDisplay({ volatility }) {
   if (!volatility) {
     return null;
@@ -33,10 +144,7 @@ function VolatilityDisplay({ volatility }) {
           display: "flex",
           alignItems: "center",
           gap: "0.5rem",
-          marginBottom:
-            volatility.reasons && volatility.reasons.length > 0
-              ? "0.5rem"
-              : "0",
+          marginBottom: "0.5rem",
         }}
       >
         <span style={{ fontSize: "1.2rem" }}>
@@ -78,11 +186,16 @@ function VolatilityDisplay({ volatility }) {
           fontSize: "0.8rem",
           color: "#777",
           paddingLeft: "1.7rem",
-          marginBottom: "0.5rem",
+          marginBottom: "0.25rem",
         }}
       >
         1コースが崩れる可能性の目安（高いほど波乱になりやすい）
       </div>
+
+      {/* 1コース勝率ゲージ（会場ベースライン） */}
+      {volatility.venueWinRate != null && (
+        <WinRateGauge rate={volatility.venueWinRate} />
+      )}
 
       {/* イン崩れ指数の根拠 */}
       {volatility.reasons && volatility.reasons.length > 0 && (
@@ -107,23 +220,6 @@ function VolatilityDisplay({ volatility }) {
               </li>
             ))}
           </ul>
-        </div>
-      )}
-
-      {/* 1コース勝率（固定表示） */}
-      {volatility.venueWinRate != null && (
-        <div
-          style={{
-            fontSize: "0.85rem",
-            color: "#555",
-            paddingLeft: "1.7rem",
-            marginTop: "0.5rem",
-          }}
-        >
-          1コース勝率（直近90日）:{" "}
-          <span style={{ fontWeight: "600" }}>
-            {(volatility.venueWinRate * 100).toFixed(1)}%
-          </span>
         </div>
       )}
 
