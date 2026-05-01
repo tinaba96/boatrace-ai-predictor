@@ -475,13 +475,26 @@ export const supabaseDataService = {
           const data = await edgeResponse.json();
           if (data.success && data.data) {
             console.log('[getRaces] Edge API success');
-            // Edge APIのレスポンスを既存形式に変換
+            // Edge APIはvenuesテーブルをjoinしないためvenueWinRateを別途取得
+            let venueWinRateMap = {};
+            if (supabase) {
+              const { data: venueData } = await supabase.from('venues').select('code, avg_first_win_rate');
+              venueWinRateMap = Object.fromEntries(
+                (venueData || []).map(v => [v.code, v.avg_first_win_rate])
+              );
+            }
             return {
               success: true,
               data: data.data.map(venue => ({
                 placeCd: venue.place_cd || venue.placeCd,
                 placeName: venue.place_name || venue.placeName || VENUE_NAMES[venue.place_cd || venue.placeCd],
-                races: venue.races
+                races: (venue.races || []).map(race => ({
+                  ...race,
+                  volatility: race.volatility ? {
+                    ...race.volatility,
+                    venueWinRate: venueWinRateMap[race.placeCd] ?? null,
+                  } : null,
+                }))
               })),
               scrapedAt: data.scrapedAt || new Date().toISOString()
             };
