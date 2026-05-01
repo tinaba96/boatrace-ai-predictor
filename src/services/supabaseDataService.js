@@ -181,11 +181,17 @@ const VENUE_NAMES = {
   19: '下関', 20: '若松', 21: '芦屋', 22: '福岡', 23: '唐津', 24: '大村'
 };
 
+async function fetchVenueWinRateMap() {
+  if (!supabase) return {};
+  const { data } = await supabase.from('venues').select('code, avg_first_win_rate');
+  return Object.fromEntries((data || []).map(v => [v.code, v.avg_first_win_rate]));
+}
+
 /**
  * Edge APIレスポンスをフロント期待形式に変換
  * Edge API(RPC)とSupabase直接クエリの構造差異を吸収する
  */
-function transformEdgeResponse(edgeData, date) {
+function transformEdgeResponse(edgeData, date, venueWinRateMap = {}) {
   const transformedRaces = (edgeData.races || []).map(race => {
     const entries = race.entries || [];
     const predictions = race.predictions || {};
@@ -223,7 +229,10 @@ function transformEdgeResponse(edgeData, date) {
       venueCode: race.venueCode,
       raceNumber: race.raceNumber,
       startTime: race.startTime || '',
-      volatility: race.volatility || null,
+      volatility: race.volatility ? {
+        ...race.volatility,
+        venueWinRate: venueWinRateMap[race.venueCode] ?? null,
+      } : null,
       turnPrediction,
       racerStats: stdPred?.racerStats || null,
       exhibitionData: race.exhibitionData?.map(ed => ({
@@ -472,13 +481,20 @@ export const supabaseDataService = {
           const data = await edgeResponse.json();
           if (data.success && data.data) {
             console.log('[getRaces] Edge API success');
-            // Edge APIのレスポンスを既存形式に変換
+            // Edge APIはvenuesテーブルをjoinしないためvenueWinRateを別途取得
+            const venueWinRateMap = await fetchVenueWinRateMap();
             return {
               success: true,
               data: data.data.map(venue => ({
                 placeCd: venue.place_cd || venue.placeCd,
                 placeName: venue.place_name || venue.placeName || VENUE_NAMES[venue.place_cd || venue.placeCd],
-                races: venue.races
+                races: (venue.races || []).map(race => ({
+                  ...race,
+                  volatility: race.volatility ? {
+                    ...race.volatility,
+                    venueWinRate: venueWinRateMap[race.placeCd] ?? null,
+                  } : null,
+                }))
               })),
               scrapedAt: data.scrapedAt || new Date().toISOString()
             };
@@ -530,12 +546,7 @@ export const supabaseDataService = {
     }
 
     // 会場別1コース勝率（直近90日）を取得
-    const { data: venueData } = await supabase
-      .from('venues')
-      .select('code, avg_first_win_rate');
-    const venueWinRateMap = Object.fromEntries(
-      (venueData || []).map(v => [v.code, v.avg_first_win_rate])
-    );
+    const venueWinRateMap = await fetchVenueWinRateMap();
 
     // 会場ごとにグループ化
     const venueMap = new Map();
@@ -603,7 +614,9 @@ export const supabaseDataService = {
           const edgeData = await edgeResponse.json();
           if (edgeData.races && edgeData.races.length > 0) {
             console.log(`[getPredictions] Edge API success: ${edgeData.races.length} races${light ? ' (light)' : ''}`);
-            return transformEdgeResponse(edgeData, date);
+            // Edge APIはvenuesテーブルをjoinしないためvenueWinRateを別途取得
+            const venueWinRateMap = await fetchVenueWinRateMap();
+            return transformEdgeResponse(edgeData, date, venueWinRateMap);
           }
         }
       } catch (edgeError) {
@@ -698,12 +711,7 @@ export const supabaseDataService = {
     }
 
     // 会場別1コース勝率（直近90日）を取得
-    const { data: venueData } = await supabase
-      .from('venues')
-      .select('code, avg_first_win_rate');
-    const venueWinRateMap = Object.fromEntries(
-      (venueData || []).map(v => [v.code, v.avg_first_win_rate])
-    );
+    const venueWinRateMap = await fetchVenueWinRateMap();
 
     // JSON形式に変換
     const transformedRaces = races.map(race => {
