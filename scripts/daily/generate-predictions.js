@@ -1238,6 +1238,7 @@ export async function mainRefresh({ isDryRun, specificRaceIds }) {
             .update({
                 volatility_score: race.volatility.score,
                 volatility_level: race.volatility.level,
+                recommended_model: race.volatility.recommendedModel,
                 volatility_reasons: race.volatility.reasons,
                 first_boat_avg_st: race.volatility.boat1AvgST ?? null,
                 updated_at: now,
