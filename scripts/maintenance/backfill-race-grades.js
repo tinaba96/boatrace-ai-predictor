@@ -76,9 +76,9 @@ async function fetchRaceGrade(date, venueCode, raceNo, delay = DEFAULT_DELAY) {
 }
 
 /**
- * 日付範囲内の全レースを取得
+ * 日付範囲内の全レースを取得（limit/offset対応）
  */
-async function fetchRaceIds(fromDate, toDate) {
+async function fetchRaceIds(fromDate, toDate, limit = 1000, offset = 0) {
   const { data, error } = await supabase
     .from("races")
     .select("race_id, race_date, venue_code, race_number")
@@ -86,7 +86,8 @@ async function fetchRaceIds(fromDate, toDate) {
     .lte("race_date", toDate)
     .order("race_date")
     .order("venue_code")
-    .order("race_number");
+    .order("race_number")
+    .range(offset, offset + limit - 1);
 
   if (error) {
     console.error("❌ Supabase クエリエラー:", error.message);
@@ -136,14 +137,31 @@ async function main() {
   console.log(`レート: ${delay}ms/レース, 会場間: ${venueDelay}ms`);
   console.log();
 
-  // 対象レース取得
-  const races = await fetchRaceIds(fromDate, toDate);
+  // 対象レース取得（limit/offset でバッチ処理）
+  console.log("📥 対象レース取得中...");
+  const races = [];
+  const BATCH_SIZE = 1000;
+  let offset = 0;
+
+  while (true) {
+    const batch = await fetchRaceIds(fromDate, toDate, BATCH_SIZE, offset);
+    if (batch.length === 0) break;
+
+    races.push(...batch);
+    console.log(
+      `   ${races.length}件取得 (最終バッチ: ${batch.length}件)`,
+    );
+
+    if (batch.length < BATCH_SIZE) break; // 最後のバッチ
+    offset += BATCH_SIZE;
+  }
+
   if (races.length === 0) {
-    console.log("対象レースなし");
+    console.log("❌ 対象レースなし");
     return;
   }
 
-  console.log(`対象レース: ${races.length}件\n`);
+  console.log(`\n✅ 対象レース: ${races.length}件\n`);
 
   const updateRows = [];
   let successCount = 0;
