@@ -141,13 +141,13 @@ function scrapeRacers($) {
  */
 function scrapeRaceMeta($) {
   const raceGrade = (() => {
-    const el = $(".heading2_titleGrade");
+    const el = $(".heading2_title");
     if (!el.length) return null;
     const cls = el.attr("class") || "";
-    if (cls.includes("is-SG")) return "SG";
-    if (cls.includes("is-G1")) return "G1";
-    if (cls.includes("is-G2")) return "G2";
-    if (cls.includes("is-G3")) return "G3";
+    if (cls.includes("is-sg")) return "SG";
+    if (cls.includes("is-g1")) return "G1";
+    if (cls.includes("is-g2")) return "G2";
+    if (cls.includes("is-g3")) return "G3";
     return "ippan";
   })();
   const raceTitle = $(".heading2_titleName").text().trim() || null;

@@ -807,6 +807,7 @@ async function writeToSupabase(allPredictions, date) {
                 first_boat_win_rate: firstPlayer ? parseFloat(firstPlayer.winRate) : null,
                 first_boat_motor_2rate: firstPlayer ? parseFloat(firstPlayer.motor2Rate) : null,
                 first_boat_avg_st: race.volatility.boat1AvgST ?? null,
+                race_grade: race.conditions.raceGrade ?? null,
                 win_rate_stddev: calculateStdDev(winRates),
                 win_rate_avg: winRates.reduce((a, b) => a + b, 0) / winRates.length,
                 motor_2rate_stddev: calculateStdDev(motorRates),
