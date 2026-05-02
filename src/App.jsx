@@ -13,6 +13,7 @@ import { getFeaturedPosts, getLatestPosts } from './data/blogPosts'
 import { dataService } from './services/dataService'
 import { PredictionPanel } from './components/race'
 import { STADIUM_NAMES, WEEKDAYS } from './constants'
+import { GRADE_CONFIG } from './constants/gradeConfig'
 import { TECHNIQUE_NAMES } from './utils/turnPrediction'
 import { BOAT_COLORS } from './utils/colors'
 import { getTodayJST, formatDateJP } from './utils/dateUtils'
@@ -631,6 +632,9 @@ function App({ tab = 'races' }) {
                                                     const volBadgeColor = isHighVol ? '#c62828' : '#2e7d32'
                                                     const volBadgeLabel = isHighVol ? '🌪️ イン崩れ確率高' : '🎯 本命有利'
 
+                                                    const raceGrade = race.rawData?.raceGrade
+                                                    const gradeConfig = GRADE_CONFIG[raceGrade]
+
                                                     return (
                                                         <div
                                                             key={race.id}
@@ -653,6 +657,20 @@ function App({ tab = 'races' }) {
                                                                             whiteSpace: 'nowrap',
                                                                         }}>
                                                                             {volBadgeLabel}
+                                                                        </span>
+                                                                    )}
+                                                                    {gradeConfig && (
+                                                                        <span style={{
+                                                                            padding: '0.2rem 0.5rem',
+                                                                            borderRadius: '6px',
+                                                                            fontSize: '0.7rem',
+                                                                            fontWeight: '700',
+                                                                            background: gradeConfig.color,
+                                                                            color: '#fff',
+                                                                            letterSpacing: '0.05em',
+                                                                            whiteSpace: 'nowrap',
+                                                                        }}>
+                                                                            {gradeConfig.label}
                                                                         </span>
                                                                     )}
                                                                     <span className="race-number">{race.raceNumber}R</span>
