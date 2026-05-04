@@ -273,6 +273,7 @@ export async function run(schedule, date) {
   // 会場ごとにグループ化して並列取得
   const entriesRows = [];
   const conditionsRows = [];
+  const racesGradeUpdates = [];
 
   const byVenue = new Map();
   for (const r of targetRaces) {
@@ -323,8 +324,8 @@ export async function run(schedule, date) {
         });
       }
 
-      // race_conditions 行を構築
-      if (conditions || raceGrade) {
+      // race_conditions 行を構築（race_grade は除外、races テーブルで管理）
+      if (conditions || raceTitle) {
         conditionsRows.push({
           race_id: r.race_id,
           weather: conditions?.weather ?? null,
@@ -338,8 +339,15 @@ export async function run(schedule, date) {
               : null,
           temperature: conditions?.airTemp ?? null,
           water_temperature: conditions?.waterTemp ?? null,
-          race_grade: raceGrade,
           race_title: raceTitle,
+        });
+      }
+
+      // race_grade を races テーブルに記録（発走60分前の更新用）
+      if (raceGrade) {
+        racesGradeUpdates.push({
+          race_id: r.race_id,
+          race_grade: raceGrade,
         });
       }
 
@@ -383,6 +391,19 @@ export async function run(schedule, date) {
     if (error)
       console.error("❌ race_conditions 書き込みエラー:", error.message);
     else console.log(`  ✅ race_conditions: ${conditionsRows.length}件`);
+  }
+
+  // races.race_grade を更新（Source of Truth = races テーブル）
+  let racesGradeUpdateCount = 0;
+  for (const { race_id, race_grade } of racesGradeUpdates) {
+    const { error } = await supabase
+      .from("races")
+      .update({ race_grade })
+      .eq("race_id", race_id);
+    if (!error) racesGradeUpdateCount++;
+  }
+  if (racesGradeUpdateCount > 0) {
+    console.log(`  ✅ races (race_grade): ${racesGradeUpdateCount}件`);
   }
 
   return { updated: true, count: entriesRows.length };

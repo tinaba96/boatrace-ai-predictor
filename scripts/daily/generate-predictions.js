@@ -983,9 +983,9 @@ async function writeToSupabase(allPredictions, date) {
         }
         console.log(`  ✅ predictions: ${predictionsData.length}件`);
 
-        // 4. race_conditionsテーブルにupsert
+        // 4. race_conditionsテーブルにupsert（race_grade は races テーブルで管理）
         const conditionsData = allPredictions
-            .filter(race => race.conditions?.weather || race.conditions?.airTemp != null || race.conditions?.raceGrade)
+            .filter(race => race.conditions?.weather || race.conditions?.airTemp != null)
             .map(race => ({
                 race_id: race.raceId,
                 weather: race.conditions.weather,
@@ -994,7 +994,6 @@ async function writeToSupabase(allPredictions, date) {
                 wave_height: race.conditions.waveHeight != null ? Math.round(race.conditions.waveHeight) : null,
                 temperature: race.conditions.airTemp,
                 water_temperature: race.conditions.waterTemp,
-                race_grade: race.conditions.raceGrade,
                 race_title: race.conditions.raceTitle,
                 series_day: null,
                 is_final_day: null
@@ -1028,10 +1027,11 @@ async function writeToSupabase(allPredictions, date) {
  * race オブジェクト形式に変換する
  */
 async function fetchRaceDataFromSupabase(raceIds) {
-    const [entriesRes, conditionsRes, exhibitionRes] = await Promise.all([
+    const [entriesRes, conditionsRes, exhibitionRes, racesRes] = await Promise.all([
         supabase.from('race_entries').select('*').in('race_id', raceIds),
         supabase.from('race_conditions').select('*').in('race_id', raceIds),
         supabase.from('exhibition_data').select('*').in('race_id', raceIds),
+        supabase.from('races').select('race_id, race_grade').in('race_id', raceIds),
     ]);
 
     if (entriesRes.error) throw new Error(`race_entries取得エラー: ${entriesRes.error.message}`);
@@ -1050,6 +1050,9 @@ async function fetchRaceDataFromSupabase(raceIds) {
         if (!exhibitionByRace.has(ex.race_id)) exhibitionByRace.set(ex.race_id, []);
         exhibitionByRace.get(ex.race_id).push(ex);
     }
+    const racesByRace = new Map(
+        (racesRes.data || []).map(r => [r.race_id, r])
+    );
 
     const races = [];
     for (const raceId of raceIds) {
@@ -1061,6 +1064,7 @@ async function fetchRaceDataFromSupabase(raceIds) {
         const venueCode = parseInt(parts[3], 10);
         const raceNo = parseInt(parts[4], 10);
         const cond = conditionsByRace.get(raceId) || {};
+        const race = racesByRace.get(raceId) || {};
 
         // race_entries → racers 配列（generateRacePrediction が期待する形式）
         const racers = entries
@@ -1106,7 +1110,7 @@ async function fetchRaceDataFromSupabase(raceIds) {
             windVelocity: cond.wind_speed ?? null,
             waterTemp: cond.water_temperature ?? null,
             waveHeight: cond.wave_height ?? null,
-            raceGrade: cond.race_grade || null,
+            raceGrade: race.race_grade || null,
             raceTitle: cond.race_title || null,
         });
     }
