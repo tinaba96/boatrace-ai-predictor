@@ -52,13 +52,13 @@ function VolatilityAccuracySection({ stats }) {
       {/* ひと言サマリー */}
       {highData && (
         <p className="vas-summary">
-          「イン崩れ確率高」のレースでは、実際に{" "}
+          イン崩れスコアが高いレースでは、実際に{" "}
           <strong style={{ color: "#ff9800", fontSize: "1.1em" }}>
             {highData.upsetRate.toFixed(1)}%
           </strong>{" "}
-          の確率で1号艇が負けています
+          の確率で1コース（1号艇）が1着になっていません
           <span className="vas-summary-sub">
-            （全体平均 {baseline.upsetRate.toFixed(1)}%）
+            （全体平均: {baseline.upsetRate.toFixed(1)}%）
           </span>
         </p>
       )}
@@ -91,8 +91,8 @@ function VolatilityAccuracySection({ stats }) {
               <thead>
                 <tr>
                   <th>会場</th>
-                  <th>イン崩れ確率高のとき</th>
-                  <th>その会場の平均</th>
+                  <th>スコア高のとき<br/>（1コース負率）</th>
+                  <th>会場全体平均<br/>（1コース負率）</th>
                   <th>件数</th>
                 </tr>
               </thead>
