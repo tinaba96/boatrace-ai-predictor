@@ -218,6 +218,10 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
         </div>
         <UpdateStatus lastUpdated={summary.lastUpdated} dataType="成績データ" onRefresh={onRefresh} isRefreshing={isRefreshing} />
 
+      {summary.volatilityStats && (
+        <VolatilityAccuracySection stats={summary.volatilityStats} />
+      )}
+
       {summary.models && (
         <ModelSelector
           selectedModel={selectedModel}
@@ -226,10 +230,6 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
       )}
 
       {summary.models && <ModelComparisonTable />}
-
-      {summary.volatilityStats && (
-        <VolatilityAccuracySection stats={summary.volatilityStats} />
-      )}
 
       {summary.models && (
         <div className="history-link-container">
