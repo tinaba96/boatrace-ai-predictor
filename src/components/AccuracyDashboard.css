@@ -1223,17 +1223,19 @@
 
 .volatility-accuracy-section {
   background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 2px solid #e2e8f0;
 }
 
 .volatility-accuracy-section h3 {
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 1.5rem;
   color: #1e293b;
-  margin: 0 0 0.875rem 0;
+  margin: 0 0 1.5rem 0;
+  font-weight: 800;
+  text-align: center;
 }
 
 /* ひと言サマリー */
