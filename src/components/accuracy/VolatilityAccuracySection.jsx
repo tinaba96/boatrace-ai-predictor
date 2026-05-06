@@ -52,7 +52,7 @@ function VolatilityAccuracySection({ stats }) {
       {/* ひと言サマリー */}
       {highData && (
         <p className="vas-summary">
-          イン崩れスコアが高いレースでは、実際に{" "}
+          「イン崩れ確率高」ラベルが付与されたレースでは、実際に{" "}
           <strong style={{ color: "#ff9800", fontSize: "1.1em" }}>
             {highData.upsetRate.toFixed(1)}%
           </strong>{" "}
@@ -91,8 +91,8 @@ function VolatilityAccuracySection({ stats }) {
               <thead>
                 <tr>
                   <th>会場</th>
-                  <th>スコア高のとき<br/>（1コース負率）</th>
-                  <th>会場全体平均<br/>（1コース負率）</th>
+                  <th>イン崩れ確率高ラベル時の<br/>1コース負け確率</th>
+                  <th>会場全体の<br/>1コース負け確率平均</th>
                   <th>件数</th>
                 </tr>
               </thead>
