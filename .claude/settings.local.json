@@ -57,7 +57,13 @@
       "mcp__linear__linear_bulk_update_issues",
       "mcp__linear__linear_create_comment",
       "Bash(kill %1)",
-      "Bash(kill 77450)"
+      "Bash(kill 77450)",
+      "Bash(chmod +x /tmp/check-tickets.sh)",
+      "Bash(bash /tmp/check-tickets.sh)",
+      "Bash(awk '{print \"PID:\", $2, \"MEM:\", $6\"KB\", \"CPU:\", $3\"%\", \"時間:\", $10}' echo \"\")",
+      "Bash(chmod +x /tmp/check-backfill.sh)",
+      "Bash(bash /tmp/check-backfill.sh)",
+      "Bash(kill 15579)"
     ],
     "deny": [
       "Bash(rm -rf:*)",

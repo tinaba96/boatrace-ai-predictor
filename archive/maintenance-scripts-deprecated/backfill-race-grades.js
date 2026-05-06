@@ -14,6 +14,8 @@
  */
 
 import * as cheerio from "cheerio";
+import * as fs from "fs";
+import * as path from "path";
 import { supabase, VENUE_NAMES } from "../lib/supabaseClient.js";
 
 const USER_AGENT =
@@ -49,29 +51,45 @@ function scrapeRaceGradeAndTitle($) {
 }
 
 /**
- * 指定レースのグレード情報を取得
+ * 指定レースのグレード情報を取得（リトライ対応）
  */
-async function fetchRaceGrade(date, venueCode, raceNo, delay = DEFAULT_DELAY) {
+async function fetchRaceGrade(date, venueCode, raceNo, delay = DEFAULT_DELAY, retries = 3) {
   await new Promise((resolve) => setTimeout(resolve, delay));
 
   const ymd = date.replace(/-/g, "");
   const jcd = String(venueCode).padStart(2, "0");
   const url = `https://www.boatrace.jp/owpc/pc/race/racelist?rno=${raceNo}&jcd=${jcd}&hd=${ymd}`;
 
-  try {
-    const response = await fetch(url, { headers: FETCH_HEADERS });
-    if (!response.ok) {
-      console.warn(
-        `  ⚠️ HTTP ${response.status}: ${VENUE_NAMES[venueCode]} ${raceNo}R`,
-      );
-      return null;
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60秒タイムアウト（boatrace.jp の遅延対応）
+
+      const response = await fetch(url, {
+        headers: FETCH_HEADERS,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        console.warn(
+          `  ⚠️ HTTP ${response.status}: ${VENUE_NAMES[venueCode]} ${raceNo}R`,
+        );
+        return null;
+      }
+      const html = await response.text();
+      const $ = cheerio.load(html);
+      return scrapeRaceGradeAndTitle($);
+    } catch (error) {
+      if (attempt < retries) {
+        const backoff = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        console.warn(`  ⚠️ リトライ ${attempt}/${retries - 1}: ${VENUE_NAMES[venueCode]} ${raceNo}R (${error.message}) → ${backoff}ms後に再試行`);
+        await new Promise((resolve) => setTimeout(resolve, backoff));
+      } else {
+        console.error(`  ❌ エラー（リトライ${retries}回失敗）: ${VENUE_NAMES[venueCode]} ${raceNo}R - ${error.message}`);
+        return null;
+      }
     }
-    const html = await response.text();
-    const $ = cheerio.load(html);
-    return scrapeRaceGradeAndTitle($);
-  } catch (error) {
-    console.error(`  ❌ エラー: ${error.message}`);
-    return null;
   }
 }
 
@@ -97,6 +115,29 @@ async function fetchRaceIds(fromDate, toDate, limit = 1000, offset = 0) {
 }
 
 /**
+ * チェックポイント管理
+ */
+const CHECKPOINT_FILE = ".backfill-checkpoint.json";
+
+function saveCheckpoint(data) {
+  fs.writeFileSync(CHECKPOINT_FILE, JSON.stringify(data, null, 2));
+}
+
+function loadCheckpoint() {
+  if (fs.existsSync(CHECKPOINT_FILE)) {
+    const data = JSON.parse(fs.readFileSync(CHECKPOINT_FILE, "utf-8"));
+    return data;
+  }
+  return null;
+}
+
+function deleteCheckpoint() {
+  if (fs.existsSync(CHECKPOINT_FILE)) {
+    fs.unlinkSync(CHECKPOINT_FILE);
+  }
+}
+
+/**
  * メイン処理
  */
 async function main() {
@@ -107,6 +148,7 @@ async function main() {
   let delay = DEFAULT_DELAY;
   let venueDelay = DEFAULT_VENUE_DELAY;
   let verbose = false;
+  let resumeCheckpoint = false;
 
   for (const arg of args) {
     if (arg.startsWith("--from=")) {
@@ -121,12 +163,29 @@ async function main() {
       venueDelay = parseInt(arg.slice(14), 10);
     } else if (arg === "--verbose" || arg === "-v") {
       verbose = true;
+    } else if (arg === "--resume") {
+      resumeCheckpoint = true;
+    }
+  }
+
+  // チェックポイント復帰
+  let checkpoint = null;
+  if (resumeCheckpoint) {
+    checkpoint = loadCheckpoint();
+    if (checkpoint) {
+      fromDate = checkpoint.fromDate;
+      toDate = checkpoint.toDate;
+      dryRun = checkpoint.dryRun;
+      console.log("🔄 チェックポイントから復帰します");
+    } else {
+      console.error("❌ チェックポイントが見つかりません");
+      process.exit(1);
     }
   }
 
   if (!fromDate || !toDate) {
     console.error(
-      "❌ 使用方法: node backfill-race-grades.js --from=YYYY-MM-DD --to=YYYY-MM-DD [--dry-run]",
+      "❌ 使用方法: node backfill-race-grades.js --from=YYYY-MM-DD --to=YYYY-MM-DD [--dry-run] [--resume]",
     );
     process.exit(1);
   }
@@ -176,12 +235,29 @@ async function main() {
   }
 
   const venueEntries = [...byVenue.entries()];
+  let startVenueIndex = 0;
 
-  for (let vi = 0; vi < venueEntries.length; vi++) {
+  // チェックポイントから再開する場合
+  if (checkpoint) {
+    startVenueIndex = venueEntries.findIndex(
+      ([code]) => code === checkpoint.lastVenueCode
+    );
+    if (startVenueIndex >= 0) {
+      successCount = checkpoint.successCount;
+      skipCount = checkpoint.skipCount;
+      updateRows = checkpoint.updateRows;
+      console.log(`   復帰: 成功${successCount}件 / スキップ${skipCount}件 / 更新${updateRows.length}件`);
+      startVenueIndex++; // 前回処理した会場の次から開始
+    } else {
+      startVenueIndex = 0;
+    }
+  }
+
+  for (let vi = startVenueIndex; vi < venueEntries.length; vi++) {
     const [venueCode, venueRaces] = venueEntries[vi];
     const venueName = VENUE_NAMES[venueCode] || `会場${venueCode}`;
 
-    if (vi > 0) {
+    if (vi > startVenueIndex) {
       await new Promise((resolve) => setTimeout(resolve, venueDelay));
     }
 
@@ -212,7 +288,23 @@ async function main() {
         }
       }
     }
+
+    // 各会場処理後にチェックポイント保存
+    saveCheckpoint({
+      fromDate,
+      toDate,
+      dryRun,
+      lastVenueCode: venueCode,
+      successCount,
+      skipCount,
+      updateRows,
+      processedVenues: vi + 1,
+      totalVenues: venueEntries.length
+    });
   }
+
+  // 完了時はチェックポイント削除
+  deleteCheckpoint();
 
   console.log();
   console.log(`=== 結果 ===`);
