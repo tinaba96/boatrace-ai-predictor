@@ -49,15 +49,12 @@ AIを活用したボートレース予想サービスです。選手の過去デ
 │                    GitHub Actions (自動化)                       │
 │                                                                  │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │ 毎朝 6:30 JST                                           │    │
+│  │ 毎時実行 (JST 3:00-22:00, 1時間間隔)                    │    │
 │  │ 1. scrape-to-json.js      → 公式サイトからレース取得    │    │
 │  │ 2. generate-predictions.js → AI予想生成（3モデル）      │    │
-│  │ 3. Supabaseへ保存                                       │    │
-│  ├─────────────────────────────────────────────────────────┤    │
-│  │ 毎晩 21:30 JST                                          │    │
-│  │ 1. scrape-results.js      → レース結果取得              │    │
-│  │ 2. calculate-accuracy.js  → 的中率・回収率計算          │    │
-│  │ 3. Supabaseへ保存                                       │    │
+│  │ 3. scrape-results.js      → レース結果取得              │    │
+│  │ 4. calculate-accuracy.js  → 的中率・回収率計算          │    │
+│  │ 5. Supabaseへ保存 → Vercelデプロイ                      │    │
 │  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -89,7 +86,7 @@ AIを活用したボートレース予想サービスです。選手の過去デ
 
 24会場それぞれの特徴を分析し、回収率100%超えの条件を統計的に発見。会場ごとに最適化されたルールを適用します。
 
-**実装済み会場**: 江戸川、浜名湖、蒲郡、三国、びわこ、丸亀、福岡（7会場・50ルール）
+**実装済み会場**: 江戸川、平和島、浜名湖、蒲郡、津、三国、びわこ、鳴門、丸亀、児島、宮島、徳山、芦屋、福岡、大村（15会場・34ルール）
 
 ### 4. 的中率統計
 
@@ -174,16 +171,16 @@ boatrace-ai-predictor/
 │       └── supabase.js
 │
 ├── data/
-│   ├── analysis/             # 分析結果JSON
-│   └── venue-params/         # 会場別パラメータ
+│   └── analysis/             # 分析結果JSON
 │
-├── content/
+├── public/
 │   └── blog/                 # ブログ記事 (Markdown)
 │
 ├── .github/
 │   └── workflows/
-│       ├── daily-update.yml  # 日次データ更新
-│       └── deploy.yml        # デプロイ
+│       ├── scrape.yml              # データ取得・予想生成（毎時実行）
+│       ├── update-google-sheets.yml # Google Sheets更新
+│       └── linear-sync.yml         # Linear連携
 │
 └── docs/                     # ドキュメント
     ├── db-migration/         # DBスキーマ・マイグレーション
@@ -194,7 +191,7 @@ boatrace-ai-predictor/
 
 ## データフロー
 
-### 朝の処理 (6:30 JST)
+### 朝の処理
 
 ```
 1. scrape-to-json.js
@@ -212,7 +209,7 @@ boatrace-ai-predictor/
    - predictions テーブル
 ```
 
-### 夜の処理 (21:30 JST)
+### 夜の処理
 
 ```
 1. scrape-results.js
