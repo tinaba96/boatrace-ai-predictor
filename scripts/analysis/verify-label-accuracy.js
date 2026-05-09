@@ -67,20 +67,16 @@ async function verifyLabelAccuracy(venueCode, daysBack = 90) {
     startDate.setDate(startDate.getDate() - daysBack);
     const formattedDate = startDate.toISOString().split("T")[0];
 
-    const { data: races, error } = await supabase
+    // racesテーブルからデータ取得
+    const { data: races, error: racesError } = await supabase
       .from("races")
-      .select(
-        `
-        race_id, race_date, venue_code, volatility_score,
-        race_results(rank1)
-      `,
-      )
+      .select("race_id, race_date, venue_code, volatility_score")
       .eq("venue_code", parseInt(venueCode, 10))
       .gte("race_date", formattedDate)
       .not("volatility_score", "is", null)
       .order("race_date", { ascending: false });
 
-    if (error) throw error;
+    if (racesError) throw racesError;
     if (!races || races.length === 0) {
       console.log(`❌ データなし`);
       return;
@@ -88,10 +84,25 @@ async function verifyLabelAccuracy(venueCode, daysBack = 90) {
 
     console.log(`📊 対象レース: ${races.length}件\n`);
 
+    // race_resultsテーブルからデータ取得
+    const raceIds = races.map((r) => r.race_id);
+    const { data: results, error: resultsError } = await supabase
+      .from("race_results")
+      .select("race_id, rank1")
+      .in("race_id", raceIds);
+
+    if (resultsError) throw resultsError;
+
+    // race_idをキーとしてマッピング
+    const resultMap = {};
+    if (results) {
+      results.forEach((r) => {
+        resultMap[r.race_id] = r.rank1;
+      });
+    }
+
     // 結果データがあるレースのみを集計（完了レース）
-    const completedRaces = races.filter(
-      (r) => r.race_results && r.race_results.length > 0,
-    );
+    const completedRaces = races.filter((r) => r.race_id in resultMap);
 
     if (completedRaces.length === 0) {
       console.log(`❌ 完了レースがありません（結果データなし）`);
@@ -113,8 +124,8 @@ async function verifyLabelAccuracy(venueCode, daysBack = 90) {
 
     for (const race of completedRaces) {
       const score = race.volatility_score;
-      const result = race.race_results[0];
-      const isWin = result.rank1 === 1; // 1コースが1着
+      const rank1 = resultMap[race.race_id];
+      const isWin = rank1 === 1; // 1コースが1着
 
       // 旧計算
       const oldLabel = getVolatilityLevelOld(score, venueCode);
