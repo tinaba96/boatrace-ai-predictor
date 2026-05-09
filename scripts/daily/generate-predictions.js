@@ -13,6 +13,7 @@ import { COURSE_DEFAULT_DISTRIBUTION, COURSE_DEFAULT_DEFENSE } from '../lib/winn
 import {
     VENUE_1COURSE_WIN_RATE, VENUE_1COURSE_AVG,
     VENUE_VOLATILITY_THRESHOLD, VENUE_VOLATILITY_THRESHOLD_DEFAULT,
+    getVolatilityThreshold,
 } from '../lib/venueParameters.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -181,9 +182,9 @@ function calculateVolatilityScore(racers, placeCd, turnPrediction, racerStatsLis
 }
 
 // イン崩れ指数のレベルを会場別閾値で判定
-// 根拠: VENUE_VOLATILITY_THRESHOLD（実績ベース、2026-04-30分析）
+// 根拠: 1コース勝率ベースの動的計算（2026-05-09分析）
 function getVolatilityLevel(score, venueCode) {
-    const highThr = VENUE_VOLATILITY_THRESHOLD[venueCode] ?? VENUE_VOLATILITY_THRESHOLD_DEFAULT;
+    const highThr = getVolatilityThreshold(venueCode);
     const lowThr  = Math.max(30, highThr - 15); // high閾値から15pt下がlow上限
     if (score < lowThr)  return 'low';    // 堅い
     if (score < highThr) return 'medium'; // 標準

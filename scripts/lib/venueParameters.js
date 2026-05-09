@@ -13,12 +13,32 @@ export const VENUE_1COURSE_WIN_RATE = {
 
 export const VENUE_1COURSE_AVG = 0.53;
 
+/**
+ * 会場別イン崩れ指数 high 閾値（動的計算）
+ * 根拠：1コース勝率の差分ベースで調整
+ * 公式：threshold = 60 + (全国平均 - 会場勝率) × 40
+ *
+ * 分析：verify-threshold-logic.js (2026-05-09)
+ * 相関係数: +0.194（正の相関あり）
+ * 平均乖離: 5.6pt
+ */
+export function getVolatilityThreshold(venueCode) {
+  const rate = VENUE_1COURSE_WIN_RATE[venueCode];
+  if (!rate) return VENUE_VOLATILITY_THRESHOLD_DEFAULT;
+
+  const baseThr = 60;
+  const weight = 40;
+  const calculated = baseThr + (VENUE_1COURSE_AVG - rate) * weight;
+
+  // 合理的な範囲に制限（45-75）
+  return Math.round(Math.max(45, Math.min(75, calculated)));
+}
+
+// 旧仕様: 参照用（レガシーコード対応）
 // prettier-ignore
-// 会場別イン崩れ指数 high 閾値（実績ベース: ベースライン差+10pt以上を達成できる最低スコア）
-// 根拠: 過去180日・20,154レースの会場別分析（redesign-volatility-by-venue.js / 2026-04-30）
 export const VENUE_VOLATILITY_THRESHOLD = {
   "01": 60,  // 桐生
-  "02": 55,  // 戸田（1コース勝率42%・全会場最低。平均スコア57.5を踏まえhigh比率を実態に合わせる）
+  "02": 55,  // 戸田
   "03": 70,  // 江戸川
   "04": 70,  // 平和島
   "05": 75,  // 多摩川
@@ -26,7 +46,7 @@ export const VENUE_VOLATILITY_THRESHOLD = {
   "07": 60,  // 蒲郡
   "08": 60,  // 常滑
   "09": 45,  // 津
-  "10": 60,  // 三国（1コース勝率49.5%。閾値70では低比率64.9%が「本命有利」になり実態と乖離）
+  "10": 60,  // 三国
   "11": 65,  // びわこ
   "12": 70,  // 住之江
   "13": 55,  // 尼崎
