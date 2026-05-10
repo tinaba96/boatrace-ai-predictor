@@ -84,12 +84,6 @@ function Header() {
             📊 成績
           </button>
           <button
-            className={`nav-btn ${activeTab === 'picks' ? 'active' : ''}`}
-            onClick={() => handleTabClick('picks')}
-          >
-            🎯 おすすめ
-          </button>
-          <button
             className="nav-btn menu-btn"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-label="その他のメニュー"
