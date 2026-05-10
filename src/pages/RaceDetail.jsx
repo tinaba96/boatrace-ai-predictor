@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import Header from '../components/Header'
@@ -7,7 +7,9 @@ import ModelComparisonTable from '../components/ModelComparisonTable'
 import {
   VenueSelector,
   RaceCard,
-  PredictionPanel
+  PredictionPanel,
+  RaceBottomNav,
+  RaceNavCard
 } from '../components/race'
 import { dataService } from '../services/dataService'
 import { STADIUM_NAMES } from '../constants'
@@ -156,7 +158,7 @@ function RaceDetail() {
   }
 
   // レース分析
-  const analyzeRace = (race) => {
+  const analyzeRace = useCallback((race) => {
     setSelectedRace(race)
     setIsAnalyzing(true)
     setPrediction(null)
@@ -168,7 +170,16 @@ function RaceDetail() {
         predictionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }, 100)
     }, 500)
-  }
+  }, [])
+
+  const handleVenueChange = useCallback((placeCd) => {
+    setSelectedVenueId(placeCd)
+    // 新会場の最初のレースを自動選択
+    const venue = venuesData.find(v => v.placeCd === placeCd)
+    if (venue?.races?.length > 0) {
+      analyzeRace(venue.races[0])
+    }
+  }, [venuesData, analyzeRace])
 
   const processRacePrediction = (race) => {
     const racePrediction = race.rawData
@@ -411,10 +422,32 @@ function RaceDetail() {
                   />
                 </section>
               )}
+
+              {selectedRace && (
+                <RaceNavCard
+                  races={races}
+                  selectedRace={selectedRace}
+                  onNavigate={analyzeRace}
+                  venues={venuesData.map(v => ({ placeCd: v.placeCd, placeName: v.placeName }))}
+                  selectedVenueId={selectedVenueId}
+                  onVenueChange={handleVenueChange}
+                />
+              )}
             </>
           )}
         </div>
       </div>
+
+      {selectedRace && (
+        <RaceBottomNav
+          races={races}
+          selectedRace={selectedRace}
+          onNavigate={analyzeRace}
+          venues={venuesData.map(v => ({ placeCd: v.placeCd, placeName: v.placeName }))}
+          selectedVenueId={selectedVenueId}
+          onVenueChange={handleVenueChange}
+        />
+      )}
     </>
   )
 }

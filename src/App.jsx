@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import './App.css'
 import Header from './components/Header'
@@ -11,7 +11,7 @@ import TodaysPicks from './components/TodaysPicks'
 import UpdateStatus from './components/UpdateStatus'
 import { getFeaturedPosts, getLatestPosts } from './data/blogPosts'
 import { dataService } from './services/dataService'
-import { PredictionPanel } from './components/race'
+import { PredictionPanel, RaceBottomNav, RaceNavCard } from './components/race'
 import { STADIUM_NAMES, WEEKDAYS } from './constants'
 import { GRADE_CONFIG } from './constants/gradeConfig'
 import { TECHNIQUE_NAMES } from './utils/turnPrediction'
@@ -456,6 +456,28 @@ function App({ tab = 'races' }) {
         }
     }
 
+    const handleNavigate = useCallback((race) => {
+        analyzeRace(race)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+    }, [analyzeRace])
+
+    const handleVenueChange = useCallback((placeCd) => {
+        setSelectedVenueId(placeCd)
+        // 新会場の最初のレースを自動選択
+        const venueData = allVenuesData.find(v => v.placeCd === placeCd)
+        if (venueData?.races?.length > 0) {
+            const firstRace = venueData.races[0]
+            const formattedRace = {
+                id: `${firstRace.date}-${String(placeCd).padStart(2, '0')}-${String(firstRace.raceNo).padStart(2, '0')}`,
+                venue: venueData.placeName,
+                raceNumber: firstRace.raceNo,
+                startTime: firstRace.startTime || '未定',
+                rawData: firstRace
+            }
+            analyzeRace(formattedRace)
+        }
+    }, [allVenuesData, analyzeRace])
+
     const generatePlayers = (race) => {
         // 実データから選手情報を取得
         // raceはフォーマット済みオブジェクトで、実データはrawDataに格納されている
@@ -748,6 +770,17 @@ function App({ tab = 'races' }) {
                                 </section>
                             )}
 
+                            {selectedRace && (
+                                <RaceNavCard
+                                    races={races}
+                                    selectedRace={selectedRace}
+                                    onNavigate={handleNavigate}
+                                    venues={allVenuesData.map(v => ({ placeCd: v.placeCd, placeName: v.placeName }))}
+                                    selectedVenueId={selectedVenueId}
+                                    onVenueChange={handleVenueChange}
+                                />
+                            )}
+
                             {/* ブログ記事セクション */}
                             <section className="blog-preview-section">
                                 <h2>📝 ボートレース攻略ブログ</h2>
@@ -808,6 +841,17 @@ function App({ tab = 'races' }) {
                 </div>
                 <p>&copy; 2025 BoatAI - All Rights Reserved</p>
             </footer>
+
+            {selectedRace && (
+                <RaceBottomNav
+                    races={races}
+                    selectedRace={selectedRace}
+                    onNavigate={handleNavigate}
+                    venues={allVenuesData.map(v => ({ placeCd: v.placeCd, placeName: v.placeName }))}
+                    selectedVenueId={selectedVenueId}
+                    onVenueChange={handleVenueChange}
+                />
+            )}
         </div>
     )
 }
