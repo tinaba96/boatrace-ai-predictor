@@ -3,6 +3,7 @@
  * App.jsx と RaceDetail.jsx で共通利用
  */
 import { Link } from "react-router-dom";
+import { useRaceData } from "../../hooks/useRaceData";
 import { motion, AnimatePresence } from "framer-motion";
 import { SocialShareButtons } from "../SocialShareButtons";
 import { generatePredictionShareText } from "../../utils/share";
@@ -13,7 +14,7 @@ import ModelSwitcher from "./ModelSwitcher";
 import FirstMarkAnimation from "./FirstMarkAnimation";
 import PredictionFlash from "./PredictionFlash";
 import AttackDefenseTable from "./AttackDefenseTable";
-import RaceResult from "./RaceResult";
+import OutcomePatternPreview from "./OutcomePatternPreview";
 import PredictionTable from "./PredictionTable";
 import PredictionLoadingOverlay from "./PredictionLoadingOverlay";
 import BettingValueSection from "./BettingValueSection";
@@ -36,9 +37,14 @@ function PredictionPanel({
 }) {
   if (!prediction && !isAnalyzing) return null;
 
-  // 会場コード（App.jsxはplaceCd、RaceDetailはvenueCode）
-  const venueCode =
-    selectedRace?.rawData?.venueCode || selectedRace?.rawData?.placeCd;
+  // null check を一箇所に集約：ここで selectedRace の存在を確認
+  // 以降のコードでは selectedRace が null でないことを前提とする
+  if (!selectedRace) return null;
+
+  // 会場コード・会場名を useRaceData で一元的に抽出
+  // （selectedRace は必ず存在するため、フック側で計算のみに専念）
+  const { venueCode, venueName } = useRaceData(selectedRace);
+
   // 日付（明示的に渡されるか、raceIdから抽出）
   const raceDate =
     date ||
@@ -201,8 +207,29 @@ function PredictionPanel({
             </motion.div>
           )}
 
+          {/* 出現パターン */}
+          {venueCode && venueName && (
+            <motion.div {...staggerItem(0.4)}>
+              <OutcomePatternPreview
+                venueCode={venueCode}
+                venueName={venueName}
+                prediction={prediction}
+                selectedModel={selectedModel}
+              />
+            </motion.div>
+          )}
+
+          {/* AIデータ予想テーブル */}
+          <motion.div {...staggerItem(0.5)}>
+            <PredictionTable
+              prediction={prediction}
+              showExhibition={showExhibition}
+              volatility={volatility}
+            />
+          </motion.div>
+
           {/* SNSシェアボタン */}
-          <motion.div className="social-share-wrapper" {...staggerItem(0.5)}>
+          <motion.div className="social-share-wrapper" {...staggerItem(0.6)}>
             <SocialShareButtons
               shareUrl="https://www.boat-ai.jp/"
               title={generatePredictionShareText(
@@ -222,23 +249,9 @@ function PredictionPanel({
             />
           </motion.div>
 
-          {/* AIデータ予想テーブル */}
-          <motion.div {...staggerItem(0.6)}>
-            <PredictionTable
-              prediction={prediction}
-              showExhibition={showExhibition}
-              volatility={volatility}
-            />
-          </motion.div>
-
-          {/* レース結果 */}
-          <motion.div {...staggerItem(0.7)}>
-            <RaceResult prediction={prediction} volatility={volatility} />
-          </motion.div>
-
           {/* 会場攻略ガイドリンク */}
           {venueCode && getVenueGuidePath(venueCode) && (
-            <motion.div {...staggerItem(0.9)}>
+            <motion.div {...staggerItem(0.7)}>
               <div className="venue-guide-link">
                 <Link to={getVenueGuidePath(venueCode)}>
                   <span className="venue-guide-icon">&#x1F4D6;</span>
