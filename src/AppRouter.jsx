@@ -15,6 +15,7 @@ import OutcomeDistribution from './pages/OutcomeDistribution';
 import ContentHub from './pages/ContentHub';
 import AdminRules from './pages/admin/AdminRules';
 import ResponsibleGambling from './pages/ResponsibleGambling';
+import Poirot from './pages/Poirot';
 import CookieConsent from './components/CookieConsent';
 
 // 旧ハッシュURLからのリダイレクトを処理するコンポーネント
@@ -87,6 +88,9 @@ export default function AppRouter() {
 
         {/* Admin Pages (Hidden) */}
         <Route path="/admin/rules" element={<AdminRules />} />
+
+        {/* Poirot 予想（α版・動線非表示・URL直アクセス専用） */}
+        <Route path="/poirot" element={<Poirot />} />
 
         {/* Fallback: 不明なパスはトップへ */}
         <Route path="*" element={<Navigate to="/" replace />} />
