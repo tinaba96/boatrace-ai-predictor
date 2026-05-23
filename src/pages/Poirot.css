@@ -1,0 +1,120 @@
+.poirot-page {
+  min-height: 100vh;
+  background: var(--color-bg, #f5f7fa);
+  padding: 2rem 1rem 4rem;
+}
+
+.poirot-container {
+  max-width: 880px;
+  margin: 0 auto;
+}
+
+.poirot-header {
+  margin-bottom: 2rem;
+}
+
+.poirot-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-text, #1a1a1a);
+  margin: 0 0 0.75rem;
+}
+
+.poirot-alpha-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--color-accent, #ff6b35);
+  color: #fff;
+  letter-spacing: 0.05em;
+}
+
+.poirot-lead {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--color-text-muted, #555);
+  margin: 0;
+}
+
+.poirot-notice {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--color-border, #e5e7eb);
+}
+
+.poirot-notice h2 {
+  font-size: 1.125rem;
+  margin: 0 0 0.75rem;
+  color: var(--color-text, #1a1a1a);
+}
+
+.poirot-notice ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--color-text-muted, #555);
+  line-height: 1.8;
+}
+
+.poirot-content {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid var(--color-border, #e5e7eb);
+}
+
+.poirot-content h2 {
+  font-size: 1.25rem;
+  margin: 0 0 1rem;
+  color: var(--color-text, #1a1a1a);
+}
+
+.poirot-placeholder {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--color-text-muted, #6b7280);
+  background: #fafafa;
+  border: 1px dashed var(--color-border, #d1d5db);
+  border-radius: 8px;
+}
+
+.poirot-placeholder p {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.poirot-placeholder-sub {
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #9ca3af);
+}
+
+@media (max-width: 480px) {
+  .poirot-page {
+    padding: 1rem 0.75rem 2rem;
+  }
+
+  .poirot-title {
+    font-size: 1.5rem;
+  }
+
+  .poirot-lead {
+    font-size: 0.9375rem;
+  }
+
+  .poirot-notice,
+  .poirot-content {
+    padding: 1rem;
+  }
+
+  .poirot-placeholder {
+    padding: 1.5rem 0.75rem;
+  }
+}
