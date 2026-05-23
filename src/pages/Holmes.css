@@ -1,0 +1,335 @@
+.holmes-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--color-gray-50);
+}
+
+.holmes-content {
+  flex: 1;
+  padding: var(--spacing-8) 0;
+  background: var(--color-gray-50);
+}
+
+.holmes-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-4);
+}
+
+/* ===== Hero ===== */
+.holmes-hero {
+  text-align: center;
+  margin-bottom: var(--spacing-8);
+}
+
+.holmes-alpha-banner {
+  display: inline-block;
+  padding: var(--spacing-2) var(--spacing-4);
+  background: var(--color-warning);
+  color: var(--color-white);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--spacing-4);
+  letter-spacing: 0.04em;
+}
+
+.holmes-title {
+  font-size: var(--font-size-7xl);
+  margin: 0 0 var(--spacing-2) 0;
+  color: var(--color-gray-900);
+  letter-spacing: 0.02em;
+}
+
+.holmes-subtitle {
+  font-size: var(--font-size-lg);
+  color: var(--color-gray-600);
+  margin: 0;
+}
+
+/* ===== Tabs ===== */
+.holmes-tabs {
+  display: flex;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-6);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.holmes-tab {
+  flex: 1;
+  min-width: 140px;
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--color-white);
+  border: var(--border-width-2) solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-700);
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+
+.holmes-tab:hover:not(.active) {
+  border-color: var(--color-gray-400);
+  background: var(--color-gray-100);
+}
+
+.holmes-tab.active {
+  box-shadow: var(--shadow-md);
+}
+
+/* ===== Tab panel / detective card ===== */
+.holmes-tab-panel {
+  margin-bottom: var(--spacing-12);
+}
+
+.holmes-detective-card {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-6);
+  box-shadow: var(--shadow-base);
+}
+
+.holmes-detective-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
+  padding-bottom: var(--spacing-4);
+  border-bottom: var(--border-width-1) solid var(--color-gray-200);
+  flex-wrap: wrap;
+}
+
+.holmes-detective-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-circle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-5xl);
+  flex-shrink: 0;
+  box-shadow: var(--shadow-md);
+}
+
+.holmes-detective-meta {
+  flex: 1;
+  min-width: 200px;
+}
+
+.holmes-detective-name {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-gray-900);
+  line-height: var(--line-height-tight);
+}
+
+.holmes-detective-title {
+  font-size: var(--font-size-base);
+  color: var(--color-gray-600);
+  margin-top: var(--spacing-1);
+}
+
+.holmes-detective-tech {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-500);
+  margin-top: var(--spacing-2);
+}
+
+.holmes-detective-tech code {
+  background: var(--color-gray-100);
+  padding: 2px var(--spacing-2);
+  border-radius: var(--radius-sm);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--color-gray-800);
+}
+
+.holmes-status-badge {
+  padding: var(--spacing-1) var(--spacing-3);
+  background: var(--color-warning-light);
+  color: var(--color-white);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.holmes-section {
+  margin-top: var(--spacing-6);
+}
+
+.holmes-section h3 {
+  font-size: var(--font-size-xl);
+  color: var(--color-gray-900);
+  margin: 0 0 var(--spacing-3) 0;
+}
+
+.holmes-concept-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.holmes-concept-list li {
+  position: relative;
+  padding-left: var(--spacing-6);
+  color: var(--color-gray-700);
+  line-height: var(--line-height-relaxed);
+  font-size: var(--font-size-base);
+}
+
+.holmes-concept-list li::before {
+  content: "▸";
+  position: absolute;
+  left: var(--spacing-2);
+  color: var(--color-primary-500);
+  font-weight: var(--font-weight-bold);
+}
+
+/* ===== Mock prediction ===== */
+.holmes-mock-prediction {
+  background: var(--color-gray-50);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-4);
+  border: var(--border-width-1) dashed var(--color-gray-300);
+}
+
+.holmes-mock-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-2) 0;
+  border-bottom: var(--border-width-1) solid var(--color-gray-200);
+}
+
+.holmes-mock-row:last-child {
+  border-bottom: none;
+}
+
+.holmes-mock-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-500);
+  font-weight: var(--font-weight-medium);
+}
+
+.holmes-mock-value {
+  font-size: var(--font-size-base);
+  color: var(--color-gray-800);
+  font-weight: var(--font-weight-semibold);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.holmes-mock-pick {
+  color: var(--color-primary-600);
+  font-size: var(--font-size-xl);
+}
+
+.holmes-mock-note {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  margin-top: var(--spacing-2);
+  font-style: italic;
+}
+
+/* ===== Info section ===== */
+.holmes-info {
+  margin-top: var(--spacing-12);
+}
+
+.holmes-info h2 {
+  font-size: var(--font-size-4xl);
+  color: var(--color-gray-900);
+  margin-bottom: var(--spacing-6);
+  text-align: center;
+}
+
+.holmes-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--spacing-4);
+}
+
+.holmes-info-card {
+  background: var(--color-white);
+  padding: var(--spacing-5);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  border-left: var(--border-width-4) solid var(--color-primary-500);
+}
+
+.holmes-info-card h3 {
+  margin: 0 0 var(--spacing-3) 0;
+  font-size: var(--font-size-xl);
+  color: var(--color-gray-900);
+}
+
+.holmes-info-card p {
+  margin: 0;
+  color: var(--color-gray-600);
+  line-height: var(--line-height-relaxed);
+  font-size: var(--font-size-base);
+}
+
+/* ===== Footer ===== */
+.holmes-footer {
+  text-align: center;
+  padding: var(--spacing-6) var(--spacing-4);
+  color: var(--color-gray-500);
+  font-size: var(--font-size-sm);
+  border-top: var(--border-width-1) solid var(--color-gray-200);
+  background: var(--color-white);
+}
+
+/* ===== Mobile ===== */
+@media (max-width: 480px) {
+  .holmes-content {
+    padding: var(--spacing-4) 0;
+  }
+
+  .holmes-container {
+    padding: 0 var(--spacing-3);
+  }
+
+  .holmes-title {
+    font-size: var(--font-size-5xl);
+  }
+
+  .holmes-subtitle {
+    font-size: var(--font-size-base);
+  }
+
+  .holmes-tabs {
+    gap: var(--spacing-2);
+  }
+
+  .holmes-tab {
+    min-width: 0;
+    flex: 1 1 calc(50% - var(--spacing-1));
+    padding: var(--spacing-2) var(--spacing-3);
+    font-size: var(--font-size-sm);
+  }
+
+  .holmes-detective-card {
+    padding: var(--spacing-4);
+  }
+
+  .holmes-detective-icon {
+    width: 52px;
+    height: 52px;
+    font-size: var(--font-size-4xl);
+  }
+
+  .holmes-detective-name {
+    font-size: var(--font-size-2xl);
+  }
+
+  .holmes-info h2 {
+    font-size: var(--font-size-3xl);
+  }
+}
