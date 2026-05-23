@@ -12,6 +12,7 @@ import RaceDetail from './pages/RaceDetail';
 import Profile from './pages/Profile';
 import AccuracyHistory from './pages/AccuracyHistory';
 import OutcomeDistribution from './pages/OutcomeDistribution';
+import Holmes from './pages/Holmes';
 import ContentHub from './pages/ContentHub';
 import AdminRules from './pages/admin/AdminRules';
 import ResponsibleGambling from './pages/ResponsibleGambling';
@@ -87,6 +88,9 @@ export default function AppRouter() {
 
         {/* Admin Pages (Hidden) */}
         <Route path="/admin/rules" element={<AdminRules />} />
+
+        {/* α版・動線非公開ページ */}
+        <Route path="/holmes" element={<Holmes />} />
 
         {/* Fallback: 不明なパスはトップへ */}
         <Route path="*" element={<Navigate to="/" replace />} />
