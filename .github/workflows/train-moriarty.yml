@@ -1,0 +1,31 @@
+name: Train Moriarty Calibration
+
+on:
+  schedule:
+    - cron: '0 17 * * 6'
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Train Moriarty calibration
+        run: node scripts/analysis/train-moriarty-calibration.js
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      - name: Commit and push if changed
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/moriarty/calibrators.json
+          git diff --staged --quiet || git commit -m "chore: update moriarty calibrators [automated]"
+          git push
