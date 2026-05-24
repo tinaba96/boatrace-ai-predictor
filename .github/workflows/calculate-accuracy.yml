@@ -35,3 +35,10 @@ jobs:
           TZ: 'Asia/Tokyo'
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+      - name: Update race history cache
+        run: node scripts/daily/update-race-history-cache.js
+        env:
+          TZ: 'Asia/Tokyo'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}

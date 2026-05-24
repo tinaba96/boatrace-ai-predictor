@@ -1,0 +1,66 @@
+{
+  "venue_code": 1,
+  "venue_name": "桐生",
+  "by_approach": {
+    "all": {
+      "total_races": 344,
+      "hit_count": 344,
+      "hit_rate": 1,
+      "recovery_rate": 0.5295,
+      "points_per_race": 19.78,
+      "avg_investment": 1978.5,
+      "total_investment": 680600,
+      "total_payout": 360370,
+      "coverage_rate": 1,
+      "ai_hit_count": 31,
+      "ai_hit_rate": 0.0901,
+      "ai_recovery_rate": 0.4497,
+      "lift_vs_ai_only": 0.0798
+    },
+    "3pct": {
+      "total_races": 344,
+      "hit_count": 132,
+      "hit_rate": 0.3837,
+      "recovery_rate": 0.6375,
+      "points_per_race": 3.96,
+      "avg_investment": 395.9,
+      "total_investment": 136200,
+      "total_payout": 86830,
+      "coverage_rate": 0.511,
+      "ai_hit_count": 31,
+      "ai_hit_rate": 0.0901,
+      "ai_recovery_rate": 0.4497,
+      "lift_vs_ai_only": 0.1878
+    },
+    "5pct": {
+      "total_races": 344,
+      "hit_count": 100,
+      "hit_rate": 0.2907,
+      "recovery_rate": 0.6336,
+      "points_per_race": 2.64,
+      "avg_investment": 264,
+      "total_investment": 90800,
+      "total_payout": 57530,
+      "coverage_rate": 0.3712,
+      "ai_hit_count": 31,
+      "ai_hit_rate": 0.0901,
+      "ai_recovery_rate": 0.4497,
+      "lift_vs_ai_only": 0.1839
+    },
+    "10pct": {
+      "total_races": 344,
+      "hit_count": 0,
+      "hit_rate": 0,
+      "recovery_rate": 0,
+      "points_per_race": 0,
+      "avg_investment": 0,
+      "total_investment": 0,
+      "total_payout": 0,
+      "coverage_rate": 0,
+      "ai_hit_count": 31,
+      "ai_hit_rate": 0.0901,
+      "ai_recovery_rate": 0.4497,
+      "lift_vs_ai_only": -0.4497
+    }
+  }
+}

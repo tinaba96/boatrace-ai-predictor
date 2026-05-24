@@ -1,0 +1,73 @@
+{
+  "generated_at": "2026-05-15T12:06:45.604Z",
+  "model_id": "safeBet",
+  "config": {
+    "from_date": "2025-12-02",
+    "to_date": "2026-01-09",
+    "exclude_bottom_requested": 2,
+    "exclusion_levels": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "by_exclusion": {
+    "0": {
+      "total_races": 1380,
+      "hit_count": 1333,
+      "hit_rate": 0.9659,
+      "recovery_rate": 0.4884,
+      "points_per_race": 18.98,
+      "avg_investment": 1898.3,
+      "total_investment": 2619600,
+      "total_payout": 1279500,
+      "ai_hit_count": 148,
+      "ai_hit_rate": 0.1072,
+      "ai_recovery_rate": 0.5062,
+      "lift_vs_ai_only": -0.0178
+    },
+    "1": {
+      "total_races": 1380,
+      "hit_count": 1026,
+      "hit_rate": 0.7435,
+      "recovery_rate": 0.5051,
+      "points_per_race": 11.45,
+      "avg_investment": 1145.1,
+      "total_investment": 1580300,
+      "total_payout": 798210,
+      "ai_hit_count": 148,
+      "ai_hit_rate": 0.1072,
+      "ai_recovery_rate": 0.5062,
+      "lift_vs_ai_only": -0.0011
+    },
+    "2": {
+      "total_races": 1380,
+      "hit_count": 642,
+      "hit_rate": 0.4652,
+      "recovery_rate": 0.5189,
+      "points_per_race": 5.74,
+      "avg_investment": 574.5,
+      "total_investment": 792800,
+      "total_payout": 411420,
+      "ai_hit_count": 148,
+      "ai_hit_rate": 0.1072,
+      "ai_recovery_rate": 0.5062,
+      "lift_vs_ai_only": 0.0127
+    },
+    "3": {
+      "total_races": 1380,
+      "hit_count": 276,
+      "hit_rate": 0.2,
+      "recovery_rate": 0.4984,
+      "points_per_race": 1.93,
+      "avg_investment": 193,
+      "total_investment": 266300,
+      "total_payout": 132720,
+      "ai_hit_count": 148,
+      "ai_hit_rate": 0.1072,
+      "ai_recovery_rate": 0.5062,
+      "lift_vs_ai_only": -0.0078
+    }
+  }
+}

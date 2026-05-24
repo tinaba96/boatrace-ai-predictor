@@ -1,0 +1,129 @@
+{
+  "audit_date": "2026-05-17",
+  "audit_scope": "scripts/lib/turnPrediction.js (predictFirstMarkV2 v5) + scripts/daily/generate-predictions.js",
+  "data_window": "2026-04-01 〜 2026-05-17",
+  "sample_size": {
+    "predictions_with_turnprediction": 6000,
+    "predictions_matched_to_results": 5868,
+    "race_results_analyzed": 6882
+  },
+
+  "model_logic": {
+    "winner_course_decision": "winnerCourse は patterns[].winnerCourse として保持される。各コース×決まり手の rawProb = courseWinRate(会場補正済み) × techniqueRate(ベイズ縮小) に、ST優位性・モーターZ・選手力Z・upsetFactor・defense補正を乗算し、softmax温度1.5で正規化したもの。patterns はこの確率降順で上位3件。",
+    "current_factors": [
+      "コース別基本勝率 COURSE_BASE_WIN_RATE（1コース55%）を会場別1コース勝率 VENUE_1COURSE_WIN_RATE で補正（v5）",
+      "決まり手率 techniqueRate（選手の attack_distribution をベイズ縮小、courseRaceCounts/20 で blend）",
+      "予測ST = exhibitionST×0.55 + avgST×0.35 + DEFAULT_ST×0.1（展示ST・平均STは反映済み）",
+      "ST優位性マトリクス stAdvantage（sigmoid、st_stddev による信頼度減衰あり）",
+      "モーター2連率 motor2Rate の Zスコア（決まり手別ウェイト MOTOR_WEIGHT、±2.0クリップ）",
+      "選手力スコア（global_win_rate 0.35 / local_win_rate 0.25 / global_2rate 0.25 / grade 0.15）の Zスコア",
+      "1コースの被攻撃分布 defenseDistribution による非逃げ defense 補正",
+      "upsetFactor（会場1コース勝率・風速・波高から算出、逃げ最大25%抑制／非逃げ最大15%押上げ）",
+      "展示タイム exhibitionTime は boatStrengths（2-3着予測用補助指標）にのみ反映、4艇以上有効時 0.2 ウェイト"
+    ],
+    "missing_or_misweighted_factors": [
+      {
+        "issue": "patterns[0] が 6000件すべて nige / winnerCourse=1 で固定化",
+        "detail": "モデル構造上、1コースの逃げ確率が常に最大になり、patterns[0]（safeBet にマッピング）の technique 多様性がゼロ。実データでも patterns[1].winnerCourse の83%が2、patterns[2] も2-3コース中心で、非1コース勝利の予測が patterns[1]/[2] に押し込まれている。",
+        "severity": "high"
+      },
+      {
+        "issue": "逃げ確率の系統的な過小評価（キャリブレーションずれ）",
+        "detail": "distribution.nige の平均は40.5%だが実際の逃げ率は53.1%。bin別でも bin0.2→実39.8%, bin0.3→実48.8%, bin0.4→実57.3%, bin0.5→実62.1% と全帯域で予測が約10-13pt低い。v5 の SOFTMAX_TEMP=1.5 と makuri/makurizashi フロアが逃げを相対的に押し下げ過ぎている疑い。",
+        "severity": "high"
+      },
+      {
+        "issue": "展示タイムが winnerCourse 確率計算に未使用",
+        "detail": "exhibitionTime は boatStrengths（2-3着補助）にしか入らず、Step3 の rawProb 計算には一切寄与しない。検証では非逃げレースで2-6号艇中の最速展示タイム艇が30.0%の確率で勝者（ランダム期待値20%を10pt上回る）= 有効な条件付きシグナルが捨てられている。",
+        "severity": "medium"
+      },
+      {
+        "issue": "気象（風速）抑制が実測より過大",
+        "detail": "upsetFactor は風速7m以上で逃げを最大25%抑制するが、実データの逃げ率は風速0-2m=52.3%→7m+=47.5%でわずか4.8ptしか下がらない。波高も同様に過大な可能性。upsetFactor の係数が実測効果量に対して大きすぎる。",
+        "severity": "medium"
+      },
+      {
+        "issue": "枠番=進入コース固定（前付け・コース取り未反映）",
+        "detail": "generate-predictions.js で course=racer.lane 固定。実際の進入コース変動（イン屋の前付け等）が未反映。course_entry_tendency が racer_aggregated_stats に存在するが未使用。",
+        "severity": "low"
+      },
+      {
+        "issue": "flying_rate（事故率/F持ち）未使用",
+        "detail": "racer_aggregated_stats.flying_rate が存在するがモデルに未投入。F持ち選手はスタートを慎重にする傾向があり ST 予測に有用な可能性。",
+        "severity": "low"
+      }
+    ],
+    "pattern_mapping_note": "generate-predictions.js: patterns[0]→safeBet, [1]→standard, [2]→upsetFocus。patterns[0] が常に nige/1コースのため safeBet は事実上「1号艇本命固定」モデルになっている。"
+  },
+
+  "accuracy_validation": {
+    "patterns0_winnercourse_hit": "55.2%",
+    "patterns0_course_and_technique_hit": "52.4%",
+    "any_of_3_patterns_winnercourse_hit": "78.1%",
+    "any_of_3_patterns_course_and_technique_hit": "65.4%",
+    "distribution_argmax_technique_hit": "52.0%",
+    "note": "patterns[0] 単独の的中率55.2%は実際の1コース勝率(54.4%)とほぼ同等 = モデルが1コース基本勝率を超える付加価値をほとんど生んでいない。一方 any-of-3 は78.1%まで上がるため、上位3パターンを束ねた利用には価値がある。"
+  },
+
+  "calibration_report": {
+    "source": "scripts/analysis/calibration-report.js --weeks=6 --model=standard",
+    "window": "2026-04-06 〜 2026-05-17（6283レース）",
+    "overall_brier_score": 0.6832,
+    "brier_trend": "横ばい〜悪化（傾き +0.008208, R²=0.462）。W15:0.6656 → W20:0.6982（+4.9%）",
+    "reliable_bands": ["0-10%", "10-20%", "20-30%（乖離<5pt）"],
+    "needs_correction_bands": ["30-40%（乖離12.1pt）", "40-50%（乖離14.0pt）", "50-60%（乖離10.9pt）", "60-70%（乖離7.1pt）"],
+    "nige_calibration": "逃げは全帯域で過小評価。20-30%帯→実41.7%(乖離15.1pt)、30-40%帯→実50.0%(14.7pt)、40-50%帯→実58.0%(14.1pt)、50-60%帯→実64.3%(10.9pt)",
+    "nige_underestimation_worsening": "逃げ過小評価は週次で悪化中。0-40%帯の(予測-実現)は W15 -6.6pt → W20 -18.8pt、40-55%帯も W15 -8.0pt → W20 -19.8pt。データ蓄積で改善せず、むしろ拡大している。",
+    "other_techniques": "差し・まくり・抜きは高確率帯で逆に過信（抜き20-30%帯は実5.4%で乖離16.3pt、まくり差し20-30%帯は実12.9%で乖離8.8pt）。低確率帯（<15%）は概ね良好。",
+    "interpretation": "逃げの系統的過小評価が確定。さらに重要なのは、データが増えても自己修正されず悪化している点 — これは確率正規化（SOFTMAX_TEMP・フロア）のパラメータ固定が原因で、再キャリブレーションが必須であることを示す。"
+  },
+
+  "external_factors": {
+    "available_data": [
+      "exhibition_data.exhibition_time（展示タイム）: 2026-04以降カバレッジ 38755/39944 = 97%",
+      "exhibition_data.start_timing（展示ST）: カバレッジ 39942/39944 = 99.9%",
+      "race_conditions.wind_speed（風速）: カバレッジ 6715/7044 = 95%",
+      "race_conditions.wave_height（波高）: カバレッジ 6715/7044 = 95%",
+      "race_conditions.weather / wind_direction / temperature / water_temperature: 取得済み",
+      "race_results.winning_technique（実績決まり手）: 利用可能",
+      "racer_aggregated_stats.avg_st / avg_st_last_30 / st_stddev / flying_rate / motor_st_data / course_entry_tendency: 全件 avg_st あり（1622件）"
+    ],
+    "currently_used": [
+      "exhibition_data.start_timing → 予測ST計算に反映（ウェイト0.55）",
+      "racer_aggregated_stats.avg_st → 予測ST計算に反映（ウェイト0.35）",
+      "racer_aggregated_stats.st_stddev → ST信頼度の減衰に反映",
+      "racer_aggregated_stats.attack_distribution / defense_distribution → 決まり手率・defense補正に反映",
+      "race_conditions.wind_speed / wave_height → upsetFactor 経由で反映（ただし過大な抑制係数）",
+      "exhibition_data.exhibition_time → boatStrengths（2-3着補助）のみ。winnerCourse 確率には未使用"
+    ],
+    "improvement_opportunities": [
+      {
+        "factor": "展示タイム exhibition_time の winnerCourse 確率への統合",
+        "evidence": "非逃げレースで2-6号艇中最速展示タイム艇が30.0%勝利（ランダム20%比 +10pt）。Step3 の rawProb に展示タイムZスコア補正を加えれば非逃げの勝者特定精度が向上する見込み。",
+        "priority": "high"
+      },
+      {
+        "factor": "逃げ確率のキャリブレーション補正",
+        "evidence": "calibration-report.js（6283レース）で確定: 逃げは全確率帯で過小評価（30-40%帯→実50.0%, 40-50%帯→実58.0%, 乖離14pt前後）。さらに週次で悪化中（0-40%帯の予測-実現が W15 -6.6pt → W20 -18.8pt）。SOFTMAX_TEMP の再調整、または逃げ rawProb の calibration スケーリング（実測へ寄せる）が必要。データ蓄積では自己修正されないためパラメータ修正が必須。",
+        "priority": "high"
+      },
+      {
+        "factor": "風速・波高による upsetFactor 抑制係数の縮小",
+        "evidence": "風速7m+でも逃げ率47.5%（0-2m比 -4.8pt のみ）。現状の最大25%抑制は実測効果の約5倍。upsetFactor の windSpeed/waveHeight 係数を実測効果量に合わせて1/3〜1/5に縮小すべき。",
+        "priority": "medium"
+      },
+      {
+        "factor": "flying_rate（F持ち）の ST 予測への組込み",
+        "evidence": "未使用のF持ちデータが存在。F持ち選手のST慎重化を予測STに加味すれば、特に荒れ予測の精度に寄与しうる。要追加検証。",
+        "priority": "low"
+      },
+      {
+        "factor": "course_entry_tendency による進入コース推定",
+        "evidence": "枠番=進入コース固定の解消。前付け傾向データが存在するが未使用。インが強い選手のコース取りを反映すれば winnerCourse 精度が向上しうる。",
+        "priority": "low"
+      }
+    ]
+  },
+
+  "summary": "モデルは展示ST・平均ST・モーター・選手力・会場補正・気象を取り込んでおり構造は妥当だが、(1)patterns[0] が常に nige/1コースで多様性ゼロ、(2)逃げ確率を全帯域で約10-15pt過小評価（calibration-report.js 6283レースで確定、かつ週次で悪化中）、(3)展示タイムが勝者確率計算に未使用（条件付きで+10ptの予測力あり）、(4)気象抑制係数が実測の約5倍、の4点が主要な改善余地。patterns[0]単独の的中率(55.2%)は素の1コース勝率(54.4%)と同等で付加価値が乏しいが、any-of-3では78.1%に達する。逃げ過小評価はデータ蓄積で自己修正されず悪化しているため、確率正規化パラメータ（SOFTMAX_TEMP・フロア）の再キャリブレーションが最優先施策。"
+}

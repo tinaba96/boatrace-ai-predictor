@@ -1,0 +1,195 @@
+{
+  "analysis_date": "2026-05-22",
+  "period": {
+    "start": "2026-03-10",
+    "end": "2026-05-17"
+  },
+  "target_venues": [
+    {
+      "code": "1",
+      "name": "桐生"
+    },
+    {
+      "code": "14",
+      "name": "鳴門"
+    },
+    {
+      "code": "2",
+      "name": "戸田"
+    },
+    {
+      "code": "4",
+      "name": "平和島"
+    }
+  ],
+  "by_venue": [
+    {
+      "code": "1",
+      "name": "桐生",
+      "total": 48,
+      "correct_count": 16,
+      "correct_rate": "33.33",
+      "technique_only_count": 0,
+      "technique_only_rate": "0.00",
+      "technique_only_patterns": [],
+      "course_only_count": 2,
+      "course_only_rate": "4.17",
+      "course_only_patterns": [
+        {
+          "pattern": "予測逃げ→実抜き (1着は1コース)",
+          "count": 2
+        }
+      ],
+      "both_miss_count": 30,
+      "both_miss_rate": "62.50",
+      "both_miss_patterns": [
+        {
+          "pattern": "予測逃げ→実まくり 予測1→実4",
+          "count": 7
+        },
+        {
+          "pattern": "予測逃げ→実差し 予測1→実2",
+          "count": 5
+        },
+        {
+          "pattern": "予測逃げ→実まくり差し 予測1→実4",
+          "count": 3
+        },
+        {
+          "pattern": "予測逃げ→実まくり差し 予測1→実3",
+          "count": 3
+        },
+        {
+          "pattern": "予測逃げ→実まくり 予測1→実3",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "code": "2",
+      "name": "戸田",
+      "total": 36,
+      "correct_count": 13,
+      "correct_rate": "36.11",
+      "technique_only_count": 1,
+      "technique_only_rate": "2.78",
+      "technique_only_patterns": [
+        {
+          "pattern": "逃げ 予測コース1→実3",
+          "count": 1
+        }
+      ],
+      "course_only_count": 0,
+      "course_only_rate": "0.00",
+      "course_only_patterns": [],
+      "both_miss_count": 22,
+      "both_miss_rate": "61.11",
+      "both_miss_patterns": [
+        {
+          "pattern": "予測逃げ→実まくり差し 予測1→実4",
+          "count": 4
+        },
+        {
+          "pattern": "予測逃げ→実まくり 予測1→実4",
+          "count": 4
+        },
+        {
+          "pattern": "予測逃げ→実まくり 予測1→実3",
+          "count": 4
+        },
+        {
+          "pattern": "予測逃げ→実まくり差し 予測1→実3",
+          "count": 2
+        },
+        {
+          "pattern": "予測逃げ→実まくり差し 予測1→実5",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "code": "4",
+      "name": "平和島",
+      "total": 60,
+      "correct_count": 26,
+      "correct_rate": "43.33",
+      "technique_only_count": 0,
+      "technique_only_rate": "0.00",
+      "technique_only_patterns": [],
+      "course_only_count": 1,
+      "course_only_rate": "1.67",
+      "course_only_patterns": [
+        {
+          "pattern": "予測逃げ→実抜き (1着は1コース)",
+          "count": 1
+        }
+      ],
+      "both_miss_count": 33,
+      "both_miss_rate": "55.00",
+      "both_miss_patterns": [
+        {
+          "pattern": "予測逃げ→実まくり 予測1→実3",
+          "count": 6
+        },
+        {
+          "pattern": "予測逃げ→実まくり差し 予測1→実3",
+          "count": 5
+        },
+        {
+          "pattern": "予測逃げ→実まくり 予測1→実4",
+          "count": 4
+        },
+        {
+          "pattern": "予測逃げ→実まくり差し 予測1→実5",
+          "count": 3
+        },
+        {
+          "pattern": "予測逃げ→実差し 予測1→実3",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "code": "14",
+      "name": "鳴門",
+      "total": 48,
+      "correct_count": 17,
+      "correct_rate": "35.42",
+      "technique_only_count": 0,
+      "technique_only_rate": "0.00",
+      "technique_only_patterns": [],
+      "course_only_count": 1,
+      "course_only_rate": "2.08",
+      "course_only_patterns": [
+        {
+          "pattern": "予測逃げ→実まくり (1着は1コース)",
+          "count": 1
+        }
+      ],
+      "both_miss_count": 30,
+      "both_miss_rate": "62.50",
+      "both_miss_patterns": [
+        {
+          "pattern": "予測逃げ→実まくり 予測1→実3",
+          "count": 6
+        },
+        {
+          "pattern": "予測逃げ→実まくり 予測1→実2",
+          "count": 5
+        },
+        {
+          "pattern": "予測逃げ→実差し 予測1→実2",
+          "count": 5
+        },
+        {
+          "pattern": "予測逃げ→実まくり 予測1→実4",
+          "count": 5
+        },
+        {
+          "pattern": "予測逃げ→実まくり差し 予測1→実3",
+          "count": 4
+        }
+      ]
+    }
+  ]
+}

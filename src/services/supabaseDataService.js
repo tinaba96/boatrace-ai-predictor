@@ -1271,18 +1271,23 @@ export const supabaseDataService = {
         console.log('[getRaceHistorySummary] Edge API failed, falling back:', edgeError.message);
       }
 
-      // フォールバック: Supabase RPC を直接呼び出し
+      // フォールバック: race_history_cache テーブルから直接取得（RPC廃止）
       if (!supabase) {
         console.error('Supabase client not initialized');
         return { days: [] };
       }
 
-      const { data, error } = await supabase.rpc('get_race_history_summary', { days_back: days });
+      const { data: rows, error } = await supabase
+        .from('race_history_cache')
+        .select('data')
+        .eq('key', 'race_history_summary_90')
+        .single();
+
       if (error) {
-        console.error('Supabase getRaceHistorySummary error:', error.message);
+        console.error('Supabase race_history_cache error:', error.message);
         return { days: [] };
       }
-      return data || { days: [] };
+      return rows?.data || { days: [] };
     });
   },
 

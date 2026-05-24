@@ -1,0 +1,92 @@
+{
+  "generated_at": "2026-05-15T19:51:56.800Z",
+  "model_id": "safeBet",
+  "config": {
+    "from_date": "2026-03-06",
+    "to_date": "9999-99-99",
+    "approaches": [
+      {
+        "key": "all",
+        "label": "除外なし（全買い）",
+        "minProbability": 0
+      },
+      {
+        "key": "3pct",
+        "label": "出現率3%未満を除外",
+        "minProbability": 3
+      },
+      {
+        "key": "5pct",
+        "label": "出現率5%未満を除外",
+        "minProbability": 5
+      },
+      {
+        "key": "10pct",
+        "label": "出現率10%未満を除外",
+        "minProbability": 10
+      }
+    ]
+  },
+  "by_approach": {
+    "all": {
+      "total_races": 5478,
+      "hit_count": 5478,
+      "hit_rate": 1,
+      "recovery_rate": 0.4082,
+      "points_per_race": 19.92,
+      "avg_investment": 1991.8,
+      "total_investment": 10910900,
+      "total_payout": 4453880,
+      "coverage_rate": 1,
+      "ai_hit_count": 842,
+      "ai_hit_rate": 0.1537,
+      "ai_recovery_rate": 0.5873,
+      "lift_vs_ai_only": -0.1791
+    },
+    "3pct": {
+      "total_races": 5478,
+      "hit_count": 3452,
+      "hit_rate": 0.6302,
+      "recovery_rate": 0.5406,
+      "points_per_race": 7.14,
+      "avg_investment": 713.8,
+      "total_investment": 3910200,
+      "total_payout": 2113800,
+      "coverage_rate": 0.6343,
+      "ai_hit_count": 842,
+      "ai_hit_rate": 0.1537,
+      "ai_recovery_rate": 0.5873,
+      "lift_vs_ai_only": -0.0468
+    },
+    "5pct": {
+      "total_races": 5478,
+      "hit_count": 1816,
+      "hit_rate": 0.3315,
+      "recovery_rate": 0.5528,
+      "points_per_race": 2.82,
+      "avg_investment": 282.3,
+      "total_investment": 1546200,
+      "total_payout": 854750,
+      "coverage_rate": 0.3373,
+      "ai_hit_count": 842,
+      "ai_hit_rate": 0.1537,
+      "ai_recovery_rate": 0.5873,
+      "lift_vs_ai_only": -0.0345
+    },
+    "10pct": {
+      "total_races": 5478,
+      "hit_count": 98,
+      "hit_rate": 0.0179,
+      "recovery_rate": 0.7776,
+      "points_per_race": 0.1,
+      "avg_investment": 9.6,
+      "total_investment": 52700,
+      "total_payout": 40980,
+      "coverage_rate": 0.0191,
+      "ai_hit_count": 842,
+      "ai_hit_rate": 0.1537,
+      "ai_recovery_rate": 0.5873,
+      "lift_vs_ai_only": 0.1903
+    }
+  }
+}
