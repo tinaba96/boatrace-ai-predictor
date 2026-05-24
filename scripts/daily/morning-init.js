@@ -115,6 +115,21 @@ async function main() {
     },
   );
 
+  // Step 3: pcexpect 公式コンピュータ予想を全レース分取得
+  // 失敗しても以降の処理（Deploy Hook）には影響させない
+  console.log("\n🔮 Step 3: scrape-pcexpect.js 実行中...");
+  try {
+    execSync(
+      `node ${path.join(ROOT, "scripts", "daily", "scrape-pcexpect.js")} --date ${date}`,
+      {
+        stdio: "inherit",
+        env: { ...process.env },
+      },
+    );
+  } catch (e) {
+    console.warn("⚠️ pcexpect スクレイプで一部エラー（処理は継続）:", e.message);
+  }
+
   console.log("\n✅ 朝の初期化完了");
 
   // Vercel Deploy Hook をトリガー（フロントエンドの CDN キャッシュをリセット）
