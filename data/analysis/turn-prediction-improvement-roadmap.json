@@ -1,0 +1,122 @@
+{
+  "roadmap_date": "2026-05-17",
+  "owner": "roadmap-planner",
+  "scope": "展開予測（turnPrediction）の的中率改善施策の優先順位付けと実装ロードマップ",
+  "baseline": {
+    "winner_course_accuracy": "72.5%（1着コース／決まり手の上位3技術判定、1000レース）",
+    "trifecta_full_hit_rate": "28.94%（3連単フル的中、モデル別 safeBet 50.1% / standard 17.6% / upsetFocus 19.1%）",
+    "patterns0_standalone_hit": "55.2%（実際の1コース勝率54.4%とほぼ同等＝付加価値が乏しい）",
+    "any_of_3_patterns_hit": "78.1%"
+  },
+  "key_findings_synthesis": [
+    "構造的欠陥: モデルは全1000レースで1コース（逃げ）をトップ予測。会場間の精度差（下関95%〜桐生56%）は予測の質ではなく、その会場の実際のイン逃げ決着率の差でほぼ説明できる（data-analyst）",
+    "不的中の集中: 不的中275件のうち228件（83%）が「まくり差し＋まくり」決着で発生。逃げ決着の的中率は99.4%だが、まくり差しは18.0%、まくりは42.9%（pattern-researcher）",
+    "アウトコース取りこぼし: 実際の1着コース別的中率は3コース41.0% / 4コース12.9% / 5コース5.6% / 6コース0%。アウトコース勝利を構造的に予測できていない（pattern-researcher）",
+    "キャリブレーション破綻: 的中レースの平均確信度0.6543と不的中0.6529がほぼ同一＝確率が当たり外れを区別できていない。さらに distribution.nige の平均40.5%に対し実際の逃げ率は53.1%で全帯域10-13pt過小評価（pattern-researcher / model-auditor）",
+    "展示タイム未活用: exhibitionTime は boatStrengths（2-3着補助）にしか入らず winnerCourse 確率計算（rawProb）に未使用。非逃げレースで2-6号艇中の最速展示タイム艇が30.0%勝利（ランダム期待20%比+10pt）の有効シグナルが捨てられている（model-auditor）",
+    "気象抑制が過大: upsetFactor は風速7m+で逃げを最大25%抑制するが、実測の逃げ率低下は0-2m比でわずか4.8pt。抑制係数が実測効果の約5倍（model-auditor）",
+    "1号艇グレード差: 1号艇がB1だと的中率が83.96%(A1)→63.93%(B1)へ約20pt低下。実力下位イン艇の波乱を捉えられていない（pattern-researcher）",
+    "会場パラメータの乖離: 桐生・鳴門の1コース勝率パラメータ(52%/55%)が実勝率(38%)を大きく上回り、荒れ会場でイン過信が起きている（data-analyst）"
+  ],
+  "improvement_proposals": [
+    {
+      "rank": 1,
+      "proposal": "逃げ確率のキャリブレーション補正（SOFTMAX_TEMP 再調整＋逃げ rawProb スケーリング）",
+      "description": "scripts/lib/turnPrediction.js の SOFTMAX_TEMP=1.5（L29）と makuri/makurizashi フロア（L33-34）が逃げを相対的に押し下げ過ぎており、distribution.nige が実測より全帯域で10-15pt低い。SOFTMAX_TEMP の再調整、または逃げ rawProb のキャリブレーションスケーリングで予測逃げ率を実測へ寄せる。確信度が的中/不的中を区別できていない問題（確信度0.65が両者同一）の根本対策でもある。同時に softmax 全体を見直し、差し・まくり・抜きが高確率帯で逆に過信されている問題（抜き20-30%帯は実5.4%で乖離16.3pt）も一括対応できる。",
+      "urgency": "緊急（時間依存）。calibration-report.js（6283レース）で逃げ過小評価が週次で悪化中と確定: 0-40%帯の(予測-実現)が W15 -6.6pt → W20 -18.8pt、ブライアスコアも W15 0.666 → W20 0.698。SOFTMAX_TEMP・フロアが固定値のため実態とのズレがデータ蓄積では自己修正されず拡大し続ける。放置すると悪化するため、他施策より先に着手すべき最優先施策。",
+      "expected_improvement": "確率キャリブレーションが正常化し、確信度フィルタリングが機能するようになる。winnerCourse 精度そのものへの直接寄与は限定的だが、後続施策（rank 2 展示タイム統合・出目分布統合・買い目選定）の前提条件となる。3連単フル的中率の底上げに +2〜4pt 寄与を期待。さらに、現状の悪化トレンドを止めること自体が精度劣化の防止になる。",
+      "implementation_cost": "低",
+      "timeline": "1-2週間",
+      "dependencies": ["Task #4 モデルロジック検証", "Task #3 的中・不的中パターン比較"],
+      "roi": "最高（単一定数の調整中心で実装コスト極小、全予測に波及。かつ時間依存で悪化中のため着手の遅れがそのまま損失になる）",
+      "target_files": ["scripts/lib/turnPrediction.js"],
+      "validation": "calibration-report スキル（scripts/analysis/calibration-report.js）を修正前後で実行し、各確率帯の乖離縮小・ブライアスコア改善・週次悪化トレンドの停止を確認。bin別予測逃げ率が実測±3pt以内に収まることを確認。turn-prediction-accuracy-final.js でも精度をビフォーアフター比較"
+    },
+    {
+      "rank": 2,
+      "proposal": "展示タイムを winnerCourse 確率計算（rawProb）へ統合",
+      "description": "現状 exhibitionTime は boatStrengths にしか反映されず Step3 の rawProb 計算（turnPrediction.js L290-320 付近）に寄与しない。展示タイムZスコア補正を非逃げ艇の rawProb に加える。非逃げレースで2-6号艇中の最速展示タイム艇が30.0%勝利（ランダム期待+10pt）という条件付きシグナルを取り込み、まくり・まくり差しの勝者艇特定精度を上げる。",
+      "expected_improvement": "不的中の83%を占めるまくり差し/まくり決着の予測力向上。非逃げ勝者の特定精度が条件付きで+10pt見込めるため、winnerCourse 精度の全体 +3〜5pt を期待",
+      "implementation_cost": "中",
+      "timeline": "3-4週間",
+      "dependencies": ["Task #5 外部要因調査", "rank 1（キャリブレーション補正後に係数調整するのが安全）"],
+      "roi": "高（最大の不的中要因に直接効く。展示タイムはカバレッジ97%で既存データを活用、新規データ取得不要）",
+      "target_files": ["scripts/lib/turnPrediction.js", "scripts/daily/generate-predictions.js"],
+      "validation": "まくり差し/まくり決着レースの的中率を施策前後で比較。turn-prediction-pattern-comparison.js で actual_technique 別的中率を再計測"
+    },
+    {
+      "rank": 3,
+      "proposal": "気象（風速・波高）による upsetFactor 抑制係数の縮小",
+      "description": "calcUpsetFactor（turnPrediction.js L78-）の風速7m+で逃げ最大25%抑制（L313）／非逃げ最大15%押し上げ（L315）が実測効果の約5倍。実データでは風速0-2m→7m+で逃げ率はわずか4.8pt低下。windSpeed/waveHeight 係数を実測効果量に合わせて1/3〜1/5へ縮小する。",
+      "expected_improvement": "強風時にイン逃げを過剰に否定して外す不的中（桐生の強風時的中率43.5%等）を削減。低精度会場の精度 +2〜3pt を期待。誤った荒れ予測の抑制により安定性が向上",
+      "implementation_cost": "低",
+      "timeline": "1-2週間",
+      "dependencies": ["Task #5 外部要因調査", "Task #1 低精度会場分析"],
+      "roi": "高（係数の縮小のみで実装コスト極小。rank 1 と並行実装可能）",
+      "target_files": ["scripts/lib/turnPrediction.js"],
+      "validation": "風速帯別（calm/moderate/strong）の的中率を施策前後で比較。turn-prediction-venue-deep-analysis.js の hit_rate_by_wind を再計測"
+    },
+    {
+      "rank": 4,
+      "proposal": "会場別1コース勝率パラメータの再校正（荒れ会場の補正）",
+      "description": "VENUE_1COURSE_WIN_RATE（venueParameters.js）の桐生52%・鳴門55%が直近実勝率38%を大きく上回りイン過信を生んでいる。直近データに基づき荒れ会場のパラメータを実勝率に近づけて再校正する。全24会場のパラメータを直近実績で点検し更新。",
+      "expected_improvement": "低精度会場（桐生・鳴門・平和島・戸田・常滑）のイン過信を是正。対象会場で +3〜5pt、全体で +1〜2pt を期待",
+      "implementation_cost": "中",
+      "timeline": "3-4週間",
+      "dependencies": ["Task #1 低精度会場分析", "Task #2 高精度会場分析"],
+      "roi": "中（データ集計と検証に工数。会場単位のチューニングは本質的改善ではなく対症療法だが、即効性がある）",
+      "target_files": ["scripts/lib/venueParameters.js", "data/venue-params/"],
+      "validation": "/collect-stats で全会場の最新1コース勝率を収集し、パラメータ値との乖離を点検。再校正後に会場別精度を比較"
+    },
+    {
+      "rank": 5,
+      "proposal": "波乱レース判別ロジックの追加（1号艇グレード・実力差シグナル）",
+      "description": "1号艇がB1のレースは的中率が約20pt低下（A1 83.96%→B1 63.93%）。1号艇のグレード・全国勝率と2-6号艇との実力差から「波乱になりやすいレース」を判別するスコアを追加し、該当レースでは非逃げパターンの確率フロアを引き上げる、またはUI上で波乱注意を表示する。",
+      "expected_improvement": "実力下位イン艇の波乱レースで非逃げ予測が機能。該当レース群（1号艇B1=全体の約37%）で +3〜5pt、全体で +1〜2pt を期待",
+      "implementation_cost": "中",
+      "timeline": "3-4週間",
+      "dependencies": ["Task #3 的中・不的中パターン比較", "rank 1"],
+      "roi": "中（明確なシグナルだが新ロジック追加で検証工数が必要。rank 1-3 のキャリブレーション改善後に取り組むのが効率的）",
+      "target_files": ["scripts/lib/turnPrediction.js", "scripts/daily/generate-predictions.js"],
+      "validation": "1号艇グレード別の的中率を施策前後で比較。turn-prediction-pattern-comparison.js の first_lane_grade を再計測"
+    },
+    {
+      "rank": 6,
+      "proposal": "進入コース推定（course_entry_tendency）とF持ち（flying_rate）のST予測への組込み",
+      "description": "racer_aggregated_stats に存在するが未使用の course_entry_tendency（前付け傾向）と flying_rate（F持ち）を活用。枠番=進入コース固定を解消し、F持ち選手のST慎重化を予測STに加味する。",
+      "expected_improvement": "進入コース変動・スタート傾向の精緻化により winnerCourse 精度 +1〜2pt を期待（要追加検証）",
+      "implementation_cost": "高",
+      "timeline": "1ヶ月以上",
+      "dependencies": ["Task #5 外部要因調査", "rank 2"],
+      "roi": "低（効果量が未検証で実装も大きい。先行施策の効果を見てから着手判断すべき）",
+      "target_files": ["scripts/lib/turnPrediction.js", "scripts/daily/generate-predictions.js"],
+      "validation": "F持ち艇・前付け傾向艇を含むレースの的中率を個別に検証してから本実装を判断"
+    }
+  ],
+  "phase1_priority": [
+    "rank 1: 逃げ確率のキャリブレーション補正",
+    "rank 3: 気象 upsetFactor 抑制係数の縮小"
+  ],
+  "phase1_rationale": "いずれも turnPrediction.js の定数調整中心で実装コストが低く、1-2週間で完了可能。キャリブレーション補正は後続施策の前提条件、気象係数の縮小は低精度会場の即効改善。両者は独立して並行実装でき、リスクも小さいため最初に着手する。",
+  "phase2_priority": [
+    "rank 2: 展示タイムの winnerCourse 確率への統合",
+    "rank 4: 会場別1コース勝率パラメータの再校正",
+    "rank 5: 波乱レース判別ロジックの追加"
+  ],
+  "phase2_rationale": "rank 2 は不的中の83%を占めるまくり系決着に直接効く最重要施策だが、新規ロジック追加のため Phase1 でキャリブレーションを正常化してから係数調整するのが安全。rank 4・5 は会場・レース単位のチューニングで即効性はあるが対症療法的なため、構造的改善（rank 1-2）の後に配置する。",
+  "phase3_backlog": [
+    "rank 6: 進入コース推定・F持ちのST予測組込み（効果量を要追加検証）",
+    "patterns[0] 固定化の構造的解消（safeBet が事実上『1号艇本命固定』モデルになっている問題。ただし Phase1 rank 1（キャリブレーション補正）・Phase2 rank 2（展示タイム統合）を実施すると patterns 内の確率配分が変わり、この固定化は部分的に緩和される見込み（model-auditor）。Phase1-2 完了後に残存度を再測定し、必要なら patterns のモデルマッピング自体の再設計を検討）"
+  ],
+  "expected_cumulative_impact": {
+    "phase1": "winner_course_accuracy 72.5% → 約74-76%（キャリブレーション正常化＋強風時取りこぼし削減）",
+    "phase2": "winner_course_accuracy 約78-82%（まくり系の予測力向上が主寄与）、any-of-3 ベースの3連単フル的中率も底上げ",
+    "note": "数値は各分析担当の推定の積み上げであり、実装後の検証で必ず再測定する。会場別チューニング（rank 4）は本質的改善ではなく、構造的改善（rank 1-2）を優先する方針"
+  },
+  "source_reports": {
+    "venue_analysis": "data/analysis/turn-prediction-venue-analysis.json（Task #1, #2 / data-analyst）",
+    "pattern_comparison": "data/analysis/turn-prediction-pattern-comparison.json（Task #3 / pattern-researcher）",
+    "model_audit": "data/analysis/turn-prediction-model-audit.json（Task #4, #5 / model-auditor）",
+    "baseline_accuracy": "data/analysis/turn-prediction-accuracy-final.json, data/analysis/turn-prediction-accuracy.json"
+  }
+}
