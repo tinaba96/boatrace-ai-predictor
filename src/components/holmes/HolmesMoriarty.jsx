@@ -12,6 +12,7 @@ import MoriartyROIChart from "./MoriartyROIChart";
 import MoriartyVenueBreakdown from "./MoriartyVenueBreakdown";
 import MoriartyCalibrationDiagram from "./MoriartyCalibrationDiagram";
 import MoriartyRecommendationList from "./MoriartyRecommendationList";
+import { MoriartyExplanation } from "./explanations";
 import "./HolmesMoriarty.css";
 
 function getStage(totalBets) {
@@ -175,6 +176,7 @@ function HolmesMoriarty() {
           </section>
         </>
       )}
+      <MoriartyExplanation />
     </div>
   );
 }
