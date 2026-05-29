@@ -1,0 +1,232 @@
+/* ===== Explanation Section - 手法説明セクション共通スタイル ===== */
+
+.explanation-section {
+  margin-top: var(--spacing-6);
+  border-top: var(--border-width-1) solid var(--color-gray-200);
+  padding-top: var(--spacing-6);
+}
+
+.explanation-section h3 {
+  font-size: var(--font-size-xl);
+  color: var(--color-gray-900);
+  margin: 0 0 var(--spacing-3) 0;
+}
+
+/* ===== Summary (常に表示) ===== */
+.explanation-summary {
+  font-size: var(--font-size-base);
+  color: var(--color-gray-700);
+  line-height: var(--line-height-relaxed);
+  margin: 0 0 var(--spacing-4) 0;
+}
+
+/* ===== SVG 図 ===== */
+.explanation-diagram {
+  width: 100%;
+  margin-bottom: var(--spacing-4);
+  overflow-x: auto;
+}
+
+.explanation-diagram svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ===== キーポイントリスト ===== */
+.explanation-key-points {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--spacing-4) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.explanation-key-points li {
+  position: relative;
+  padding-left: var(--spacing-6);
+  color: var(--color-gray-700);
+  line-height: var(--line-height-relaxed);
+  font-size: var(--font-size-base);
+}
+
+.explanation-key-points li::before {
+  content: "▸";
+  position: absolute;
+  left: var(--spacing-2);
+  font-weight: var(--font-weight-bold);
+}
+
+/* ===== 詳細折り畳み ===== */
+.explanation-details {
+  margin-top: var(--spacing-2);
+  border: var(--border-width-1) solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.explanation-details summary {
+  cursor: pointer;
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--color-gray-50);
+  color: var(--color-gray-700);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  user-select: none;
+  transition: background var(--transition-fast) var(--ease-out);
+}
+
+.explanation-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.explanation-details summary::before {
+  content: "▶";
+  font-size: var(--font-size-xs);
+  transition: transform var(--transition-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+
+.explanation-details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.explanation-details summary:hover {
+  background: var(--color-gray-100);
+}
+
+/* ===== 詳細コンテンツ ===== */
+.explanation-detail-body {
+  padding: var(--spacing-4) var(--spacing-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.explanation-detail-block h4 {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-800);
+  margin: 0 0 var(--spacing-2) 0;
+}
+
+.explanation-detail-block p {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-700);
+  line-height: var(--line-height-relaxed);
+  margin: 0 0 var(--spacing-2) 0;
+}
+
+.explanation-detail-block p:last-child {
+  margin-bottom: 0;
+}
+
+.explanation-detail-block ul {
+  padding-left: var(--spacing-5);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.explanation-detail-block ul li {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-700);
+  line-height: var(--line-height-relaxed);
+}
+
+/* ===== 数式表示 ===== */
+.explanation-formula {
+  display: block;
+  background: var(--color-gray-100);
+  border-left: var(--border-width-3) solid var(--color-primary-500);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: var(--spacing-2) var(--spacing-4);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-800);
+  margin: var(--spacing-2) 0;
+  overflow-x: auto;
+}
+
+/* ===== 強み・弱みグリッド ===== */
+.explanation-pros-cons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-3);
+}
+
+.explanation-pros,
+.explanation-cons {
+  background: var(--color-gray-50);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-3);
+}
+
+.explanation-pros {
+  border-top: var(--border-width-2) solid var(--color-success);
+}
+
+.explanation-cons {
+  border-top: var(--border-width-2) solid var(--color-error);
+}
+
+.explanation-pros h5,
+.explanation-cons h5 {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  margin: 0 0 var(--spacing-2) 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.explanation-pros h5 {
+  color: var(--color-success-dark);
+}
+
+.explanation-cons h5 {
+  color: var(--color-error-dark);
+}
+
+.explanation-pros ul,
+.explanation-cons ul {
+  padding-left: var(--spacing-4);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.explanation-pros ul li,
+.explanation-cons ul li {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-700);
+  line-height: var(--line-height-relaxed);
+}
+
+/* ===== Mobile ===== */
+@media (max-width: 480px) {
+  .explanation-section {
+    margin-top: var(--spacing-4);
+    padding-top: var(--spacing-4);
+  }
+
+  .explanation-detail-body {
+    padding: var(--spacing-3) var(--spacing-3);
+  }
+
+  .explanation-pros-cons {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-2);
+  }
+
+  .explanation-formula {
+    font-size: var(--font-size-xs);
+    padding: var(--spacing-2) var(--spacing-3);
+  }
+}
