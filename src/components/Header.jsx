@@ -92,6 +92,13 @@ function Header() {
         {isMenuOpen && (
           <div className="submenu">
             <Link
+              to="/accuracy"
+              className={`submenu-item ${activeTab === 'accuracy' ? 'active' : ''}`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              📈 精度分析
+            </Link>
+            <Link
               to="/outcome-distribution"
               className={`submenu-item ${activeTab === 'outcome-distribution' ? 'active' : ''}`}
               onClick={() => setIsMenuOpen(false)}
