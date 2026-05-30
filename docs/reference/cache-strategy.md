@@ -118,7 +118,7 @@ node scripts/verification/verify-cache-config.js
 - パターンとの整合性
 
 ### CI での自動検証
-- PR 作成時に検証スクリプトを実行（予定）
+- PR 作成時に検証スクリプトを実行（`.github/workflows/verify-cache-config.yml`）
 - push 時に pre-push hook で検証（セットアップ手順参照）
 
 ---
