@@ -1,3 +1,4 @@
+export { default as SherlockExplanation } from "./SherlockExplanation";
 export { default as WatsonExplanation } from "./WatsonExplanation";
 export { default as AdlerExplanation } from "./AdlerExplanation";
 export { default as MycroftExplanation } from "./MycroftExplanation";
