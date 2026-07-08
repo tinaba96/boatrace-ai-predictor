@@ -96,7 +96,179 @@
   color: var(--color-text-muted, #9ca3af);
 }
 
+.poirot-model-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.poirot-model-tab {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  background: #fff;
+  color: var(--color-text-muted, #555);
+  cursor: pointer;
+}
+
+.poirot-model-tab.is-active {
+  background: var(--color-accent, #ff6b35);
+  border-color: var(--color-accent, #ff6b35);
+  color: #fff;
+}
+
+.poirot-model-desc {
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: var(--color-text-muted, #6b7280);
+  margin: 0 0 1rem;
+}
+
+.poirot-list-note {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted, #9ca3af);
+  margin: 0 0 0.75rem;
+}
+
+.poirot-race-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.poirot-race-card {
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 10px;
+  padding: 0.875rem 1rem;
+}
+
+.poirot-race-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+.poirot-race-venue {
+  font-weight: 700;
+  color: var(--color-text, #1a1a1a);
+}
+
+.poirot-race-time {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted, #9ca3af);
+}
+
+.poirot-conf-badge {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+}
+
+.poirot-conf-badge.is-high {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.poirot-conf-badge.is-mid {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.poirot-conf-badge.is-low {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.poirot-combo {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+.poirot-combo-label {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted, #6b7280);
+}
+
+.poirot-combo-boats {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--color-text, #1a1a1a);
+  letter-spacing: 0.04em;
+}
+
+.poirot-combo-prob {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted, #6b7280);
+}
+
+.poirot-probs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.poirot-prob-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted, #555);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 6px;
+  padding: 0.2rem 0.45rem;
+}
+
+.poirot-prob-chip.is-top {
+  border-color: var(--color-accent, #ff6b35);
+  color: var(--color-text, #1a1a1a);
+  font-weight: 600;
+}
+
+.poirot-prob-chip .boat-i {
+  font-style: normal;
+  font-weight: 700;
+  font-size: 0.75rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+}
+
+/* 艇番カラー（公式配色） */
+.boat-i.b1 { background: #fff; color: #1a1a1a; border: 1px solid #9ca3af; }
+.boat-i.b2 { background: #1a1a1a; color: #fff; }
+.boat-i.b3 { background: #dc2626; color: #fff; }
+.boat-i.b4 { background: #2563eb; color: #fff; }
+.boat-i.b5 { background: #eab308; color: #1a1a1a; }
+.boat-i.b6 { background: #16a34a; color: #fff; }
+
 @media (max-width: 480px) {
+  .poirot-model-tab {
+    font-size: 0.8125rem;
+    padding: 0.5rem 0.5rem;
+  }
+
+  .poirot-race-card {
+    padding: 0.75rem;
+  }
+
+  .poirot-combo-boats {
+    font-size: 1.2rem;
+  }
+
   .poirot-page {
     padding: 1rem 0.75rem 2rem;
   }

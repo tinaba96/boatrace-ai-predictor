@@ -33,3 +33,9 @@ credentials/
 google-service-account.json
 data/races.json
 .claude/settings.local.json
+
+# ML artifacts (BOA-104)
+data/ml/
+scripts/ml/.venv/
+scripts/ml/models/
+scripts/ml/__pycache__/
