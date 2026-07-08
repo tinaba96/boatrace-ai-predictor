@@ -85,6 +85,52 @@ export async function getMoriartyStats(daysWindow = null) {
   }
 }
 
+// 券種の表示名
+const BET_TYPE_LABELS = {
+  win: "単勝",
+  trifecta: "3連単",
+  trio: "3連複",
+};
+
+// モデルIDの表示名
+const MODEL_LABELS = {
+  standard: "スタンダード",
+  safeBet: "本命狙い",
+  upsetFocus: "穴狙い",
+};
+
+/**
+ * reasons を表示用の文字列配列に変換する。
+ * 新形式（オブジェクト: {bet_type, boat_number|combo, odds, ...}）と
+ * 旧形式（文字列配列）の両方に対応する。
+ */
+function formatReasons(reasons) {
+  if (Array.isArray(reasons)) return reasons;
+  if (!reasons || typeof reasons !== "object") return [];
+
+  const lines = [];
+  const betLabel = BET_TYPE_LABELS[reasons.bet_type] || reasons.bet_type;
+  const target =
+    reasons.bet_type === "win"
+      ? `${reasons.boat_number}号艇`
+      : reasons.combo || "";
+  if (betLabel && target) lines.push(`${betLabel} ${target}`);
+  if (typeof reasons.calibrated_probability === "number") {
+    lines.push(
+      `補正的中確率 ${(reasons.calibrated_probability * 100).toFixed(1)}%`,
+    );
+  }
+  if (typeof reasons.odds === "number") {
+    lines.push(`取得時オッズ ${reasons.odds}倍`);
+  }
+  if (reasons.based_on_model) {
+    lines.push(
+      `ベース: ${MODEL_LABELS[reasons.based_on_model] || reasons.based_on_model}`,
+    );
+  }
+  return lines;
+}
+
 export async function getMoriartyRecommendations(date) {
   if (!supabase) return [];
   try {
@@ -114,7 +160,7 @@ export async function getMoriartyRecommendations(date) {
         bet_fraction: row.bet_fraction,
         actual_hit: row.actual_hit,
         actual_payout: row.actual_payout,
-        reasons: row.reasons || [],
+        reasons: formatReasons(row.reasons),
       };
     });
   } catch {
