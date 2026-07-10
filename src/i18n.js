@@ -39,4 +39,11 @@ i18n
     },
   });
 
+// スクリーンリーダーの読み上げ言語・SEOのため <html lang> を言語切替に同期
+i18n.on("languageChanged", (lng) => {
+  document.documentElement.lang = lng;
+});
+// 初期化時点の言語も反映（languageChanged は初期化前のリスナー登録時のみ発火するため）
+document.documentElement.lang = i18n.resolvedLanguage || "ja";
+
 export default i18n;
