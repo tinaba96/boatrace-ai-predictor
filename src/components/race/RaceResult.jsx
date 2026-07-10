@@ -1,8 +1,11 @@
 /**
  * RaceResult - レース結果表示コンポーネント
  */
+import { useTranslation } from "react-i18next";
 
 function RaceResult({ prediction, volatility }) {
+  const { t } = useTranslation();
+
   if (!prediction || !prediction.result || !prediction.topPick) {
     return null;
   }
@@ -49,19 +52,19 @@ function RaceResult({ prediction, volatility }) {
 
   return (
     <div className="race-result">
-      <h4>🏁 レース結果</h4>
+      <h4>🏁 {t("result.title")}</h4>
 
       <div className="result-podium">
         <div className="podium-item first">
-          <span className="rank">1着</span>
+          <span className="rank">{t("result.rank1")}</span>
           <span className="boat-number">{result.rank1}</span>
         </div>
         <div className="podium-item second">
-          <span className="rank">2着</span>
+          <span className="rank">{t("result.rank2")}</span>
           <span className="boat-number">{result.rank2}</span>
         </div>
         <div className="podium-item third">
-          <span className="rank">3着</span>
+          <span className="rank">{t("result.rank3")}</span>
           <span className="boat-number">{result.rank3}</span>
         </div>
       </div>
@@ -69,12 +72,12 @@ function RaceResult({ prediction, volatility }) {
       {/* イン崩れ予測 → 結果の対応表示 */}
       {showInKuzure && (
         <div className="in-kuzure-result">
-          <span className="in-kuzure-prediction">イン崩れ確率高</span>
+          <span className="in-kuzure-prediction">{t("result.inKuzureHigh")}</span>
           <span className="in-kuzure-arrow">→</span>
           <span
             className={`in-kuzure-outcome ${isInKuzure ? "outcome-hit" : "outcome-miss"}`}
           >
-            {isInKuzure ? "🌊 イン崩れ的中！" : "❌ イン逃げ切り（外れ）"}
+            {isInKuzure ? t("result.inKuzureHit") : t("result.inKuzureMiss")}
           </span>
         </div>
       )}
@@ -83,14 +86,14 @@ function RaceResult({ prediction, volatility }) {
         <div className="check-item">
           {isWinHit ? (
             <div className="hit">
-              ✅ 単勝的中！
+              {t("result.winHit")}
               {getWinPayout() && (
-                <span className="payout">配当: {getWinPayout()}円</span>
+                <span className="payout">{t("result.payout", { amount: getWinPayout() })}</span>
               )}
             </div>
           ) : (
             <div className="miss">
-              ❌ 単勝（{topPick.number}→{result.rank1}）
+              {t("result.winMiss", { picked: topPick.number, actual: result.rank1 })}
             </div>
           )}
         </div>
@@ -98,39 +101,39 @@ function RaceResult({ prediction, volatility }) {
         <div className="check-item">
           {isPlaceHit ? (
             <div className="hit">
-              ✅ 複勝的中！
+              {t("result.placeHit")}
               {getPlacePayout() && (
-                <span className="payout">配当: {getPlacePayout()}円</span>
+                <span className="payout">{t("result.payout", { amount: getPlacePayout() })}</span>
               )}
             </div>
           ) : (
-            <div className="miss">❌ 複勝不的中</div>
+            <div className="miss">{t("result.placeMiss")}</div>
           )}
         </div>
 
         <div className="check-item">
           {is3FukuHit ? (
             <div className="hit">
-              ✅ 3連複的中！
+              {t("result.trifectaHit")}
               {getTrifectaPayout() && (
-                <span className="payout">配当: {getTrifectaPayout()}円</span>
+                <span className="payout">{t("result.payout", { amount: getTrifectaPayout() })}</span>
               )}
             </div>
           ) : (
-            <div className="miss">❌ 3連複不的中</div>
+            <div className="miss">{t("result.trifectaMiss")}</div>
           )}
         </div>
 
         <div className="check-item">
           {is3TanHit ? (
             <div className="hit">
-              ✅ 3連単的中！
+              {t("result.trioHit")}
               {getTrioPayout() && (
-                <span className="payout">配当: {getTrioPayout()}円</span>
+                <span className="payout">{t("result.payout", { amount: getTrioPayout() })}</span>
               )}
             </div>
           ) : (
-            <div className="miss">❌ 3連単不的中</div>
+            <div className="miss">{t("result.trioMiss")}</div>
           )}
         </div>
       </div>

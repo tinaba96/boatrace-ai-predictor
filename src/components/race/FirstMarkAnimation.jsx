@@ -1,8 +1,15 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { BOAT_COLORS } from "../../utils/colors";
 import { TECHNIQUE_NAMES } from "../../utils/turnPrediction";
-import { MODEL_NAMES } from "../../constants";
+import { MODEL_NAMES, MODEL_KEY_MAP } from "../../constants";
 import "./FirstMarkAnimation.css";
+
+// 決まり手の表示名を i18n から取得（未定義キーは日本語定義にフォールバック）
+function useTechniqueLabel() {
+  const { t } = useTranslation();
+  return (key) => t(`techniques.${key}`, TECHNIQUE_NAMES[key] || key);
+}
 
 // framer-motion を1回だけ動的importし、state で保持
 function useMotion() {
@@ -498,6 +505,8 @@ const RANK_COLORS = {
 
 // SVG内の順位バッジ
 function ResultBadge({ rank, course, x, y, delay, label }) {
+  const { t } = useTranslation();
+
   if (!course) return null;
   const colors = BOAT_COLORS[course] || BOAT_COLORS[1];
   const rankColor = RANK_COLORS[rank];
@@ -534,7 +543,7 @@ function ResultBadge({ rank, course, x, y, delay, label }) {
         fontWeight="700"
         fill={rankColor}
       >
-        {rank}着
+        {t("animation.rankLabel", { rank })}
       </text>
       {/* 決まり手 or 確率 */}
       {label && (
@@ -554,6 +563,8 @@ function ResultBadge({ rank, course, x, y, delay, label }) {
 }
 
 function FirstMarkAnimationInner({ patterns, distribution, players, boatStrengths, selectedPatternIndex = 0, venue, raceNumber, selectedModel }) {
+  const { t } = useTranslation();
+  const techniqueLabel = useTechniqueLabel();
   const [animKey, setAnimKey] = useState(0);
   const [phase, setPhase] = useState("");
   const [animationDone, setAnimationDone] = useState(false);
@@ -607,20 +618,22 @@ function FirstMarkAnimationInner({ patterns, distribution, players, boatStrength
     phaseTimers.current.forEach(clearTimeout);
     phaseTimers.current = [];
 
-    const techniqueName = TECHNIQUE_NAMES[technique] || technique;
+    const techniqueName = techniqueLabel(technique);
+    const phaseStart = t("animation.phaseStart");
+    const phaseTurn = t("animation.phaseTurn");
 
     // スタート表示
-    const startShow = setTimeout(() => setPhase("スタート"), PHASE_TIMING.START_SHOW * ANIM_DURATION_MS);
+    const startShow = setTimeout(() => setPhase(phaseStart), PHASE_TIMING.START_SHOW * ANIM_DURATION_MS);
     const startHide = setTimeout(
-      () => setPhase((prev) => (prev === "スタート" ? "" : prev)),
+      () => setPhase((prev) => (prev === phaseStart ? "" : prev)),
       PHASE_TIMING.START_HIDE * ANIM_DURATION_MS,
     );
     phaseTimers.current.push(startShow, startHide);
 
     // 1マーク旋回
-    const turnShow = setTimeout(() => setPhase("1マーク旋回"), PHASE_TIMING.TURN_SHOW * ANIM_DURATION_MS);
+    const turnShow = setTimeout(() => setPhase(phaseTurn), PHASE_TIMING.TURN_SHOW * ANIM_DURATION_MS);
     const turnHide = setTimeout(
-      () => setPhase((prev) => (prev === "1マーク旋回" ? "" : prev)),
+      () => setPhase((prev) => (prev === phaseTurn ? "" : prev)),
       PHASE_TIMING.TURN_HIDE * ANIM_DURATION_MS,
     );
     phaseTimers.current.push(turnShow, turnHide);
@@ -743,7 +756,7 @@ function FirstMarkAnimationInner({ patterns, distribution, players, boatStrength
         fontSize="8"
         fill="rgba(255,255,255,0.5)"
       >
-        1マーク
+        {t("animation.firstMark")}
       </text>
 
       {/* スタートライン */}
@@ -767,12 +780,12 @@ function FirstMarkAnimationInner({ patterns, distribution, players, boatStrength
     return (
       <div className="first-mark-animation">
         <div className="first-mark-animation__title">
-          <span>1マーク展開予測</span>
+          <span>{t("animation.title")}</span>
           {(venue || raceNumber || selectedModel) && (
             <span className="first-mark-animation__meta">
               {venue}
               {raceNumber && ` ${raceNumber}R`}
-              {selectedModel && MODEL_NAMES[selectedModel] && ` · ${MODEL_NAMES[selectedModel]}`}
+              {selectedModel && MODEL_NAMES[selectedModel] && ` · ${t(`models.${MODEL_KEY_MAP[selectedModel] || selectedModel}`, MODEL_NAMES[selectedModel])}`}
             </span>
           )}
         </div>
@@ -854,12 +867,12 @@ function FirstMarkAnimationInner({ patterns, distribution, players, boatStrength
   return (
     <div className="first-mark-animation">
       <div className="first-mark-animation__title">
-        <span>1マーク展開予測</span>
+        <span>{t("animation.title")}</span>
         {(venue || raceNumber || selectedModel) && (
           <span className="first-mark-animation__meta">
             {venue}
             {raceNumber && ` ${raceNumber}R`}
-            {selectedModel && MODEL_NAMES[selectedModel] && ` · ${MODEL_NAMES[selectedModel]}`}
+            {selectedModel && MODEL_NAMES[selectedModel] && ` · ${t(`models.${MODEL_KEY_MAP[selectedModel] || selectedModel}`, MODEL_NAMES[selectedModel])}`}
           </span>
         )}
       </div>
@@ -1008,7 +1021,7 @@ function FirstMarkAnimationInner({ patterns, distribution, players, boatStrength
                 x={345}
                 y={35}
                 delay={0}
-                label={TECHNIQUE_NAMES[technique]}
+                label={techniqueLabel(technique)}
               />
               {secondCourse && (
                 <ResultBadge
@@ -1062,7 +1075,7 @@ function FirstMarkAnimationInner({ patterns, distribution, players, boatStrength
           className="first-mark-animation__replay-btn"
           onClick={handleReplay}
         >
-          ▶ 再生
+          {t("animation.replay")}
         </button>
       </div>
     </div>
@@ -1078,13 +1091,15 @@ function ResultCards({
   thirdCourse,
   thirdProb,
 }) {
-  const techniqueName = TECHNIQUE_NAMES[technique] || technique;
+  const { t } = useTranslation();
+  const techniqueLabel = useTechniqueLabel();
+  const techniqueName = techniqueLabel(technique);
   const winnerColors = BOAT_COLORS[winnerCourse] || BOAT_COLORS[1];
 
   return (
     <div className="result-cards">
       <div className="result-card result-card--1st">
-        <span className="result-rank">1着</span>
+        <span className="result-rank">{t("result.rank1")}</span>
         <span
           className="result-course"
           style={{ backgroundColor: winnerColors.bg, color: winnerColors.text }}
@@ -1095,7 +1110,7 @@ function ResultCards({
       </div>
       {secondCourse && (
         <div className="result-card result-card--2nd">
-          <span className="result-rank">2着</span>
+          <span className="result-rank">{t("result.rank2")}</span>
           <span
             className="result-course"
             style={{
@@ -1110,7 +1125,7 @@ function ResultCards({
       )}
       {thirdCourse && (
         <div className="result-card result-card--3rd">
-          <span className="result-rank">3着</span>
+          <span className="result-rank">{t("result.rank3")}</span>
           <span
             className="result-course"
             style={{
@@ -1129,18 +1144,21 @@ function ResultCards({
 
 // 確率分布バーコンポーネント
 function DistributionBars({ sortedDistribution, topTechnique, patterns }) {
+  const { t } = useTranslation();
+  const techniqueLabel = useTechniqueLabel();
+
   return (
     <div className="technique-distribution">
-      <div className="technique-distribution__header">展開確率分布</div>
+      <div className="technique-distribution__header">{t("animation.distributionTitle")}</div>
       {sortedDistribution.map(([tech, prob]) => {
         const matchingPattern = patterns.find((p) => p.technique === tech);
         return (
           <div key={tech} className="technique-bar">
             <span className="technique-bar__label">
-              {TECHNIQUE_NAMES[tech] || tech}
+              {techniqueLabel(tech)}
             </span>
             <span className="technique-bar__course">
-              {matchingPattern ? `${matchingPattern.winnerCourse}コース` : ""}
+              {matchingPattern ? t("animation.courseLabel", { course: matchingPattern.winnerCourse }) : ""}
             </span>
             <div className="technique-bar__track">
               <div

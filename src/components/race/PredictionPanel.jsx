@@ -3,6 +3,7 @@
  * App.jsx と RaceDetail.jsx で共通利用
  */
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useRaceData } from "../../hooks/useRaceData";
 import { motion, AnimatePresence } from "framer-motion";
 import { SocialShareButtons } from "../SocialShareButtons";
@@ -35,6 +36,8 @@ function PredictionPanel({
   date,
   showExhibition = false,
 }) {
+  const { t } = useTranslation();
+
   if (!prediction && !isAnalyzing) return null;
 
   // null check を一箇所に集約：ここで selectedRace の存在を確認
@@ -86,7 +89,7 @@ function PredictionPanel({
           &#x26A0;&#xFE0F;
         </div>
         <h3 style={{ color: "#856404", marginBottom: "1rem" }}>
-          予想データが利用できません
+          {t("panel.noData")}
         </h3>
         <p style={{ color: "#856404" }}>{prediction.errorMessage}</p>
       </div>
@@ -118,7 +121,7 @@ function PredictionPanel({
               fontWeight: "500",
             }}
           >
-            公式サイトでレース情報を見る
+            {t("panel.officialLink")}
           </a>
           <span
             style={{
@@ -127,7 +130,7 @@ function PredictionPanel({
               color: "#475569",
             }}
           >
-            （新しいタブで開きます）
+            {t("panel.newTab")}
           </span>
         </div>
       )}
@@ -234,7 +237,7 @@ function PredictionPanel({
               shareUrl="https://www.boat-ai.jp/"
               title={generatePredictionShareText(
                 {
-                  venue: selectedRace?.venue || "不明",
+                  venue: selectedRace?.venue || t("panel.unknownVenue"),
                   raceNo: selectedRace?.raceNumber || "?",
                   date: raceDate,
                   prediction: {
@@ -257,10 +260,10 @@ function PredictionPanel({
                   <span className="venue-guide-icon">&#x1F4D6;</span>
                   <div className="venue-guide-content">
                     <span className="venue-guide-title">
-                      {selectedRace.venue}の攻略ガイドを見る
+                      {t("panel.venueGuideLink", { venue: selectedRace.venue })}
                     </span>
                     <span className="venue-guide-desc">
-                      会場の特徴と狙い目を詳しく解説
+                      {t("panel.venueGuideDesc")}
                     </span>
                   </div>
                   <span className="venue-guide-arrow">&rarr;</span>
