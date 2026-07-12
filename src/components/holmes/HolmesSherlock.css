@@ -1,0 +1,263 @@
+/* シャーロック予想タブ */
+
+/* ===== 実測パフォーマンス ===== */
+.sherlock-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.sherlock-stat {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.sherlock-stat-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #059669;
+}
+
+.sherlock-stat-label {
+  font-size: 0.75rem;
+  color: #374151;
+  margin-top: 0.25rem;
+}
+
+.sherlock-stat-sub {
+  display: block;
+  color: #6b7280;
+  font-size: 0.7rem;
+}
+
+.sherlock-honesty-note {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  line-height: 1.5;
+}
+
+/* ===== ライブ推理 ===== */
+.sherlock-loading {
+  color: #6b7280;
+  font-size: 0.9rem;
+  padding: 0.5rem 0;
+}
+
+.sherlock-summary-line {
+  font-size: 0.85rem;
+  color: #374151;
+  margin-bottom: 0.75rem;
+}
+
+.sherlock-ev-picks {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.sherlock-ev-picks h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: #065f46;
+}
+
+.sherlock-ev-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  padding: 0.25rem 0;
+  color: #1f2937;
+}
+
+.sherlock-race-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sherlock-race-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.sherlock-race-card summary {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.sherlock-race-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.sherlock-race-card[open] summary {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.sherlock-race-title {
+  font-weight: 600;
+  color: #1f2937;
+  min-width: 5.5rem;
+}
+
+.sherlock-race-time {
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+.sherlock-race-pick {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: #374151;
+  font-size: 0.8rem;
+}
+
+.sherlock-race-body {
+  padding: 0.75rem;
+}
+
+.sherlock-note {
+  font-size: 0.75rem;
+  color: #92400e;
+  margin: 0 0 0.5rem;
+}
+
+/* ===== 勝率バー ===== */
+.sherlock-prob-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  font-size: 0.8rem;
+}
+
+.sherlock-prob-row.top {
+  font-weight: 600;
+}
+
+.sherlock-boat-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 4px;
+  border: 1.5px solid;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.sherlock-player {
+  width: 7.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #374151;
+  flex-shrink: 0;
+}
+
+.sherlock-grade {
+  color: #9ca3af;
+  font-size: 0.7rem;
+  margin-left: 0.25rem;
+}
+
+.sherlock-bar-track {
+  flex: 1;
+  height: 0.75rem;
+  background: #f3f4f6;
+  border-radius: 4px;
+  overflow: hidden;
+  min-width: 3rem;
+}
+
+.sherlock-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.sherlock-prob-value {
+  width: 3.2rem;
+  text-align: right;
+  color: #1f2937;
+  flex-shrink: 0;
+}
+
+.sherlock-odds-value {
+  width: 3.5rem;
+  text-align: right;
+  color: #6b7280;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.sherlock-ev-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #6b7280;
+  margin-left: auto;
+}
+
+.sherlock-ev-badge.positive {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.sherlock-ev-badge.muted {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+
+.sherlock-ev-note {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  margin: 0.5rem 0 0;
+}
+
+/* ===== モバイル ===== */
+@media (max-width: 480px) {
+  .sherlock-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .sherlock-stat {
+    padding: 0.6rem 0.4rem;
+  }
+
+  .sherlock-stat-value {
+    font-size: 1.1rem;
+  }
+
+  .sherlock-player {
+    width: 5.5rem;
+  }
+
+  .sherlock-odds-value {
+    display: none;
+  }
+}

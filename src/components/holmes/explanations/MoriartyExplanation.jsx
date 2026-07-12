@@ -144,7 +144,7 @@ function MoriartyExplanation() {
             fontFamily="system-ui, sans-serif"
             fill="#475569"
           >
-            Isotonic Regression
+            オッズ条件付き校正
           </text>
           <text
             x="212"
@@ -154,7 +154,7 @@ function MoriartyExplanation() {
             fontFamily="system-ui, sans-serif"
             fill="#475569"
           >
-            で生スコアを
+            でスコア+オッズを
           </text>
           <text
             x="212"
@@ -380,8 +380,8 @@ function MoriartyExplanation() {
           を計算するメタモデル
         </li>
         <li>
-          Isotonic
-          Regressionでモデルの予測確率を実績データに基づいて補正（キャリブレーション）
+          オッズ条件付きロジスティック校正で、AIスコアと市場オッズから
+          実際の的中確率を推定（キャリブレーション）
         </li>
         <li>
           EV（期待値）が1.0超のレースのみを推奨し、控除率25%を上回るエッジを狙う
@@ -403,12 +403,15 @@ function MoriartyExplanation() {
           </div>
 
           <div className="explanation-detail-block">
-            <h4>Isotonic Regression によるキャリブレーション</h4>
+            <h4>オッズ条件付きキャリブレーション</h4>
             <p>
-              モデルが「60%の確率」と言ったとき、実際に60%の頻度で的中するかを
-              過去データで検証し、単調増加制約を守りながら補正曲線を学習します。
-              例えばモデルが過信気味（実際の的中率より高い確率を出す）なら、
-              スコアを下方に押し下げます。
+              過去の実績データから「AIスコアと市場オッズの組み合わせごとの
+              実際の的中率」をロジスティック回帰で学習します。
+              スコア単独の校正では「どんなオッズの買い目か」を無視してしまい、
+              大穴の買い目に平均的な的中率を適用して期待値を過大評価します。
+              市場オッズを条件に含めることで、期待値が1.0を超えるのは
+              「AIスコアが市場の評価に上乗せする情報を持つ場合」だけになります
+              （香港競馬で実証された Benter の二段階モデルと同じ構造です）。
             </p>
           </div>
 

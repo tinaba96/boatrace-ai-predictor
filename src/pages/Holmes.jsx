@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Helmet } from "react-helmet-async";
 import Header from "../components/Header";
 import {
+  HolmesSherlock,
   HolmesWatson,
   HolmesAdler,
   HolmesMycroft,
@@ -10,6 +11,12 @@ import {
 import "./Holmes.css";
 
 const TABS = [
+  {
+    key: "sherlock",
+    label: "🔍 シャーロック",
+    color: "#059669",
+    Component: HolmesSherlock,
+  },
   {
     key: "watson",
     label: "🩺 ワトソン",
@@ -37,10 +44,10 @@ const TABS = [
 ];
 
 function Holmes() {
-  const [activeTab, setActiveTab] = useState("watson");
+  const [activeTab, setActiveTab] = useState("sherlock");
 
   const ActiveComponent =
-    TABS.find((t) => t.key === activeTab)?.Component || HolmesWatson;
+    TABS.find((t) => t.key === activeTab)?.Component || HolmesSherlock;
 
   return (
     <div className="holmes-page">
@@ -111,15 +118,15 @@ function Holmes() {
                 </p>
               </div>
               <div className="holmes-info-card">
-                <h3>🧭 4 つの探偵</h3>
+                <h3>🧭 5 人の探偵</h3>
                 <p>
-                  シャーロック・ホームズの世界観から名前を借り、各モデルの個性を表現しています。それぞれ独立した手法で同じデータに挑み、最終的にどのアプローチが最も勝てるかを定量比較します。
+                  シャーロック・ホームズの世界観から名前を借り、各モデルの個性を表現しています。それぞれ独立した手法で同じデータに挑み、最終的にどのアプローチが最も勝てるかを定量比較します。シャーロック（統計モデル）とモリアーティ（賭け方最適化）は実装済みで、実データで稼働中です。
                 </p>
               </div>
               <div className="holmes-info-card">
                 <h3>⚠️ 注意</h3>
                 <p>
-                  α版のため、表示されている予想はダミーデータです。実モデルの統合は順次行われます。ヘッダーからの導線は意図的に非公開とし、URL
+                  ワトソン・アドラー・マイクロフトのタブはダミーデータです。実モデルの統合は順次行われます。ヘッダーからの導線は意図的に非公開とし、URL
                   直叩きでのみアクセス可能です。
                 </p>
               </div>
