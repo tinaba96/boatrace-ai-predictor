@@ -1,0 +1,58 @@
+name: Generate Poirot Predictions
+
+# ポアロ予想 V1(RandomForest)/V2(LightGBM) の日次推論。
+# 学習済みモデルを Supabase Storage から取得し、当日レースを推論して
+# poirot_predictions テーブルへ upsert する。
+#
+# 1日3回実行する理由: 展示タイム・展示STはレース直前にしか揃わないため、
+# 朝1回だと午後レースの展示が欠損する。時間帯をずらして再推論・上書きし、
+# その時点で取得済みの展示データを反映して段階的に精度を上げる。
+
+on:
+  schedule:
+    # JST 08:00 / 12:00 / 16:00 = UTC 23:00 / 03:00 / 07:00
+    - cron: '0 23,3,7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install Python deps
+        run: pip install -r scripts/ml/requirements.txt
+
+      - name: Download models from Supabase Storage
+        run: node scripts/ml/storage-models.js download
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+      # 推論のローリング特徴量に直近履歴が必要なため dataset.csv を再生成
+      # （backfill は不要。直近30〜60走分は Supabase 蓄積分でカバーできる）
+      - name: Export history for rolling features
+        run: node scripts/ml/export-training-data.js
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+      - name: Generate & upsert poirot predictions
+        run: node scripts/daily/generate-poirot-predictions.js
+        env:
+          TZ: 'Asia/Tokyo'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
