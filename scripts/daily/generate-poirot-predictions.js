@@ -15,6 +15,7 @@
  */
 
 import fs from "fs/promises";
+import { existsSync } from "fs";
 import path from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
@@ -25,7 +26,12 @@ import { getTodayDateJST, parseDateArg } from "../lib/dateUtils.js";
 const execFileAsync = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "../..");
-const PYTHON = path.join(ROOT, "scripts/ml/.venv/bin/python");
+// ローカルは venv、CI は setup-python のシステム Python。
+// POIROT_PYTHON で明示上書きも可能。
+const VENV_PYTHON = path.join(ROOT, "scripts/ml/.venv/bin/python");
+const PYTHON =
+  process.env.POIROT_PYTHON ||
+  (existsSync(VENV_PYTHON) ? VENV_PYTHON : "python3");
 
 async function main() {
   if (!supabase) {
