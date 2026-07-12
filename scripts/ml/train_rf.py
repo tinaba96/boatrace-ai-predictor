@@ -29,9 +29,9 @@ MODEL_DIR = Path(__file__).resolve().parent / "models"
 MODEL_DIR.mkdir(exist_ok=True)
 
 RF_PARAMS = dict(
-    n_estimators=600,
-    max_depth=None,
-    min_samples_leaf=20,
+    n_estimators=100,        # 600→100（モデルサイズと学習時間の削減）
+    max_depth=14,            # 無制限→14（3.3GB→~90MB。木の葉の爆発を抑える）
+    min_samples_leaf=200,    # 20→200（過学習抑制＋ノード数削減）
     max_features="sqrt",
     n_jobs=-1,
     random_state=42,
