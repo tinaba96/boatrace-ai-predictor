@@ -1,0 +1,32 @@
+name: Train Sherlock Model
+
+on:
+  schedule:
+    # JST 日曜 02:30 = UTC 土曜 17:30（train-moriarty の30分後）
+    - cron: '30 17 * * 6'
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Train Sherlock model (conditional logit + odds blend)
+        run: node scripts/analysis/train-conditional-logit.js --fit-production
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      - name: Commit and push if changed
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/sherlock/model.json
+          git diff --staged --quiet || git commit -m "chore: update sherlock model [automated]"
+          git push
