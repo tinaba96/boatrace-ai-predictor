@@ -16,6 +16,7 @@ import {
   VENUE_NAMES,
 } from "../lib/supabaseClient.js";
 import { getRaceSchedule, getRacesInWindow } from "../lib/raceSchedule.js";
+import { parseTrifectaAll } from "../lib/oddsParser.js";
 
 const USER_AGENT =
   "BoatraceAIBot/1.0 (+https://github.com/rhapsody0919/boatrace-ai-predictor)";
@@ -100,9 +101,10 @@ function scrapeTrifectaOdds($) {
  * @param {string} date - YYYY-MM-DD
  * @param {number} venueCode - 会場コード (1-24)
  * @param {number} raceNo - レース番号 (1-12)
- * @returns {Promise<{winOdds: Array, trifecta: Array}|null>}
+ * @param {boolean} wantFull - true なら3連単全120通りもパースして返す
+ * @returns {Promise<{winOdds: Array, trifecta: Array, trifectaAll: Object|null}|null>}
  */
-async function fetchOddsForRace(date, venueCode, raceNo) {
+async function fetchOddsForRace(date, venueCode, raceNo, wantFull = false) {
   const ymd = date.replace(/-/g, "");
   const jcd = String(venueCode).padStart(2, "0");
   const winUrl = `https://www.boatrace.jp/owpc/pc/race/oddstf?rno=${raceNo}&jcd=${jcd}&hd=${ymd}`;
@@ -124,14 +126,21 @@ async function fetchOddsForRace(date, venueCode, raceNo) {
     const winOdds = scrapeWinOdds(cheerio.load(await winRes.text()));
 
     let trifecta = [];
+    let trifectaAll = null;
     if (trifRes.ok) {
-      trifecta = scrapeTrifectaOdds(cheerio.load(await trifRes.text()));
+      const $trif = cheerio.load(await trifRes.text());
+      trifecta = scrapeTrifectaOdds($trif);
+      // 発走直前スナップショット: 全120通りをパース（EV分析用・BOA-104）
+      if (wantFull) {
+        const fullMap = parseTrifectaAll($trif);
+        if (fullMap.size > 0) trifectaAll = Object.fromEntries(fullMap);
+      }
     }
 
     // 有効な単勝オッズが1件もなければ null
     if (!winOdds.some((o) => o !== null)) return null;
 
-    return { winOdds, trifecta };
+    return { winOdds, trifecta, trifectaAll };
   } catch (err) {
     console.error(
       `  ❌ ${VENUE_NAMES[venueCode]} ${raceNo}R オッズ取得エラー: ${err.message}`,
@@ -161,6 +170,13 @@ export async function run(schedule, date) {
     }
   }
 
+  // 最終ウィンドウ（発走直前）のレースは全120通りの3連単を保存する
+  // （締切直前オッズ＝EV分析・市場確率合成の基礎データ。BOA-104）
+  const FULL_ODDS_WINDOW = Math.min(...ODDS_WINDOWS);
+  const fullOddsIds = new Set(
+    getRacesInWindow(schedule, FULL_ODDS_WINDOW).map((r) => r.race_id),
+  );
+
   if (targetRaces.size === 0) {
     console.log("📭 オッズ: 取得対象レースなし（全ウィンドウ外）");
     return { updated: false, count: 0 };
@@ -188,20 +204,25 @@ export async function run(schedule, date) {
     // 会場内の全レースを並列取得
     const results = await Promise.all(
       races.map((r) =>
-        fetchOddsForRace(date, r.venue_code, r.race_no).then((data) => ({
-          r,
-          data,
-        })),
+        fetchOddsForRace(
+          date,
+          r.venue_code,
+          r.race_no,
+          fullOddsIds.has(r.race_id),
+        ).then((data) => ({ r, data })),
       ),
     );
 
     for (const { r, data } of results) {
       if (!data) continue;
-      const { winOdds, trifecta } = data;
+      const { winOdds, trifecta, trifectaAll } = data;
 
       allRows.push({
         race_id: r.race_id,
         captured_at: capturedAt,
+        // マイグレーション022未適用でも通常ウィンドウの書き込みが失敗しないよう
+        // 全120通りがあるときだけ列を含める
+        ...(trifectaAll ? { trifecta_all: trifectaAll } : {}),
         odds_win_1: winOdds[0] ?? null,
         odds_win_2: winOdds[1] ?? null,
         odds_win_3: winOdds[2] ?? null,
@@ -235,13 +256,21 @@ export async function run(schedule, date) {
   }
 
   console.log(`\n💾 race_odds: ${allRows.length}件書き込み中...`);
-  for (let i = 0; i < allRows.length; i += 1000) {
-    const batch = allRows.slice(i, i + 1000);
-    const { error } = await supabase
-      .from("race_odds")
-      .upsert(batch, { onConflict: "race_id,captured_at" });
-    if (error) {
-      console.error("❌ race_odds 書き込みエラー:", error.message);
+  // PostgREST の一括upsertは全行同一キーが必要なため、
+  // trifecta_all の有無でグループを分けて書き込む
+  const rowGroups = [
+    allRows.filter((r) => !("trifecta_all" in r)),
+    allRows.filter((r) => "trifecta_all" in r),
+  ].filter((g) => g.length > 0);
+  for (const group of rowGroups) {
+    for (let i = 0; i < group.length; i += 1000) {
+      const batch = group.slice(i, i + 1000);
+      const { error } = await supabase
+        .from("race_odds")
+        .upsert(batch, { onConflict: "race_id,captured_at" });
+      if (error) {
+        console.error("❌ race_odds 書き込みエラー:", error.message);
+      }
     }
   }
 
