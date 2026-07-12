@@ -51,6 +51,15 @@ def main():
 
     hist = pd.read_csv(F.DATA_DIR / "dataset.csv")
     st = pd.read_csv(F.DATA_DIR / "start_timings.csv")
+    # 学習時と同じく、公式アーカイブのバックフィル履歴があれば連結する
+    # （ローリング特徴量の分布を学習時と一致させるため）
+    bf_path = F.DATA_DIR / "backfill_dataset.csv"
+    if bf_path.exists():
+        bf = pd.read_csv(bf_path)
+        bf_st = pd.read_csv(F.DATA_DIR / "backfill_start_timings.csv")
+        ids = set(hist["race_id"])
+        hist = pd.concat([bf[~bf["race_id"].isin(ids)], hist], ignore_index=True)
+        st = pd.concat([bf_st[~bf_st["race_id"].isin(ids)], st], ignore_index=True)
     inf = pd.read_csv(inf_path)
     if len(inf) == 0:
         print(json.dumps([]))
