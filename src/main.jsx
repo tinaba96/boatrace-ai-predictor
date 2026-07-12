@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { HelmetProvider } from 'react-helmet-async'
 import './styles/design-tokens.css'
 import './index.css'
+import './i18n'
 import AppRouter from './AppRouter.jsx'
 import { initTrackingIfConsented } from './utils/analytics'
 

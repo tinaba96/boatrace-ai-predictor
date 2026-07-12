@@ -1,0 +1,229 @@
+{
+  "generated_at": "2026-05-15T11:09:17.647Z",
+  "config": {
+    "period_days": 30,
+    "top_n": 5,
+    "from_date": "2026-04-15"
+  },
+  "approximation_note": "outcome_distribution は現スナップショットのみ。本評価は現分布を全期間に適用する近似値。",
+  "betting_strategy": "AI予測の3連単(top_pick-top_2nd-top_3rd)を1点100円で買う。分布TopN内のレースのみ購入。的中払戻は predictions.payout_trifecta。",
+  "models": [
+    {
+      "model_id": "upsetFocus",
+      "total_predictions": 4973,
+      "covered_by_distribution": 401,
+      "coverage_rate": 0.0806,
+      "ai_hits_all": 106,
+      "ai_hit_rate": 0.0213,
+      "ai_recovery_all": 0.7788,
+      "intersect_hits": 39,
+      "intersect_hit_rate": 0.0973,
+      "intersect_recovery_rate": 1.0005,
+      "lift_vs_ai_only": 0.2217,
+      "hit_payout_max": 1390,
+      "hit_payout_median": 340,
+      "intersect_recovery_excl_max": 0.9658,
+      "extreme_value_dependency": 0.0347,
+      "specific_patterns": [
+        {
+          "pattern": "1-2-3",
+          "appearances": 329,
+          "hits": 33,
+          "hit_rate": 0.1003,
+          "payout_sum": 32840,
+          "recovery_rate": 0.9982,
+          "dist_probability_avg": 8.04,
+          "dist_avg_payout": 422
+        },
+        {
+          "pattern": "1-2-4",
+          "appearances": 36,
+          "hits": 5,
+          "hit_rate": 0.1389,
+          "payout_sum": 4840,
+          "recovery_rate": 1.3444,
+          "dist_probability_avg": 5.58,
+          "dist_avg_payout": 526
+        },
+        {
+          "pattern": "2-1-3",
+          "appearances": 30,
+          "hits": 1,
+          "hit_rate": 0.0333,
+          "payout_sum": 2080,
+          "recovery_rate": 0.6933,
+          "dist_probability_avg": 3.96,
+          "dist_avg_payout": 652
+        },
+        {
+          "pattern": "1-3-4",
+          "appearances": 6,
+          "hits": 0,
+          "hit_rate": 0,
+          "payout_sum": 360,
+          "recovery_rate": 0.6,
+          "dist_probability_avg": 4.51,
+          "dist_avg_payout": 640
+        }
+      ]
+    },
+    {
+      "model_id": "standard",
+      "total_predictions": 4973,
+      "covered_by_distribution": 368,
+      "coverage_rate": 0.074,
+      "ai_hits_all": 131,
+      "ai_hit_rate": 0.0263,
+      "ai_recovery_all": 0.7666,
+      "intersect_hits": 25,
+      "intersect_hit_rate": 0.0679,
+      "intersect_recovery_rate": 0.8269,
+      "lift_vs_ai_only": 0.0603,
+      "hit_payout_max": 1880,
+      "hit_payout_median": 300,
+      "intersect_recovery_excl_max": 0.7758,
+      "extreme_value_dependency": 0.0511,
+      "specific_patterns": [
+        {
+          "pattern": "1-2-3",
+          "appearances": 213,
+          "hits": 16,
+          "hit_rate": 0.0751,
+          "payout_sum": 16620,
+          "recovery_rate": 0.7803,
+          "dist_probability_avg": 8.19,
+          "dist_avg_payout": 416
+        },
+        {
+          "pattern": "2-1-3",
+          "appearances": 124,
+          "hits": 7,
+          "hit_rate": 0.0565,
+          "payout_sum": 11480,
+          "recovery_rate": 0.9258,
+          "dist_probability_avg": 3.96,
+          "dist_avg_payout": 652
+        },
+        {
+          "pattern": "1-2-4",
+          "appearances": 28,
+          "hits": 2,
+          "hit_rate": 0.0714,
+          "payout_sum": 2140,
+          "recovery_rate": 0.7643,
+          "dist_probability_avg": 5.52,
+          "dist_avg_payout": 545
+        },
+        {
+          "pattern": "1-3-4",
+          "appearances": 2,
+          "hits": 0,
+          "hit_rate": 0,
+          "payout_sum": 190,
+          "recovery_rate": 0.95,
+          "dist_probability_avg": 4.96,
+          "dist_avg_payout": 641
+        },
+        {
+          "pattern": "1-2-5",
+          "appearances": 1,
+          "hits": 0,
+          "hit_rate": 0,
+          "payout_sum": 0,
+          "recovery_rate": 0,
+          "dist_probability_avg": 4.59,
+          "dist_avg_payout": 1001
+        }
+      ]
+    },
+    {
+      "model_id": "safeBet",
+      "total_predictions": 4973,
+      "covered_by_distribution": 4816,
+      "coverage_rate": 0.9684,
+      "ai_hits_all": 411,
+      "ai_hit_rate": 0.0826,
+      "ai_recovery_all": 0.7781,
+      "intersect_hits": 406,
+      "intersect_hit_rate": 0.0843,
+      "intersect_recovery_rate": 0.7861,
+      "lift_vs_ai_only": 0.008,
+      "hit_payout_max": 1820,
+      "hit_payout_median": 300,
+      "intersect_recovery_excl_max": 0.7823,
+      "extreme_value_dependency": 0.0038,
+      "specific_patterns": [
+        {
+          "pattern": "1-2-3",
+          "appearances": 2839,
+          "hits": 252,
+          "hit_rate": 0.0888,
+          "payout_sum": 224030,
+          "recovery_rate": 0.7891,
+          "dist_probability_avg": 7.86,
+          "dist_avg_payout": 424
+        },
+        {
+          "pattern": "1-2-4",
+          "appearances": 1051,
+          "hits": 89,
+          "hit_rate": 0.0847,
+          "payout_sum": 89630,
+          "recovery_rate": 0.8528,
+          "dist_probability_avg": 5.41,
+          "dist_avg_payout": 540
+        },
+        {
+          "pattern": "1-3-4",
+          "appearances": 532,
+          "hits": 26,
+          "hit_rate": 0.0489,
+          "payout_sum": 32180,
+          "recovery_rate": 0.6049,
+          "dist_probability_avg": 4.51,
+          "dist_avg_payout": 679
+        },
+        {
+          "pattern": "1-3-2",
+          "appearances": 380,
+          "hits": 37,
+          "hit_rate": 0.0974,
+          "payout_sum": 31710,
+          "recovery_rate": 0.8345,
+          "dist_probability_avg": 5.49,
+          "dist_avg_payout": 444
+        },
+        {
+          "pattern": "1-3-5",
+          "appearances": 8,
+          "hits": 1,
+          "hit_rate": 0.125,
+          "payout_sum": 840,
+          "recovery_rate": 1.05,
+          "dist_probability_avg": 4.61,
+          "dist_avg_payout": 806
+        },
+        {
+          "pattern": "1-2-5",
+          "appearances": 5,
+          "hits": 1,
+          "hit_rate": 0.2,
+          "payout_sum": 190,
+          "recovery_rate": 0.38,
+          "dist_probability_avg": 4.11,
+          "dist_avg_payout": 871
+        },
+        {
+          "pattern": "1-3-6",
+          "appearances": 1,
+          "hits": 0,
+          "hit_rate": 0,
+          "payout_sum": 0,
+          "recovery_rate": 0,
+          "dist_probability_avg": 3.98,
+          "dist_avg_payout": 1354
+        }
+      ]
+    }
+  ]
+}

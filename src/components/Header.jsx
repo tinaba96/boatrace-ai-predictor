@@ -1,11 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import LanguageSwitcher from './LanguageSwitcher'
 import './Header.css'
 
 function Header() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isCompressed, setIsCompressed] = useState(false)
   const menuRef = useRef(null)
 
   // 現在のページ/タブを判定
@@ -46,6 +50,22 @@ function Header() {
     }
   }, [isMenuOpen])
 
+  // スクロール検出：デスクトップのみ圧縮
+  useEffect(() => {
+    const handleScroll = () => {
+      const isMobile = window.innerWidth <= 768
+      if (isMobile) {
+        setIsCompressed(false)
+        return
+      }
+      const currentScrollY = window.scrollY
+      setIsCompressed(currentScrollY > 100) // 100px以上スクロールで圧縮
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   // ロゴクリック時の処理
   const handleLogoClick = () => {
     navigate('/')
@@ -59,9 +79,9 @@ function Header() {
   }
 
   return (
-    <header className="app-header">
+    <header className={`app-header ${isCompressed ? 'compressed' : ''}`}>
       <div className="header-content" ref={menuRef}>
-        <button className="logo" onClick={handleLogoClick} aria-label="BoatAI トップページへ">
+        <button className="logo" onClick={handleLogoClick} aria-label={t('nav.logoLabel')}>
           <span className="logo-icon">🚤</span>
           <h1>BoatAI</h1>
         </button>
@@ -70,18 +90,19 @@ function Header() {
             className={`nav-btn ${activeTab === 'races' ? 'active' : ''}`}
             onClick={() => handleTabClick('races')}
           >
-            🏁 予想
+            {t('nav.predictions')}
           </button>
           <button
             className={`nav-btn ${activeTab === 'hit-races' ? 'active' : ''}`}
             onClick={() => handleTabClick('hit-races')}
           >
-            ✅ 的中
+            {t('nav.hits')}
           </button>
+          <LanguageSwitcher />
           <button
             className="nav-btn menu-btn"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            aria-label="その他のメニュー"
+            aria-label={t('nav.menuLabel')}
             aria-expanded={isMenuOpen}
           >
             ☰
@@ -91,61 +112,80 @@ function Header() {
         {isMenuOpen && <div className="menu-overlay" onClick={() => setIsMenuOpen(false)} />}
         {isMenuOpen && (
           <div className="submenu">
+            <button
+              className={`submenu-item submenu-item-button ${activeTab === 'races' ? 'active' : ''}`}
+              onClick={() => { handleTabClick('races'); setIsMenuOpen(false) }}
+            >
+              {t('nav.predictions')}
+            </button>
+            <button
+              className={`submenu-item submenu-item-button ${activeTab === 'hit-races' ? 'active' : ''}`}
+              onClick={() => { handleTabClick('hit-races'); setIsMenuOpen(false) }}
+            >
+              {t('nav.hits')}
+            </button>
+            <Link
+              to="/accuracy"
+              className={`submenu-item ${activeTab === 'accuracy' ? 'active' : ''}`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              {t('nav.accuracy')}
+            </Link>
             <Link
               to="/outcome-distribution"
               className={`submenu-item ${activeTab === 'outcome-distribution' ? 'active' : ''}`}
               onClick={() => setIsMenuOpen(false)}
             >
-              📊 出目分布分析
+              {t('nav.outcomeDistribution')}
             </Link>
             <Link
               to="/races"
               className={`submenu-item ${activeTab === 'past-races' ? 'active' : ''}`}
               onClick={() => setIsMenuOpen(false)}
             >
-              📅 過去の予想
+              {t('nav.pastRaces')}
             </Link>
             <Link
               to="/how-to-use"
               className={`submenu-item ${activeTab === 'how-to-use' ? 'active' : ''}`}
               onClick={() => setIsMenuOpen(false)}
             >
-              📚 使い方
+              {t('nav.howToUse')}
             </Link>
             <Link
               to="/guide"
               className={`submenu-item ${activeTab === 'guide' ? 'active' : ''}`}
               onClick={() => setIsMenuOpen(false)}
             >
-              📖 完全ガイド
+              {t('nav.guide')}
             </Link>
             <Link
               to="/blog"
               className={`submenu-item ${activeTab === 'blog' ? 'active' : ''}`}
               onClick={() => setIsMenuOpen(false)}
             >
-              📝 ブログ
+              {t('nav.blog')}
             </Link>
             <Link
               to="/faq"
               className={`submenu-item ${activeTab === 'faq' ? 'active' : ''}`}
               onClick={() => setIsMenuOpen(false)}
             >
-              ❓ よくある質問
+              {t('nav.faq')}
             </Link>
             <Link
               to="/about"
               className={`submenu-item ${activeTab === 'about' ? 'active' : ''}`}
               onClick={() => setIsMenuOpen(false)}
             >
-              ℹ️ サービスについて
+              {t('nav.about')}
             </Link>
             <Link
               to="/profile"
               className={`submenu-item ${activeTab === 'profile' ? 'active' : ''}`}
               onClick={() => setIsMenuOpen(false)}
             >
-              👤 運営者プロフィール
+              {t('nav.profile')}
             </Link>
           </div>
         )}

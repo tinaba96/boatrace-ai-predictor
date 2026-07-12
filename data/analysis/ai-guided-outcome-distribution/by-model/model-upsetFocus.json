@@ -1,0 +1,73 @@
+{
+  "generated_at": "2026-05-15T12:06:45.604Z",
+  "model_id": "upsetFocus",
+  "config": {
+    "from_date": "2025-12-02",
+    "to_date": "2026-01-09",
+    "exclude_bottom_requested": 2,
+    "exclusion_levels": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "by_exclusion": {
+    "0": {
+      "total_races": 976,
+      "hit_count": 924,
+      "hit_rate": 0.9467,
+      "recovery_rate": 0.5907,
+      "points_per_race": 18.47,
+      "avg_investment": 1846.5,
+      "total_investment": 1802200,
+      "total_payout": 1064500,
+      "ai_hit_count": 76,
+      "ai_hit_rate": 0.0779,
+      "ai_recovery_rate": 0.6164,
+      "lift_vs_ai_only": -0.0257
+    },
+    "1": {
+      "total_races": 976,
+      "hit_count": 652,
+      "hit_rate": 0.668,
+      "recovery_rate": 0.5941,
+      "points_per_race": 11.07,
+      "avg_investment": 1106.6,
+      "total_investment": 1080000,
+      "total_payout": 641630,
+      "ai_hit_count": 76,
+      "ai_hit_rate": 0.0779,
+      "ai_recovery_rate": 0.6164,
+      "lift_vs_ai_only": -0.0223
+    },
+    "2": {
+      "total_races": 976,
+      "hit_count": 391,
+      "hit_rate": 0.4006,
+      "recovery_rate": 0.5872,
+      "points_per_race": 5.55,
+      "avg_investment": 555.1,
+      "total_investment": 541800,
+      "total_payout": 318120,
+      "ai_hit_count": 76,
+      "ai_hit_rate": 0.0779,
+      "ai_recovery_rate": 0.6164,
+      "lift_vs_ai_only": -0.0292
+    },
+    "3": {
+      "total_races": 976,
+      "hit_count": 148,
+      "hit_rate": 0.1516,
+      "recovery_rate": 0.639,
+      "points_per_race": 1.86,
+      "avg_investment": 185.8,
+      "total_investment": 181300,
+      "total_payout": 115850,
+      "ai_hit_count": 76,
+      "ai_hit_rate": 0.0779,
+      "ai_recovery_rate": 0.6164,
+      "lift_vs_ai_only": 0.0226
+    }
+  }
+}

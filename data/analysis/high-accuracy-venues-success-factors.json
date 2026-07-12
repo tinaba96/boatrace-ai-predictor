@@ -1,0 +1,71 @@
+{
+  "analysis_date": "2026-05-22",
+  "period": {
+    "start": "2026-03-10",
+    "end": "2026-05-17"
+  },
+  "target_venues": [
+    {
+      "code": "19",
+      "name": "下関"
+    },
+    {
+      "code": "17",
+      "name": "宮島"
+    },
+    {
+      "code": "24",
+      "name": "大村"
+    }
+  ],
+  "by_venue": [
+    {
+      "code": "17",
+      "name": "宮島",
+      "total": 24,
+      "correct_count": 16,
+      "correct_rate": "66.67",
+      "correct_by_technique": {
+        "逃げ": 16
+      },
+      "technique_only_count": 0,
+      "technique_only_rate": "0.00",
+      "course_only_count": 0,
+      "course_only_rate": "0.00",
+      "both_miss_count": 8,
+      "both_miss_rate": "33.33"
+    },
+    {
+      "code": "19",
+      "name": "下関",
+      "total": 22,
+      "correct_count": 19,
+      "correct_rate": "86.36",
+      "correct_by_technique": {
+        "逃げ": 19
+      },
+      "technique_only_count": 0,
+      "technique_only_rate": "0.00",
+      "course_only_count": 1,
+      "course_only_rate": "4.55",
+      "both_miss_count": 2,
+      "both_miss_rate": "9.09"
+    },
+    {
+      "code": "24",
+      "name": "大村",
+      "total": 48,
+      "correct_count": 31,
+      "correct_rate": "64.58",
+      "correct_by_technique": {
+        "逃げ": 31
+      },
+      "technique_only_count": 0,
+      "technique_only_rate": "0.00",
+      "course_only_count": 0,
+      "course_only_rate": "0.00",
+      "both_miss_count": 17,
+      "both_miss_rate": "35.42"
+    }
+  ]
+}

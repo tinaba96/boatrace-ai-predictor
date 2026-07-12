@@ -1,0 +1,701 @@
+{
+  "analysis_date": "2026-05-17",
+  "period": {
+    "start": "2026-03-10",
+    "end": "2026-05-17"
+  },
+  "methodology": "UI表示順の上位3技術のwinnerCourseに実績1着コースが含まれれば的中（turn-prediction-accuracy-final.js準拠）",
+  "total_records": 1000,
+  "low_accuracy_venues": {
+    "1": {
+      "name": "桐生",
+      "accuracy": 0.563,
+      "total_races": 48,
+      "hits": 27,
+      "venue_1course_param": 0.52,
+      "venue_1course_actual_rate": 0.375,
+      "actual_winning_course_distribution": {
+        "1": 18,
+        "2": 7,
+        "3": 5,
+        "4": 11,
+        "5": 4,
+        "6": 3
+      },
+      "missed_race_actual_course_distribution": {
+        "2": 2,
+        "3": 2,
+        "4": 10,
+        "5": 4,
+        "6": 3
+      },
+      "missed_race_actual_technique_distribution": {
+        "差し": 4,
+        "まくり": 9,
+        "まくり差し": 7,
+        "恵まれ": 1
+      },
+      "hit_race_actual_technique_distribution": {
+        "まくり": 3,
+        "逃げ": 16,
+        "抜き": 2,
+        "まくり差し": 3,
+        "差し": 3
+      },
+      "missed_race_model_predicted_top_course": {
+        "1": 21
+      },
+      "missed_race_model_predicted_top_technique": {
+        "nige": 21
+      },
+      "hit_rate_by_actual_technique": {
+        "差し": {
+          "total": 7,
+          "hits": 3,
+          "rate": 42.9
+        },
+        "まくり": {
+          "total": 12,
+          "hits": 3,
+          "rate": 25
+        },
+        "逃げ": {
+          "total": 16,
+          "hits": 16,
+          "rate": 100
+        },
+        "まくり差し": {
+          "total": 10,
+          "hits": 3,
+          "rate": 30
+        },
+        "抜き": {
+          "total": 2,
+          "hits": 2,
+          "rate": 100
+        },
+        "恵まれ": {
+          "total": 1,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      "hit_rate_by_wind": {
+        "calm": {
+          "total": 12,
+          "hits": 8,
+          "rate": 66.7
+        },
+        "moderate": {
+          "total": 13,
+          "hits": 9,
+          "rate": 69.2
+        },
+        "strong": {
+          "total": 23,
+          "hits": 10,
+          "rate": 43.5
+        }
+      },
+      "model_in_prediction": {
+        "races_model_predicted_course1_top": 48,
+        "hits": 27,
+        "rate": 0.563
+      },
+      "common_failure_patterns": [
+        "1コース実績勝率(38%)がパラメータ値(52%)を下回り、想定以上に荒れている",
+        "不的中21レース中、実際の決まり手で最多は「まくり」(9件, 42.9%)",
+        "決まり手「まくり」の的中率が最低(25%, n=12) — このパターンの予測が苦手",
+        "非1コース決着30レース中21件が不的中(70%) — アウトコースの台頭を捉えられていない",
+        "不的中レースのうち21件(100%)でモデルは1コース(逃げ)をトップ予測 — イン信頼が過剰",
+        "強風時(5m以上)の的中率(43.5%, n=23)が会場平均を下回る"
+      ]
+    },
+    "4": {
+      "name": "平和島",
+      "accuracy": 0.5670000000000001,
+      "total_races": 60,
+      "hits": 34,
+      "venue_1course_param": 0.45,
+      "venue_1course_actual_rate": 0.467,
+      "actual_winning_course_distribution": {
+        "1": 28,
+        "2": 2,
+        "3": 14,
+        "4": 8,
+        "5": 4,
+        "6": 4
+      },
+      "missed_race_actual_course_distribution": {
+        "3": 10,
+        "4": 8,
+        "5": 4,
+        "6": 4
+      },
+      "missed_race_actual_technique_distribution": {
+        "まくり差し": 8,
+        "まくり": 11,
+        "差し": 6,
+        "抜き": 1
+      },
+      "hit_race_actual_technique_distribution": {
+        "まくり": 3,
+        "逃げ": 27,
+        "差し": 1,
+        "抜き": 1,
+        "まくり差し": 2
+      },
+      "missed_race_model_predicted_top_course": {
+        "1": 26
+      },
+      "missed_race_model_predicted_top_technique": {
+        "nige": 26
+      },
+      "hit_rate_by_actual_technique": {
+        "まくり差し": {
+          "total": 10,
+          "hits": 2,
+          "rate": 20
+        },
+        "まくり": {
+          "total": 14,
+          "hits": 3,
+          "rate": 21.4
+        },
+        "逃げ": {
+          "total": 27,
+          "hits": 27,
+          "rate": 100
+        },
+        "差し": {
+          "total": 7,
+          "hits": 1,
+          "rate": 14.3
+        },
+        "抜き": {
+          "total": 2,
+          "hits": 1,
+          "rate": 50
+        }
+      },
+      "hit_rate_by_wind": {
+        "calm": {
+          "total": 31,
+          "hits": 18,
+          "rate": 58.1
+        },
+        "moderate": {
+          "total": 26,
+          "hits": 14,
+          "rate": 53.8
+        },
+        "strong": {
+          "total": 3,
+          "hits": 2,
+          "rate": 66.7
+        }
+      },
+      "model_in_prediction": {
+        "races_model_predicted_course1_top": 59,
+        "hits": 33,
+        "rate": 0.5589999999999999
+      },
+      "common_failure_patterns": [
+        "不的中26レース中、実際の決まり手で最多は「まくり」(11件, 42.3%)",
+        "決まり手「差し」の的中率が最低(14.3%, n=7) — このパターンの予測が苦手",
+        "非1コース決着32レース中26件が不的中(81.3%) — アウトコースの台頭を捉えられていない",
+        "不的中レースのうち26件(100%)でモデルは1コース(逃げ)をトップ予測 — イン信頼が過剰"
+      ]
+    },
+    "14": {
+      "name": "鳴門",
+      "accuracy": 0.604,
+      "total_races": 48,
+      "hits": 29,
+      "venue_1course_param": 0.55,
+      "venue_1course_actual_rate": 0.375,
+      "actual_winning_course_distribution": {
+        "1": 18,
+        "2": 11,
+        "3": 11,
+        "4": 6,
+        "6": 2
+      },
+      "missed_race_actual_course_distribution": {
+        "2": 4,
+        "3": 7,
+        "4": 6,
+        "6": 2
+      },
+      "missed_race_actual_technique_distribution": {
+        "まくり": 11,
+        "まくり差し": 5,
+        "差し": 3
+      },
+      "hit_race_actual_technique_distribution": {
+        "逃げ": 17,
+        "抜き": 2,
+        "差し": 3,
+        "まくり": 7
+      },
+      "missed_race_model_predicted_top_course": {
+        "1": 19
+      },
+      "missed_race_model_predicted_top_technique": {
+        "nige": 19
+      },
+      "hit_rate_by_actual_technique": {
+        "逃げ": {
+          "total": 17,
+          "hits": 17,
+          "rate": 100
+        },
+        "まくり": {
+          "total": 18,
+          "hits": 7,
+          "rate": 38.9
+        },
+        "抜き": {
+          "total": 2,
+          "hits": 2,
+          "rate": 100
+        },
+        "まくり差し": {
+          "total": 5,
+          "hits": 0,
+          "rate": 0
+        },
+        "差し": {
+          "total": 6,
+          "hits": 3,
+          "rate": 50
+        }
+      },
+      "hit_rate_by_wind": {
+        "calm": {
+          "total": 17,
+          "hits": 11,
+          "rate": 64.7
+        },
+        "moderate": {
+          "total": 24,
+          "hits": 13,
+          "rate": 54.2
+        },
+        "strong": {
+          "total": 7,
+          "hits": 5,
+          "rate": 71.4
+        }
+      },
+      "model_in_prediction": {
+        "races_model_predicted_course1_top": 48,
+        "hits": 29,
+        "rate": 0.604
+      },
+      "common_failure_patterns": [
+        "1コース実績勝率(38%)がパラメータ値(55%)を下回り、想定以上に荒れている",
+        "不的中19レース中、実際の決まり手で最多は「まくり」(11件, 57.9%)",
+        "決まり手「まくり差し」の的中率が最低(0%, n=5) — このパターンの予測が苦手",
+        "非1コース決着30レース中19件が不的中(63.3%) — アウトコースの台頭を捉えられていない",
+        "不的中レースのうち19件(100%)でモデルは1コース(逃げ)をトップ予測 — イン信頼が過剰"
+      ]
+    }
+  },
+  "high_accuracy_venues": {
+    "6": {
+      "name": "浜名湖",
+      "accuracy": 0.8170000000000001,
+      "total_races": 60,
+      "hits": 49,
+      "venue_1course_param": 0.54,
+      "venue_1course_actual_rate": 0.55,
+      "actual_winning_course_distribution": {
+        "1": 33,
+        "2": 12,
+        "3": 7,
+        "4": 6,
+        "5": 2
+      },
+      "missed_race_actual_course_distribution": {
+        "2": 2,
+        "3": 3,
+        "4": 4,
+        "5": 2
+      },
+      "missed_race_actual_technique_distribution": {
+        "まくり差し": 4,
+        "差し": 3,
+        "まくり": 2,
+        "恵まれ": 2
+      },
+      "hit_race_actual_technique_distribution": {
+        "差し": 7,
+        "逃げ": 33,
+        "まくり": 7,
+        "まくり差し": 2
+      },
+      "missed_race_model_predicted_top_course": {
+        "1": 11
+      },
+      "missed_race_model_predicted_top_technique": {
+        "nige": 11
+      },
+      "hit_rate_by_actual_technique": {
+        "まくり差し": {
+          "total": 6,
+          "hits": 2,
+          "rate": 33.3
+        },
+        "差し": {
+          "total": 10,
+          "hits": 7,
+          "rate": 70
+        },
+        "逃げ": {
+          "total": 33,
+          "hits": 33,
+          "rate": 100
+        },
+        "まくり": {
+          "total": 9,
+          "hits": 7,
+          "rate": 77.8
+        },
+        "恵まれ": {
+          "total": 2,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      "hit_rate_by_wind": {
+        "calm": {
+          "total": 22,
+          "hits": 18,
+          "rate": 81.8
+        },
+        "moderate": {
+          "total": 26,
+          "hits": 21,
+          "rate": 80.8
+        },
+        "strong": {
+          "total": 12,
+          "hits": 10,
+          "rate": 83.3
+        }
+      },
+      "model_in_prediction": {
+        "races_model_predicted_course1_top": 60,
+        "hits": 49,
+        "rate": 0.8170000000000001
+      },
+      "success_factors": [
+        "1コース実績勝率が高い(55%) — イン有利でモデルの逃げ予測が機能しやすい",
+        "モデルが1コーストップ予測したレースの的中率(82%, n=60) — 逃げ判定の精度が高い",
+        "決まり手「逃げ」の的中率が最高(100%, n=33)",
+        "逃げ決着レースの的中率(100%, n=33) — 決着が読みやすい",
+        "無風〜弱風(3m未満)のレース比率が高く的中率も安定(81.8%, n=22)"
+      ]
+    },
+    "18": {
+      "name": "徳山",
+      "accuracy": 0.833,
+      "total_races": 72,
+      "hits": 60,
+      "venue_1course_param": 0.59,
+      "venue_1course_actual_rate": 0.597,
+      "actual_winning_course_distribution": {
+        "1": 43,
+        "2": 9,
+        "3": 12,
+        "4": 4,
+        "5": 1,
+        "6": 3
+      },
+      "missed_race_actual_course_distribution": {
+        "3": 5,
+        "4": 4,
+        "6": 3
+      },
+      "missed_race_actual_technique_distribution": {
+        "まくり": 3,
+        "抜き": 2,
+        "まくり差し": 5,
+        "差し": 2
+      },
+      "hit_race_actual_technique_distribution": {
+        "まくり差し": 3,
+        "差し": 8,
+        "逃げ": 42,
+        "まくり": 5,
+        "抜き": 2
+      },
+      "missed_race_model_predicted_top_course": {
+        "1": 12
+      },
+      "missed_race_model_predicted_top_technique": {
+        "nige": 12
+      },
+      "hit_rate_by_actual_technique": {
+        "まくり差し": {
+          "total": 8,
+          "hits": 3,
+          "rate": 37.5
+        },
+        "差し": {
+          "total": 10,
+          "hits": 8,
+          "rate": 80
+        },
+        "逃げ": {
+          "total": 42,
+          "hits": 42,
+          "rate": 100
+        },
+        "まくり": {
+          "total": 8,
+          "hits": 5,
+          "rate": 62.5
+        },
+        "抜き": {
+          "total": 4,
+          "hits": 2,
+          "rate": 50
+        }
+      },
+      "hit_rate_by_wind": {
+        "calm": {
+          "total": 19,
+          "hits": 16,
+          "rate": 84.2
+        },
+        "moderate": {
+          "total": 45,
+          "hits": 37,
+          "rate": 82.2
+        },
+        "strong": {
+          "total": 8,
+          "hits": 7,
+          "rate": 87.5
+        }
+      },
+      "model_in_prediction": {
+        "races_model_predicted_course1_top": 72,
+        "hits": 60,
+        "rate": 0.833
+      },
+      "success_factors": [
+        "1コース実績勝率が高い(60%) — イン有利でモデルの逃げ予測が機能しやすい",
+        "モデルが1コーストップ予測したレースの的中率(83%, n=72) — 逃げ判定の精度が高い",
+        "決まり手「逃げ」の的中率が最高(100%, n=42)",
+        "逃げ決着レースの的中率(100%, n=42) — 決着が読みやすい",
+        "無風〜弱風(3m未満)のレース比率が高く的中率も安定(84.2%, n=19)"
+      ]
+    },
+    "19": {
+      "name": "下関",
+      "accuracy": 0.955,
+      "total_races": 22,
+      "hits": 21,
+      "venue_1course_param": 0.55,
+      "venue_1course_actual_rate": 0.909,
+      "actual_winning_course_distribution": {
+        "1": 20,
+        "2": 1,
+        "3": 1
+      },
+      "missed_race_actual_course_distribution": {
+        "3": 1
+      },
+      "missed_race_actual_technique_distribution": {
+        "まくり差し": 1
+      },
+      "hit_race_actual_technique_distribution": {
+        "逃げ": 19,
+        "抜き": 1,
+        "差し": 1
+      },
+      "missed_race_model_predicted_top_course": {
+        "1": 1
+      },
+      "missed_race_model_predicted_top_technique": {
+        "nige": 1
+      },
+      "hit_rate_by_actual_technique": {
+        "逃げ": {
+          "total": 19,
+          "hits": 19,
+          "rate": 100
+        },
+        "抜き": {
+          "total": 1,
+          "hits": 1,
+          "rate": 100
+        },
+        "まくり差し": {
+          "total": 1,
+          "hits": 0,
+          "rate": 0
+        },
+        "差し": {
+          "total": 1,
+          "hits": 1,
+          "rate": 100
+        }
+      },
+      "hit_rate_by_wind": {
+        "calm": {
+          "total": 18,
+          "hits": 17,
+          "rate": 94.4
+        },
+        "moderate": {
+          "total": 3,
+          "hits": 3,
+          "rate": 100
+        },
+        "strong": {
+          "total": 1,
+          "hits": 1,
+          "rate": 100
+        }
+      },
+      "model_in_prediction": {
+        "races_model_predicted_course1_top": 22,
+        "hits": 21,
+        "rate": 0.955
+      },
+      "success_factors": [
+        "1コース実績勝率が高い(91%) — イン有利でモデルの逃げ予測が機能しやすい",
+        "モデルが1コーストップ予測したレースの的中率(96%, n=22) — 逃げ判定の精度が高い",
+        "決まり手「逃げ」の的中率が最高(100%, n=19)",
+        "逃げ決着レースの的中率(100%, n=19) — 決着が読みやすい",
+        "無風〜弱風(3m未満)のレース比率が高く的中率も安定(94.4%, n=18)"
+      ]
+    }
+  },
+  "all_venue_summary": {
+    "1": {
+      "name": "桐生",
+      "total": 48,
+      "hits": 27,
+      "accuracy": 0.563
+    },
+    "2": {
+      "name": "戸田",
+      "total": 36,
+      "hits": 22,
+      "accuracy": 0.611
+    },
+    "3": {
+      "name": "江戸川",
+      "total": 36,
+      "hits": 26,
+      "accuracy": 0.722
+    },
+    "4": {
+      "name": "平和島",
+      "total": 60,
+      "hits": 34,
+      "accuracy": 0.5670000000000001
+    },
+    "5": {
+      "name": "多摩川",
+      "total": 72,
+      "hits": 54,
+      "accuracy": 0.75
+    },
+    "6": {
+      "name": "浜名湖",
+      "total": 60,
+      "hits": 49,
+      "accuracy": 0.8170000000000001
+    },
+    "7": {
+      "name": "蒲郡",
+      "total": 60,
+      "hits": 45,
+      "accuracy": 0.75
+    },
+    "8": {
+      "name": "常滑",
+      "total": 42,
+      "hits": 26,
+      "accuracy": 0.619
+    },
+    "10": {
+      "name": "三国",
+      "total": 24,
+      "hits": 17,
+      "accuracy": 0.708
+    },
+    "11": {
+      "name": "びわこ",
+      "total": 48,
+      "hits": 36,
+      "accuracy": 0.75
+    },
+    "13": {
+      "name": "尼崎",
+      "total": 48,
+      "hits": 35,
+      "accuracy": 0.7290000000000001
+    },
+    "14": {
+      "name": "鳴門",
+      "total": 48,
+      "hits": 29,
+      "accuracy": 0.604
+    },
+    "16": {
+      "name": "児島",
+      "total": 60,
+      "hits": 42,
+      "accuracy": 0.7
+    },
+    "17": {
+      "name": "宮島",
+      "total": 24,
+      "hits": 17,
+      "accuracy": 0.708
+    },
+    "18": {
+      "name": "徳山",
+      "total": 72,
+      "hits": 60,
+      "accuracy": 0.833
+    },
+    "19": {
+      "name": "下関",
+      "total": 22,
+      "hits": 21,
+      "accuracy": 0.955
+    },
+    "20": {
+      "name": "若松",
+      "total": 72,
+      "hits": 54,
+      "accuracy": 0.75
+    },
+    "21": {
+      "name": "芦屋",
+      "total": 48,
+      "hits": 38,
+      "accuracy": 0.792
+    },
+    "22": {
+      "name": "福岡",
+      "total": 72,
+      "hits": 54,
+      "accuracy": 0.75
+    },
+    "24": {
+      "name": "大村",
+      "total": 48,
+      "hits": 39,
+      "accuracy": 0.813
+    }
+  }
+}

@@ -1,0 +1,315 @@
+{
+  "analysis_date": "2026-05-17",
+  "period": {
+    "start": "2026-03-10",
+    "end": "2026-05-17"
+  },
+  "method": "UI表示順（distribution確率の上位3技術）の winnerCourse のいずれかが実際の1着コースと一致すれば的中",
+  "min_sample_size": 30,
+  "total": {
+    "races": 1000,
+    "hits": 725,
+    "miss": 275,
+    "hit_rate": 72.5,
+    "miss_rate": 27.5
+  },
+  "miss_patterns": [
+    {
+      "pattern": "決まり手「まくり差し」で決着したレース",
+      "miss_count": 100,
+      "miss_rate": 81.97,
+      "hit_rate": 18.03,
+      "sample_size": 122
+    },
+    {
+      "pattern": "決まり手「まくり」で決着したレース",
+      "miss_count": 104,
+      "miss_rate": 57.14,
+      "hit_rate": 42.86,
+      "sample_size": 182
+    },
+    {
+      "pattern": "決まり手「抜き」で決着したレース",
+      "miss_count": 24,
+      "miss_rate": 45.28,
+      "hit_rate": 54.72,
+      "sample_size": 53
+    },
+    {
+      "pattern": "決まり手「差し」で決着したレース",
+      "miss_count": 39,
+      "miss_rate": 31.71,
+      "hit_rate": 68.29,
+      "sample_size": 123
+    },
+    {
+      "pattern": "決まり手「逃げ」で決着したレース",
+      "miss_count": 3,
+      "miss_rate": 0.58,
+      "hit_rate": 99.42,
+      "sample_size": 515
+    }
+  ],
+  "hit_rate_by_factor": {
+    "actual_technique": {
+      "差し": {
+        "total": 123,
+        "hits": 84,
+        "miss": 39,
+        "hit_rate": 68.29,
+        "miss_rate": 31.71
+      },
+      "まくり": {
+        "total": 182,
+        "hits": 78,
+        "miss": 104,
+        "hit_rate": 42.86,
+        "miss_rate": 57.14
+      },
+      "逃げ": {
+        "total": 515,
+        "hits": 512,
+        "miss": 3,
+        "hit_rate": 99.42,
+        "miss_rate": 0.58
+      },
+      "まくり差し": {
+        "total": 122,
+        "hits": 22,
+        "miss": 100,
+        "hit_rate": 18.03,
+        "miss_rate": 81.97
+      },
+      "抜き": {
+        "total": 53,
+        "hits": 29,
+        "miss": 24,
+        "hit_rate": 54.72,
+        "miss_rate": 45.28
+      },
+      "恵まれ": {
+        "total": 4,
+        "hits": 0,
+        "miss": 4,
+        "hit_rate": 0,
+        "miss_rate": 100
+      }
+    },
+    "predicted_technique": {
+      "逃げ": {
+        "total": 977,
+        "hits": 710,
+        "miss": 267,
+        "hit_rate": 72.67,
+        "miss_rate": 27.33
+      },
+      "まくり": {
+        "total": 17,
+        "hits": 11,
+        "miss": 6,
+        "hit_rate": 64.71,
+        "miss_rate": 35.29
+      },
+      "抜き": {
+        "total": 3,
+        "hits": 1,
+        "miss": 2,
+        "hit_rate": 33.33,
+        "miss_rate": 66.67
+      },
+      "差し": {
+        "total": 3,
+        "hits": 3,
+        "miss": 0,
+        "hit_rate": 100,
+        "miss_rate": 0
+      }
+    },
+    "first_lane_grade": {
+      "B1": {
+        "total": 366,
+        "hits": 234,
+        "miss": 132,
+        "hit_rate": 63.93,
+        "miss_rate": 36.07
+      },
+      "B2": {
+        "total": 25,
+        "hits": 17,
+        "miss": 8,
+        "hit_rate": 68,
+        "miss_rate": 32
+      },
+      "A1": {
+        "total": 318,
+        "hits": 267,
+        "miss": 51,
+        "hit_rate": 83.96,
+        "miss_rate": 16.04
+      },
+      "A2": {
+        "total": 291,
+        "hits": 207,
+        "miss": 84,
+        "hit_rate": 71.13,
+        "miss_rate": 28.87
+      }
+    },
+    "actual_course": {
+      "course_4": {
+        "total": 101,
+        "hits": 13,
+        "miss": 88,
+        "hit_rate": 12.87,
+        "miss_rate": 87.13
+      },
+      "course_6": {
+        "total": 35,
+        "hits": 0,
+        "miss": 35,
+        "hit_rate": 0,
+        "miss_rate": 100
+      },
+      "course_3": {
+        "total": 144,
+        "hits": 59,
+        "miss": 85,
+        "hit_rate": 40.97,
+        "miss_rate": 59.03
+      },
+      "course_1": {
+        "total": 528,
+        "hits": 528,
+        "miss": 0,
+        "hit_rate": 100,
+        "miss_rate": 0
+      },
+      "course_5": {
+        "total": 54,
+        "hits": 3,
+        "miss": 51,
+        "hit_rate": 5.56,
+        "miss_rate": 94.44
+      },
+      "course_2": {
+        "total": 138,
+        "hits": 122,
+        "miss": 16,
+        "hit_rate": 88.41,
+        "miss_rate": 11.59
+      }
+    },
+    "predicted_probability_band": {
+      "0.5+ (高確信)": {
+        "total": 892,
+        "hits": 644,
+        "miss": 248,
+        "hit_rate": 72.2,
+        "miss_rate": 27.8
+      },
+      "0.4-0.5": {
+        "total": 82,
+        "hits": 62,
+        "miss": 20,
+        "hit_rate": 75.61,
+        "miss_rate": 24.39
+      },
+      "0.3-0.4": {
+        "total": 25,
+        "hits": 18,
+        "miss": 7,
+        "hit_rate": 72,
+        "miss_rate": 28
+      },
+      "0.0-0.3 (低確信)": {
+        "total": 1,
+        "hits": 1,
+        "miss": 0,
+        "hit_rate": 100,
+        "miss_rate": 0
+      }
+    }
+  },
+  "predicted_vs_actual_technique": {
+    "逃げ": {
+      "total": 976,
+      "technique_matched": 505,
+      "technique_match_rate": 51.74,
+      "actual_breakdown": {
+        "差し": 121,
+        "まくり": 175,
+        "逃げ": 505,
+        "まくり差し": 120,
+        "抜き": 51,
+        "恵まれ": 4
+      }
+    },
+    "まくり": {
+      "total": 17,
+      "technique_matched": 7,
+      "technique_match_rate": 41.18,
+      "actual_breakdown": {
+        "まくり": 7,
+        "逃げ": 7,
+        "差し": 1,
+        "まくり差し": 2
+      }
+    },
+    "抜き": {
+      "total": 3,
+      "technique_matched": 2,
+      "technique_match_rate": 66.67,
+      "actual_breakdown": {
+        "抜き": 2,
+        "逃げ": 1
+      }
+    },
+    "差し": {
+      "total": 3,
+      "technique_matched": 1,
+      "technique_match_rate": 33.33,
+      "actual_breakdown": {
+        "逃げ": 2,
+        "差し": 1
+      }
+    }
+  },
+  "hit_profile": {
+    "count": 725,
+    "avg_predicted_top_probability": 0.6543,
+    "actual_course_distribution": {
+      "course_4": 13,
+      "course_1": 528,
+      "course_2": 122,
+      "course_3": 59,
+      "course_5": 3
+    },
+    "actual_technique_distribution": {
+      "まくり": 78,
+      "逃げ": 512,
+      "まくり差し": 22,
+      "差し": 84,
+      "抜き": 29
+    }
+  },
+  "miss_profile": {
+    "count": 275,
+    "avg_predicted_top_probability": 0.6529,
+    "actual_course_distribution": {
+      "course_4": 88,
+      "course_6": 35,
+      "course_3": 85,
+      "course_5": 51,
+      "course_2": 16
+    },
+    "actual_technique_distribution": {
+      "差し": 39,
+      "まくり": 104,
+      "逃げ": 3,
+      "まくり差し": 100,
+      "抜き": 24,
+      "不明": 1,
+      "恵まれ": 4
+    }
+  }
+}

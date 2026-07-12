@@ -306,16 +306,16 @@ async function calculateVolatilityStats() {
     if (row.upset) v.upset++;
   }
 
-  const byVenue = Array.from(venueHighMap.entries())
-    .filter(([, v]) => v.total >= 5)
-    .map(([venueCode, v]) => {
-      const all = venueAllMap.get(venueCode) || { total: 1, upset: 0 };
+  const byVenue = Array.from(venueAllMap.entries())
+    .map(([venueCode, all]) => {
+      const high = venueHighMap.get(venueCode) || { total: 0, upset: 0 };
       return {
         venueCode: String(venueCode).padStart(2, "0"),
         venueName: VENUE_NAMES[venueCode] || `会場${venueCode}`,
-        highRaceCount: v.total,
-        highUpsetRate: parseFloat(((v.upset / v.total) * 100).toFixed(1)),
+        highRaceCount: high.total,
+        highUpsetRate: high.total > 0 ? parseFloat(((high.upset / high.total) * 100).toFixed(1)) : 0,
         baselineUpsetRate: parseFloat(((all.upset / all.total) * 100).toFixed(1)),
+        isReliable: high.total >= 5,
       };
     })
     .sort((a, b) => b.highUpsetRate - a.highUpsetRate);

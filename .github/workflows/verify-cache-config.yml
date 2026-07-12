@@ -1,0 +1,26 @@
+name: Verify Cache Configuration
+
+on:
+  pull_request:
+    paths:
+      - 'api/**/*.js'
+      - '.github/workflows/**'
+      - 'docs/reference/cache-strategy.md'
+
+jobs:
+  verify-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Verify Cache Configuration
+        run: node scripts/verification/verify-cache-config.js
+
+      - name: Cache verification passed ✅
+        if: success()
+        run: echo "Cache configuration is correct and consistent"

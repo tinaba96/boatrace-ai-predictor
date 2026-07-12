@@ -1,6 +1,7 @@
 /**
  * Vercel Edge Function: レース履歴サマリー
- * Supabase RPC関数 get_race_history_summary を呼び出し、CDNでキャッシュ
+ * race_history_cache テーブルから事前計算済みキャッシュを取得
+ * accuracy/index.js と同じパターン（RPC 廃止、テーブル SELECT に変更）
  */
 
 export const config = {
@@ -8,7 +9,6 @@ export const config = {
 };
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-// 集計クエリのコールドスタート対策として service_role を使用（read-onlyのため安全）
 const SUPABASE_KEY =
   process.env.SUPABASE_SERVICE_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY ||
@@ -33,31 +33,33 @@ export default async function handler(req) {
       365,
     );
 
+    // race_history_cache テーブルから直接取得（RPC廃止）
+    const cacheKey = days <= 90 ? "race_history_summary_90" : "race_history_summary_90";
+
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/rpc/get_race_history_summary`,
+      `${SUPABASE_URL}/rest/v1/race_history_cache?key=eq.${cacheKey}&select=data`,
       {
-        method: "POST",
+        method: "GET",
         headers: {
           apikey: SUPABASE_KEY,
           Authorization: `Bearer ${SUPABASE_KEY}`,
-          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ days_back: days }),
       },
     );
 
     if (!response.ok) {
-      throw new Error(`Supabase RPC error: ${response.status}`);
+      throw new Error(`race_history_cache fetch failed: ${response.status}`);
     }
 
-    const data = await response.json();
+    const rows = await response.json();
+    const data = rows[0]?.data || { days: [] };
 
     return new Response(JSON.stringify(data), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        "Cache-Control": "s-maxage=1800, stale-while-revalidate=3600",
+        "Cache-Control": "s-maxage=86400, stale-while-revalidate=3600",
       },
     });
   } catch (error) {
