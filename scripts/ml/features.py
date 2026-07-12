@@ -60,10 +60,28 @@ RACE_GRADE_CODE = {"ippan": 0, "G3": 1, "G2": 2, "G1": 3, "SG": 4}
 SENTINEL = -999.0
 
 
-def load_dataset() -> pd.DataFrame:
-    """dataset.csv + start_timings.csv を読み、特徴量を構築して返す。"""
+def load_dataset(include_backfill: bool = True) -> pd.DataFrame:
+    """dataset.csv + start_timings.csv を読み、特徴量を構築して返す。
+
+    include_backfill=True かつ backfill_dataset.csv が存在する場合、
+    公式アーカイブ由来の履歴（backfill.py 生成、Supabase蓄積開始以前）を
+    連結する。重複 race_id は Supabase 側（特徴量が豊富）を優先する。
+    """
     df = pd.read_csv(DATA_DIR / "dataset.csv")
     st = pd.read_csv(DATA_DIR / "start_timings.csv")
+
+    bf_path = DATA_DIR / "backfill_dataset.csv"
+    if include_backfill and bf_path.exists():
+        bf = pd.read_csv(bf_path)
+        bf_st = pd.read_csv(DATA_DIR / "backfill_start_timings.csv")
+        supabase_ids = set(df["race_id"])
+        bf = bf[~bf["race_id"].isin(supabase_ids)]
+        bf_st = bf_st[~bf_st["race_id"].isin(supabase_ids)]
+        print(f"  + backfill: {bf['race_id'].nunique():,}レース "
+              f"({bf['race_date'].min()}〜{bf['race_date'].max()})")
+        df = pd.concat([bf, df], ignore_index=True)
+        st = pd.concat([bf_st, st], ignore_index=True)
+
     return build_features(df, st)
 
 
@@ -81,7 +99,9 @@ def build_features(df: pd.DataFrame, st: pd.DataFrame) -> pd.DataFrame:
     # ---- 基本変換 ----
     df["grade_ord"] = df["grade"].map(GRADE_ORD)
     df["is_final_day_num"] = pd.to_numeric(
-        df["is_final_day"].replace({True: 1, False: 0, "true": 1, "false": 0}),
+        df["is_final_day"].replace(
+            {True: 1, False: 0, "true": 1, "false": 0, "True": 1, "False": 0}
+        ),
         errors="coerce",
     )
     df["race_grade_code"] = df["race_grade"].map(RACE_GRADE_CODE)
