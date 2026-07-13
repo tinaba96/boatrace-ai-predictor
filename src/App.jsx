@@ -668,7 +668,7 @@ function App({ tab = 'races' }) {
                                                             style={showVolBadge ? { borderLeft: `4px solid ${volBadgeColor}` } : undefined}
                                                         >
                                                             <div className="race-card-header">
-                                                                <h3>{race.venue}</h3>
+                                                                <h3>{t(`venues.${race.venueCode}`, race.venue)}</h3>
                                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                                     {showVolBadge && (
                                                                         <span style={{

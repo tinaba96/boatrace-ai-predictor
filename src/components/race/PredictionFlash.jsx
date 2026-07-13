@@ -257,7 +257,7 @@ function PredictionFlash({
         <span>{t("flash.title")}</span>
         {(selectedRace?.venue || selectedRace?.raceNumber || selectedModel) && (
           <span className="flash-card-meta">
-            {selectedRace?.venue}
+            {selectedRace?.venueCode ? t(`venues.${selectedRace.venueCode}`, selectedRace.venue) : selectedRace?.venue}
             {selectedRace?.raceNumber && ` ${selectedRace.raceNumber}R`}
             {selectedModel && MODEL_NAMES[selectedModel] && ` · ${t(`models.${MODEL_KEY_MAP[selectedModel] || selectedModel}`, MODEL_NAMES[selectedModel])}`}
           </span>

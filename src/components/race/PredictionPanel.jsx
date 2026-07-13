@@ -183,7 +183,7 @@ function PredictionPanel({
                   name: p.name,
                 }))}
                 selectedPatternIndex={selectedPatternIndex}
-                venue={selectedRace?.venue}
+                venue={venueCode ? t(`venues.${venueCode}`, selectedRace?.venue) : selectedRace?.venue}
                 raceNumber={selectedRace?.raceNumber}
                 selectedModel={selectedModel}
               />
@@ -260,7 +260,7 @@ function PredictionPanel({
                   <span className="venue-guide-icon">&#x1F4D6;</span>
                   <div className="venue-guide-content">
                     <span className="venue-guide-title">
-                      {t("panel.venueGuideLink", { venue: selectedRace.venue })}
+                      {t("panel.venueGuideLink", { venue: venueCode ? t(`venues.${venueCode}`, selectedRace.venue) : selectedRace.venue })}
                     </span>
                     <span className="venue-guide-desc">
                       {t("panel.venueGuideDesc")}

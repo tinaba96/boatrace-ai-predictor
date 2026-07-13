@@ -25,7 +25,7 @@ const PredictionSection = forwardRef(({
   return (
     <section ref={ref} className="prediction-section">
       <h2>
-        &#x1F4CA; {t("section.resultTitle")} - {selectedRace.venue} {selectedRace.raceNumber}R
+        &#x1F4CA; {t("section.resultTitle")} - {selectedRace.venueCode ? t(`venues.${selectedRace.venueCode}`, selectedRace.venue) : selectedRace.venue} {selectedRace.raceNumber}R
       </h2>
 
       {/* AI予想セクション全体（予想テーブル、1マーク、配当妙味、超展開データ、出現パターン） */}
