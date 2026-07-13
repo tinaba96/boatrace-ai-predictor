@@ -58,7 +58,8 @@
   },
   "venueSelector": {
     "label": "Select venue:",
-    "raceCount": "{{count}} races"
+    "raceCount": "{{count}} races",
+    "raceCount_one": "{{count}} race"
   },
   "volatility": {
     "indexLabel": "Lane-1 upset index: {{score}}",
@@ -71,8 +72,7 @@
     "recommendedModel": "Recommended model:",
     "adviceHigh": "Lane 1 is likely to lose here, so the Upset Focus model targeting high payouts is recommended",
     "adviceLow": "Lane 1 is stable here, so the accuracy-focused Safe Bet model is recommended",
-    "adviceMedium": "A typical race, so the balanced Standard model is recommended",
-    "reasonsNote": "Reasons are currently available in Japanese only"
+    "adviceMedium": "A typical race, so the balanced Standard model is recommended"
   },
   "table": {
     "title": "AI Data Predictions",
@@ -127,8 +127,7 @@
     "newTab": "(opens in a new tab)",
     "unknownVenue": "Unknown",
     "venueGuideLink": "View the {{venue}} venue guide",
-    "venueGuideDesc": "Detailed venue characteristics and betting angles",
-    "reasonsNote": "Prediction reasons are currently available in Japanese only"
+    "venueGuideDesc": "Detailed venue characteristics and betting angles"
   },
   "home": {
     "todayRaces": "Today's Races",
@@ -171,6 +170,7 @@
     "minutesAgo": "Updated {{count}} min ago",
     "hoursAgo": "Updated {{count}} hr ago",
     "daysAgo": "Updated {{count}} days ago",
+    "daysAgo_one": "Updated {{count}} day ago",
     "updatedLabel": "{{dataType}} updated: {{time}}",
     "refreshTooltip": "Clear browser cache and reload data",
     "refreshing": "Loading...",
@@ -260,6 +260,25 @@
     "legendGreenDesc": ": lane 1's successful Nige count",
     "supplementDefault": "… national average (shown when personal data is insufficient)",
     "supplementReference": "… reference data (small sample size, may be less accurate)"
+  },
+  "raceNav": {
+    "otherRaces": "Other races",
+    "changeVenue": "Change venue",
+    "prevRaceLabel": "Previous race {{race}}R",
+    "nextRaceLabel": "Next race {{race}}R",
+    "noPrevRace": "No previous race",
+    "noNextRace": "No next race"
+  },
+  "raceCard": {
+    "badgeWin": "Win",
+    "badgePlace": "Place",
+    "badgeTrifecta": "Trio",
+    "badgeTrio": "Trifecta",
+    "missBadge": "❌ Missed",
+    "view": "View Prediction"
+  },
+  "section": {
+    "resultTitle": "AI Prediction Results"
   },
   "animation": {
     "title": "First Mark Prediction",
