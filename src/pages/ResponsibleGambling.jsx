@@ -1,5 +1,4 @@
 import React from 'react';
-import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import './About.css';
@@ -7,7 +6,7 @@ import './About.css';
 export default function ResponsibleGambling() {
     return (
         <>
-            <Helmet>
+            <>
                 <title>責任あるギャンブル | BoatAI</title>
                 <meta name="description" content="ボートレースを楽しく続けるために。ギャンブル依存症の予防と相談窓口のご案内。" />
                 <link rel="canonical" href="https://www.boat-ai.jp/responsible-gambling" />
@@ -39,7 +38,7 @@ export default function ResponsibleGambling() {
                         ]
                     })}
                 </script>
-            </Helmet>
+            </>
 
             <Header />
 

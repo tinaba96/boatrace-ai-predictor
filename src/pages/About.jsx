@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import Header from '../components/Header';
 import './About.css';
 
@@ -9,7 +8,7 @@ export default function About() {
 
     return (
         <>
-            <Helmet>
+            <>
                 <title>BoatAIについて | AIボートレース予想サービスの詳細</title>
                 <meta name="description" content="BoatAIは45項目以上のデータをAIが分析するボートレース予測サービス。データサイエンスに基づく高精度分析を完全無料・登録不要で提供します。" />
                 <meta name="keywords" content="BoatAI,ボートレース,AI分析,機械学習,データ分析,データサイエンス,無料" />
@@ -43,7 +42,7 @@ export default function About() {
                         ]
                     })}
                 </script>
-            </Helmet>
+            </>
 
             <Header />
 

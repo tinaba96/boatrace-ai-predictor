@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Helmet } from 'react-helmet-async'
 import { dataService } from '../services/dataService'
 import { MODEL_NAMES } from '../constants'
 import { formatPercent } from '../utils/formatters'
@@ -140,11 +139,11 @@ function AccuracyHistory() {
 
     return (
         <>
-            <Helmet>
+            <>
                 <title>月別成績アーカイブ | BoatAI</title>
                 <meta name="description" content="BoatAIのAI予測モデル別の月別成績アーカイブ。過去の予測精度と回収率の推移を確認できます。" />
                 <link rel="canonical" href="https://www.boat-ai.jp/accuracy/history" />
-            </Helmet>
+            </>
             <div className="accuracy-history-page">
                 <div className="page-header">
                     <Link to="/accuracy" className="back-link">← 成績ページへ戻る</Link>

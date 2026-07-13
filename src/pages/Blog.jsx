@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import Header from '../components/Header';
 import { blogPosts, categories, getFeaturedPosts } from '../data/blogPosts';
 import { isWithinDays } from '../utils/dateUtils';
@@ -20,7 +19,7 @@ export default function Blog() {
 
     return (
         <>
-            <Helmet>
+            <>
                 <title>ブログ | BoatAI - ボートレース予想・データ分析・戦略情報</title>
                 <meta name="description" content="ボートレース予想、データ分析、舟券戦略に関する最新情報を発信。初心者向けの基本知識から、上級者向けの高度な戦略まで幅広くカバーしています。" />
                 <meta name="keywords" content="ボートレースブログ,予想戦略,データ分析,舟券購入,AI予想,勝ち方" />
@@ -54,7 +53,7 @@ export default function Blog() {
                         ]
                     })}
                 </script>
-            </Helmet>
+            </>
 
             <Header />
 

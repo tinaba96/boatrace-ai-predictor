@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { Helmet } from 'react-helmet-async'
 import Header from '../components/Header'
 import Breadcrumb from '../components/Breadcrumb'
 import ModelComparisonTable from '../components/ModelComparisonTable'
@@ -317,13 +316,13 @@ function RaceDetail() {
 
   return (
     <>
-      <Helmet>
+      <>
         <title>{formatDate(date)}のAI予想データ - BoatAI</title>
         <meta name="description" content={`${formatDate(date)}のボートレースAI予想データと的中実績。各レース場の予想結果を確認できます。`} />
         <meta property="og:title" content={`${formatDate(date)}のAI予想データ - BoatAI`} />
         <meta property="og:description" content={`${formatDate(date)}のボートレースAI予想データと的中実績`} />
         <link rel="canonical" href={`https://www.boat-ai.jp/races/${date}`} />
-      </Helmet>
+      </>
 
       <Header />
 

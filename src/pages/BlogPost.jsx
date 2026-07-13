@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -77,7 +76,7 @@ export default function BlogPost() {
 
   return (
     <>
-      <Helmet>
+      <>
         {/* Basic Meta Tags */}
         <title>{post.title} | BoatAI</title>
         <meta name="description" content={post.description} />
@@ -164,7 +163,7 @@ export default function BlogPost() {
             ]
           })}
         </script>
-      </Helmet>
+      </>
 
       <Header />
 

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Helmet } from "react-helmet-async";
 import Header from "../components/Header";
 import { getPoirotPredictions } from "../services/poirotService";
 import "./Poirot.css";
@@ -62,10 +61,10 @@ export default function Poirot() {
 
   return (
     <>
-      <Helmet>
+      <>
         <title>ポアロ予想（α） | BoatAI</title>
         <meta name="robots" content="noindex, nofollow" />
-      </Helmet>
+      </>
       <Header />
       <main className="poirot-page">
         <div className="poirot-container">

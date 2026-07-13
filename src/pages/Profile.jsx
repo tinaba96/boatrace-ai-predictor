@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import Header from '../components/Header';
 import './Profile.css';
 
@@ -9,7 +8,7 @@ export default function Profile() {
 
     return (
         <>
-            <Helmet>
+            <>
                 <title>運営者プロフィール | BoatAI</title>
                 <meta name="description" content="BoatAI運営者「らぷそでぃ」のプロフィール。インフラエンジニアとしての経験を活かし、ボートレースAI予想サービスを開発した経緯と開発の裏話をご紹介します。" />
                 <meta name="keywords" content="BoatAI,運営者,プロフィール,らぷそでぃ,インフラエンジニア,AI開発" />
@@ -61,7 +60,7 @@ export default function Profile() {
                         ]
                     })}
                 </script>
-            </Helmet>
+            </>
 
             <Header />
 
