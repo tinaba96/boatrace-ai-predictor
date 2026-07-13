@@ -21,7 +21,7 @@ import { getTodayJST, formatDateJP } from './utils/dateUtils'
 import LoadingScreen from './components/LoadingScreen'
 
 function App({ tab = 'races' }) {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
     const navigate = useNavigate()
     const location = useLocation()
     const [activeTab, setActiveTab] = useState(tab)
@@ -522,6 +522,15 @@ function App({ tab = 'races' }) {
     // 統計的な注目ポイントを自動生成
     return (
         <div className="app">
+            {/* トップページのみ言語別メタタグ（React 19 が <head> にホイスティングする） */}
+            {activeTab === 'races' && (
+                <>
+                    <title>{t('meta.title')}</title>
+                    <meta name="description" content={t('meta.description')} />
+                    <meta property="og:locale" content={i18n.resolvedLanguage === 'en' ? 'en_US' : 'ja_JP'} />
+                    <link rel="canonical" href={i18n.resolvedLanguage === 'en' ? 'https://www.boat-ai.jp/en/' : 'https://www.boat-ai.jp/'} />
+                </>
+            )}
             <Header />
 
             <div className="container">

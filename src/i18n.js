@@ -11,6 +11,9 @@ export const SUPPORTED_LANGUAGES = [
   { code: "en", label: "English" },
 ];
 
+// 言語設定の localStorage キー（LanguageSwitcher / AppRouter からも参照）
+export const LANGUAGE_STORAGE_KEY = "boatai-language";
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -27,7 +30,7 @@ i18n
     detection: {
       // localStorage優先 → ブラウザ言語で自動検出
       order: ["localStorage", "navigator"],
-      lookupLocalStorage: "boatai-language",
+      lookupLocalStorage: LANGUAGE_STORAGE_KEY,
       caches: ["localStorage"],
     },
     interpolation: {
