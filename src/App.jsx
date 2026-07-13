@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import './App.css'
 import Header from './components/Header'
 import AccuracyDashboard from './components/AccuracyDashboard'
@@ -20,6 +21,7 @@ import { getTodayJST, formatDateJP } from './utils/dateUtils'
 import LoadingScreen from './components/LoadingScreen'
 
 function App({ tab = 'races' }) {
+    const { t } = useTranslation()
     const navigate = useNavigate()
     const location = useLocation()
     const [activeTab, setActiveTab] = useState(tab)
@@ -386,7 +388,7 @@ function App({ tab = 'races' }) {
                 console.error('❌ 予想データが見つかりません')
                 setPrediction({
                     error: true,
-                    errorMessage: 'このレースの予想データがまだ生成されていません。しばらくしてから再度お試しください。'
+                    errorMessage: t('errors.noPredictionData')
                 })
                 setIsAnalyzing(false)
                 return
@@ -421,7 +423,7 @@ function App({ tab = 'races' }) {
                     console.error('❌ モデル予想データが見つかりません:', currentModel)
                     setPrediction({
                         error: true,
-                        errorMessage: 'このモデルの予想データが見つかりません。'
+                        errorMessage: t('errors.noModelData')
                     })
                     setIsAnalyzing(false)
                     return
@@ -550,27 +552,27 @@ function App({ tab = 'races' }) {
                     ) : (
                         <>
                             <section className="race-list-section">
-                                <h2>🏁 本日開催中のレース {getTodayDateShort()}</h2>
+                                <h2>🏁 {t('home.todayRaces')} {getTodayDateShort()}</h2>
                                 <UpdateStatus
                                     lastUpdated={lastUpdated}
-                                    dataType="レースデータ"
+                                    dataType={t('home.dataType')}
                                     onRefresh={handleRefresh}
                                     isRefreshing={isRefreshing}
                                 />
 
                                 {loading ? (
                                     <LoadingScreen
-                                        title="レースデータを読み込み中..."
-                                        description="本日のレース情報を取得しています"
+                                        title={t('home.loadingTitle')}
+                                        description={t('home.loadingDesc')}
                                     />
                                 ) : (
                                     <>
                                         {error && (
                                             <div style={{ padding: '1.5rem', background: '#fff3cd', borderRadius: '8px', marginBottom: '1rem', border: '2px solid #ffc107' }}>
-                                                <p style={{ color: '#856404', fontWeight: 'bold', marginBottom: '0.5rem' }}>⚠️ データ取得エラー</p>
+                                                <p style={{ color: '#856404', fontWeight: 'bold', marginBottom: '0.5rem' }}>⚠️ {t('home.fetchErrorTitle')}</p>
                                                 <p style={{ color: '#856404', marginBottom: '1rem' }}>{error}</p>
                                                 <p style={{ color: '#856404', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                                                    データの取得に失敗しました。ネットワーク接続を確認するか、しばらくしてから再度お試しください。
+                                                    {t('home.fetchErrorDesc')}
                                                 </p>
                                                 <button
                                                     onClick={() => window.location.reload()}
@@ -585,7 +587,7 @@ function App({ tab = 'races' }) {
                                                         fontSize: '1rem'
                                                     }}
                                                 >
-                                                    🔄 再読み込み
+                                                    {t('home.reload')}
                                                 </button>
                                             </div>
                                         )}
@@ -600,7 +602,7 @@ function App({ tab = 'races' }) {
                                                     fontSize: '1.1rem',
                                                     color: 'white'
                                                 }}>
-                                                    レース場を選択:
+                                                    {t('venueSelector.label')}
                                                 </label>
                                                 <select
                                                     id="venue-select"
@@ -620,7 +622,7 @@ function App({ tab = 'races' }) {
                                                 >
                                                     {(allVenuesData || []).map(venue => (
                                                         <option key={venue.placeCd} value={venue.placeCd}>
-                                                            {venue.placeName} ({venue.races?.length || 0}レース)
+                                                            {t(`venues.${venue.placeCd}`, venue.placeName)} ({t('venueSelector.raceCount', { count: venue.races?.length || 0 })})
                                                         </option>
                                                     ))}
                                                 </select>
@@ -629,7 +631,7 @@ function App({ tab = 'races' }) {
 
                                         {races.length === 0 && !error ? (
                                             <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
-                                                <p>本日、このレース場での開催はありません</p>
+                                                <p>{t('home.noRacesToday')}</p>
                                             </div>
                                         ) : (
                                             <div className="race-grid">
@@ -653,7 +655,7 @@ function App({ tab = 'races' }) {
                                                     const isLowVol = volatility?.level === 'low'
                                                     const showVolBadge = isHighVol || isLowVol
                                                     const volBadgeColor = isHighVol ? '#c62828' : '#2e7d32'
-                                                    const volBadgeLabel = isHighVol ? '🌪️ イン崩れ確率高' : '🎯 本命有利'
+                                                    const volBadgeLabel = isHighVol ? `🌪️ ${t('volatility.levelHigh')}` : `🎯 ${t('volatility.levelLow')}`
 
                                                     const raceGrade = race.rawData?.raceGrade
                                                     const gradeConfig = GRADE_CONFIG[raceGrade]
@@ -666,7 +668,7 @@ function App({ tab = 'races' }) {
                                                             style={showVolBadge ? { borderLeft: `4px solid ${volBadgeColor}` } : undefined}
                                                         >
                                                             <div className="race-card-header">
-                                                                <h3>{race.venue}</h3>
+                                                                <h3>{t(`venues.${race.venueCode}`, race.venue)}</h3>
                                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                                     {showVolBadge && (
                                                                         <span style={{
@@ -701,7 +703,7 @@ function App({ tab = 'races' }) {
                                                             </div>
                                                             <div className="race-info">
                                                                 <div className="info-item">
-                                                                    <span className="label">締切予定時刻</span>
+                                                                    <span className="label">{t('home.deadline')}</span>
                                                                     <span className="value">{race.startTime}</span>
                                                                 </div>
                                                                 {isFinished && (
@@ -715,13 +717,13 @@ function App({ tab = 'races' }) {
                                                                         fontWeight: '600',
                                                                         color: '#475569'
                                                                     }}>
-                                                                        ⏱️ 終了
+                                                                        {t('home.finished')}
                                                                     </div>
                                                                 )}
                                                             </div>
                                                             {topPattern && (
                                                                 <div className="race-card-turn-preview">
-                                                                    <span className="turn-preview-label">展開予測</span>
+                                                                    <span className="turn-preview-label">{t('home.turnPreviewLabel')}</span>
                                                                     <div className="turn-preview-content">
                                                                         <span
                                                                             className="turn-preview-course"
@@ -733,7 +735,7 @@ function App({ tab = 'races' }) {
                                                                             {topPattern.winnerCourse}
                                                                         </span>
                                                                         <span className="turn-preview-technique">
-                                                                            {TECHNIQUE_NAMES[topPattern.technique] || topPattern.technique}
+                                                                            {t(`techniques.${topPattern.technique}`, TECHNIQUE_NAMES[topPattern.technique] || topPattern.technique)}
                                                                         </span>
                                                                         <span className="turn-preview-prob">
                                                                             {Math.round(topPattern.probability * 100)}%
@@ -745,7 +747,7 @@ function App({ tab = 'races' }) {
                                                                 className="predict-btn"
                                                                 onClick={() => analyzeRace(race)}
                                                             >
-                                                                AI予想を見る
+                                                                {t('home.viewPrediction')}
                                                             </button>
                                                         </div>
                                                     )
@@ -782,9 +784,9 @@ function App({ tab = 'races' }) {
 
                             {/* ブログ記事セクション */}
                             <section className="blog-preview-section">
-                                <h2>📝 ボートレース攻略ブログ</h2>
+                                <h2>📝 {t('home.blogTitle')}</h2>
                                 <p className="blog-preview-lead">
-                                    予想のコツ、会場別攻略、データ分析手法など、勝率アップに役立つ情報をお届けします
+                                    {t('home.blogDesc')}
                                 </p>
                                 <div className="blog-preview-grid">
                                     {getFeaturedPosts().slice(0, 5).map(post => (
@@ -800,7 +802,7 @@ function App({ tab = 'races' }) {
                                 </div>
                                 <div className="blog-preview-cta">
                                     <Link to="/blog" className="blog-preview-btn">
-                                        全てのブログ記事を見る →
+                                        {t('home.viewAllPosts')}
                                     </Link>
                                 </div>
                             </section>
@@ -810,7 +812,7 @@ function App({ tab = 'races' }) {
             </div>
 
             <footer className="footer">
-                <p>※本サイトはAIによる予測情報を提供するものであり、結果を保証するものではありません</p>
+                <p>{t('home.disclaimer')}</p>
                 <p className="last-updated" style={{
                     fontSize: '0.9rem',
                     color: 'white',
@@ -818,7 +820,7 @@ function App({ tab = 'races' }) {
                 }}>
                     {(() => {
                         const latestPost = getLatestPosts(1)[0];
-                        return latestPost ? `ブログ最終更新: ${formatDateJP(latestPost.date)}` : '';
+                        return latestPost ? t('home.blogLastUpdated', { date: formatDateJP(latestPost.date) }) : '';
                     })()}
                 </p>
                 <div style={{
@@ -829,14 +831,14 @@ function App({ tab = 'races' }) {
                     marginTop: '0.75rem',
                     marginBottom: '0.75rem'
                 }}>
-                    <Link to="/blog" style={{ color: 'white', textDecoration: 'none' }}>ブログ</Link>
+                    <Link to="/blog" style={{ color: 'white', textDecoration: 'none' }}>{t('footer.blog')}</Link>
                     <Link to="/about" style={{ color: 'white', textDecoration: 'none' }}>About</Link>
-                    <Link to="/profile" style={{ color: 'white', textDecoration: 'none' }}>運営者</Link>
+                    <Link to="/profile" style={{ color: 'white', textDecoration: 'none' }}>{t('footer.operator')}</Link>
                     <Link to="/faq" style={{ color: 'white', textDecoration: 'none' }}>FAQ</Link>
-                    <Link to="/privacy" style={{ color: 'white', textDecoration: 'none' }}>プライバシーポリシー</Link>
-                    <Link to="/terms" style={{ color: 'white', textDecoration: 'none' }}>利用規約</Link>
-                    <Link to="/contact" style={{ color: 'white', textDecoration: 'none' }}>お問い合わせ</Link>
-                    <Link to="/responsible-gambling" style={{ color: 'white', textDecoration: 'none' }}>責任あるギャンブル</Link>
+                    <Link to="/privacy" style={{ color: 'white', textDecoration: 'none' }}>{t('footer.privacy')}</Link>
+                    <Link to="/terms" style={{ color: 'white', textDecoration: 'none' }}>{t('footer.terms')}</Link>
+                    <Link to="/contact" style={{ color: 'white', textDecoration: 'none' }}>{t('footer.contact')}</Link>
+                    <Link to="/responsible-gambling" style={{ color: 'white', textDecoration: 'none' }}>{t('footer.responsibleGambling')}</Link>
                 </div>
                 <p>&copy; 2025 BoatAI - All Rights Reserved</p>
             </footer>

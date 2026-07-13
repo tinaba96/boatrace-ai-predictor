@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { BOAT_COLORS } from "../../utils/colors";
 import "./AttackDefenseTable.css";
 
@@ -16,16 +17,16 @@ const DEFAULT_DEFENSE = {
   1: { sashi: 0.28, makuri: 0.25, makurizashi: 0.22, nuki: 0.15, megumare: 0.10 },
 };
 
-// 表示する行の定義
+// 表示する行の定義（文言は i18n キーで管理）
 const TECHNIQUE_ROWS = [
-  { key: "nige", label1: "逃げ", labelOther: null, course1Only: true },
-  { key: "sashi", label1: "差され", labelOther: "差し" },
-  { key: "makuri", label1: "まくられ", labelOther: "まくり" },
-  { key: "makurizashi", label1: "捲差され", labelOther: "まくり差し" },
+  { key: "nige", label1Key: "attackDefense.nige", labelOtherKey: null, course1Only: true },
+  { key: "sashi", label1Key: "attackDefense.sashiDefense", labelOtherKey: "attackDefense.sashiAttack" },
+  { key: "makuri", label1Key: "attackDefense.makuriDefense", labelOtherKey: "attackDefense.makuriAttack" },
+  { key: "makurizashi", label1Key: "attackDefense.makurizashiDefense", labelOtherKey: "attackDefense.makurizashiAttack" },
   {
     key: "other",
-    label1: "その他",
-    labelOther: "その他",
+    label1Key: "attackDefense.other",
+    labelOtherKey: "attackDefense.other",
     composite: ["nuki", "megumare"],
   },
 ];
@@ -145,14 +146,14 @@ function renderCellValue(val) {
   return val;
 }
 
-const TECH_LABELS = {
-  sashi: { defense: "差され", attack: "差し" },
-  makuri: { defense: "まくられ", attack: "まくり" },
-  makurizashi: { defense: "捲差され", attack: "まくり差し" },
+const TECH_LABEL_KEYS = {
+  sashi: { defense: "attackDefense.sashiDefense", attack: "attackDefense.sashiAttack" },
+  makuri: { defense: "attackDefense.makuriDefense", attack: "attackDefense.makuriAttack" },
+  makurizashi: { defense: "attackDefense.makurizashiDefense", attack: "attackDefense.makurizashiAttack" },
 };
 
 // 実データから凡例の例文を生成
-function buildExamples(sorted) {
+function buildExamples(sorted, t) {
   const examples = [];
 
   // 1コースの防御例（差され/まくられ/捲差されで回数>0のもの）
@@ -169,10 +170,10 @@ function buildExamples(sorted) {
         if (rate && rate > 0) {
           const count = Math.round(rate * losses);
           if (count > 0) {
-            const label = TECH_LABELS[tech].defense;
+            const label = t(TECH_LABEL_KEYS[tech].defense);
             examples.push({
-              title: `1コースの「${label} ${count}/${total}」`,
-              desc: `→ 1コースで${total}回出走し、うち${count}回は他の選手に「${TECH_LABELS[tech].attack}」で1着を取られた`,
+              title: t("attackDefense.exampleDefenseTitle", { label, count, total }),
+              desc: t("attackDefense.exampleDefenseDesc", { count, total, attackLabel: t(TECH_LABEL_KEYS[tech].attack) }),
             });
             break;
           }
@@ -197,10 +198,10 @@ function buildExamples(sorted) {
       if (rate && rate > 0) {
         const count = Math.round(rate * wins);
         if (count > 0) {
-          const label = TECH_LABELS[tech].attack;
+          const label = t(TECH_LABEL_KEYS[tech].attack);
           examples.push({
-            title: `${course}コースの「${label} ${count}/${total}」`,
-            desc: `→ ${course}コースで${total}回出走し、うち${count}回は「${label}」で1着を取った`,
+            title: t("attackDefense.exampleAttackTitle", { course, label, count, total }),
+            desc: t("attackDefense.exampleAttackDesc", { course, label, count, total }),
           });
           break;
         }
@@ -213,19 +214,23 @@ function buildExamples(sorted) {
 }
 
 function RowLabel({ row }) {
+  const { t } = useTranslation();
+
   if (row.course1Only) {
-    return <span className="ad-tech-nige">{row.label1}</span>;
+    return <span className="ad-tech-nige">{t(row.label1Key)}</span>;
   }
   return (
     <>
-      <span className="ad-tech-defense">{row.label1}</span>
+      <span className="ad-tech-defense">{t(row.label1Key)}</span>
       <span className="ad-tech-sep">/</span>
-      <span className="ad-tech-attack">{row.labelOther}</span>
+      <span className="ad-tech-attack">{t(row.labelOtherKey)}</span>
     </>
   );
 }
 
 export default function AttackDefenseTable({ racerStats, players }) {
+  const { t } = useTranslation();
+
   if (!racerStats || racerStats.length < 6) return null;
 
   const sorted = [...racerStats].sort(
@@ -236,12 +241,12 @@ export default function AttackDefenseTable({ racerStats, players }) {
     const p = players?.find(
       (pl) => pl.number === boatNumber || pl.boatNumber === boatNumber,
     );
-    return p?.name || `${boatNumber}号艇`;
+    return p?.name || t("attackDefense.boatDefault", { number: boatNumber });
   };
 
   return (
     <div className="ad-section">
-      <h4>超展開データ</h4>
+      <h4>{t("attackDefense.title")}</h4>
 
       {/* Desktop table */}
       <div className="ad-table-desktop">
@@ -261,9 +266,9 @@ export default function AttackDefenseTable({ racerStats, players }) {
                       color: course === 1 ? "#1e293b" : color.text,
                     }}
                   >
-                    <div>{course}コース</div>
+                    <div>{t("animation.courseLabel", { course })}</div>
                     <div className="ad-role-sub">
-                      {course === 1 ? "守備" : "攻撃"}
+                      {course === 1 ? t("attackDefense.defense") : t("attackDefense.attack")}
                     </div>
                   </th>
                 );
@@ -272,14 +277,14 @@ export default function AttackDefenseTable({ racerStats, players }) {
           </thead>
           <tbody>
             <tr>
-              <td className="ad-label-cell">選手</td>
+              <td className="ad-label-cell">{t("attackDefense.racer")}</td>
               {sorted.map((s) => (
                 <td key={s.boatNumber}>{getPlayerName(s.boatNumber)}</td>
               ))}
             </tr>
 
             <tr>
-              <td className="ad-label-cell">1着/出走</td>
+              <td className="ad-label-cell">{t("attackDefense.winsPerStarts")}</td>
               {sorted.map((s) => {
                 const course = String(s.course || s.boatNumber);
                 const counts = s.courseRaceCounts?.[course];
@@ -333,7 +338,7 @@ export default function AttackDefenseTable({ racerStats, players }) {
                       color: course === 1 ? "#1e293b" : color.text,
                     }}
                   >
-                    {course}コース
+                    {t("animation.courseLabel", { course })}
                   </th>
                 );
               })}
@@ -341,13 +346,13 @@ export default function AttackDefenseTable({ racerStats, players }) {
           </thead>
           <tbody>
             <tr>
-              <td className="ad-label-cell ad-sticky-col">選手</td>
+              <td className="ad-label-cell ad-sticky-col">{t("attackDefense.racer")}</td>
               {sorted.map((s) => (
                 <td key={s.boatNumber}>{getPlayerName(s.boatNumber)}</td>
               ))}
             </tr>
             <tr>
-              <td className="ad-label-cell ad-sticky-col">1着/出走</td>
+              <td className="ad-label-cell ad-sticky-col">{t("attackDefense.winsPerStarts")}</td>
               {sorted.map((s) => {
                 const course = String(s.course || s.boatNumber);
                 const counts = s.courseRaceCounts?.[course];
@@ -388,14 +393,15 @@ export default function AttackDefenseTable({ racerStats, players }) {
 }
 
 function Legend({ sorted }) {
-  const examples = buildExamples(sorted);
+  const { t } = useTranslation();
+  const examples = buildExamples(sorted, t);
 
   return (
     <div className="ad-legend">
-      <p><strong>1着/出走</strong>: そのコースでの1着回数 / 出走回数</p>
-      <p><span className="ad-tech-defense">赤字</span>: 1コースが受けた攻撃（差され等）の回数</p>
-      <p><span className="ad-tech-attack">青字</span>: 2-6コースが仕掛けた攻撃（差し等）の回数</p>
-      <p><span className="ad-tech-nige">緑字</span>: 1コースの逃げ成功回数</p>
+      <p><strong>{t("attackDefense.winsPerStarts")}</strong>{t("attackDefense.legendWinsDesc")}</p>
+      <p><span className="ad-tech-defense">{t("attackDefense.legendRed")}</span>{t("attackDefense.legendRedDesc")}</p>
+      <p><span className="ad-tech-attack">{t("attackDefense.legendBlue")}</span>{t("attackDefense.legendBlueDesc")}</p>
+      <p><span className="ad-tech-nige">{t("attackDefense.legendGreen")}</span>{t("attackDefense.legendGreenDesc")}</p>
       {examples.length > 0 && (
         <div className="ad-legend-example">
           {examples.map((ex, i) => (
@@ -407,9 +413,9 @@ function Legend({ sorted }) {
         </div>
       )}
       <div className="ad-legend-supplement">
-        <span className="ad-default-value">28%</span> … 全国平均値（個人データ不足のため参考値を表示）
+        <span className="ad-default-value">28%</span> {t("attackDefense.supplementDefault")}
         <br />
-        3/5<sup className="ad-reference-sup">※</sup> … 参考データ（データ数が少ないため精度が低い可能性があります）
+        3/5<sup className="ad-reference-sup">※</sup> {t("attackDefense.supplementReference")}
       </div>
     </div>
   );

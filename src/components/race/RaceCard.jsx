@@ -2,9 +2,11 @@
  * RaceCard - レース一覧のカードコンポーネント
  */
 
+import { useTranslation } from 'react-i18next'
 import { GRADE_CONFIG } from '../../constants/gradeConfig'
 
 function RaceCard({ race, selectedModel, onAnalyzeRace }) {
+  const { t } = useTranslation();
   const racePrediction = race.rawData;
   const volatility = racePrediction?.volatility;
   const result = racePrediction?.result;
@@ -14,7 +16,7 @@ function RaceCard({ race, selectedModel, onAnalyzeRace }) {
   const isLowVolatility = volatility?.level === "low";
   const showBadge = isHighVolatility || isLowVolatility;
   const badgeColor = isHighVolatility ? "#c62828" : "#2e7d32";
-  const badgeLabel = isHighVolatility ? "🌪️ イン崩れ確率高" : "🎯 本命有利";
+  const badgeLabel = isHighVolatility ? `🌪️ ${t("volatility.levelHigh")}` : `🎯 ${t("volatility.levelLow")}`;
 
   const gradeConfig = GRADE_CONFIG[racePrediction?.raceGrade];
 
@@ -54,10 +56,10 @@ function RaceCard({ race, selectedModel, onAnalyzeRace }) {
       top3[1] === result.rank2 &&
       top3[2] === result.rank3;
 
-    if (isWinHit) hitBadges.push({ label: "単", type: "win" });
-    if (isPlaceHit) hitBadges.push({ label: "複", type: "place" });
-    if (is3FukuHit) hitBadges.push({ label: "3複", type: "trifecta" });
-    if (is3TanHit) hitBadges.push({ label: "3単", type: "trio" });
+    if (isWinHit) hitBadges.push({ label: t("raceCard.badgeWin"), type: "win" });
+    if (isPlaceHit) hitBadges.push({ label: t("raceCard.badgePlace"), type: "place" });
+    if (is3FukuHit) hitBadges.push({ label: t("raceCard.badgeTrifecta"), type: "trifecta" });
+    if (is3TanHit) hitBadges.push({ label: t("raceCard.badgeTrio"), type: "trio" });
   }
 
   return (
@@ -140,13 +142,13 @@ function RaceCard({ race, selectedModel, onAnalyzeRace }) {
                 fontWeight: "700",
               }}
             >
-              ❌ 外れ
+              {t("raceCard.missBadge")}
             </span>
           )}
         </div>
       )}
       <button className="predict-btn" onClick={() => onAnalyzeRace(race)}>
-        予想を見る
+        {t("raceCard.view")}
       </button>
     </div>
   );

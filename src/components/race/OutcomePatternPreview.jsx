@@ -4,6 +4,7 @@
  */
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabaseDataService } from "../../services/supabaseDataService";
 import "./OutcomePatternPreview.css";
 
@@ -13,6 +14,7 @@ function OutcomePatternPreview({
   prediction,
   selectedModel,
 }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [outcomeData, setOutcomeData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -56,7 +58,7 @@ function OutcomePatternPreview({
           await supabaseDataService.getOutcomeDistribution(venueCode);
         setOutcomeData(data);
       } catch (err) {
-        setError(err.message || "データ取得に失敗しました");
+        setError(err.message || t("outcomePreview.fetchError"));
         console.error("Failed to load outcome data:", err);
       } finally {
         setLoading(false);
@@ -64,7 +66,7 @@ function OutcomePatternPreview({
     };
 
     loadData();
-  }, [expanded, venueCode, firstBoat]);
+  }, [expanded, venueCode, firstBoat, t]);
 
   // firstBoat がない場合は表示しない
   if (firstBoat === null) {
@@ -78,25 +80,25 @@ function OutcomePatternPreview({
     <div className="outcome-pattern-preview">
       <button className="expand-button" onClick={() => setExpanded(!expanded)}>
         <span className="chevron">{expanded ? "▼" : "▶"}</span>
-        <h3>📊 参考：{firstBoat}コースが1着の場合の出現パターン</h3>
+        <h3>📊 {t("outcomePreview.title", { boat: firstBoat })}</h3>
       </button>
 
       {expanded && (
         <div className="preview-content">
-          {loading && <div className="loading">データを読み込み中...</div>}
+          {loading && <div className="loading">{t("outcomePreview.loading")}</div>}
 
-          {error && <div className="error">エラー: {error}</div>}
+          {error && <div className="error">{t("outcomePreview.error", { message: error })}</div>}
 
           {!loading && !error && topPatterns.length > 0 && (
             <div className="table-wrapper">
               <table className="pattern-table">
                 <thead>
                   <tr>
-                    <th>順位</th>
-                    <th>3連単</th>
-                    <th>出現回数</th>
-                    <th>出現率 (%)</th>
-                    <th>平均配当 (円)</th>
+                    <th>{t("outcomePreview.rank")}</th>
+                    <th>{t("betting.trifecta")}</th>
+                    <th>{t("outcomePreview.count")}</th>
+                    <th>{t("outcomePreview.rate")}</th>
+                    <th>{t("outcomePreview.avgPayout")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -124,14 +126,14 @@ function OutcomePatternPreview({
                 to={`/outcome-distribution?venue_code=${venueCode}`}
                 className="detail-link"
               >
-                → {venueName}の詳細分析を見る
+                {t("outcomePreview.detailLink", { venue: venueName })}
               </Link>
             </div>
           )}
 
           {!loading && !error && topPatterns.length === 0 && (
             <div className="no-data">
-              このコースのパターンデータがありません
+              {t("outcomePreview.noData")}
             </div>
           )}
         </div>

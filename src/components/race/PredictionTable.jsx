@@ -1,6 +1,7 @@
 /**
  * PredictionTable - AIデータ予想テーブル + データの見方
  */
+import { useTranslation } from "react-i18next";
 
 // 各列内でのランク（1=最良）を計算して返す
 function computeColumnRanks(players, racerStats) {
@@ -31,6 +32,8 @@ function rankClass(rank) {
 }
 
 function PredictionTable({ prediction, showExhibition = false }) {
+  const { t } = useTranslation();
+
   if (!prediction?.allPlayers || prediction.allPlayers.length === 0)
     return null;
 
@@ -51,26 +54,26 @@ function PredictionTable({ prediction, showExhibition = false }) {
   return (
     <div className="detailed-analysis">
       <h3>
-        <span aria-hidden="true">📊</span> AIデータ予想
+        <span aria-hidden="true">📊</span> {t("table.title")}
       </h3>
 
       <div className="enhanced-table">
-        <table className="players-table-detailed" aria-label="選手詳細データ">
+        <table className="players-table-detailed" aria-label={t("table.ariaLabel")}>
           <thead>
             <tr>
-              <th scope="col">艇番</th>
-              <th scope="col">選手名</th>
-              <th scope="col">級別</th>
-              <th scope="col">年齢</th>
-              <th scope="col">全国勝率</th>
-              <th scope="col">全国2連率</th>
-              <th scope="col">当地勝率</th>
-              <th scope="col">モーター2率</th>
-              <th scope="col">平均ST</th>
-              {showExhibition && <th scope="col">展示タイム</th>}
-              {showExhibition && <th scope="col">展示ST</th>}
-              <th scope="col">総合力</th>
-              <th scope="col">コース勝率</th>
+              <th scope="col">{t("table.boatNumber")}</th>
+              <th scope="col">{t("table.playerName")}</th>
+              <th scope="col">{t("table.class")}</th>
+              <th scope="col">{t("table.age")}</th>
+              <th scope="col">{t("table.nationalWinRate")}</th>
+              <th scope="col">{t("table.nationalTop2Rate")}</th>
+              <th scope="col">{t("table.localWinRate")}</th>
+              <th scope="col">{t("table.motorTop2Rate")}</th>
+              <th scope="col">{t("table.avgST")}</th>
+              {showExhibition && <th scope="col">{t("table.exhibitionTime")}</th>}
+              {showExhibition && <th scope="col">{t("table.exhibitionST")}</th>}
+              <th scope="col">{t("table.totalPower")}</th>
+              <th scope="col">{t("table.courseWinRate")}</th>
             </tr>
           </thead>
           <tbody>
@@ -78,7 +81,7 @@ function PredictionTable({ prediction, showExhibition = false }) {
               const stats = racerStats.find((s) => s.boatNumber === player.number);
               const rc = (col) => rankClass(colRanks[col]?.[player.number]);
               const fire = (col) => colRanks[col]?.[player.number] === 1
-                ? <span className="fire" aria-label="1位">🔥</span>
+                ? <span className="fire" aria-label={t("table.firstPlace")}>🔥</span>
                 : null;
               return (
               <tr
@@ -152,53 +155,53 @@ function PredictionTable({ prediction, showExhibition = false }) {
       <details className="data-guide">
         <summary>
           <h4>
-            <span aria-hidden="true">💡</span> データの見方
+            <span aria-hidden="true">💡</span> {t("table.guideTitle")}
           </h4>
         </summary>
         <div className="guide-grid">
           <div className="guide-item">
-            <strong>全国勝率</strong>
-            <p>選手の全国での勝率。6.0以上でA級レベル。</p>
+            <strong>{t("table.nationalWinRate")}</strong>
+            <p>{t("table.guideNationalWinRate")}</p>
           </div>
           <div className="guide-item">
-            <strong>全国2連率</strong>
-            <p>2着以内に入る確率。舟券に絡む力を示す。</p>
+            <strong>{t("table.nationalTop2Rate")}</strong>
+            <p>{t("table.guideNationalTop2Rate")}</p>
           </div>
           <div className="guide-item">
-            <strong>当地勝率</strong>
-            <p>このレース場での勝率。得意度を示す。</p>
+            <strong>{t("table.localWinRate")}</strong>
+            <p>{t("table.guideLocalWinRate")}</p>
           </div>
           <div className="guide-item">
-            <strong>モーター2率</strong>
-            <p>モーターの2連率。40%以上なら好機。</p>
+            <strong>{t("table.motorTop2Rate")}</strong>
+            <p>{t("table.guideMotorTop2Rate")}</p>
           </div>
           <div className="guide-item">
-            <strong>平均ST</strong>
-            <p>平均スタートタイミング。小さいほどスタートが速い。</p>
+            <strong>{t("table.avgST")}</strong>
+            <p>{t("table.guideAvgST")}</p>
           </div>
           <div className="guide-item">
-            <strong>🔥マーク</strong>
-            <p>特に優れた数値（平均より大きく上回る）。</p>
+            <strong>🔥</strong>
+            <p>{t("table.guideFireMark")}</p>
           </div>
           {showExhibition && (
             <div className="guide-item">
-              <strong>展示タイム</strong>
-              <p>直線の走行タイム。数字が小さいほど機力が良い。</p>
+              <strong>{t("table.exhibitionTime")}</strong>
+              <p>{t("table.guideExhibitionTime")}</p>
             </div>
           )}
           {showExhibition && (
             <div className="guide-item">
-              <strong>展示ST</strong>
-              <p>スタートタイミング。小さいほどスタート力が高い。</p>
+              <strong>{t("table.exhibitionST")}</strong>
+              <p>{t("table.guideExhibitionST")}</p>
             </div>
           )}
           <div className="guide-item">
-            <strong>総合力</strong>
-            <p>ST優位性とモーター性能から算出した総合的な強さ指標。</p>
+            <strong>{t("table.totalPower")}</strong>
+            <p>{t("table.guideTotalPower")}</p>
           </div>
           <div className="guide-item">
-            <strong>コース勝率</strong>
-            <p>そのコースでの過去の勝利数と出走数。</p>
+            <strong>{t("table.courseWinRate")}</strong>
+            <p>{t("table.guideCourseWinRate")}</p>
           </div>
         </div>
       </details>

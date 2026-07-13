@@ -1,12 +1,14 @@
 /**
  * VolatilityDisplay - イン崩れ指数表示コンポーネント
  */
+import { useTranslation } from "react-i18next";
 
 const NATIONAL_AVG_WIN_RATE = 53;
 const WIN_RATE_BAR_MIN = 40;
 const WIN_RATE_BAR_MAX = 65;
 
 function WinRateGauge({ rate }) {
+  const { t } = useTranslation();
   const pct = rate * 100;
   const diff = pct - NATIONAL_AVG_WIN_RATE;
   const color =
@@ -42,7 +44,7 @@ function WinRateGauge({ rate }) {
         }}
       >
         <span style={{ fontSize: "0.82rem", color: "#555" }}>
-          1コース勝率（直近90日）
+          {t("volatility.winRateLabel")}
         </span>
         <div
           style={{ display: "flex", alignItems: "baseline", gap: "0.35rem" }}
@@ -106,7 +108,7 @@ function WinRateGauge({ rate }) {
         }}
       >
         <span>{WIN_RATE_BAR_MIN}%</span>
-        <span>全国平均 {NATIONAL_AVG_WIN_RATE}%</span>
+        <span>{t("volatility.nationalAvg", { rate: NATIONAL_AVG_WIN_RATE })}</span>
         <span>{WIN_RATE_BAR_MAX}%</span>
       </div>
     </div>
@@ -114,6 +116,8 @@ function WinRateGauge({ rate }) {
 }
 
 function VolatilityDisplay({ volatility }) {
+  const { t } = useTranslation();
+
   if (!volatility) {
     return null;
   }
@@ -155,7 +159,7 @@ function VolatilityDisplay({ volatility }) {
               : "⚖️"}
         </span>
         <span style={{ fontWeight: "600", color: "#333" }}>
-          イン崩れ指数: {volatility.score}
+          {t("volatility.indexLabel", { score: volatility.score })}
         </span>
         <span
           style={{
@@ -173,10 +177,10 @@ function VolatilityDisplay({ volatility }) {
           }}
         >
           {volatility.level === "high"
-            ? "イン崩れ確率高"
+            ? t("volatility.levelHigh")
             : volatility.level === "low"
-              ? "本命有利"
-              : "標準"}
+              ? t("volatility.levelLow")
+              : t("volatility.levelMedium")}
         </span>
       </div>
 
@@ -189,7 +193,7 @@ function VolatilityDisplay({ volatility }) {
           marginBottom: "0.25rem",
         }}
       >
-        1コースが崩れる可能性の目安（高いほど波乱になりやすい）
+        {t("volatility.description")}
       </div>
 
       {/* 1コース勝率ゲージ（会場ベースライン） */}
@@ -237,7 +241,7 @@ function VolatilityDisplay({ volatility }) {
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <span style={{ fontSize: "1.1rem" }}>💡</span>
             <span style={{ fontWeight: "600", color: "#333" }}>
-              おすすめモデル:
+              {t("volatility.recommendedModel")}
             </span>
             <span
               style={{
@@ -250,9 +254,9 @@ function VolatilityDisplay({ volatility }) {
                 fontWeight: "600",
               }}
             >
-              {volatility.recommendedModel === "standard" && "スタンダード"}
-              {volatility.recommendedModel === "safe-bet" && "本命狙い"}
-              {volatility.recommendedModel === "upset-focus" && "穴狙い"}
+              {volatility.recommendedModel === "standard" && t("models.standard")}
+              {volatility.recommendedModel === "safe-bet" && t("models.safeBet")}
+              {volatility.recommendedModel === "upset-focus" && t("models.upsetFocus")}
             </span>
           </div>
           <div
@@ -263,12 +267,9 @@ function VolatilityDisplay({ volatility }) {
               color: "#475569",
             }}
           >
-            {volatility.level === "high" &&
-              "イン崩れ指数が高く1コースが崩れやすいため、高配当を狙える穴狙い型がおすすめです"}
-            {volatility.level === "low" &&
-              "1コースが安定しているため、的中率重視の本命狙い型がおすすめです"}
-            {volatility.level === "medium" &&
-              "標準的なレースのため、バランス型のスタンダードがおすすめです"}
+            {volatility.level === "high" && t("volatility.adviceHigh")}
+            {volatility.level === "low" && t("volatility.adviceLow")}
+            {volatility.level === "medium" && t("volatility.adviceMedium")}
           </div>
         </div>
       )}
