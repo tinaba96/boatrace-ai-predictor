@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { LANGUAGE_STORAGE_KEY } from "./i18n";
 import { refreshAdsOnRouteChange } from "./utils/analytics";
 import App from "./App";
 import Blog from "./pages/Blog";
@@ -133,7 +134,7 @@ function InitialLanguageRedirect() {
     initialRedirectDone = true;
 
     const isEnPath = pathname === "/en" || pathname.startsWith("/en/");
-    if (!isEnPath && localStorage.getItem("boatai-language") === "en") {
+    if (!isEnPath && localStorage.getItem(LANGUAGE_STORAGE_KEY) === "en") {
       const target = pathname === "/" ? "/en/" : `/en${pathname}`;
       navigate(`${target}${search}`, { replace: true });
     }

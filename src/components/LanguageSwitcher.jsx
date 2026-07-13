@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
-import { SUPPORTED_LANGUAGES } from "../i18n";
+import { SUPPORTED_LANGUAGES, LANGUAGE_STORAGE_KEY } from "../i18n";
 import "./LanguageSwitcher.css";
 
 function LanguageSwitcher() {
@@ -15,7 +15,7 @@ function LanguageSwitcher() {
   const handleChange = (code) => {
     // changeLanguage は非同期のため、Layout のリダイレクト判定が参照する
     // localStorage を先に確定させる（競合すると /en に戻されてしまう）
-    localStorage.setItem("boatai-language", code);
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, code);
     i18n.changeLanguage(code);
 
     const isEnPath = pathname === "/en" || pathname.startsWith("/en/");
