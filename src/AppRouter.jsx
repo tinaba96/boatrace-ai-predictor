@@ -1,8 +1,8 @@
 import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { LANGUAGE_STORAGE_KEY } from "./i18n";
-import { refreshAdsOnRouteChange } from "./utils/analytics";
+import { refreshAdsOnRouteChange, trackPageView } from "./utils/analytics";
 import App from "./App";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
@@ -59,6 +59,23 @@ function AdRefresh() {
   useEffect(() => {
     refreshAdsOnRouteChange();
   }, [location.pathname]);
+
+  return null;
+}
+
+// SPA のルート変更を GA4 のページビューとして送信
+// （初期ロードは initGA の config が送信するため、パス変更時のみ）
+function PageViewTracker() {
+  const { pathname, search } = useLocation();
+  const isFirst = useRef(true);
+
+  useEffect(() => {
+    if (isFirst.current) {
+      isFirst.current = false;
+      return;
+    }
+    trackPageView(`${pathname}${search}`);
+  }, [pathname, search]);
 
   return null;
 }
@@ -170,6 +187,7 @@ export default function AppRouter() {
     <>
       <HashRedirect />
       <AdRefresh />
+      <PageViewTracker />
       <CookieConsent />
       <HreflangTags />
       <InitialLanguageRedirect />
