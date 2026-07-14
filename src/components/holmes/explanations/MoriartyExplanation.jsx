@@ -6,8 +6,9 @@ function MoriartyExplanation() {
       <h3>仕組みを知る</h3>
 
       <p className="explanation-summary">
-        ワトソン・アドラー・マイクロフトの予測を「本物の確率」に補正し、
+        既存3モデル（本命狙い・スタンダード・穴狙い）の予測を「本物の確率」に補正し、
         オッズと組み合わせて「儲かるレース」と「最適ベット額」を算出するメタモデルです。
+        将来ワトソン等の新モデルが採用されれば、その出力も同じ仕組みで統合されます。
       </p>
 
       <div className="explanation-diagram">
@@ -60,7 +61,7 @@ function MoriartyExplanation() {
             fontFamily="system-ui, sans-serif"
             fill="#0284c7"
           >
-            ● ワトソン
+            ● 本命狙い
           </text>
           <text
             x="65"
@@ -70,7 +71,7 @@ function MoriartyExplanation() {
             fontFamily="system-ui, sans-serif"
             fill="#9333ea"
           >
-            ● アドラー
+            ● スタンダード
           </text>
           <text
             x="65"
@@ -80,7 +81,7 @@ function MoriartyExplanation() {
             fontFamily="system-ui, sans-serif"
             fill="#ca8a04"
           >
-            ● マイクロフト
+            ● 穴狙い
           </text>
           <text
             x="65"
@@ -395,7 +396,8 @@ function MoriartyExplanation() {
           <div className="explanation-detail-block">
             <h4>なぜ「メタモデル」か</h4>
             <p>
-              ワトソン・アドラー・マイクロフトは「順位予想」に特化しており、
+              ベースとなる予想モデル（現在は本命狙い・スタンダード・穴狙いの既存3モデル）は
+              「順位予想」に特化しており、
               出力スコアは「本物の確率」として使うには補正が必要です。
               また「正確に順位を当てる」ことと「長期的に儲かる」ことは別問題です。
               モリアーティはこの2つのギャップを埋めるメタモデルとして機能します。
@@ -489,7 +491,7 @@ function MoriartyExplanation() {
               <div className="explanation-cons">
                 <h5>弱み</h5>
                 <ul>
-                  <li>3モデルの精度に依存</li>
+                  <li>ベースモデルの精度に依存</li>
                   <li>キャリブレーションに過去データが必要</li>
                   <li>レース数が少ないと統計的に不安定</li>
                 </ul>
