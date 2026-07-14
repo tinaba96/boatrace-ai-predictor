@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import { SUPPORTED_LANGUAGES, LANGUAGE_STORAGE_KEY } from "../i18n";
+import { trackLanguageSwitch } from "../utils/analytics";
 import "./LanguageSwitcher.css";
 
 function LanguageSwitcher() {
@@ -13,6 +14,9 @@ function LanguageSwitcher() {
 
   // 言語切替時は URL も /en プレフィックスに同期させる（SEO: 言語別 URL）
   const handleChange = (code) => {
+    if (code === currentLang) return;
+    trackLanguageSwitch(currentLang, code);
+
     // changeLanguage は非同期のため、Layout のリダイレクト判定が参照する
     // localStorage を先に確定させる（競合すると /en に戻されてしまう）
     localStorage.setItem(LANGUAGE_STORAGE_KEY, code);

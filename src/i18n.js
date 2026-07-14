@@ -2,6 +2,7 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 
+import { trackLanguage } from "./utils/analytics";
 import jaCommon from "./locales/ja/common.json";
 import enCommon from "./locales/en/common.json";
 
@@ -43,10 +44,13 @@ i18n
   });
 
 // スクリーンリーダーの読み上げ言語・SEOのため <html lang> を言語切替に同期
+// GA4 の言語別分析のためユーザープロパティも送信
 i18n.on("languageChanged", (lng) => {
   document.documentElement.lang = lng;
+  trackLanguage(lng);
 });
 // 初期化時点の言語も反映（languageChanged は初期化前のリスナー登録時のみ発火するため）
 document.documentElement.lang = i18n.resolvedLanguage || "ja";
+trackLanguage(i18n.resolvedLanguage || "ja");
 
 export default i18n;
