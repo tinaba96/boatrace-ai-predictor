@@ -16,6 +16,7 @@ import AccuracyHistory from "./pages/AccuracyHistory";
 import OutcomeDistribution from "./pages/OutcomeDistribution";
 import Holmes from "./pages/Holmes";
 import ContentHub from "./pages/ContentHub";
+import EnglishGuide from "./pages/EnglishGuide";
 import AdminRules from "./pages/admin/AdminRules";
 import ResponsibleGambling from "./pages/ResponsibleGambling";
 import Poirot from "./pages/Poirot";
@@ -63,7 +64,7 @@ function AdRefresh() {
 }
 
 // 言語別に共通のルート定義（/en 配下でも相対パスで再利用）
-function LocalizedRoutes() {
+function LocalizedRoutes({ lng = "ja" }) {
   return (
     <Routes>
       {/* Main App - 予想ページ（トップ） */}
@@ -92,7 +93,8 @@ function LocalizedRoutes() {
       <Route path="faq" element={<FAQ />} />
       <Route path="how-to-use" element={<HowToUse />} />
       <Route path="profile" element={<Profile />} />
-      <Route path="guide" element={<ContentHub />} />
+      {/* 英語版は初心者向け入門ガイド、日本語版はコンテンツハブ */}
+      <Route path="guide" element={lng === "en" ? <EnglishGuide /> : <ContentHub />} />
       <Route path="responsible-gambling" element={<ResponsibleGambling />} />
 
       {/* Admin Pages (Hidden) */}
@@ -121,8 +123,9 @@ function LanguageSync({ lng }) {
   return null;
 }
 
-// 初回ロード時のみ: 言語設定が en のユーザーが JA URL に来たら /en へ誘導
-// （セッション中は再実行しない = LanguageSwitcher での JA 切替と競合しない）
+// 初回ロード時のみ: 言語設定が en のユーザーがトップ（/）に来たら /en/ へ誘導
+// - トップページ限定: 深いURL（/guide 等）への直アクセスは URL をそのまま尊重する
+// - セッション中は再実行しない = LanguageSwitcher での JA 切替と競合しない
 let initialRedirectDone = false;
 
 function InitialLanguageRedirect() {
@@ -133,10 +136,8 @@ function InitialLanguageRedirect() {
     if (initialRedirectDone) return;
     initialRedirectDone = true;
 
-    const isEnPath = pathname === "/en" || pathname.startsWith("/en/");
-    if (!isEnPath && localStorage.getItem(LANGUAGE_STORAGE_KEY) === "en") {
-      const target = pathname === "/" ? "/en/" : `/en${pathname}`;
-      navigate(`${target}${search}`, { replace: true });
+    if (pathname === "/" && localStorage.getItem(LANGUAGE_STORAGE_KEY) === "en") {
+      navigate(`/en/${search}`, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 初回マウント時のみ実行
   }, []);
@@ -149,7 +150,7 @@ function EnglishLayout() {
   return (
     <>
       <LanguageSync lng="en" />
-      <LocalizedRoutes />
+      <LocalizedRoutes lng="en" />
     </>
   );
 }

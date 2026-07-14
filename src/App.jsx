@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useLocalizedPath } from './hooks/useLocalizedPath'
 import './App.css'
 import Header from './components/Header'
 import AccuracyDashboard from './components/AccuracyDashboard'
@@ -22,6 +23,7 @@ import LoadingScreen from './components/LoadingScreen'
 
 function App({ tab = 'races' }) {
     const { t, i18n } = useTranslation()
+    const localize = useLocalizedPath()
     const navigate = useNavigate()
     const location = useLocation()
     const [activeTab, setActiveTab] = useState(tab)
@@ -799,7 +801,7 @@ function App({ tab = 'races' }) {
                                 </p>
                                 <div className="blog-preview-grid">
                                     {getFeaturedPosts().slice(0, 5).map(post => (
-                                        <Link to={`/blog/${post.id}`} key={post.id} className="blog-preview-card">
+                                        <Link to={localize(`/blog/${post.id}`)} key={post.id} className="blog-preview-card">
                                             <span className="blog-preview-category">{post.category}</span>
                                             <h3 className="blog-preview-title">{post.title}</h3>
                                             <p className="blog-preview-desc">{post.description}</p>
@@ -810,7 +812,7 @@ function App({ tab = 'races' }) {
                                     ))}
                                 </div>
                                 <div className="blog-preview-cta">
-                                    <Link to="/blog" className="blog-preview-btn">
+                                    <Link to={localize("/blog")} className="blog-preview-btn">
                                         {t('home.viewAllPosts')}
                                     </Link>
                                 </div>
@@ -840,14 +842,14 @@ function App({ tab = 'races' }) {
                     marginTop: '0.75rem',
                     marginBottom: '0.75rem'
                 }}>
-                    <Link to="/blog" style={{ color: 'white', textDecoration: 'none' }}>{t('footer.blog')}</Link>
-                    <Link to="/about" style={{ color: 'white', textDecoration: 'none' }}>About</Link>
-                    <Link to="/profile" style={{ color: 'white', textDecoration: 'none' }}>{t('footer.operator')}</Link>
-                    <Link to="/faq" style={{ color: 'white', textDecoration: 'none' }}>FAQ</Link>
-                    <Link to="/privacy" style={{ color: 'white', textDecoration: 'none' }}>{t('footer.privacy')}</Link>
-                    <Link to="/terms" style={{ color: 'white', textDecoration: 'none' }}>{t('footer.terms')}</Link>
-                    <Link to="/contact" style={{ color: 'white', textDecoration: 'none' }}>{t('footer.contact')}</Link>
-                    <Link to="/responsible-gambling" style={{ color: 'white', textDecoration: 'none' }}>{t('footer.responsibleGambling')}</Link>
+                    <Link to={localize("/blog")} style={{ color: 'white', textDecoration: 'none' }}>{t('footer.blog')}</Link>
+                    <Link to={localize("/about")} style={{ color: 'white', textDecoration: 'none' }}>About</Link>
+                    <Link to={localize("/profile")} style={{ color: 'white', textDecoration: 'none' }}>{t('footer.operator')}</Link>
+                    <Link to={localize("/faq")} style={{ color: 'white', textDecoration: 'none' }}>FAQ</Link>
+                    <Link to={localize("/privacy")} style={{ color: 'white', textDecoration: 'none' }}>{t('footer.privacy')}</Link>
+                    <Link to={localize("/terms")} style={{ color: 'white', textDecoration: 'none' }}>{t('footer.terms')}</Link>
+                    <Link to={localize("/contact")} style={{ color: 'white', textDecoration: 'none' }}>{t('footer.contact')}</Link>
+                    <Link to={localize("/responsible-gambling")} style={{ color: 'white', textDecoration: 'none' }}>{t('footer.responsibleGambling')}</Link>
                 </div>
                 <p>&copy; 2025 BoatAI - All Rights Reserved</p>
             </footer>
