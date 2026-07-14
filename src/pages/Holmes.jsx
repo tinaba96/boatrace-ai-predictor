@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet-async";
 import Header from "../components/Header";
 import {
   HolmesSherlock,
@@ -51,14 +50,14 @@ function Holmes() {
 
   return (
     <div className="holmes-page">
-      <Helmet>
+      <>
         <title>ホームズ予想 (α版) - BoatAI</title>
         <meta name="robots" content="noindex, nofollow" />
         <meta
           name="description"
           content="機械学習・深層学習による次世代予想モデルの実験ページ（α版）"
         />
-      </Helmet>
+      </>
 
       <Header />
 

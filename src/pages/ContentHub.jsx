@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import { Helmet } from 'react-helmet-async'
 import Header from '../components/Header'
 import './ContentHub.css'
 
@@ -34,12 +33,8 @@ const venues = [
 function ContentHub() {
   return (
     <>
-      <Helmet>
         <title>ボートレース完全ガイド - 初心者から上級者まで | BoatAI</title>
         <meta name="description" content="ボートレースの基礎知識から上級者向け戦略まで、体系的に学べる完全ガイド。24会場の攻略法、データ分析手法、予想のコツを詳しく解説。" />
-        <meta property="og:title" content="ボートレース完全ガイド - 初心者から上級者まで | BoatAI" />
-        <meta property="og:description" content="ボートレースの基礎知識から上級者向け戦略まで、体系的に学べる完全ガイド。" />
-        <meta property="og:type" content="website" />
         <link rel="canonical" href="https://www.boat-ai.jp/guide" />
         <script type="application/ld+json">
           {JSON.stringify({
@@ -75,7 +70,6 @@ function ContentHub() {
             }
           })}
         </script>
-      </Helmet>
 
       <Header />
 
