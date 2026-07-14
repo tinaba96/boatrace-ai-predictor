@@ -7,17 +7,22 @@
  * 使い方:
  *   node scripts/analysis/i18n-demand-report.js [--days=30]
  *
- * 必要な環境変数（.env.local）:
- *   GA4_PROPERTY_ID              - GA4 プロパティID（数字のみ。GA4 管理 > プロパティ設定）
- *   GOOGLE_SERVICE_ACCOUNT_EMAIL - サービスアカウント（GA4 プロパティに「閲覧者」権限が必要）
- *   GOOGLE_PRIVATE_KEY           - サービスアカウントの秘密鍵
+ * 必要な設定:
+ *   GA4_PROPERTY_ID（.env.local）- GA4 プロパティID（数字のみ。GA4 管理 > プロパティ設定）
+ *   サービスアカウント認証 - credentials/google-service-account.json
+ *     （Google Sheets 連携と共用。GOOGLE_SERVICE_ACCOUNT_KEY_PATH で変更可能）
  *
  * セットアップ手順は docs/operation/i18n-demand-report.md を参照
  */
-import "dotenv/config";
+import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import { google } from "googleapis";
+
+// .env.local を読み込む（プロジェクト共通パターン: scripts/lib/supabaseClient.js と同様）
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(__dirname, "../../.env.local") });
 
 const DAYS = parseInt(
   (process.argv.find((a) => a.startsWith("--days=")) || "--days=30").split(
@@ -27,28 +32,36 @@ const DAYS = parseInt(
 );
 const PROPERTY_ID = process.env.GA4_PROPERTY_ID;
 
-if (
-  !PROPERTY_ID ||
-  !process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ||
-  !process.env.GOOGLE_PRIVATE_KEY
-) {
-  console.error(`❌ 環境変数が不足しています。
+// サービスアカウント認証（update-google-sheets.js と同じ方式）
+const KEY_PATH =
+  process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH ||
+  "./credentials/google-service-account.json";
 
-必要な設定:
-  GA4_PROPERTY_ID=123456789        # GA4 管理 > プロパティ設定 > プロパティID
-  GOOGLE_SERVICE_ACCOUNT_EMAIL=... # 既存（Google Sheets 連携と共用）
-  GOOGLE_PRIVATE_KEY=...           # 既存
+if (!PROPERTY_ID) {
+  console.error(`❌ GA4_PROPERTY_ID が設定されていません。
 
-さらに GA4 側で、サービスアカウントをプロパティの「閲覧者」に追加してください:
-  GA4 管理 > プロパティのアクセス管理 > 追加 > ${process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || "サービスアカウントのメール"}
+.env.local に追加してください:
+  GA4_PROPERTY_ID=123456789  # GA4 管理 > プロパティ設定 > プロパティID（数字のみ）
 
 詳細: docs/operation/i18n-demand-report.md`);
   process.exit(1);
 }
 
+if (!fs.existsSync(KEY_PATH)) {
+  console.error(`❌ サービスアカウントのキーファイルが見つかりません: ${KEY_PATH}
+
+Google Sheets 連携と同じ credentials/google-service-account.json を配置するか、
+GOOGLE_SERVICE_ACCOUNT_KEY_PATH でパスを指定してください。
+
+詳細: docs/operation/i18n-demand-report.md`);
+  process.exit(1);
+}
+
+const credentials = JSON.parse(fs.readFileSync(KEY_PATH, "utf-8"));
+
 const auth = new google.auth.JWT({
-  email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-  key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+  email: credentials.client_email,
+  key: credentials.private_key,
   scopes: ["https://www.googleapis.com/auth/analytics.readonly"],
 });
 
@@ -220,7 +233,7 @@ main().catch((err) => {
     console.error(`❌ GA4 へのアクセス権限がありません。
 
 GA4 管理 > プロパティのアクセス管理 で以下を「閲覧者」に追加してください:
-  ${process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL}`);
+  ${credentials.client_email}`);
   } else {
     console.error("❌ レポート生成エラー:", err.message);
   }
