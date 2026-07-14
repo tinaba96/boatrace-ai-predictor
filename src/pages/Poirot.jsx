@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import Header from "../components/Header";
 import { getPoirotPredictions } from "../services/poirotService";
+import PoirotExplanation from "../components/poirot/PoirotExplanation";
 import "./Poirot.css";
 
 const MODEL_META = {
@@ -189,6 +190,8 @@ export default function Poirot() {
                 </ul>
               </>
             )}
+
+            <PoirotExplanation />
           </section>
         </div>
       </main>
