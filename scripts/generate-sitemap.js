@@ -108,12 +108,18 @@ const staticPages = [
     changefreq: 'daily',
     priority: '0.8'
   },
-  // 英語版（i18n Phase 2: 現時点で英語UIが提供されているページのみ）
+  // 英語版（i18n Phase 2-3: 現時点で英語コンテンツが提供されているページのみ）
   {
     loc: '/en/',
     lastmod: new Date().toISOString().split('T')[0],
     changefreq: 'daily',
     priority: '0.9'
+  },
+  {
+    loc: '/en/guide',
+    lastmod: new Date().toISOString().split('T')[0],
+    changefreq: 'monthly',
+    priority: '0.8'
   }
 ];
 

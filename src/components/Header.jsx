@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useLocalizedPath } from '../hooks/useLocalizedPath'
 import LanguageSwitcher from './LanguageSwitcher'
 import './Header.css'
 
@@ -8,29 +9,31 @@ function Header() {
   const location = useLocation()
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const localize = useLocalizedPath()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isCompressed, setIsCompressed] = useState(false)
   const menuRef = useRef(null)
 
-  // 現在のページ/タブを判定
+  // 現在のページ/タブを判定（/en プレフィックスを除いて比較）
   const getActiveTab = () => {
-    if (location.pathname === '/') {
+    const pathname = location.pathname.replace(/^\/en(\/|$)/, '/')
+    if (pathname === '/') {
       // ホームページの場合はハッシュを確認
       const hash = location.hash.slice(1)
       return hash || 'races'
     }
     // その他のページ
-    if (location.pathname === '/hit-races') return 'hit-races'
-    if (location.pathname === '/accuracy') return 'accuracy'
-    if (location.pathname === '/outcome-distribution') return 'outcome-distribution'
-    if (location.pathname === '/picks') return 'picks'
-    if (location.pathname.startsWith('/races')) return 'past-races'
-    if (location.pathname === '/how-to-use') return 'how-to-use'
-    if (location.pathname === '/guide') return 'guide'
-    if (location.pathname.startsWith('/blog')) return 'blog'
-    if (location.pathname === '/faq') return 'faq'
-    if (location.pathname === '/about') return 'about'
-    if (location.pathname === '/profile') return 'profile'
+    if (pathname === '/hit-races') return 'hit-races'
+    if (pathname === '/accuracy') return 'accuracy'
+    if (pathname === '/outcome-distribution') return 'outcome-distribution'
+    if (pathname === '/picks') return 'picks'
+    if (pathname.startsWith('/races')) return 'past-races'
+    if (pathname === '/how-to-use') return 'how-to-use'
+    if (pathname === '/guide') return 'guide'
+    if (pathname.startsWith('/blog')) return 'blog'
+    if (pathname === '/faq') return 'faq'
+    if (pathname === '/about') return 'about'
+    if (pathname === '/profile') return 'profile'
     return 'races'
   }
 
@@ -68,14 +71,14 @@ function Header() {
 
   // ロゴクリック時の処理
   const handleLogoClick = () => {
-    navigate('/')
+    navigate(localize('/'))
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // タブクリック時の処理（パスベースナビゲーション）
+  // タブクリック時の処理（パスベースナビゲーション、言語プレフィックス維持）
   const handleTabClick = (tab) => {
     const path = tab === 'races' ? '/' : `/${tab}`
-    navigate(path)
+    navigate(localize(path))
   }
 
   return (
@@ -125,63 +128,63 @@ function Header() {
               {t('nav.hits')}
             </button>
             <Link
-              to="/accuracy"
+              to={localize("/accuracy")}
               className={`submenu-item ${activeTab === 'accuracy' ? 'active' : ''}`}
               onClick={() => setIsMenuOpen(false)}
             >
               {t('nav.accuracy')}
             </Link>
             <Link
-              to="/outcome-distribution"
+              to={localize("/outcome-distribution")}
               className={`submenu-item ${activeTab === 'outcome-distribution' ? 'active' : ''}`}
               onClick={() => setIsMenuOpen(false)}
             >
               {t('nav.outcomeDistribution')}
             </Link>
             <Link
-              to="/races"
+              to={localize("/races")}
               className={`submenu-item ${activeTab === 'past-races' ? 'active' : ''}`}
               onClick={() => setIsMenuOpen(false)}
             >
               {t('nav.pastRaces')}
             </Link>
             <Link
-              to="/how-to-use"
+              to={localize("/how-to-use")}
               className={`submenu-item ${activeTab === 'how-to-use' ? 'active' : ''}`}
               onClick={() => setIsMenuOpen(false)}
             >
               {t('nav.howToUse')}
             </Link>
             <Link
-              to="/guide"
+              to={localize("/guide")}
               className={`submenu-item ${activeTab === 'guide' ? 'active' : ''}`}
               onClick={() => setIsMenuOpen(false)}
             >
               {t('nav.guide')}
             </Link>
             <Link
-              to="/blog"
+              to={localize("/blog")}
               className={`submenu-item ${activeTab === 'blog' ? 'active' : ''}`}
               onClick={() => setIsMenuOpen(false)}
             >
               {t('nav.blog')}
             </Link>
             <Link
-              to="/faq"
+              to={localize("/faq")}
               className={`submenu-item ${activeTab === 'faq' ? 'active' : ''}`}
               onClick={() => setIsMenuOpen(false)}
             >
               {t('nav.faq')}
             </Link>
             <Link
-              to="/about"
+              to={localize("/about")}
               className={`submenu-item ${activeTab === 'about' ? 'active' : ''}`}
               onClick={() => setIsMenuOpen(false)}
             >
               {t('nav.about')}
             </Link>
             <Link
-              to="/profile"
+              to={localize("/profile")}
               className={`submenu-item ${activeTab === 'profile' ? 'active' : ''}`}
               onClick={() => setIsMenuOpen(false)}
             >
