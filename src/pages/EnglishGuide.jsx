@@ -300,6 +300,20 @@ export default function EnglishGuide() {
           </ol>
         </section>
 
+        {/* Venue guides */}
+        <section className="eg-section">
+          <h2>🏟️ Visit a Venue in Person</h2>
+          <p>
+            Watching Kyotei live is cheap (¥100 entrance) and unforgettable.
+            We have English visitor guides for the venues easiest to reach as
+            a traveler — including Heiwajima near Haneda Airport and
+            Suminoe&apos;s night races in Osaka.
+          </p>
+          <p>
+            <Link to="/en/venues">→ Browse the venue guides</Link>
+          </p>
+        </section>
+
         {/* Legal disclaimer */}
         <section className="eg-section eg-disclaimer">
           <h2>⚖️ Important: Who Can Bet</h2>

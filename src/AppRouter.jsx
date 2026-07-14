@@ -17,6 +17,7 @@ import OutcomeDistribution from "./pages/OutcomeDistribution";
 import Holmes from "./pages/Holmes";
 import ContentHub from "./pages/ContentHub";
 import EnglishGuide from "./pages/EnglishGuide";
+import EnglishVenueGuide, { EnglishVenueGuides } from "./pages/EnglishVenueGuide";
 import AdminRules from "./pages/admin/AdminRules";
 import ResponsibleGambling from "./pages/ResponsibleGambling";
 import Poirot from "./pages/Poirot";
@@ -112,6 +113,10 @@ function LocalizedRoutes({ lng = "ja" }) {
       <Route path="profile" element={<Profile />} />
       {/* 英語版は初心者向け入門ガイド、日本語版はコンテンツハブ */}
       <Route path="guide" element={lng === "en" ? <EnglishGuide /> : <ContentHub />} />
+
+      {/* 英語版のみ: 会場別ビジターガイド（インバウンド観光クエリ向け） */}
+      {lng === "en" && <Route path="venues" element={<EnglishVenueGuides />} />}
+      {lng === "en" && <Route path="venues/:slug" element={<EnglishVenueGuide />} />}
       <Route path="responsible-gambling" element={<ResponsibleGambling />} />
 
       {/* Admin Pages (Hidden) */}
