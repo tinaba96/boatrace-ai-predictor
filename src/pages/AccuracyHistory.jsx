@@ -139,11 +139,9 @@ function AccuracyHistory() {
 
     return (
         <>
-            <>
                 <title>月別成績アーカイブ | BoatAI</title>
                 <meta name="description" content="BoatAIのAI予測モデル別の月別成績アーカイブ。過去の予測精度と回収率の推移を確認できます。" />
                 <link rel="canonical" href="https://www.boat-ai.jp/accuracy/history" />
-            </>
             <div className="accuracy-history-page">
                 <div className="page-header">
                     <Link to="/accuracy" className="back-link">← 成績ページへ戻る</Link>

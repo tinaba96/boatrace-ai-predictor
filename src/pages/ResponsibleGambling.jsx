@@ -6,16 +6,10 @@ import './About.css';
 export default function ResponsibleGambling() {
     return (
         <>
-            <>
                 <title>責任あるギャンブル | BoatAI</title>
                 <meta name="description" content="ボートレースを楽しく続けるために。ギャンブル依存症の予防と相談窓口のご案内。" />
                 <link rel="canonical" href="https://www.boat-ai.jp/responsible-gambling" />
 
-                {/* OGP Tags */}
-                <meta property="og:type" content="website" />
-                <meta property="og:title" content="責任あるギャンブル | BoatAI" />
-                <meta property="og:description" content="ボートレースを楽しく続けるために。ギャンブル依存症の予防と相談窓口のご案内。" />
-                <meta property="og:url" content="https://www.boat-ai.jp/responsible-gambling" />
 
                 {/* BreadcrumbList */}
                 <script type="application/ld+json">
@@ -38,7 +32,6 @@ export default function ResponsibleGambling() {
                         ]
                     })}
                 </script>
-            </>
 
             <Header />
 

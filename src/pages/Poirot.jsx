@@ -61,10 +61,8 @@ export default function Poirot() {
 
   return (
     <>
-      <>
         <title>ポアロ予想（α） | BoatAI</title>
         <meta name="robots" content="noindex, nofollow" />
-      </>
       <Header />
       <main className="poirot-page">
         <div className="poirot-container">

@@ -3,11 +3,9 @@ import { Link } from 'react-router-dom'
 export default function PrivacyPolicy() {
     return (
         <>
-            <>
                 <title>プライバシーポリシー | BoatAI</title>
                 <meta name="description" content="BoatAI（AIボートレース分析サービス）のプライバシーポリシー。個人情報の取り扱い、Cookie使用、広告配信についてご説明します。" />
                 <link rel="canonical" href="https://www.boat-ai.jp/privacy" />
-            </>
             <div style={{
             maxWidth: '900px',
             margin: '0 auto',

@@ -115,13 +115,9 @@ function RaceHistory() {
 
   return (
     <>
-      <>
         <title>過去のAI予想データ - BoatAI</title>
         <meta name="description" content="BoatAIの過去のレース予想データと的中実績を確認できます。日別の的中率や回収率をチェックして、AIの精度を検証してください。" />
-        <meta property="og:title" content="過去のAI予想データ - BoatAI" />
-        <meta property="og:description" content="BoatAIの過去のレース予想データと的中実績を確認できます。" />
         <link rel="canonical" href="https://www.boat-ai.jp/races" />
-      </>
 
       <Header />
 
