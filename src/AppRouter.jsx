@@ -5,6 +5,7 @@ import {
   SUPPORTED_LANGUAGES,
   DEFAULT_LANGUAGE,
   LANGUAGE_STORAGE_KEY,
+  getAvailableLanguages,
 } from "./config/languages";
 import { refreshAdsOnRouteChange, trackPageView } from "./utils/analytics";
 import App from "./App";
@@ -118,9 +119,13 @@ function LocalizedRoutes({ lng = "ja" }) {
       {/* 英語版は初心者向け入門ガイド、日本語版はコンテンツハブ */}
       <Route path="guide" element={lng === "en" ? <EnglishGuide /> : <ContentHub />} />
 
-      {/* 英語版のみ: 会場別ビジターガイド（インバウンド観光クエリ向け） */}
-      {lng === "en" && <Route path="venues" element={<EnglishVenueGuides />} />}
-      {lng === "en" && <Route path="venues/:slug" element={<EnglishVenueGuide />} />}
+      {/* 言語専用: 会場別ビジターガイド（インバウンド観光クエリ向け。対応言語は config の LANGUAGE_ONLY_PATHS） */}
+      {getAvailableLanguages("/venues").some((l) => l.code === lng) && (
+        <>
+          <Route path="venues" element={<EnglishVenueGuides />} />
+          <Route path="venues/:slug" element={<EnglishVenueGuide />} />
+        </>
+      )}
       <Route path="responsible-gambling" element={<ResponsibleGambling />} />
 
       {/* Admin Pages (Hidden) */}

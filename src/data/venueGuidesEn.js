@@ -1,6 +1,7 @@
 /**
  * 英語版 会場ガイドのコンテンツデータ（BOA-133）
  * インバウンド観光クエリ向けの英語コンテンツ。事実（アクセス・施設）は各会場公式サイトで確認済み
+ * scripts/generate-sitemap.js（node 直実行）からも import されるため、Vite 専用構文を使わず純粋な JS データに保つこと
  */
 
 export const VENUE_GUIDES_EN = [

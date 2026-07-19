@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   SUPPORTED_LANGUAGES,
+  DEFAULT_LANGUAGE,
   LANGUAGE_STORAGE_KEY,
   localizePath,
 } from "../config/languages";
@@ -14,7 +15,7 @@ function LanguageSwitcher() {
   const navigate = useNavigate();
 
   // resolvedLanguage は 'en-US' → 'en' のように正規化済み
-  const currentLang = i18n.resolvedLanguage || "ja";
+  const currentLang = i18n.resolvedLanguage || DEFAULT_LANGUAGE;
 
   // 言語切替時は URL も言語プレフィックスに同期させる（SEO: 言語別 URL）
   const handleChange = (code) => {
@@ -47,6 +48,8 @@ function LanguageSwitcher() {
           className={`language-switcher-btn ${currentLang === lang.code ? "active" : ""}`}
           onClick={() => handleChange(lang.code)}
           aria-pressed={currentLang === lang.code}
+          title={lang.label}
+          aria-label={lang.label}
         >
           {lang.code.toUpperCase()}
         </button>

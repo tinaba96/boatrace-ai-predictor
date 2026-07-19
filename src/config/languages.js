@@ -14,12 +14,27 @@ export const DEFAULT_LANGUAGE = "ja";
 // 言語設定の localStorage キー（LanguageSwitcher / AppRouter からも参照）
 export const LANGUAGE_STORAGE_KEY = "boatai-language";
 
+// 特定言語にのみ存在するパスと対応言語（ルーティング・hreflang で共用）
+export const LANGUAGE_ONLY_PATHS = {
+  "/venues": ["en"],
+};
+
+// パス（言語プレフィックス除去済み）が提供されている言語の定義一覧を返す
+export function getAvailableLanguages(basePath) {
+  const entry = Object.entries(LANGUAGE_ONLY_PATHS).find(
+    ([p]) => basePath === p || basePath.startsWith(`${p}/`),
+  );
+  if (!entry) return SUPPORTED_LANGUAGES;
+  return SUPPORTED_LANGUAGES.filter(({ code }) => entry[1].includes(code));
+}
+
+const DEFAULT_LANGUAGE_DEF = SUPPORTED_LANGUAGES.find(
+  (l) => l.code === DEFAULT_LANGUAGE,
+);
+
 // 言語コードから定義を取得（未対応コードはデフォルト言語の定義を返す）
 export function getLanguage(code) {
-  return (
-    SUPPORTED_LANGUAGES.find((l) => l.code === code) ??
-    SUPPORTED_LANGUAGES.find((l) => l.code === DEFAULT_LANGUAGE)
-  );
+  return SUPPORTED_LANGUAGES.find((l) => l.code === code) ?? DEFAULT_LANGUAGE_DEF;
 }
 
 /**

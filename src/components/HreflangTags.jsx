@@ -1,6 +1,6 @@
 /**
  * HreflangTags - 全ページ共通の hreflang 代替リンクを出力
- * SUPPORTED_LANGUAGES の全言語分の代替 URL を検索エンジンに伝える
+ * そのページが提供されている言語分の代替 URL を検索エンジンに伝える
  * （デフォルト言語はプレフィックスなし、それ以外は /{code} プレフィックス）
  *
  * React 19 のネイティブ head ホイスティングを使用（react-helmet-async は
@@ -8,18 +8,13 @@
  */
 import { useLocation } from "react-router-dom";
 import {
-  SUPPORTED_LANGUAGES,
   DEFAULT_LANGUAGE,
   parseLangFromPath,
   localizePath,
+  getAvailableLanguages,
 } from "../config/languages";
 
 const SITE_URL = "https://www.boat-ai.jp";
-
-// 特定言語にしか存在しないパス（存在しない言語版を hreflang で宣言してはいけない）
-const LANGUAGE_ONLY_PATHS = {
-  "/venues": ["en"],
-};
 
 function HreflangTags() {
   const { pathname } = useLocation();
@@ -27,11 +22,10 @@ function HreflangTags() {
   // 言語プレフィックスを除いた基準パス
   const { basePath } = parseLangFromPath(pathname);
 
-  // 一部言語専用ページは全言語ペアが存在しないため hreflang を出力しない（canonical は各ページが設定）
-  const isLanguageOnly = Object.keys(LANGUAGE_ONLY_PATHS).some(
-    (p) => basePath === p || basePath.startsWith(`${p}/`),
-  );
-  if (isLanguageOnly) {
+  // 1言語でしか提供されていないページは代替が存在しないため hreflang を出力しない
+  // （canonical は各ページが設定）
+  const languages = getAvailableLanguages(basePath);
+  if (languages.length < 2) {
     return null;
   }
 
@@ -39,7 +33,7 @@ function HreflangTags() {
 
   return (
     <>
-      {SUPPORTED_LANGUAGES.map(({ code, hreflang }) => (
+      {languages.map(({ code, hreflang }) => (
         <link
           key={code}
           rel="alternate"
@@ -47,11 +41,13 @@ function HreflangTags() {
           href={urlFor(code)}
         />
       ))}
-      <link
-        rel="alternate"
-        hrefLang="x-default"
-        href={urlFor(DEFAULT_LANGUAGE)}
-      />
+      {languages.some(({ code }) => code === DEFAULT_LANGUAGE) && (
+        <link
+          rel="alternate"
+          hrefLang="x-default"
+          href={urlFor(DEFAULT_LANGUAGE)}
+        />
+      )}
     </>
   );
 }
