@@ -1,7 +1,11 @@
 import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { LANGUAGE_STORAGE_KEY } from "./i18n";
+import {
+  SUPPORTED_LANGUAGES,
+  DEFAULT_LANGUAGE,
+  LANGUAGE_STORAGE_KEY,
+} from "./config/languages";
 import { refreshAdsOnRouteChange, trackPageView } from "./utils/analytics";
 import App from "./App";
 import Blog from "./pages/Blog";
@@ -145,9 +149,9 @@ function LanguageSync({ lng }) {
   return null;
 }
 
-// 初回ロード時のみ: 言語設定が en のユーザーがトップ（/）に来たら /en/ へ誘導
+// 初回ロード時のみ: 言語設定がデフォルト言語以外のユーザーがトップ（/）に来たら /{lng}/ へ誘導
 // - トップページ限定: 深いURL（/guide 等）への直アクセスは URL をそのまま尊重する
-// - セッション中は再実行しない = LanguageSwitcher での JA 切替と競合しない
+// - セッション中は再実行しない = LanguageSwitcher でのデフォルト言語切替と競合しない
 let initialRedirectDone = false;
 
 function InitialLanguageRedirect() {
@@ -158,8 +162,14 @@ function InitialLanguageRedirect() {
     if (initialRedirectDone) return;
     initialRedirectDone = true;
 
-    if (pathname === "/" && localStorage.getItem(LANGUAGE_STORAGE_KEY) === "en") {
-      navigate(`/en/${search}`, { replace: true });
+    if (pathname !== "/") return;
+    const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    if (
+      stored &&
+      stored !== DEFAULT_LANGUAGE &&
+      SUPPORTED_LANGUAGES.some((l) => l.code === stored)
+    ) {
+      navigate(`/${stored}/${search}`, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 初回マウント時のみ実行
   }, []);
@@ -167,22 +177,12 @@ function InitialLanguageRedirect() {
   return null;
 }
 
-// 英語版レイアウト: /en 配下は言語を en に同期
-function EnglishLayout() {
+// 言語別レイアウト: URL プレフィックスに応じた言語へ同期
+function LocalizedLayout({ lng }) {
   return (
     <>
-      <LanguageSync lng="en" />
-      <LocalizedRoutes lng="en" />
-    </>
-  );
-}
-
-// 日本語版レイアウト
-function JapaneseLayout() {
-  return (
-    <>
-      <LanguageSync lng="ja" />
-      <LocalizedRoutes />
+      <LanguageSync lng={lng} />
+      <LocalizedRoutes lng={lng} />
     </>
   );
 }
@@ -197,8 +197,16 @@ export default function AppRouter() {
       <HreflangTags />
       <InitialLanguageRedirect />
       <Routes>
-        <Route path="/en/*" element={<EnglishLayout />} />
-        <Route path="/*" element={<JapaneseLayout />} />
+        {SUPPORTED_LANGUAGES.filter(({ code }) => code !== DEFAULT_LANGUAGE).map(
+          ({ code }) => (
+            <Route
+              key={code}
+              path={`/${code}/*`}
+              element={<LocalizedLayout lng={code} />}
+            />
+          ),
+        )}
+        <Route path="/*" element={<LocalizedLayout lng={DEFAULT_LANGUAGE} />} />
       </Routes>
     </>
   );

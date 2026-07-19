@@ -3,26 +3,30 @@ import { initReactI18next } from "react-i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 
 import { trackLanguage } from "./utils/analytics";
-import jaCommon from "./locales/ja/common.json";
-import enCommon from "./locales/en/common.json";
+import { SUPPORTED_LANGUAGES, LANGUAGE_STORAGE_KEY } from "./config/languages";
 
-// 対応言語一覧（言語追加時はここに追記 + locales/{lng}/ を作成）
-export const SUPPORTED_LANGUAGES = [
-  { code: "ja", label: "日本語" },
-  { code: "en", label: "English" },
-];
-
-// 言語設定の localStorage キー（LanguageSwitcher / AppRouter からも参照）
-export const LANGUAGE_STORAGE_KEY = "boatai-language";
+// 翻訳リソースを SUPPORTED_LANGUAGES から動的に構築
+// （言語追加 = config/languages.js への追記 + locales/{lng}/common.json の作成のみ）
+const localeModules = import.meta.glob("./locales/*/common.json", {
+  eager: true,
+});
+const resources = Object.fromEntries(
+  SUPPORTED_LANGUAGES.map(({ code }) => {
+    const mod = localeModules[`./locales/${code}/common.json`];
+    if (!mod) {
+      throw new Error(
+        `翻訳ファイルがありません: src/locales/${code}/common.json`,
+      );
+    }
+    return [code, { common: mod.default }];
+  }),
+);
 
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
-    resources: {
-      ja: { common: jaCommon },
-      en: { common: enCommon },
-    },
+    resources,
     // 未翻訳キーは日本語にフォールバック
     fallbackLng: "ja",
     defaultNS: "common",

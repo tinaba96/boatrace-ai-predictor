@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useLocalizedPath } from '../hooks/useLocalizedPath'
+import { parseLangFromPath } from '../config/languages'
 import LanguageSwitcher from './LanguageSwitcher'
 import './Header.css'
 
@@ -14,9 +15,9 @@ function Header() {
   const [isCompressed, setIsCompressed] = useState(false)
   const menuRef = useRef(null)
 
-  // 現在のページ/タブを判定（/en プレフィックスを除いて比較）
+  // 現在のページ/タブを判定（言語プレフィックスを除いて比較）
   const getActiveTab = () => {
-    const pathname = location.pathname.replace(/^\/en(\/|$)/, '/')
+    const { basePath: pathname } = parseLangFromPath(location.pathname)
     if (pathname === '/') {
       // ホームページの場合はハッシュを確認
       const hash = location.hash.slice(1)

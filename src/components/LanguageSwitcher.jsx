@@ -1,6 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
-import { SUPPORTED_LANGUAGES, LANGUAGE_STORAGE_KEY } from "../i18n";
+import {
+  SUPPORTED_LANGUAGES,
+  LANGUAGE_STORAGE_KEY,
+  localizePath,
+} from "../config/languages";
 import { trackLanguageSwitch } from "../utils/analytics";
 import "./LanguageSwitcher.css";
 
@@ -12,23 +16,19 @@ function LanguageSwitcher() {
   // resolvedLanguage は 'en-US' → 'en' のように正規化済み
   const currentLang = i18n.resolvedLanguage || "ja";
 
-  // 言語切替時は URL も /en プレフィックスに同期させる（SEO: 言語別 URL）
+  // 言語切替時は URL も言語プレフィックスに同期させる（SEO: 言語別 URL）
   const handleChange = (code) => {
     if (code === currentLang) return;
     trackLanguageSwitch(currentLang, code);
 
     // changeLanguage は非同期のため、Layout のリダイレクト判定が参照する
-    // localStorage を先に確定させる（競合すると /en に戻されてしまう）
+    // localStorage を先に確定させる（競合すると切替前の言語 URL に戻されてしまう）
     localStorage.setItem(LANGUAGE_STORAGE_KEY, code);
     i18n.changeLanguage(code);
 
-    const isEnPath = pathname === "/en" || pathname.startsWith("/en/");
-    if (code === "en" && !isEnPath) {
-      const target = pathname === "/" ? "/en/" : `/en${pathname}`;
+    const target = localizePath(pathname, code);
+    if (target !== pathname) {
       navigate(`${target}${search}`, { replace: true });
-    } else if (code !== "en" && isEnPath) {
-      const stripped = pathname.replace(/^\/en(\/|$)/, "/");
-      navigate(`${stripped}${search}`, { replace: true });
     }
   };
 

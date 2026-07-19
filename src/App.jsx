@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useLocalizedPath } from './hooks/useLocalizedPath'
+import { getLanguage, localizePath } from './config/languages'
 import './App.css'
 import Header from './components/Header'
 import AccuracyDashboard from './components/AccuracyDashboard'
@@ -529,8 +530,8 @@ function App({ tab = 'races' }) {
                 <>
                     <title>{t('meta.title')}</title>
                     <meta name="description" content={t('meta.description')} />
-                    <meta property="og:locale" content={i18n.resolvedLanguage === 'en' ? 'en_US' : 'ja_JP'} />
-                    <link rel="canonical" href={i18n.resolvedLanguage === 'en' ? 'https://www.boat-ai.jp/en/' : 'https://www.boat-ai.jp/'} />
+                    <meta property="og:locale" content={getLanguage(i18n.resolvedLanguage).ogLocale} />
+                    <link rel="canonical" href={`https://www.boat-ai.jp${localizePath('/', i18n.resolvedLanguage)}`} />
                 </>
             )}
             <Header />
