@@ -120,7 +120,14 @@ const staticPages = [
     lastmod: new Date().toISOString().split('T')[0],
     changefreq: 'monthly',
     priority: '0.8'
-  }
+  },
+  // 英語版 会場別ビジターガイド（BOA-133）
+  ...['', 'heiwajima', 'suminoe', 'edogawa', 'tamagawa', 'fukuoka'].map((slug) => ({
+    loc: slug ? `/en/venues/${slug}` : '/en/venues',
+    lastmod: new Date().toISOString().split('T')[0],
+    changefreq: 'monthly',
+    priority: '0.7'
+  }))
 ];
 
 // ブログ記事のスキャン
