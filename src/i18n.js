@@ -34,8 +34,13 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    // 未翻訳キーはデフォルト言語（日本語）にフォールバック
-    fallbackLng: DEFAULT_LANGUAGE,
+    // 未翻訳キー・未対応言語はデフォルト言語（日本語）にフォールバック。
+    // 中国語系ロケール（zh-HK / zh-MO / zh 等）は繁体字 zh-TW に寄せる
+    // （香港・マカオはターゲット層。簡体字ユーザーにも日本語より繁体字の方が読める）
+    fallbackLng: {
+      zh: ["zh-TW", DEFAULT_LANGUAGE],
+      default: [DEFAULT_LANGUAGE],
+    },
     defaultNS: "common",
     ns: ["common"],
     supportedLngs: SUPPORTED_LANGUAGES.map((l) => l.code),

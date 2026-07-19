@@ -1,8 +1,8 @@
 /**
  * i18n 需要計測レポート（BOA-128）
  *
- * GA4 Data API から英語版（/en/*）のトラフィックを集計し、
- * 次言語（中国語・韓国語等）への投資判断材料を出力する。
+ * GA4 Data API から各言語版（/{lng}/*）のトラフィックを集計し、
+ * 次言語への投資判断材料を出力する。対象言語は src/config/languages.js に追従する。
  *
  * 使い方:
  *   node scripts/analysis/i18n-demand-report.js [--days=30]
@@ -19,6 +19,11 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { google } from "googleapis";
+import {
+  SUPPORTED_LANGUAGES,
+  DEFAULT_LANGUAGE,
+  parseLangFromPath,
+} from "../../src/config/languages.js";
 
 // .env.local を読み込む（プロジェクト共通パターン: scripts/lib/supabaseClient.js と同様）
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -77,6 +82,11 @@ async function runReport(request) {
   return res.data.rows || [];
 }
 
+// デフォルト言語以外の言語（パスプレフィックスを持つ言語）
+const PREFIXED_LANGUAGES = SUPPORTED_LANGUAGES.filter(
+  ({ code }) => code !== DEFAULT_LANGUAGE,
+);
+
 // 1. 言語別（パスプレフィックス別）の PV / ユーザー数
 async function reportByLanguagePath() {
   const rows = await runReport({
@@ -85,28 +95,48 @@ async function reportByLanguagePath() {
     limit: 10000,
   });
 
-  const agg = { en: { pv: 0, users: 0 }, ja: { pv: 0, users: 0 } };
+  const agg = Object.fromEntries(
+    SUPPORTED_LANGUAGES.map(({ code }) => [code, { pv: 0, users: 0 }]),
+  );
   for (const row of rows) {
     const p = row.dimensionValues[0].value;
-    const lang = p === "/en" || p.startsWith("/en/") ? "en" : "ja";
-    agg[lang].pv += parseInt(row.metricValues[0].value, 10);
+    const { lng } = parseLangFromPath(p);
+    agg[lng].pv += parseInt(row.metricValues[0].value, 10);
     // activeUsers はパス横断で重複するため参考値
-    agg[lang].users += parseInt(row.metricValues[1].value, 10);
+    agg[lng].users += parseInt(row.metricValues[1].value, 10);
   }
   return agg;
 }
 
-// 2. 英語ページの国別トラフィック（次言語判断の材料）
-async function reportEnByCountry() {
+// 言語プレフィックスのパスに一致する GA4 フィルタ
+// （BEGINS_WITH "/en" だと /end 等も一致するため、"/en" 完全一致 OR "/en/" 前方一致にする）
+function langPathFilter(code) {
+  return {
+    orGroup: {
+      expressions: [
+        {
+          filter: {
+            fieldName: "pagePath",
+            stringFilter: { matchType: "EXACT", value: `/${code}` },
+          },
+        },
+        {
+          filter: {
+            fieldName: "pagePath",
+            stringFilter: { matchType: "BEGINS_WITH", value: `/${code}/` },
+          },
+        },
+      ],
+    },
+  };
+}
+
+// 2. 言語ページの国別トラフィック（次言語判断の材料）
+async function reportLangByCountry(code) {
   const rows = await runReport({
     dimensions: [{ name: "country" }],
     metrics: [{ name: "activeUsers" }, { name: "screenPageViews" }],
-    dimensionFilter: {
-      filter: {
-        fieldName: "pagePath",
-        stringFilter: { matchType: "BEGINS_WITH", value: "/en" },
-      },
-    },
+    dimensionFilter: langPathFilter(code),
     orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
     limit: 20,
   });
@@ -132,17 +162,12 @@ async function reportLanguageSwitches() {
   return rows.length > 0 ? parseInt(rows[0].metricValues[0].value, 10) : 0;
 }
 
-// 4. 英語ページの流入元
-async function reportEnBySource() {
+// 4. 言語ページの流入元
+async function reportLangBySource(code) {
   const rows = await runReport({
     dimensions: [{ name: "sessionDefaultChannelGroup" }],
     metrics: [{ name: "sessions" }],
-    dimensionFilter: {
-      filter: {
-        fieldName: "pagePath",
-        stringFilter: { matchType: "BEGINS_WITH", value: "/en" },
-      },
-    },
+    dimensionFilter: langPathFilter(code),
     orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
     limit: 10,
   });
@@ -157,44 +182,53 @@ async function main() {
     `\n📊 i18n 需要計測レポート（直近${DAYS}日間）\n${"=".repeat(50)}`,
   );
 
-  const [byLang, enCountries, switches, enSources] = await Promise.all([
+  const [byLang, switches, byCountryList, bySourceList] = await Promise.all([
     reportByLanguagePath(),
-    reportEnByCountry(),
     reportLanguageSwitches(),
-    reportEnBySource(),
+    Promise.all(PREFIXED_LANGUAGES.map(({ code }) => reportLangByCountry(code))),
+    Promise.all(PREFIXED_LANGUAGES.map(({ code }) => reportLangBySource(code))),
   ]);
+  const byCountry = Object.fromEntries(
+    PREFIXED_LANGUAGES.map(({ code }, i) => [code, byCountryList[i]]),
+  );
+  const bySource = Object.fromEntries(
+    PREFIXED_LANGUAGES.map(({ code }, i) => [code, bySourceList[i]]),
+  );
 
-  const enShare =
-    byLang.en.pv + byLang.ja.pv > 0
-      ? ((byLang.en.pv / (byLang.en.pv + byLang.ja.pv)) * 100).toFixed(2)
-      : "0.00";
+  const totalPv = Object.values(byLang).reduce((sum, v) => sum + v.pv, 0);
+  const shareOf = (code) =>
+    totalPv > 0 ? ((byLang[code].pv / totalPv) * 100).toFixed(2) : "0.00";
 
   console.log(`\n## 言語別トラフィック`);
-  console.log(`  日本語: ${byLang.ja.pv.toLocaleString()} PV`);
-  console.log(
-    `  英語:   ${byLang.en.pv.toLocaleString()} PV（全体の ${enShare}%）`,
-  );
+  for (const { code, label } of SUPPORTED_LANGUAGES) {
+    const share = code === DEFAULT_LANGUAGE ? "" : `（全体の ${shareOf(code)}%）`;
+    console.log(
+      `  ${label.padEnd(8)}: ${byLang[code].pv.toLocaleString()} PV${share}`,
+    );
+  }
   console.log(`  言語切替イベント: ${switches.toLocaleString()} 回`);
 
-  console.log(`\n## 英語ページの国別ユーザー（上位）`);
-  if (enCountries.length === 0) {
-    console.log("  （データなし）");
-  } else {
-    for (const c of enCountries.slice(0, 10)) {
-      console.log(
-        `  ${c.country.padEnd(20)} ${String(c.users).padStart(6)} users / ${String(c.pv).padStart(7)} PV`,
-      );
+  for (const { code, label } of PREFIXED_LANGUAGES) {
+    console.log(`\n## ${label}ページの国別ユーザー（上位）`);
+    if (byCountry[code].length === 0) {
+      console.log("  （データなし）");
+    } else {
+      for (const c of byCountry[code].slice(0, 10)) {
+        console.log(
+          `  ${c.country.padEnd(20)} ${String(c.users).padStart(6)} users / ${String(c.pv).padStart(7)} PV`,
+        );
+      }
     }
-  }
 
-  console.log(`\n## 英語ページの流入チャネル`);
-  if (enSources.length === 0) {
-    console.log("  （データなし）");
-  } else {
-    for (const s of enSources) {
-      console.log(
-        `  ${s.channel.padEnd(20)} ${String(s.sessions).padStart(6)} sessions`,
-      );
+    console.log(`\n## ${label}ページの流入チャネル`);
+    if (bySource[code].length === 0) {
+      console.log("  （データなし）");
+    } else {
+      for (const s of bySource[code]) {
+        console.log(
+          `  ${s.channel.padEnd(20)} ${String(s.sessions).padStart(6)} sessions`,
+        );
+      }
     }
   }
 
@@ -212,10 +246,12 @@ async function main() {
         generatedAt: new Date().toISOString(),
         days: DAYS,
         byLanguage: byLang,
-        enShareOfPv: parseFloat(enShare),
+        shareOfPv: Object.fromEntries(
+          PREFIXED_LANGUAGES.map(({ code }) => [code, parseFloat(shareOf(code))]),
+        ),
         languageSwitches: switches,
-        enByCountry: enCountries,
-        enBySource: enSources,
+        byCountry,
+        bySource,
       },
       null,
       2,

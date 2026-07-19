@@ -22,6 +22,7 @@ import OutcomeDistribution from "./pages/OutcomeDistribution";
 import Holmes from "./pages/Holmes";
 import ContentHub from "./pages/ContentHub";
 import EnglishGuide from "./pages/EnglishGuide";
+import ZhTwGuide from "./pages/ZhTwGuide";
 import EnglishVenueGuide, { EnglishVenueGuides } from "./pages/EnglishVenueGuide";
 import AdminRules from "./pages/admin/AdminRules";
 import ResponsibleGambling from "./pages/ResponsibleGambling";
@@ -86,8 +87,15 @@ function PageViewTracker() {
   return null;
 }
 
-// 言語別に共通のルート定義（/en 配下でも相対パスで再利用）
+// 言語別の入門ガイド（日本語はコンテンツハブを表示）
+const GUIDE_BY_LANG = {
+  en: EnglishGuide,
+  "zh-TW": ZhTwGuide,
+};
+
+// 言語別に共通のルート定義（言語プレフィックス配下でも相対パスで再利用）
 function LocalizedRoutes({ lng = "ja" }) {
+  const Guide = GUIDE_BY_LANG[lng] ?? ContentHub;
   return (
     <Routes>
       {/* Main App - 予想ページ（トップ） */}
@@ -116,8 +124,8 @@ function LocalizedRoutes({ lng = "ja" }) {
       <Route path="faq" element={<FAQ />} />
       <Route path="how-to-use" element={<HowToUse />} />
       <Route path="profile" element={<Profile />} />
-      {/* 英語版は初心者向け入門ガイド、日本語版はコンテンツハブ */}
-      <Route path="guide" element={lng === "en" ? <EnglishGuide /> : <ContentHub />} />
+      {/* 言語別: 初心者向け入門ガイド（対応言語は GUIDE_BY_LANG）、日本語はコンテンツハブ */}
+      <Route path="guide" element={<Guide />} />
 
       {/* 言語専用: 会場別ビジターガイド（インバウンド観光クエリ向け。対応言語は config の LANGUAGE_ONLY_PATHS） */}
       {getAvailableLanguages("/venues").some((l) => l.code === lng) && (

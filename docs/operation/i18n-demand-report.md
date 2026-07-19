@@ -38,8 +38,9 @@ node scripts/analysis/i18n-demand-report.js --days=90 # 直近90日
 ```
 
 出力:
-- コンソール: 言語別PV・英語ページの国別ユーザー・流入チャネル・言語切替回数
+- コンソール: 言語別PV・各言語ページの国別ユーザー・流入チャネル・言語切替回数（対象言語は `src/config/languages.js` に追従）
 - JSON: `data/analysis/i18n-demand/report-YYYY-MM-DD.json`（推移比較用）
+  - フィールドは `shareOfPv` / `byCountry` / `bySource`（言語コード別）。2026-07-19 以前のレポートは英語のみの旧形式（`enShareOfPv` / `enByCountry` / `enBySource`）のため、推移比較時は読み替えが必要
 
 ## 判断基準（3ヶ月後を目安）
 
