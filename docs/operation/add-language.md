@@ -58,7 +58,7 @@ export const SUPPORTED_LANGUAGES = [
 | 箇所 | 内容 |
 |------|------|
 | `scripts/generate-sitemap.js` の `LOCALIZED_PAGES` | sitemap に載せる言語別ページの範囲。デフォルトは `/` と `/guide` のみ |
-| `src/AppRouter.jsx` の `guide` ルート | 現状 `lng === "en"` で EnglishGuide / ContentHub を出し分け。新言語の入門ガイドを作るか、英語版を流用するかを決める |
+| `src/AppRouter.jsx` の `GUIDE_BY_LANG` | 言語別入門ガイドの登録マップ。新言語のガイドページを作ったらここに追加する（未登録の言語は日本語のコンテンツハブが表示される） |
 | 言語専用コンテンツ（`/venues` 等） | 対応言語は `src/config/languages.js` の `LANGUAGE_ONLY_PATHS` で一元管理（ルーティング・hreflang が参照）。sitemap の `LANGUAGE_ONLY_PAGES`（スラッグ・priority）は別途更新 |
 | `scripts/analysis/i18n-demand-report.js` | GA4 集計が en/ja の2言語前提。新言語のパス（`/{code}/*`）を集計対象に追加する |
 | `src/components/LanguageSwitcher.jsx` の UI | ボタン並列表示。4言語以上になったらドロップダウン化を検討 |

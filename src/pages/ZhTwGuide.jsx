@@ -289,7 +289,7 @@ export default function ZhTwGuide() {
             </li>
             <li>
               請理性投注。詳見
-              <Link to="/responsible-gambling">負責任博彩</Link>頁面。
+              <Link to="/zh-TW/responsible-gambling">負責任博彩</Link>頁面。
             </li>
           </ul>
         </section>

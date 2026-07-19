@@ -108,17 +108,35 @@ async function reportByLanguagePath() {
   return agg;
 }
 
+// 言語プレフィックスのパスに一致する GA4 フィルタ
+// （BEGINS_WITH "/en" だと /end 等も一致するため、"/en" 完全一致 OR "/en/" 前方一致にする）
+function langPathFilter(code) {
+  return {
+    orGroup: {
+      expressions: [
+        {
+          filter: {
+            fieldName: "pagePath",
+            stringFilter: { matchType: "EXACT", value: `/${code}` },
+          },
+        },
+        {
+          filter: {
+            fieldName: "pagePath",
+            stringFilter: { matchType: "BEGINS_WITH", value: `/${code}/` },
+          },
+        },
+      ],
+    },
+  };
+}
+
 // 2. 言語ページの国別トラフィック（次言語判断の材料）
 async function reportLangByCountry(code) {
   const rows = await runReport({
     dimensions: [{ name: "country" }],
     metrics: [{ name: "activeUsers" }, { name: "screenPageViews" }],
-    dimensionFilter: {
-      filter: {
-        fieldName: "pagePath",
-        stringFilter: { matchType: "BEGINS_WITH", value: `/${code}` },
-      },
-    },
+    dimensionFilter: langPathFilter(code),
     orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
     limit: 20,
   });
@@ -149,12 +167,7 @@ async function reportLangBySource(code) {
   const rows = await runReport({
     dimensions: [{ name: "sessionDefaultChannelGroup" }],
     metrics: [{ name: "sessions" }],
-    dimensionFilter: {
-      filter: {
-        fieldName: "pagePath",
-        stringFilter: { matchType: "BEGINS_WITH", value: `/${code}` },
-      },
-    },
+    dimensionFilter: langPathFilter(code),
     orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
     limit: 10,
   });

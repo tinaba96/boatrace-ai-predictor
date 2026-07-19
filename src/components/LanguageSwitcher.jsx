@@ -51,7 +51,7 @@ function LanguageSwitcher() {
           title={lang.label}
           aria-label={lang.label}
         >
-          {lang.shortLabel}
+          {lang.shortLabel ?? lang.code.toUpperCase()}
         </button>
       ))}
     </div>

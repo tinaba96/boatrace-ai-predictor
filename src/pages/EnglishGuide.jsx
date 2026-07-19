@@ -331,7 +331,8 @@ export default function EnglishGuide() {
             </li>
             <li>
               Please gamble responsibly. See our{" "}
-              <Link to="/responsible-gambling">responsible gambling</Link> page.
+              <Link to="/en/responsible-gambling">responsible gambling</Link>{" "}
+              page.
             </li>
           </ul>
         </section>
