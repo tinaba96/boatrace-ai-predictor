@@ -4,8 +4,10 @@
  * 言語追加の手順は docs/operation/add-language.md を参照
  */
 export const SUPPORTED_LANGUAGES = [
-  { code: "ja", label: "日本語", ogLocale: "ja_JP", hreflang: "ja" },
-  { code: "en", label: "English", ogLocale: "en_US", hreflang: "en" },
+  { code: "ja", label: "日本語", shortLabel: "JA", ogLocale: "ja_JP", hreflang: "ja" },
+  { code: "en", label: "English", shortLabel: "EN", ogLocale: "en_US", hreflang: "en" },
+  // 繁体字の hreflang は地域（TW）でなく文字体系（Hant）で指定する
+  { code: "zh-TW", label: "繁體中文", shortLabel: "中文", ogLocale: "zh_TW", hreflang: "zh-Hant" },
 ];
 
 // URL プレフィックスなしで配信するデフォルト言語
