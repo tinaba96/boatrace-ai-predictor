@@ -3,6 +3,7 @@
  * 選択中モデルの3連単・3連複の買い目とオッズを表示する。
  */
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { BOAT_COLORS } from "../../utils/colors";
 import "./BettingValueSection.css";
 
@@ -53,6 +54,7 @@ function formatUpdatedAt(iso) {
 }
 
 function BettingValueSection({ prediction, selectedModel }) {
+  const { t } = useTranslation();
   const suffix = MODEL_SUFFIX[selectedModel];
 
   const oddsData = useMemo(() => {
@@ -82,16 +84,16 @@ function BettingValueSection({ prediction, selectedModel }) {
   return (
     <div className="bvs-section">
       <div className="bvs-header">
-        <h4>買い目・オッズ</h4>
+        <h4>{t("betting.title")}</h4>
         {updatedAtStr && (
-          <span className="bvs-updated">取得: {updatedAtStr}</span>
+          <span className="bvs-updated">{t("betting.fetchedAt", { time: updatedAtStr })}</span>
         )}
       </div>
 
       <div className="bvs-cards">
         {/* 3連単 */}
         <div className="bvs-card">
-          <div className="bvs-card-label">3連単</div>
+          <div className="bvs-card-label">{t("betting.trifecta")}</div>
           <div className="bvs-card-combo">
             <BetCombo combo={oddsData.trifectaPred} separator="→" />
           </div>
@@ -99,17 +101,17 @@ function BettingValueSection({ prediction, selectedModel }) {
             {oddsData.trifectaOdds != null ? (
               <>
                 <strong>{oddsData.trifectaOdds.toFixed(1)}</strong>
-                <span className="bvs-unit">倍</span>
+                <span className="bvs-unit">{t("betting.oddsUnit")}</span>
               </>
             ) : (
-              <span className="bvs-na">発売前</span>
+              <span className="bvs-na">{t("betting.preSale")}</span>
             )}
           </div>
         </div>
 
         {/* 3連複 */}
         <div className="bvs-card">
-          <div className="bvs-card-label">3連複</div>
+          <div className="bvs-card-label">{t("betting.trio")}</div>
           <div className="bvs-card-combo">
             <BetCombo combo={oddsData.trioPred} separator="=" />
           </div>
@@ -117,10 +119,10 @@ function BettingValueSection({ prediction, selectedModel }) {
             {oddsData.trioOdds != null ? (
               <>
                 <strong>{oddsData.trioOdds.toFixed(1)}</strong>
-                <span className="bvs-unit">倍</span>
+                <span className="bvs-unit">{t("betting.oddsUnit")}</span>
               </>
             ) : (
-              <span className="bvs-na">発売前</span>
+              <span className="bvs-na">{t("betting.preSale")}</span>
             )}
           </div>
         </div>

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Helmet } from 'react-helmet-async'
 import UpdateStatus from './UpdateStatus'
 import { dataService } from '../services/dataService'
 import { STADIUM_NAMES, MODEL_NAMES, MODEL_KEYS } from '../constants'
@@ -42,9 +41,19 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
     fetchSummary()
   }, [])
 
+  // メタタグは loading / error 分岐でも出力する（React 19 が <head> にホイスティング）
+  const pageMeta = (
+    <>
+      <title>成績ダッシュボード | BoatAI</title>
+      <meta name="description" content="BoatAIのAI予測成績ダッシュボード。単勝・複勝・3連複・3連単の的中率と回収率をモデル別・会場別に公開中。" />
+      <link rel="canonical" href="https://www.boat-ai.jp/accuracy" />
+    </>
+  )
+
   if (loading) {
     return (
       <div className="accuracy-dashboard">
+        {pageMeta}
         <h2>📊 成績</h2>
         <LoadingScreen
           title="的中率データを読み込み中..."
@@ -57,6 +66,7 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
   if (error || !summary) {
     return (
       <div className="accuracy-dashboard">
+        {pageMeta}
         <h2>📊 成績</h2>
         <div className="error-message">
           <p>的中率データはまだ利用できません。レース終了後に自動計算されます。</p>
@@ -206,11 +216,7 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
 
   return (
     <>
-      <Helmet>
-        <title>成績ダッシュボード | BoatAI</title>
-        <meta name="description" content="BoatAIのAI予測成績ダッシュボード。単勝・複勝・3連複・3連単の的中率と回収率をモデル別・会場別に公開中。" />
-        <link rel="canonical" href="https://www.boat-ai.jp/accuracy" />
-      </Helmet>
+      {pageMeta}
       <div className="accuracy-dashboard">
         <div className="dashboard-header">
           <h2>📊 成績</h2>

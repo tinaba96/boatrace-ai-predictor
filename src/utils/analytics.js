@@ -65,6 +65,22 @@ export const trackEvent = (eventName, eventParams = {}) => {
   }
 };
 
+// 表示言語をユーザープロパティとして設定（i18n の languageChanged から呼ばれる）
+// GA4 側でカスタムディメンション「app_language」として登録すると言語別分析が可能
+export const trackLanguage = (lng) => {
+  if (window.gtag) {
+    window.gtag('set', 'user_properties', { app_language: lng });
+  }
+};
+
+// 言語切替イベント（LanguageSwitcher から呼ばれる）
+export const trackLanguageSwitch = (fromLng, toLng) => {
+  trackEvent('language_change', {
+    from_language: fromLng,
+    to_language: toLng,
+  });
+};
+
 // SPA ルート変更時にAuto Adsを再スキャン
 export const refreshAdsOnRouteChange = () => {
   try {

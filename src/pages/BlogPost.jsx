@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -77,20 +76,12 @@ export default function BlogPost() {
 
   return (
     <>
-      <Helmet>
         {/* Basic Meta Tags */}
         <title>{post.title} | BoatAI</title>
         <meta name="description" content={post.description} />
         <meta name="keywords" content={post.tags.join(', ')} />
         <link rel="canonical" href={url} />
 
-        {/* OGP Tags */}
-        <meta property="og:type" content="article" />
-        <meta property="og:site_name" content="BoatAI" />
-        <meta property="og:title" content={post.title} />
-        <meta property="og:description" content={post.description} />
-        <meta property="og:url" content={url} />
-        <meta property="og:image" content={imageUrl} />
         <meta property="article:published_time" content={post.date} />
         <meta property="article:author" content="BoatAI" />
         <meta property="article:section" content={post.category} />
@@ -98,11 +89,6 @@ export default function BlogPost() {
           <meta key={tag} property="article:tag" content={tag} />
         ))}
 
-        {/* Twitter Card */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={post.title} />
-        <meta name="twitter:description" content={post.description} />
-        <meta name="twitter:image" content={imageUrl} />
 
         {/* Article Structured Data */}
         <script type="application/ld+json">
@@ -164,7 +150,6 @@ export default function BlogPost() {
             ]
           })}
         </script>
-      </Helmet>
 
       <Header />
 

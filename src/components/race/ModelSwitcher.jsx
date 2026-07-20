@@ -2,24 +2,26 @@
  * ModelSwitcher - モデル選択ボタン（スライドインジケーター付き）
  */
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 function ModelSwitcher({ selectedModel, onSwitchModel }) {
+  const { t } = useTranslation();
   const models = [
     {
       key: "safe-bet",
-      label: "🎯 本命狙い",
+      label: `🎯 ${t("models.safeBet")}`,
       gradient: "linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)",
       shadowColor: "rgba(76, 175, 80, 0.3)",
     },
     {
       key: "standard",
-      label: "⚖️ スタンダード",
+      label: `⚖️ ${t("models.standard")}`,
       gradient: "linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)",
       shadowColor: "rgba(14, 165, 233, 0.3)",
     },
     {
       key: "upset-focus",
-      label: "🌪️ 穴狙い",
+      label: `🌪️ ${t("models.upsetFocus")}`,
       gradient: "linear-gradient(135deg, #ff9800 0%, #f57c00 100%)",
       shadowColor: "rgba(255, 152, 0, 0.3)",
     },

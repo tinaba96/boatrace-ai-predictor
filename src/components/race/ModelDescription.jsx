@@ -2,8 +2,17 @@
  * ModelDescription - 予想モデル説明セクション（アコーディオン）
  */
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+
+// 各モデルの表示設定（文言は i18n キーで管理）
+const MODEL_BLOCKS = [
+  { color: "#4caf50", prefix: "safeBet" },
+  { color: "#0ea5e9", prefix: "standard" },
+  { color: "#ff9800", prefix: "upset" },
+];
 
 function ModelDescription() {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -34,7 +43,7 @@ function ModelDescription() {
       >
         <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <span>📚</span>
-          予想モデルについて
+          {t("modelDesc.sectionTitle")}
         </span>
         <span
           style={{
@@ -57,104 +66,41 @@ function ModelDescription() {
               fontSize: "0.9rem",
             }}
           >
-            {/* 本命狙い */}
-            <div
-              style={{
-                padding: "1rem",
-                background: "white",
-                borderRadius: "6px",
-                borderLeft: "4px solid #4caf50",
-              }}
-            >
+            {MODEL_BLOCKS.map(({ color, prefix }) => (
               <div
+                key={prefix}
                 style={{
-                  fontWeight: "700",
-                  color: "#4caf50",
-                  marginBottom: "0.5rem",
-                  fontSize: "0.95rem",
+                  padding: "1rem",
+                  background: "white",
+                  borderRadius: "6px",
+                  borderLeft: `4px solid ${color}`,
                 }}
               >
-                🎯 本命狙い（安全型）
+                <div
+                  style={{
+                    fontWeight: "700",
+                    color,
+                    marginBottom: "0.5rem",
+                    fontSize: "0.95rem",
+                  }}
+                >
+                  {t(`modelDesc.${prefix}Title`)}
+                </div>
+                <div style={{ color: "#555", lineHeight: "1.6" }}>
+                  <strong>{t("modelDesc.featureLabel")}</strong>
+                  {t(`modelDesc.${prefix}Feature`)}
+                  <br />
+                  <strong>{t("modelDesc.factorsLabel")}</strong>
+                  {t(`modelDesc.${prefix}Factors`)}
+                  <br />
+                  <strong>{t("modelDesc.suitedLabel")}</strong>
+                  {t(`modelDesc.${prefix}Suited`)}
+                  <br />
+                  <strong>{t("modelDesc.recommendLabel")}</strong>
+                  {t(`modelDesc.${prefix}Recommend`)}
+                </div>
               </div>
-              <div style={{ color: "#555", lineHeight: "1.6" }}>
-                <strong>特徴：</strong>
-                最も確率の高い1マーク展開パターンに基づく堅実型
-                <br />
-                <strong>重視する要素：</strong>
-                インコース有利性、A級選手、逃げ・差しの展開確率
-                <br />
-                <strong>適したレース：</strong>1号艇やA級選手が有力な堅い展開
-                <br />
-                <strong>こんな人におすすめ：</strong>
-                的中率を重視し、コツコツ当てたい方
-              </div>
-            </div>
-
-            {/* スタンダード */}
-            <div
-              style={{
-                padding: "1rem",
-                background: "white",
-                borderRadius: "6px",
-                borderLeft: "4px solid #0ea5e9",
-              }}
-            >
-              <div
-                style={{
-                  fontWeight: "700",
-                  color: "#0ea5e9",
-                  marginBottom: "0.5rem",
-                  fontSize: "0.95rem",
-                }}
-              >
-                ⚖️ スタンダード（バランス型）
-              </div>
-              <div style={{ color: "#555", lineHeight: "1.6" }}>
-                <strong>特徴：</strong>
-                2番目に有力な展開パターンに基づくバランス型
-                <br />
-                <strong>重視する要素：</strong>
-                全国勝率、当地成績、モーター性能を総合的に評価
-                <br />
-                <strong>適したレース：</strong>標準的な展開が予想されるレース
-                <br />
-                <strong>こんな人におすすめ：</strong>
-                安定した的中を狙いつつ、適度な配当も期待したい方
-              </div>
-            </div>
-
-            {/* 穴狙い */}
-            <div
-              style={{
-                padding: "1rem",
-                background: "white",
-                borderRadius: "6px",
-                borderLeft: "4px solid #ff9800",
-              }}
-            >
-              <div
-                style={{
-                  fontWeight: "700",
-                  color: "#ff9800",
-                  marginBottom: "0.5rem",
-                  fontSize: "0.95rem",
-                }}
-              >
-                🌪️ 穴狙い（高配当型）
-              </div>
-              <div style={{ color: "#555", lineHeight: "1.6" }}>
-                <strong>特徴：</strong>3番目の展開パターンに基づく高配当狙い型
-                <br />
-                <strong>重視する要素：</strong>
-                まくり・まくり差しの展開確率、好調なモーター、外枠の可能性
-                <br />
-                <strong>適したレース：</strong>
-                混戦模様や荒れる展開が予想されるレース
-                <br />
-                <strong>こんな人におすすめ：</strong>
-                大きな配当を狙いたい、一発逆転を狙う方
-              </div>
-            </div>
+            ))}
           </div>
           <div
             style={{
@@ -167,8 +113,8 @@ function ModelDescription() {
               lineHeight: "1.6",
             }}
           >
-            <span>💡</span> <strong>ヒント：</strong>
-            各モデルは1マーク展開予測の異なるパターンに対応しています。モデルを切り替えると、アニメーションの展開パターンも連動して変わります。
+            <span>💡</span> <strong>{t("modelDesc.hintLabel")}</strong>
+            {t("modelDesc.hint")}
           </div>
         </div>
       )}

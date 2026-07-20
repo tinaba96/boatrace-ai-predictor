@@ -27,6 +27,11 @@ jobs:
 
       - name: Get commit message
         id: commit-msg
+        # PR タイトル・本文は ${{ }} でスクリプトに直接展開するとシェルインジェクションになるため
+        # 必ず env 経由で渡す
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           if [ "${{ github.event_name }}" == "push" ]; then
             # Pushイベントの場合
@@ -39,8 +44,6 @@ jobs:
             # Pull Requestイベントの場合
             COMMIT_MSG=$(git log --format=%B ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} | head -20)
             # PRのタイトルと説明も含める
-            PR_TITLE="${{ github.event.pull_request.title }}"
-            PR_BODY="${{ github.event.pull_request.body }}"
             COMMIT_MSG="${PR_TITLE}"$'\n\n'"${PR_BODY}"$'\n\n'"${COMMIT_MSG}"
           fi
 

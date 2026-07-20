@@ -3,15 +3,17 @@
  * 3ステップのプログレス表示
  */
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import "./PredictionLoadingOverlay.css";
 
 const STEPS = [
-  { icon: "📊", label: "データ読み込み中..." },
-  { icon: "🏁", label: "展開パターンを解析中..." },
-  { icon: "✅", label: "予想を生成中..." },
+  { icon: "📊", labelKey: "loading.step1" },
+  { icon: "🏁", labelKey: "loading.step2" },
+  { icon: "✅", labelKey: "loading.step3" },
 ];
 
 function PredictionLoadingOverlay() {
+  const { t } = useTranslation();
   const [activeStep, setActiveStep] = useState(0);
 
   useEffect(() => {
@@ -44,7 +46,7 @@ function PredictionLoadingOverlay() {
               >
                 {isDone ? "✓" : step.icon}
               </span>
-              <span className="prediction-loading__label">{step.label}</span>
+              <span className="prediction-loading__label">{t(step.labelKey)}</span>
             </div>
           );
         })}

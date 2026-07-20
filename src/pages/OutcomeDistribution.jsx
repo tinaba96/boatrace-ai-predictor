@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet-async";
 import { useLocation } from "react-router-dom";
 import Header from "../components/Header";
 import { OutcomeDistributionTable } from "../components/analysis";
@@ -11,13 +10,14 @@ function OutcomeDistribution() {
 
   return (
     <div className="outcome-distribution-page">
-      <Helmet>
+      <>
         <title>出目分布分析 - BoatAI</title>
         <meta
           name="description"
           content="ボートレース場別の3連単出現パターンを過去90日のデータから分析。各ボートレース場の傾向を詳しく解説します。"
         />
-      </Helmet>
+        <link rel="canonical" href="https://www.boat-ai.jp/outcome-distribution" />
+      </>
 
       <Header />
 

@@ -1,7 +1,10 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import './UpdateStatus.css';
 
 export default function UpdateStatus({ lastUpdated, dataType = 'データ', onRefresh, isRefreshing }) {
+  const { t } = useTranslation();
+
   if (!lastUpdated && !onRefresh) return null;
 
   const formatDate = (dateStr) => {
@@ -20,12 +23,12 @@ export default function UpdateStatus({ lastUpdated, dataType = 'データ', onRe
     const diffMs = now - updated;
     const diffMins = Math.floor(diffMs / 60000);
 
-    if (diffMins < 1) return '更新完了';
-    if (diffMins < 60) return `${diffMins}分前に更新`;
+    if (diffMins < 1) return t('updateStatus.justUpdated');
+    if (diffMins < 60) return t('updateStatus.minutesAgo', { count: diffMins });
     const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}時間前に更新`;
+    if (diffHours < 24) return t('updateStatus.hoursAgo', { count: diffHours });
     const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}日前に更新`;
+    return t('updateStatus.daysAgo', { count: diffDays });
   };
 
   const isStale = (dateStr) => {
@@ -44,7 +47,7 @@ export default function UpdateStatus({ lastUpdated, dataType = 'データ', onRe
           <>
             <span className="update-icon">{stale ? '⚠️' : '✅'}</span>
             <span className="update-text">
-              {dataType}更新: {formatDate(lastUpdated)}
+              {t('updateStatus.updatedLabel', { dataType, time: formatDate(lastUpdated) })}
               <span className="update-relative"> ({getTimeSinceUpdate(lastUpdated)})</span>
             </span>
           </>
@@ -54,18 +57,18 @@ export default function UpdateStatus({ lastUpdated, dataType = 'データ', onRe
             className={`refresh-button ${isRefreshing ? 'refreshing' : ''}`}
             onClick={onRefresh}
             disabled={isRefreshing}
-            title="ブラウザのキャッシュをクリアしてデータを再読み込み"
+            title={t('updateStatus.refreshTooltip')}
           >
             <span className="refresh-icon">🔄</span>
             <span className="refresh-text">
-              {isRefreshing ? '読み込み中...' : '再読み込み'}
+              {isRefreshing ? t('updateStatus.refreshing') : t('updateStatus.refresh')}
             </span>
           </button>
         )}
       </div>
       {onRefresh && (
         <p className="update-info">
-          💡 データは1時間ごとに自動更新されます
+          {t('updateStatus.autoUpdateNote')}
         </p>
       )}
     </div>
