@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import "./RaceNavCard.css";
 
 function RaceNavCard({
@@ -8,6 +9,7 @@ function RaceNavCard({
   selectedVenueId,
   onVenueChange,
 }) {
+  const { t } = useTranslation();
   const currentIndex = races.findIndex((r) => r.id === selectedRace?.id);
   const prevRace = currentIndex > 0 ? races[currentIndex - 1] : null;
   const nextRace =
@@ -17,13 +19,13 @@ function RaceNavCard({
 
   return (
     <div className="race-nav-card">
-      <p className="race-nav-card__title">その他のレース</p>
+      <p className="race-nav-card__title">{t("raceNav.otherRaces")}</p>
       <div className="race-nav-card__row">
         {prevRace && (
           <button
             className="race-nav-card__button"
             onClick={() => onNavigate(prevRace)}
-            aria-label={`前のレース ${prevRace.raceNumber}R ${prevRace.startTime}`}
+            aria-label={`${t("raceNav.prevRaceLabel", { race: prevRace.raceNumber })} ${prevRace.startTime}`}
           >
             <span className="race-nav-card__arrow">←</span>
             <span className="race-nav-card__race">{prevRace.raceNumber}R</span>
@@ -34,7 +36,7 @@ function RaceNavCard({
           <button
             className="race-nav-card__button"
             onClick={() => onNavigate(nextRace)}
-            aria-label={`次のレース ${nextRace.raceNumber}R ${nextRace.startTime}`}
+            aria-label={`${t("raceNav.nextRaceLabel", { race: nextRace.raceNumber })} ${nextRace.startTime}`}
           >
             <span className="race-nav-card__race">{nextRace.raceNumber}R</span>
             <span className="race-nav-card__time">{nextRace.startTime}</span>
@@ -45,7 +47,7 @@ function RaceNavCard({
 
       {venues && venues.length > 0 && (
         <>
-          <p className="race-nav-card__venue-title">会場を変える</p>
+          <p className="race-nav-card__venue-title">{t("raceNav.changeVenue")}</p>
           <div className="race-nav-card__venues">
             {venues.map((v) => (
               <button
@@ -55,7 +57,7 @@ function RaceNavCard({
                 }`}
                 onClick={() => onVenueChange(v.placeCd)}
               >
-                {v.placeName}
+                {t(`venues.${v.placeCd}`, v.placeName)}
               </button>
             ))}
           </div>

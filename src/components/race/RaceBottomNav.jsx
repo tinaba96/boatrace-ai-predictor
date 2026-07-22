@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import "./RaceBottomNav.css";
 
 function RaceBottomNav({
@@ -8,6 +9,7 @@ function RaceBottomNav({
   selectedVenueId,
   onVenueChange,
 }) {
+  const { t } = useTranslation();
   const currentIndex = races.findIndex((r) => r.id === selectedRace?.id);
   const prevRace = currentIndex > 0 ? races[currentIndex - 1] : null;
   const nextRace =
@@ -27,7 +29,7 @@ function RaceBottomNav({
               }`}
               onClick={() => onVenueChange(v.placeCd)}
             >
-              {v.placeName}
+              {t(`venues.${v.placeCd}`, v.placeName)}
             </button>
           ))}
         </div>
@@ -39,7 +41,7 @@ function RaceBottomNav({
           onClick={() => prevRace && onNavigate(prevRace)}
           className="race-bottom-nav__btn"
           aria-label={
-            prevRace ? `前のレース ${prevRace.raceNumber}R` : "前のレースなし"
+            prevRace ? t("raceNav.prevRaceLabel", { race: prevRace.raceNumber }) : t("raceNav.noPrevRace")
           }
         >
           ← {prevRace ? `${prevRace.raceNumber}R` : "-"}
@@ -52,7 +54,7 @@ function RaceBottomNav({
           onClick={() => nextRace && onNavigate(nextRace)}
           className="race-bottom-nav__btn"
           aria-label={
-            nextRace ? `次のレース ${nextRace.raceNumber}R` : "次のレースなし"
+            nextRace ? t("raceNav.nextRaceLabel", { race: nextRace.raceNumber }) : t("raceNav.noNextRace")
           }
         >
           {nextRace ? `${nextRace.raceNumber}R` : "-"} →

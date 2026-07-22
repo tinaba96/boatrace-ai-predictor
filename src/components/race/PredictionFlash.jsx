@@ -6,9 +6,10 @@
  * 下段: 各艇の予想根拠（上位3因子ランキング）+ 展開ストーリー
  */
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { BOAT_COLORS } from "../../utils/colors";
 import { TECHNIQUE_NAMES } from "../../utils/turnPrediction";
-import { MODEL_NAMES } from "../../constants";
+import { MODEL_NAMES, MODEL_KEY_MAP } from "../../constants";
 import "./PredictionFlash.css";
 
 /**
@@ -89,7 +90,7 @@ function findTopStats(boatNumber, allPlayers, racerStats, n = 3) {
     const rank = stAll.findIndex((r) => r.boatNumber === boatNumber) + 1;
     if (rank > 0) {
       candidates.push({
-        label: "スタート",
+        labelKey: "flash.statST",
         value: racer.avgST.toFixed(2),
         rank,
         total: stAll.length,
@@ -105,7 +106,7 @@ function findTopStats(boatNumber, allPlayers, racerStats, n = 3) {
     const rank = motorAll.findIndex((p) => p.number === boatNumber) + 1;
     if (rank > 0) {
       candidates.push({
-        label: "モーター",
+        labelKey: "flash.statMotor",
         value: `${parseFloat(player.motor2Rate).toFixed(1)}%`,
         rank,
         total: motorAll.length,
@@ -121,7 +122,7 @@ function findTopStats(boatNumber, allPlayers, racerStats, n = 3) {
     const rank = winAll.findIndex((p) => p.number === boatNumber) + 1;
     if (rank > 0) {
       candidates.push({
-        label: "全国勝率",
+        labelKey: "table.nationalWinRate",
         value: parseFloat(player.winRate).toFixed(2),
         rank,
         total: winAll.length,
@@ -137,7 +138,7 @@ function findTopStats(boatNumber, allPlayers, racerStats, n = 3) {
     const rank = localAll.findIndex((p) => p.number === boatNumber) + 1;
     if (rank > 0) {
       candidates.push({
-        label: "当地勝率",
+        labelKey: "table.localWinRate",
         value: parseFloat(player.localWinRate).toFixed(2),
         rank,
         total: localAll.length,
@@ -163,7 +164,8 @@ function findTopStats(boatNumber, allPlayers, racerStats, n = 3) {
       const rank = courseRates.findIndex((r) => r.boatNumber === boatNumber) + 1;
       if (rank > 0) {
         candidates.push({
-          label: `${course}コース実績`,
+          labelKey: "flash.courseRecord",
+          labelParams: { course },
           value: `${(courseWinRate * 100).toFixed(0)}%`,
           rank,
           total: courseRates.length,
@@ -209,23 +211,12 @@ function findAttackHighlight(boatNumber, racerStats) {
   if (!bestTech || bestRate < 0.3) return null;
 
   return {
-    tech: TECHNIQUE_NAMES[bestTech] || bestTech,
+    techKey: bestTech,
     rate: bestRate,
     wins: counts.wins,
     total: counts.total,
     course: parseInt(course),
   };
-}
-
-/**
- * 展開ストーリーを生成
- */
-function buildStoryLine(betData) {
-  if (!betData) return null;
-  const techName = TECHNIQUE_NAMES[betData.technique] || betData.technique;
-
-  // 1着の決まり手 + 2着・3着の流れ
-  return `${betData.courses[0]}コース${techName} → ${betData.courses[1]}コース2着 → ${betData.courses[2]}コース3着`;
 }
 
 function PredictionFlash({
@@ -234,6 +225,7 @@ function PredictionFlash({
   selectedPatternIndex = 0,
   selectedModel,
 }) {
+  const { t } = useTranslation();
   const betData = useMemo(
     () => buildBetData(prediction, selectedPatternIndex),
     [prediction, selectedPatternIndex],
@@ -247,7 +239,14 @@ function PredictionFlash({
     }));
   }, [betData, prediction.allPlayers, prediction.racerStats]);
 
-  const storyLine = useMemo(() => buildStoryLine(betData), [betData]);
+  const storyLine = betData
+    ? t("flash.storyLine", {
+        c1: betData.courses[0],
+        c2: betData.courses[1],
+        c3: betData.courses[2],
+        tech: t(`techniques.${betData.technique}`, TECHNIQUE_NAMES[betData.technique] || betData.technique),
+      })
+    : null;
 
   if (!prediction?.turnPrediction || !prediction?.allPlayers) return null;
   if (!betData) return null;
@@ -255,12 +254,12 @@ function PredictionFlash({
   return (
     <div className="prediction-flash">
       <div className="flash-card-title">
-        <span>注目データ</span>
+        <span>{t("flash.title")}</span>
         {(selectedRace?.venue || selectedRace?.raceNumber || selectedModel) && (
           <span className="flash-card-meta">
-            {selectedRace?.venue}
+            {selectedRace?.venueCode ? t(`venues.${selectedRace.venueCode}`, selectedRace.venue) : selectedRace?.venue}
             {selectedRace?.raceNumber && ` ${selectedRace.raceNumber}R`}
-            {selectedModel && MODEL_NAMES[selectedModel] && ` · ${MODEL_NAMES[selectedModel]}`}
+            {selectedModel && MODEL_NAMES[selectedModel] && ` · ${t(`models.${MODEL_KEY_MAP[selectedModel] || selectedModel}`, MODEL_NAMES[selectedModel])}`}
           </span>
         )}
       </div>
@@ -284,7 +283,7 @@ function PredictionFlash({
                     {course}
                   </div>
                   <span className="flash-bet-rank">
-                    {i === 0 ? "1着" : i === 1 ? "2着" : "3着"}
+                    {i === 0 ? t("result.rank1") : i === 1 ? t("result.rank2") : t("result.rank3")}
                   </span>
                 </div>
               </div>
@@ -306,7 +305,7 @@ function PredictionFlash({
       <div className="flash-reasons">
         {betData.courses.map((course, i) => {
           const { topStats, attack } = boatReasons[i] || {};
-          const rankLabel = i === 0 ? "1着" : i === 1 ? "2着" : "3着";
+          const rankLabel = i === 0 ? t("result.rank1") : i === 1 ? t("result.rank2") : t("result.rank3");
           return (
             <div key={course} className="flash-reason-block">
               <div className="flash-reason-row">
@@ -318,10 +317,10 @@ function PredictionFlash({
                 <ol className="flash-factor-list">
                   {topStats.map((stat, j) => (
                     <li key={j} className="flash-factor-item">
-                      <span className="flash-factor-label">{stat.label}</span>
+                      <span className="flash-factor-label">{t(stat.labelKey, stat.labelParams)}</span>
                       <span className="flash-highlight">{stat.value}</span>
                       <span className="flash-reason-position">
-                        ({stat.rank}位/{stat.total}中)
+                        {t("flash.rankPosition", { rank: stat.rank, total: stat.total })}
                       </span>
                     </li>
                   ))}
@@ -330,12 +329,15 @@ function PredictionFlash({
               {attack && (
                 <div className="flash-attack-highlight">
                   <span className="flash-attack-icon">&#x26A1;</span>
-                  {attack.course}コース{attack.tech}率
+                  {t("flash.attackRate", {
+                    course: attack.course,
+                    tech: t(`techniques.${attack.techKey}`, TECHNIQUE_NAMES[attack.techKey] || attack.techKey),
+                  })}
                   <span className="flash-highlight">
                     {(attack.rate * 100).toFixed(0)}%
                   </span>
                   <span className="flash-reason-position">
-                    ({attack.wins}勝/{attack.total}R)
+                    {t("flash.winsCount", { wins: attack.wins, total: attack.total })}
                   </span>
                 </div>
               )}
@@ -349,7 +351,7 @@ function PredictionFlash({
         <>
           <div className="flash-divider" />
           <div className="flash-story">
-            <span className="flash-story-label">展開</span>
+            <span className="flash-story-label">{t("flash.storyLabel")}</span>
             <span className="flash-story-text">{storyLine}</span>
           </div>
         </>

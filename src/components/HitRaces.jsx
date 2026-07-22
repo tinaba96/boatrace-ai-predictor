@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
 import UpdateStatus from "./UpdateStatus";
 import LoadingScreen from "./LoadingScreen";
 import { dataService } from "../services/dataService";
@@ -300,14 +299,12 @@ function HitRaces({
 
   return (
     <>
-      <Helmet>
         <title>的中レース一覧 | BoatAI</title>
         <meta
           name="description"
           content="BoatAIのAI予測が的中したレース一覧。今日・昨日・過去14日間の的中レースと会場別的中実績を公開。"
         />
         <link rel="canonical" href="https://www.boat-ai.jp/hit-races" />
-      </Helmet>
       <div>
         <section className="venue-stats-section">
           <h2>&#x1F4CA; ボートレース場別の的中実績</h2>

@@ -12,7 +12,6 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Helmet } from 'react-helmet-async'
 import {
   getTodaysMatchingRaces,
   getBetTypeName,
@@ -262,11 +261,9 @@ function TodaysPicks() {
 
   return (
     <>
-      <Helmet>
         <title>今日のおすすめ | BoatAI</title>
         <meta name="description" content="本日の高回収率が期待できるおすすめレース。データマイニングで発掘した回収率100%超えパターンにマッチするレースを厳選紹介。" />
         <link rel="canonical" href="https://www.boat-ai.jp/picks" />
-      </Helmet>
       <div className="todays-picks">
         <div className="picks-header">
           <h2>今日のおすすめ</h2>

@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import matter from 'gray-matter';
+import { SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE, localizePath } from '../src/config/languages.js';
+import { VENUE_GUIDES_EN } from '../src/data/venueGuidesEn.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -107,8 +109,35 @@ const staticPages = [
     lastmod: new Date().toISOString().split('T')[0],
     changefreq: 'daily',
     priority: '0.8'
-  }
+  },
 ];
+
+// 全言語で翻訳提供済みのページ（デフォルト言語以外の各言語 URL を登録。未翻訳の blog 等は含めない）
+const LOCALIZED_PAGES = [
+  { basePath: '/', changefreq: 'daily', priority: '0.9' },
+  { basePath: '/guide', changefreq: 'monthly', priority: '0.8' }
+];
+
+// 特定言語にのみ存在するページ（英語版 会場別ビジターガイド: BOA-133）
+const LANGUAGE_ONLY_PAGES = {
+  en: ['', ...VENUE_GUIDES_EN.map((v) => v.slug)].map((slug) => ({
+    basePath: slug ? `/venues/${slug}` : '/venues',
+    changefreq: 'monthly',
+    priority: '0.7'
+  }))
+};
+
+// デフォルト言語以外の言語別ページを生成
+const localizedPages = SUPPORTED_LANGUAGES
+  .filter(({ code }) => code !== DEFAULT_LANGUAGE)
+  .flatMap(({ code }) =>
+    [...LOCALIZED_PAGES, ...(LANGUAGE_ONLY_PAGES[code] ?? [])].map(({ basePath, changefreq, priority }) => ({
+      loc: localizePath(basePath, code),
+      lastmod: new Date().toISOString().split('T')[0],
+      changefreq,
+      priority
+    }))
+  );
 
 // ブログ記事のスキャン
 function getBlogPosts() {
@@ -214,7 +243,7 @@ async function getRacePages() {
 async function generateSitemap() {
   const blogPosts = getBlogPosts();
   const racePages = await getRacePages();
-  const allPages = [...staticPages, ...blogPosts, ...racePages];
+  const allPages = [...staticPages, ...localizedPages, ...blogPosts, ...racePages];
 
   let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
   xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';

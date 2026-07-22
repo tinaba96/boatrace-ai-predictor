@@ -4,6 +4,7 @@
  * をまとめて、コンポーネント間の責務を明確化
  */
 import { forwardRef } from "react";
+import { useTranslation } from "react-i18next";
 import PredictionPanel from "./PredictionPanel";
 import RaceResult from "./RaceResult";
 
@@ -17,12 +18,14 @@ const PredictionSection = forwardRef(({
   date,
   showExhibition,
 }, ref) => {
+  const { t } = useTranslation();
+
   if (!selectedRace) return null;
 
   return (
     <section ref={ref} className="prediction-section">
       <h2>
-        &#x1F4CA; AI予想結果 - {selectedRace.venue} {selectedRace.raceNumber}R
+        &#x1F4CA; {t("section.resultTitle")} - {selectedRace.venueCode ? t(`venues.${selectedRace.venueCode}`, selectedRace.venue) : selectedRace.venue} {selectedRace.raceNumber}R
       </h2>
 
       {/* AI予想セクション全体（予想テーブル、1マーク、配当妙味、超展開データ、出現パターン） */}

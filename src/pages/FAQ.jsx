@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import Header from '../components/Header';
 import './FAQ.css';
 
@@ -176,7 +175,6 @@ export default function FAQ() {
 
     return (
         <>
-            <Helmet>
                 <title>よくある質問（FAQ） | BoatAI</title>
                 <meta name="description" content="BoatAIに関するよくある質問と回答。無料での利用方法、AI予測の精度、使い方、予測データの活用方法など、皆様の疑問にお答えします。" />
                 <link rel="canonical" href="https://www.boat-ai.jp/faq" />
@@ -211,7 +209,6 @@ export default function FAQ() {
                         ]
                     })}
                 </script>
-            </Helmet>
 
             <Header />
 

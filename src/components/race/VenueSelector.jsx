@@ -1,8 +1,11 @@
 /**
  * VenueSelector - レース場選択ドロップダウン
  */
+import { useTranslation } from 'react-i18next'
 
 function VenueSelector({ venuesData, selectedVenueId, onVenueChange }) {
+  const { t } = useTranslation()
+
   if (!venuesData || venuesData.length === 0) {
     return null
   }
@@ -25,7 +28,7 @@ function VenueSelector({ venuesData, selectedVenueId, onVenueChange }) {
         fontSize: '1.1rem',
         color: '#1E293B'
       }}>
-        レース場を選択:
+        {t('venueSelector.label')}
       </label>
       <select
         id="venue-select"
@@ -45,7 +48,7 @@ function VenueSelector({ venuesData, selectedVenueId, onVenueChange }) {
       >
         {venuesData.map(venue => (
           <option key={venue.placeCd} value={venue.placeCd}>
-            {venue.placeName} ({venue.races.length}レース)
+            {t(`venues.${venue.placeCd}`, venue.placeName)} ({t('venueSelector.raceCount', { count: venue.races.length })})
           </option>
         ))}
       </select>
