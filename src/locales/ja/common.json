@@ -3,7 +3,7 @@
     "predictions": "🏁 予想",
     "hits": "✅ 的中",
     "accuracy": "📈 精度分析",
-    "outcomeDistribution": "📊 出目分布分析",
+    "winningTechnique": "📊 データ分析ツール",
     "pastRaces": "📅 過去の予想",
     "howToUse": "📚 使い方",
     "guide": "📖 完全ガイド",
@@ -11,11 +11,13 @@
     "faq": "❓ よくある質問",
     "about": "ℹ️ サービスについて",
     "profile": "👤 運営者プロフィール",
+    "venues": "🏟️ 会場ガイド",
     "menuLabel": "その他のメニュー",
     "logoLabel": "BoatAI トップページへ"
   },
   "language": {
-    "switchLabel": "言語切替"
+    "switchLabel": "言語切替",
+    "notAvailable": "このページは{{lang}}未対応です"
   },
   "meta": {
     "title": "BoatAI - AIボートレース予想 | 完全無料・実績公開中",
@@ -133,6 +135,8 @@
     "venueGuideDesc": "会場の特徴と狙い目を詳しく解説"
   },
   "home": {
+    "introBannerText": "45項目のデータをAIが分析 | BoatAIについて詳しくはこちら →",
+    "introBannerClose": "閉じる",
     "todayRaces": "本日開催中のレース",
     "dataType": "レースデータ",
     "loadingTitle": "レースデータを読み込み中...",

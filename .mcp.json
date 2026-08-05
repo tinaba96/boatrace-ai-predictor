@@ -2,10 +2,30 @@
   "mcpServers": {
     "linear": {
       "command": "node",
-      "args": ["node_modules/linear-mcp/build/index.js"],
+      "args": [
+        "node_modules/linear-mcp/build/index.js"
+      ],
       "env": {
         "LINEAR_ACCESS_TOKEN": "${LINEAR_API_KEY}"
       }
+    },
+    "supabase": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--read-only",
+        "--project-ref=phwgirodvaptywzyibmi"
+      ],
+      "env": {
+        "npm_config_legacy_peer_deps": "false",
+        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
+      }
+    },
+    "vercel": {
+      "type": "http",
+      "url": "https://mcp.vercel.com"
     }
   }
 }

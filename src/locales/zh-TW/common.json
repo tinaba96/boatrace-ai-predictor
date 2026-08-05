@@ -3,7 +3,7 @@
     "predictions": "🏁 AI預測",
     "hits": "✅ 命中紀錄",
     "accuracy": "📈 準確率",
-    "outcomeDistribution": "📊 開獎統計",
+    "winningTechnique": "📊 數據分析工具",
     "pastRaces": "📅 過往預測",
     "howToUse": "📚 使用說明",
     "guide": "📖 入門指南",
@@ -11,11 +11,13 @@
     "faq": "❓ 常見問題",
     "about": "ℹ️ 關於本站",
     "profile": "👤 營運者介紹",
+    "venues": "🏟️ 賽場指南",
     "menuLabel": "更多選單",
     "logoLabel": "回到 BoatAI 首頁"
   },
   "language": {
-    "switchLabel": "切換語言"
+    "switchLabel": "切換語言",
+    "notAvailable": "此頁面尚未提供{{lang}}版本"
   },
   "meta": {
     "title": "BoatAI - 日本賽艇（Kyotei）AI 預測 | 免費",
@@ -133,6 +135,8 @@
     "venueGuideDesc": "賽場特性與投注要點詳解"
   },
   "home": {
+    "introBannerText": "AI分析45項以上數據 | 了解更多BoatAI →",
+    "introBannerClose": "關閉",
     "todayRaces": "今日賽事",
     "dataType": "比賽資料",
     "loadingTitle": "正在載入比賽資料...",

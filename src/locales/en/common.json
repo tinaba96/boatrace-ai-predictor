@@ -3,7 +3,7 @@
     "predictions": "🏁 Predictions",
     "hits": "✅ Hits",
     "accuracy": "📈 Accuracy",
-    "outcomeDistribution": "📊 Outcome Stats",
+    "winningTechnique": "📊 Analysis Tools",
     "pastRaces": "📅 Past Predictions",
     "howToUse": "📚 How to Use",
     "guide": "📖 Complete Guide",
@@ -11,11 +11,13 @@
     "faq": "❓ FAQ",
     "about": "ℹ️ About",
     "profile": "👤 Operator Profile",
+    "venues": "🏟️ Venue Guides",
     "menuLabel": "More menu",
     "logoLabel": "Go to BoatAI top page"
   },
   "language": {
-    "switchLabel": "Switch language"
+    "switchLabel": "Switch language",
+    "notAvailable": "This page isn't available in {{lang}}"
   },
   "meta": {
     "title": "BoatAI - AI Predictions for Japanese Boat Race (Kyotei) | Free",
@@ -134,6 +136,8 @@
     "venueGuideDesc": "Detailed venue characteristics and betting angles"
   },
   "home": {
+    "introBannerText": "AI-analyzed 45+ data points | Learn more about BoatAI →",
+    "introBannerClose": "Close",
     "todayRaces": "Today's Races",
     "dataType": "Race data",
     "loadingTitle": "Loading race data...",
