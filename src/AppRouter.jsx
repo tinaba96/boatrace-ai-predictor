@@ -1,4 +1,10 @@
-import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import {
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -18,12 +24,17 @@ import RaceHistory from "./pages/RaceHistory";
 import RaceDetail from "./pages/RaceDetail";
 import Profile from "./pages/Profile";
 import AccuracyHistory from "./pages/AccuracyHistory";
-import OutcomeDistribution from "./pages/OutcomeDistribution";
+import WinningTechniqueAnalysis from "./pages/WinningTechniqueAnalysis";
 import Holmes from "./pages/Holmes";
 import ContentHub from "./pages/ContentHub";
 import EnglishGuide from "./pages/EnglishGuide";
 import ZhTwGuide from "./pages/ZhTwGuide";
-import EnglishVenueGuide, { EnglishVenueGuides } from "./pages/EnglishVenueGuide";
+import KoGuide from "./pages/KoGuide";
+import EnglishVenueGuide, {
+  EnglishVenueGuides,
+  EnglishVenueRegionHub,
+} from "./pages/EnglishVenueGuide";
+import ZhTwVenueGuide, { ZhTwVenueGuides } from "./pages/ZhTwVenueGuide";
 import AdminRules from "./pages/admin/AdminRules";
 import ResponsibleGambling from "./pages/ResponsibleGambling";
 import Poirot from "./pages/Poirot";
@@ -59,6 +70,15 @@ function HashRedirect() {
   return null;
 }
 
+// 旧 /outcome-distribution はデータ分析ツールの1タブに統合済み（BOA-152）
+// venue_code は維持しつつ tab=outcome を付与してリダイレクトする
+function OutcomeDistributionRedirect() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  params.set("tab", "outcome");
+  return <Navigate to={`/winning-technique?${params.toString()}`} replace />;
+}
+
 // ルート変更時にAuto Adsを再スキャン
 function AdRefresh() {
   const location = useLocation();
@@ -91,11 +111,24 @@ function PageViewTracker() {
 const GUIDE_BY_LANG = {
   en: EnglishGuide,
   "zh-TW": ZhTwGuide,
+  ko: KoGuide,
+};
+
+// 言語別の会場別ビジターガイド（対応言語は config の LANGUAGE_ONLY_PATHS と合わせて管理する）
+// RegionHub は地域ハブページ（現状 en のみ対応、LANGUAGE_ONLY_PATHS["/venues/region"]）
+const VENUE_GUIDE_BY_LANG = {
+  en: {
+    List: EnglishVenueGuides,
+    Detail: EnglishVenueGuide,
+    RegionHub: EnglishVenueRegionHub,
+  },
+  "zh-TW": { List: ZhTwVenueGuides, Detail: ZhTwVenueGuide },
 };
 
 // 言語別に共通のルート定義（言語プレフィックス配下でも相対パスで再利用）
 function LocalizedRoutes({ lng = "ja" }) {
   const Guide = GUIDE_BY_LANG[lng] ?? ContentHub;
+  const VenueGuide = VENUE_GUIDE_BY_LANG[lng];
   return (
     <Routes>
       {/* Main App - 予想ページ（トップ） */}
@@ -106,7 +139,11 @@ function LocalizedRoutes({ lng = "ja" }) {
       <Route path="accuracy" element={<App tab="accuracy" />} />
       <Route path="picks" element={<App tab="picks" />} />
       <Route path="accuracy/history" element={<AccuracyHistory />} />
-      <Route path="outcome-distribution" element={<OutcomeDistribution />} />
+      <Route
+        path="outcome-distribution"
+        element={<OutcomeDistributionRedirect />}
+      />
+      <Route path="winning-technique" element={<WinningTechniqueAnalysis />} />
       <Route path="privacy" element={<App tab="privacy" />} />
       <Route path="terms" element={<App tab="terms" />} />
       <Route path="contact" element={<App tab="contact" />} />
@@ -128,12 +165,21 @@ function LocalizedRoutes({ lng = "ja" }) {
       <Route path="guide" element={<Guide />} />
 
       {/* 言語専用: 会場別ビジターガイド（インバウンド観光クエリ向け。対応言語は config の LANGUAGE_ONLY_PATHS） */}
-      {getAvailableLanguages("/venues").some((l) => l.code === lng) && (
-        <>
-          <Route path="venues" element={<EnglishVenueGuides />} />
-          <Route path="venues/:slug" element={<EnglishVenueGuide />} />
-        </>
-      )}
+      {getAvailableLanguages("/venues").some((l) => l.code === lng) &&
+        VenueGuide && (
+          <>
+            <Route path="venues" element={<VenueGuide.List />} />
+            <Route path="venues/:slug" element={<VenueGuide.Detail />} />
+          </>
+        )}
+      {/* 言語専用: 地域別ビジターガイドハブ（対応言語は config の LANGUAGE_ONLY_PATHS） */}
+      {getAvailableLanguages("/venues/region").some((l) => l.code === lng) &&
+        VenueGuide?.RegionHub && (
+          <Route
+            path="venues/region/:regionSlug"
+            element={<VenueGuide.RegionHub />}
+          />
+        )}
       <Route path="responsible-gambling" element={<ResponsibleGambling />} />
 
       {/* Admin Pages (Hidden) */}
@@ -210,15 +256,15 @@ export default function AppRouter() {
       <HreflangTags />
       <InitialLanguageRedirect />
       <Routes>
-        {SUPPORTED_LANGUAGES.filter(({ code }) => code !== DEFAULT_LANGUAGE).map(
-          ({ code }) => (
-            <Route
-              key={code}
-              path={`/${code}/*`}
-              element={<LocalizedLayout lng={code} />}
-            />
-          ),
-        )}
+        {SUPPORTED_LANGUAGES.filter(
+          ({ code }) => code !== DEFAULT_LANGUAGE,
+        ).map(({ code }) => (
+          <Route
+            key={code}
+            path={`/${code}/*`}
+            element={<LocalizedLayout lng={code} />}
+          />
+        ))}
         <Route path="/*" element={<LocalizedLayout lng={DEFAULT_LANGUAGE} />} />
       </Routes>
     </>

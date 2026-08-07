@@ -11,6 +11,7 @@ export const VENUE_GUIDES_EN = [
     name: "Heiwajima",
     kanji: "平和島",
     region: "Tokyo",
+    regionGroup: "kanto",
     tagline: "The most tourist-friendly venue — minutes from Haneda Airport",
     intro: [
       "Boat Race Heiwajima sits inside the BIG FUN Heiwajima entertainment complex in Ota ward, southern Tokyo — complete with bowling, arcades, restaurants and even a natural hot-spring spa next door. If you are staying in Tokyo or have hours to spare around a Haneda flight, this is the easiest venue to experience Kyotei for the first time.",
@@ -27,6 +28,36 @@ export const VENUE_GUIDES_EN = [
       nightRace: false,
     },
     tip: "Check the Lane-1 upset index on our prediction page before betting here — Heiwajima is exactly the kind of venue where it pays off.",
+    nearbyAttractions: [
+      {
+        name: "Heiwajima Onsen (natural hot spring)",
+        description:
+          "In the same BIG FUN Heiwajima complex — natural hot spring baths and a rock-bed sauna, open late.",
+      },
+      {
+        name: "Tondemi Heiwajima (indoor athletic park)",
+        description:
+          "Trampolines, a climbing wall and rope courses in the same complex — good for families.",
+      },
+      {
+        name: "Haneda Airport",
+        description:
+          "About 20-30 minutes by Keikyu Line — an easy stop before or after a flight.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/heiwajima.jpg",
+      alt: "Boat Race Heiwajima stadium",
+      credit: "Photo by cake6, CC BY 3.0, via Wikimedia Commons",
+      creditUrl:
+        "https://commons.wikimedia.org/wiki/File:Heiwajima-kyotei-01.jpg",
+    },
   },
   {
     slug: "suminoe",
@@ -34,6 +65,7 @@ export const VENUE_GUIDES_EN = [
     name: "Suminoe",
     kanji: "住之江",
     region: "Osaka",
+    regionGroup: "kinki",
     tagline:
       'The "sacred ground" of Kyotei — night races in the heart of Osaka',
     intro: [
@@ -50,6 +82,30 @@ export const VENUE_GUIDES_EN = [
       nightRace: true,
     },
     tip: "Night races mean you can combine Osaka sightseeing by day with Kyotei by night — check our predictions for the evening card.",
+    nearbyAttractions: [
+      {
+        name: "Namba & Shinsaibashi",
+        description:
+          "Osaka's main shopping and dining district, about 15 minutes away by metro.",
+      },
+      {
+        name: "Sumiyoshi Taisha",
+        description:
+          "One of Japan's oldest and most important Shinto shrines, about 20 minutes away.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "Regular meets run several times a year, each lasting about 4-7 days, plus periodic multi-day SG/G1 tournaments.",
+      seasonalNotes:
+        "Hosts the SG Grand Prix, the sport's season-ending championship, most years in December — one of the biggest events in Kyotei.",
+    },
+    image: {
+      src: "/images/venues/suminoe.jpg",
+      alt: "Boat Race Suminoe grandstand",
+      credit: "Photo by MASA, CC BY-SA 3.0, via Wikimedia Commons",
+      creditUrl: "https://commons.wikimedia.org/wiki/File:Suminoe_Kyotei2.jpg",
+    },
   },
   {
     slug: "edogawa",
@@ -57,6 +113,7 @@ export const VENUE_GUIDES_EN = [
     name: "Edogawa",
     kanji: "江戸川",
     region: "Tokyo",
+    regionGroup: "kanto",
     tagline: "Japan's only river course — wild water, wild payouts",
     intro: [
       "Boat Race Edogawa in eastern Tokyo is the only venue in Japan built on a natural river. Wind and tide constantly change the water, making it the most unpredictable racing surface in the sport — races here are notorious for upsets.",
@@ -72,6 +129,31 @@ export const VENUE_GUIDES_EN = [
       nightRace: false,
     },
     tip: "Weather matters more here than anywhere else. Our AI factors venue volatility into every Edogawa prediction.",
+    nearbyAttractions: [
+      {
+        name: "Kasai Rinkai Park",
+        description:
+          "Seaside park with a large aquarium, a giant Ferris wheel and BBQ areas, one JR Keiyo Line stop from the Tokyo Disney Resort area.",
+      },
+      {
+        name: "Kitaro Walkway (on-site)",
+        description:
+          "The venue's own embankment stands are lined with yokai artwork by Shigeru Mizuki, creator of GeGeGe no Kitaro.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/edogawa.jpg",
+      alt: "Boat Race Edogawa stadium",
+      credit: "Photo by 博柳, CC BY 3.0, via Wikimedia Commons",
+      creditUrl:
+        "https://commons.wikimedia.org/wiki/File:%E6%B1%9F%E6%88%B8%E5%B7%9D%E7%AB%B6%E8%89%87%E5%A0%B4_-_panoramio.jpg",
+    },
   },
   {
     slug: "tamagawa",
@@ -79,6 +161,7 @@ export const VENUE_GUIDES_EN = [
     name: "Tamagawa",
     kanji: "多摩川",
     region: "Tokyo (Fuchu)",
+    regionGroup: "kanto",
     tagline: "The calmest water in Japan — racing skill in its purest form",
     intro: [
       'Boat Race Tamagawa in western Tokyo is nicknamed "the calmest water in Japan". A windbreak forest and the grandstand shelter the pool from wind, so races are decided by pure technique rather than conditions.',
@@ -94,6 +177,31 @@ export const VENUE_GUIDES_EN = [
       nightRace: false,
     },
     tip: "Stable conditions mean racer and motor stats carry extra weight — exactly the data our AI analyzes for every race.",
+    nearbyAttractions: [
+      {
+        name: "Tokyo Racecourse (horse racing)",
+        description:
+          "JRA's major Fuchu racecourse is about a 14-minute walk away — a rare chance to see two very different kinds of Japanese racing in one trip.",
+      },
+      {
+        name: "Fuchu city center",
+        description:
+          "Restaurants and shops around Fuchu-Honmachi and Bubaigawara stations, connected by free race-day shuttle buses.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/tamagawa.jpg",
+      alt: "Boat Race Tamagawa stadium",
+      credit: "Photo by nakashi, CC BY-SA 2.0, via Wikimedia Commons",
+      creditUrl:
+        "https://commons.wikimedia.org/wiki/File:Boat_race_tamagawa_%E3%83%9C%E3%83%BC%E3%83%88%E3%83%AC%E3%83%BC%E3%82%B9%E5%A4%9A%E6%91%A9%E5%B7%9D_(48113070693).jpg",
+    },
   },
   {
     slug: "fukuoka",
@@ -101,6 +209,7 @@ export const VENUE_GUIDES_EN = [
     name: "Fukuoka",
     kanji: "福岡",
     region: "Fukuoka (Kyushu)",
+    regionGroup: "kyushu",
     tagline: "A downtown venue steps from Tenjin — with famously tricky water",
     intro: [
       "Boat Race Fukuoka may be the most conveniently located gambling venue in Japan: it sits where the Naka river meets Hakata bay, about a 10-minute walk from the Tenjin district in central Fukuoka. You can go from ramen and shopping to live racing in minutes.",
@@ -116,9 +225,933 @@ export const VENUE_GUIDES_EN = [
       nightRace: false,
     },
     tip: "Swell at the first mark makes exhibition data unusually important — our prediction table shows exhibition times for every racer.",
+    nearbyAttractions: [
+      {
+        name: "Ohori Park",
+        description:
+          "A large scenic park with a Japanese garden, a boating pond and lakeside cafes, 4 minutes from Tenjin by subway.",
+      },
+      {
+        name: "Tenjin",
+        description:
+          "Fukuoka's main shopping, dining and nightlife district, about 15 minutes on foot.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/fukuoka.jpg",
+      alt: "Main entrance of Boat Race Fukuoka",
+      credit: "Photo by STA3816, CC BY-SA 4.0, via Wikimedia Commons",
+      creditUrl:
+        "https://commons.wikimedia.org/wiki/File:Main_entrance_of_Boat_Race_Fukuoka.jpg",
+    },
+  },
+  {
+    slug: "kiryu",
+    code: 1,
+    name: "Kiryu",
+    kanji: "桐生",
+    region: "Gunma",
+    regionGroup: "kanto",
+    tagline: "The birthplace of night racing — Japan's highest-altitude venue",
+    intro: [
+      "Boat Race Kiryu, in Gunma prefecture, was the first of Japan's 24 venues to introduce night racing, back in 1997, and today every card here runs entirely under floodlights (first race around 3pm, last race around 8:30pm). It's also the highest-altitude Kyotei venue in the country, sitting 128 meters above sea level.",
+      'The thinner air at altitude means motors produce slightly less power than at sea-level venues, which tends to favor dash-style (outside lane) racers over pure escapes. A strong seasonal tailwind known as the "Akagi-oroshi" blows through in winter and spring, adding another layer to the racing.',
+    ],
+    access: [
+      'JR Ryomo Line "Iwajuku" station → about 12 minutes on foot, or free shuttle bus',
+      'Free shuttle buses also run from "Azami" station on race days',
+    ],
+    facts: {
+      water: "Freshwater pond",
+      character: "Highest altitude in Japan — thinner air favors dash racers",
+      nightRace: true,
+    },
+    tip: "Lower air pressure here quietly shifts the balance toward outside-lane dash racers — our AI weighs altitude effects into every Kiryu prediction.",
+    nearbyAttractions: [
+      {
+        name: "Kiryu Shinmachi Weaving District",
+        description:
+          "A preserved historic textile district with saw-tooth roof factories — Kiryu has been a major silk weaving town for 400 years.",
+      },
+      {
+        name: "Orimono Sankokan Textile Museum",
+        description:
+          "A museum dedicated to Kiryu's textile heritage, with working looms on display.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "Every card here runs at night. Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/kiryu.jpg",
+      alt: "Boat Race Kiryu stadium",
+      credit: "Photo by cake6, CC BY 3.0, via Wikimedia Commons",
+      creditUrl: "https://commons.wikimedia.org/wiki/File:Kiryu-kyotei-01.jpg",
+    },
+  },
+  {
+    slug: "toda",
+    code: 2,
+    name: "Toda",
+    kanji: "戸田",
+    region: "Saitama",
+    regionGroup: "kanto",
+    tagline:
+      "Japan's narrowest course — the only venue with an Olympic pedigree",
+    intro: [
+      "Boat Race Toda sits inside Toda Park in Saitama, on the same still-water course used for the 1964 Tokyo Olympics rowing events — the only Kyotei venue with an Olympic history. The course is also the narrowest of Japan's 24 venues, putting boats close together and making for some of the most exciting racing to watch live.",
+      'The narrow, hard-packed freshwater surface makes it difficult for the front-runner to hold the inside line cleanly, so "makuri" (outside overtaking) passes succeed here more often than almost anywhere else in Japan — Toda has one of the lowest lane-1 win rates in the sport.',
+    ],
+    access: [
+      'JR Saikyo Line "Toda-Koen" station (west exit) → about 3km / 40 minutes on foot — the free race-day shuttle bus is strongly recommended',
+      'Kokusai Kogyo bus to "Hikawacho 3-chome" stop → about 15 minutes on foot',
+    ],
+    facts: {
+      water: "Freshwater, narrow course — hard surface",
+      character:
+        "One of the lowest lane-1 win rates in Japan — overtakes are common",
+      nightRace: false,
+    },
+    tip: "With overtakes this common, our AI leans harder on start-timing and turn data for Toda than for almost any other venue.",
+    nearbyAttractions: [
+      {
+        name: "Toda Park",
+        description:
+          "The 1964 Olympic rowing course itself, now a public park with cherry blossoms along the Arakawa riverbank in spring.",
+      },
+      {
+        name: "BOAT KIDS PARK Morvi Toda (on-site)",
+        description:
+          "A family-friendly play area inside the venue with photo-ready boat displays.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/toda.jpg",
+      alt: "Toda Rowing Course, home of Boat Race Toda",
+      credit: "Photo by Ibamoto, CC BY-SA 4.0, via Wikimedia Commons",
+      creditUrl:
+        "https://commons.wikimedia.org/wiki/File:Toda_Rowing_Course_(Tokyo,_JAP)_2021.jpg",
+    },
+  },
+  {
+    slug: "hamanako",
+    code: 6,
+    name: "Hamanako",
+    kanji: "浜名湖",
+    region: "Shizuoka",
+    regionGroup: "chubu-tokai",
+    tagline: "Japan's widest race course, on a brackish lake famous for eel",
+    intro: [
+      'Boat Race Hamanako sits on the western shore of Lake Hamana in Shizuoka, on the widest competition water of any of Japan\'s 24 venues. The lake is brackish — a mix of seawater and freshwater — and the sheer size of the course lets boats hit high speed, so outside-lane overtakes ("makuri-sashi") succeed more often here than at narrower venues.',
+      "From March to September the last race runs into dusk under a summer-time schedule, ending a little after 5pm rather than the usual daytime finish — a nice option if you want racing plus an evening in the area.",
+    ],
+    access: [
+      'JR Tokaido Line "Arai-machi" station → about 5 minutes on foot',
+      "By car: about 30 minutes from Hamamatsu-nishi, Mikkabi or Kanzanji Smart ICs",
+    ],
+    facts: {
+      water:
+        "Brackish (lake, mix of sea and freshwater) — widest course in Japan",
+      character: "High-speed water; outside-lane overtakes are common",
+      nightRace: false,
+    },
+    tip: "The extra-wide course rewards outside dash racers more than most venues — our AI weighs this into every Hamanako prediction.",
+    nearbyAttractions: [
+      {
+        name: "Kanzanji Onsen",
+        description:
+          "A hot-spring resort town on the lakeshore, known for eel (unagi) cuisine and lake views.",
+      },
+      {
+        name: "Hamanako Parupal & Garden Park",
+        description:
+          "A lakeside amusement park and flower garden, both popular family day-trip spots near Kanzanji.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "Regular meets run several times a year, each lasting about 4-7 days. From March to September, the final race runs slightly later under a summer schedule.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/hamanako.jpg",
+      alt: "Boat Race Hamanako stadium",
+      credit: "Photo by 計記録, CC BY-SA 3.0, via Wikimedia Commons",
+      creditUrl:
+        "https://commons.wikimedia.org/wiki/File:Hamanako-kyotei-01.jpg",
+    },
+  },
+  {
+    slug: "gamagori",
+    code: 7,
+    name: "Gamagori",
+    kanji: "蒲郡",
+    region: "Aichi",
+    regionGroup: "chubu-tokai",
+    tagline:
+      "A fast, sheltered course by Mikawa Bay — one of the few night venues",
+    intro: [
+      "Boat Race Gamagori sits on Mikawa Bay in Aichi prefecture, with a backstretch at the first mark that's the widest in the country. The water is calm and fast, sheltered from strong wind, so races here are quick and lane 1 wins often — but center-lane overtakes still work often enough to produce dramatic comebacks at the second mark.",
+      "Gamagori is also one of the relatively small number of venues that races at night, with the water sparkling under floodlights for a distinctive atmosphere you won't get at a daytime card.",
+    ],
+    access: [
+      'JR Tokaido Line "Mikawa-Shiotsu" station → about 5 minutes on foot',
+      'Meitetsu Gamagori Line "Gamagori Kyoteijo-mae" station, or a direct bus from JR Gamagori station every 30 minutes',
+    ],
+    facts: {
+      water: "Freshwater pool — calm and fast, sheltered from wind",
+      character:
+        "Lane 1 wins often, but center-lane comebacks are common at mark 2",
+      nightRace: true,
+    },
+    tip: "Fast, sheltered water raises the value of a clean start here — our AI weighs start-timing data heavily in every Gamagori prediction.",
+    nearbyAttractions: [
+      {
+        name: "Takeshima Island",
+        description:
+          "Gamagori's symbol — a small sacred island reached by a bridge, home to Yaotomi Shrine.",
+      },
+      {
+        name: "Laguna Ten Bosch",
+        description:
+          "A seaside resort with a theme park, shopping and dining, about 15 minutes by free shuttle bus from JR Gamagori station.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: null,
+  },
+  {
+    slug: "tokoname",
+    code: 8,
+    name: "Tokoname",
+    kanji: "常滑",
+    region: "Aichi",
+    regionGroup: "chubu-tokai",
+    tagline: "Across the bay from Centrair Airport — a tricky pit start",
+    intro: [
+      "Boat Race Tokoname sits directly across the water from Chubu Centrair International Airport in Aichi, making it one of the easiest venues in Japan to combine with a flight. The pit area, where boats launch from before the start, is longer here than at most venues, which makes a clean pit-out trickier to time.",
+      "Tokoname is also a historic pottery town, so a race-day visit pairs naturally with a stroll through its famous ceramics district.",
+    ],
+    access: [
+      'Meitetsu Tokoname Line "Tokoname" station → about 5 minutes on foot',
+      "From Chubu Centrair Airport: about 5 minutes by train to Tokoname station, then 5 minutes on foot",
+    ],
+    facts: {
+      water: "Seawater pool (gated — no tidal effect)",
+      character: "Long pit area — pit-out timing is trickier than most venues",
+      nightRace: false,
+    },
+    tip: "Because pit-out here is unusually tricky to time, start-timing data carries extra weight in our Tokoname predictions.",
+    nearbyAttractions: [
+      {
+        name: "Yakimono Sanpo-michi (Pottery Walking Trail)",
+        description:
+          "A historic ceramics district with brick kiln chimneys and craft studios, about 5 minutes from Tokoname station.",
+      },
+      {
+        name: "Chubu Centrair International Airport",
+        description:
+          "Just across the bay — an easy combination with a flight before or after racing.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/tokoname.jpg",
+      alt: "Boat Race Tokoname stadium",
+      credit: "Photo by 計記録, CC BY-SA 3.0, via Wikimedia Commons",
+      creditUrl:
+        "https://commons.wikimedia.org/wiki/File:Tokoname-kyotei-01.jpg",
+    },
+  },
+  {
+    slug: "tsu",
+    code: 9,
+    name: "Tsu",
+    kanji: "津",
+    region: "Mie",
+    regionGroup: "chubu-tokai",
+    tagline: "Ise Bay's wind-tossed water — one of Tokai's roughest courses",
+    intro: [
+      'Boat Race Tsu faces Ise Bay in Mie prefecture, a long north-south inlet that funnels the weather straight at the course — a southerly sea breeze in summer, and a strong cold wind known as the "Suzuka-oroshi" blowing off the Suzuka mountains in winter. When the wind picks up, Tsu becomes one of the roughest, most unpredictable courses in the Tokai region; on calm days it races much more predictably, with lane 1 favored.',
+      "The venue itself is a bright, mall-like space with food stalls, a kids' play area and a popular mascot, Tsukky, making it an easy stop even outside race hours.",
+    ],
+    access: [
+      'Free shuttle buses from JR/Kintetsu "Tsu" station and Kintetsu "Tsu-Shinmachi" station',
+      "By car: about 20 minutes from Tsu or Hisai interchanges on the Ise Expressway",
+    ],
+    facts: {
+      water:
+        "Faces Ise Bay — can be one of the roughest courses in Tokai when windy",
+      character:
+        "Wind-dependent: rough and unpredictable when windy, lane-1-favored when calm",
+      nightRace: false,
+    },
+    tip: "Wind is the single biggest swing factor at Tsu — our AI factors venue volatility into every prediction here.",
+    nearbyAttractions: [
+      {
+        name: "Tsu Nagisamachi",
+        description:
+          "A ferry terminal with restaurants overlooking the bay; high-speed boats connect to Chubu Centrair Airport in about 45 minutes.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/tsu.jpg",
+      alt: "Boat Race Tsu stadium",
+      credit: "Photo by 計記録, CC BY-SA 3.0, via Wikimedia Commons",
+      creditUrl: "https://commons.wikimedia.org/wiki/File:Tsu-kyotei-01.jpg",
+    },
+  },
+  {
+    slug: "mikuni",
+    code: 10,
+    name: "Mikuni",
+    kanji: "三国",
+    region: "Fukui",
+    regionGroup: "chubu-tokai",
+    tagline: "Japan's only Sea of Japan venue, next to a historic port town",
+    intro: [
+      "Boat Race Mikuni, in Fukui prefecture, is the only Kyotei venue on the Sea of Japan coast. The course is a freshwater pool with no tidal effect, but a sea breeze often picks up as the day warms, adding a wrinkle to the racing. Because the water is unaffected by tides, strong-motor boats tend to have a reliable edge here.",
+      "The venue sits close to Mikuni-minato, a former Kitamae-bune trading port with a well-preserved old town, and within reach of one of Japan's most dramatic coastlines.",
+    ],
+    access: [
+      'JR "Awara Onsen" station → free shuttle bus',
+      'Echizen Railway "Awara-Yunomachi" station → about 17 minutes on foot',
+    ],
+    facts: {
+      water:
+        "Freshwater pool, no tidal effect — sea breeze picks up later in the day",
+      character: "Strong-motor boats have a reliable edge",
+      nightRace: false,
+    },
+    tip: "With no tide to complicate things, motor performance data is especially reliable here — exactly what our AI weighs most heavily for Mikuni.",
+    nearbyAttractions: [
+      {
+        name: "Tojinbo",
+        description:
+          "Dramatic basalt sea cliffs stretching about a kilometer along the coast, ranked among Japan's most scenic spots.",
+      },
+      {
+        name: "Mikuni-minato",
+        description:
+          "A historic Kitamae-bune trading port with a preserved old town and fresh seafood, including crab in season, about 5 minutes from Mikuni station.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: null,
+  },
+  {
+    slug: "biwako",
+    code: 11,
+    name: "Biwako",
+    kanji: "びわこ",
+    region: "Shiga",
+    regionGroup: "kinki",
+    tagline: "Japan's most scenic venue, on the shore of Lake Biwa",
+    intro: [
+      'Boat Race Biwako sits on the shore of Lake Biwa, Japan\'s largest freshwater lake, with views across the water to Mt. Mikami ("Omi-Fuji") and Mt. Ibuki that make it one of the most scenic Kyotei venues in the country. A sightseeing paddle steamer, the Michigan, is often visible cruising the lake during racing.',
+      "Spring and summer bring offshore winds that can roughen the water, so conditions vary more here than at fully sheltered venues — a factor worth watching alongside the view.",
+    ],
+    access: [
+      'Keihan "Bessho" station → about 9 minutes on foot',
+      "By car: about 15 minutes from Otsu or Kyoto-Higashi interchanges on the Meishin Expressway",
+    ],
+    facts: {
+      water:
+        "Freshwater (Lake Biwa) — can roughen with offshore wind in spring/summer",
+      character:
+        "One of the most scenic venues in Japan; conditions vary with wind",
+      nightRace: false,
+    },
+    tip: "Wind off the lake can shift conditions mid-card here — our AI factors venue volatility into every Biwako prediction.",
+    nearbyAttractions: [
+      {
+        name: "Lake Biwa waterfront",
+        description:
+          "Sweeping views of Mt. Mikami and Mt. Ibuki across the water, with sightseeing boats cruising the lake.",
+      },
+      {
+        name: "Otsu city sights",
+        description:
+          "Shiga prefecture's capital, with historic temples and lakeside parks a short trip from the venue.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/biwako.jpg",
+      alt: "Boat Race Biwako stadium on Lake Biwa",
+      credit: "Photo by 計記録, CC BY-SA 3.0, via Wikimedia Commons",
+      creditUrl: "https://commons.wikimedia.org/wiki/File:Biwako-kyotei-01.jpg",
+    },
+  },
+  {
+    slug: "amagasaki",
+    code: 13,
+    name: "Amagasaki",
+    kanji: "尼崎",
+    region: "Hyogo",
+    regionGroup: "kinki",
+    tagline:
+      "Step off the train and you're there — one of the calmest waters in Japan",
+    intro: [
+      'Boat Race Amagasaki is about as convenient as Kyotei gets: the venue sits right next to Hanshin Railway\'s "Amagasaki Center Pool-mae" station, so you barely need an umbrella even on a rainy day. The water here is known as one of the calmest and most technical in the sport, freshwater and firm underneath the hull.',
+      "A headwind blows across the course most of the year, though it can swing to a tailwind when a low-pressure system or rain moves in. In recent years lane 1 has been winning more than 60% of the time here, making Amagasaki one of the most inside-favored venues in Japan.",
+    ],
+    access: [
+      'Hanshin Railway "Amagasaki Center Pool-mae" station → right next to the venue',
+      'Direct limited express or express trains from Osaka-Umeda, or transfer to local service at "Nishinomiya" from Kobe-Sannomiya',
+    ],
+    facts: {
+      water: "Freshwater, firm and calm — technique-friendly",
+      character:
+        "One of the most inside-favored venues in Japan (lane 1 wins 60%+)",
+      nightRace: false,
+    },
+    tip: "With lane 1 winning this often, our AI weighs start-course strength especially heavily in every Amagasaki prediction.",
+    nearbyAttractions: [
+      {
+        name: "Amagasaki Castle",
+        description:
+          "A rebuilt Edo-period castle (reopened 2019) on the site of the original, a short trip from the venue.",
+      },
+      {
+        name: "Jicho-machi Temple District",
+        description:
+          "A historic quarter of eleven temples preserving the look of the old castle town.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "Amagasaki races about 180 days a year, more than most venues. Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/amagasaki.jpg",
+      alt: "Boat Race Amagasaki stadium",
+      credit: "Photo by 計記録, CC BY-SA 3.0, via Wikimedia Commons",
+      creditUrl:
+        "https://commons.wikimedia.org/wiki/File:Amagasaki-kyotei-01.jpg",
+    },
+  },
+  {
+    slug: "naruto",
+    code: 14,
+    name: "Naruto",
+    kanji: "鳴門",
+    region: "Tokushima",
+    regionGroup: "shikoku",
+    tagline: "Wide-open, upset-friendly water next to the famous whirlpools",
+    intro: [
+      "Boat Race Naruto sits on the Konaruto Strait in Tokushima, close enough to the stands that races feel unusually intense to watch live. A breakwater keeps the seawater course calm despite its coastal setting, but lane 1 is weak here — any lane can win, upsets are common, and payouts run high, making Naruto a favorite for bettors who chase long shots.",
+      "The venue operates up to 360 days a year with tickets on sale from early morning to about 8:30pm, including night racing, so there's almost always a card running.",
+    ],
+    access: [
+      'JR "Naruto" station → about 10 minutes on foot',
+      'Bus from JR Naruto station or Tokushima Airport → get off at "Kosoku Naruto" stop',
+    ],
+    facts: {
+      water:
+        "Seawater, sheltered by a breakwater — calm despite the coastal setting",
+      character:
+        "Lane 1 is weak — any lane can win; upsets and high payouts are common",
+      nightRace: true,
+    },
+    tip: "With lane 1 this weak, our AI weighs every lane's chances more evenly here than at almost any other venue.",
+    nearbyAttractions: [
+      {
+        name: "Naruto Whirlpools (Uzushio)",
+        description:
+          "Some of the world's largest tidal whirlpools, best seen up close on a sightseeing boat from Uzushio Kisen.",
+      },
+      {
+        name: "Otsuka Museum of Art",
+        description:
+          "A museum of full-size ceramic reproductions of world masterpieces, a short trip from the venue.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "One of the most active venues in Japan, racing up to 360 days a year with both day and night meets.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/naruto.jpg",
+      alt: "Boat Race Naruto stadium",
+      credit: "Photo by Na00ru0010, CC BY-SA 4.0, via Wikimedia Commons",
+      creditUrl: "https://commons.wikimedia.org/wiki/File:Naruto-kyotei-01.jpg",
+    },
+  },
+  {
+    slug: "marugame",
+    code: 15,
+    name: "Marugame",
+    kanji: "丸亀",
+    region: "Kagawa",
+    regionGroup: "shikoku",
+    tagline: "A tide-driven Seto Inland Sea course, in Japan's udon capital",
+    intro: [
+      'Boat Race Marugame faces the Seto Inland Sea in Kagawa prefecture, on a soft, buoyant seawater course with one of the strongest tidal swings of any Kyotei venue — up to about 2 meters between high and low tide. A headwind is common, and passing moves like "sashi" and "makuri-sashi" succeed more often here than pure escapes.',
+      'Marugame has raced under lights since its "Blue Nighter" night program launched in 2009, and is now a year-round night-racing venue.',
+    ],
+    access: [
+      'JR Yosan Line "Marugame" station → free shuttle bus, about 10 minutes',
+      "By car: about 15-20 minutes from Sakaide or Zentsuji interchanges on the Takamatsu or Seto-Chuo Expressways",
+    ],
+    facts: {
+      water: "Seawater, Seto Inland Sea — strong tidal swing (up to ~2m)",
+      character:
+        "Passing moves (sashi, makuri-sashi) succeed more than pure escapes",
+      nightRace: true,
+    },
+    tip: "The tide here genuinely changes the water through the card — our AI factors tidal timing into every Marugame prediction.",
+    nearbyAttractions: [
+      {
+        name: "Marugame Castle",
+        description:
+          "A 400-year-old castle with one of Japan's 12 surviving original wooden keeps, famous for its dramatic curved stone walls.",
+      },
+      {
+        name: "Marugame udon",
+        description:
+          "The city is one of Japan's udon capitals — a short walk from the venue turns up several well-known noodle shops.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "A year-round night-racing venue since 2009. Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/marugame.jpg",
+      alt: "Boat Race Marugame stadium",
+      credit: "Photo by 計記録, CC BY-SA 3.0, via Wikimedia Commons",
+      creditUrl:
+        "https://commons.wikimedia.org/wiki/File:Marugame-kyotei-02.jpg",
+    },
+  },
+  {
+    slug: "kojima",
+    code: 16,
+    name: "Kojima",
+    kanji: "児島",
+    region: "Okayama",
+    regionGroup: "chugoku",
+    tagline: "Calm water in the shadow of the Great Seto Bridge",
+    intro: [
+      "Boat Race Kojima sits on the Seto Inland Sea in Kurashiki, right by the Great Seto Bridge, with views of the bridge and the sea's scattered islands from the stands. Tides here swing significantly, but wind is usually light, so races tend to stay calm and readable rather than chaotic.",
+      "Kojima is also Japan's denim capital: the venue is a short trip from Kojima Jeans Street, where dozens of shops sell jeans made in local mills — an easy pairing with a day at the races.",
+    ],
+    access: [
+      'JR Seto-Ohashi Line "Kojima" station → free shuttle bus, 3-5 minutes',
+      "By car: about 5 minutes from Kojima IC on the Seto-Chuo Expressway",
+    ],
+    facts: {
+      water:
+        "Seawater, Seto Inland Sea — strong tidal swing, usually light wind",
+      character: "Tide-driven but generally calm and readable",
+      nightRace: false,
+    },
+    tip: "With wind rarely a factor, tide timing does most of the work here — our AI tracks it closely for every Kojima prediction.",
+    nearbyAttractions: [
+      {
+        name: "Kojima Jeans Street",
+        description:
+          "A shopping street lined with shops selling locally made denim — Kojima is considered Japan's jeans-making capital.",
+      },
+      {
+        name: "Great Seto Bridge sightseeing cruise",
+        description:
+          "A roughly 45-minute cruise under the bridge, departing from Kojima's sightseeing port.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/kojima.jpg",
+      alt: "Boat Race Kojima stadium",
+      credit: "Photo by 計記録, CC BY-SA 3.0, via Wikimedia Commons",
+      creditUrl: "https://commons.wikimedia.org/wiki/File:Kojima-kyotei-01.jpg",
+    },
+  },
+  {
+    slug: "miyajima",
+    code: 17,
+    name: "Miyajima",
+    kanji: "宮島",
+    region: "Hiroshima",
+    regionGroup: "chugoku",
+    tagline:
+      "One of the most technical waters in Japan, facing Miyajima Island",
+    intro: [
+      "Boat Race Miyajima sits right next to the ferry pier for Miyajima Island, and on a clear day the stands look out over passing ferries and the torii gate of UNESCO World Heritage-listed Itsukushima Shrine — one of the more striking views in the sport. The Seto Inland Sea water here is considered one of the most technical in Japan.",
+      "A tidal swing of over 4 meters transforms the course through the day: at low tide the breakwater blocks the wind for easy racing, while at high tide the water gets choppy and races bunch up. Wind direction often flips between morning and afternoon, which can throw off starts.",
+    ],
+    access: [
+      'JR "Miyajimaguchi" station → about 3 minutes on foot',
+      "Hiroden Miyajima Line trams stop right at the venue on race days",
+    ],
+    facts: {
+      water:
+        "Seawater, Seto Inland Sea — over 4m tidal swing, one of Japan's most technical courses",
+      character:
+        "Calm at low tide, choppy and bunched at high tide; starts can be uneven",
+      nightRace: false,
+    },
+    tip: "Tide state matters more here than almost anywhere else — our AI weighs it heavily in every Miyajima prediction.",
+    nearbyAttractions: [
+      {
+        name: "Itsukushima Shrine",
+        description:
+          "A UNESCO World Heritage shrine famous for its floating torii gate, a short ferry ride from the venue.",
+      },
+      {
+        name: "Miyajima Island",
+        description:
+          "Ferries to the island depart minutes from the venue, making it an easy add-on before or after racing.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/miyajima.jpg",
+      alt: "Boat Race Miyajima stadium",
+      credit: "Photo by Ujinaport, CC BY-SA 3.0, via Wikimedia Commons",
+      creditUrl:
+        "https://commons.wikimedia.org/wiki/File:Miyajima_Kyotei_01.jpg",
+    },
+  },
+  {
+    slug: "tokuyama",
+    code: 18,
+    name: "Tokuyama",
+    kanji: "徳山",
+    region: "Yamaguchi",
+    regionGroup: "chugoku",
+    tagline: "A tide-driven course on Kasado Bay, framed by mountain views",
+    intro: [
+      "Boat Race Tokuyama faces Kasado Bay in Yamaguchi prefecture, with Mt. Takaayama rising behind the stands and the Seto Inland Sea stretching out in front. It's also a year-round morning-racing venue — the first race sets off around 8:32am, and the card wraps up by early afternoon.",
+      "A diagonal tailwind is common, and the tide swings more than 3 meters, splitting racing into two distinct styles through the day: at low tide it becomes a power race, rewarding strong motors; at high tide, handling and finesse matter more as the water gets trickier to read.",
+    ],
+    access: [
+      'JR "Kushigahama" station is the nearest train station',
+      'Free taxi service from JR Tokuyama station\'s "Minato-guchi" exit, about 20 minutes, from 7:45am',
+    ],
+    facts: {
+      water: "Seawater, Kasado Bay — tidal swing over 3m",
+      character: "Power race at low tide, handling race at high tide",
+      nightRace: false,
+    },
+    tip: "Because low and high tide play so differently here, our AI checks tide timing alongside motor and handling data for every Tokuyama prediction.",
+    nearbyAttractions: [
+      {
+        name: "Tokuyama Zoo",
+        description:
+          "A small city zoo a short trip from the venue, popular with families.",
+      },
+      {
+        name: "Seto Inland Sea views",
+        description:
+          "The venue itself looks out over Kasado Bay with Mt. Takaayama behind — worth a moment even outside race hours.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "A year-round morning-racing venue. Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/tokuyama.jpg",
+      alt: "Boat Race Tokuyama stadium",
+      credit: "Photo by dora1977, public domain, via Wikimedia Commons",
+      creditUrl: "https://commons.wikimedia.org/wiki/File:Tokuyamakyotei.JPG",
+    },
+  },
+  {
+    slug: "shimonoseki",
+    code: 19,
+    name: "Shimonoseki",
+    kanji: "下関",
+    region: "Yamaguchi",
+    regionGroup: "chugoku",
+    tagline: "A calm, LED-lit seawater pool at the tip of Honshu",
+    intro: [
+      "Boat Race Shimonoseki sits at the western tip of Honshu, with a seawater course built pool-style behind a raised breakwater — high enough that waves from the Suo Sea rarely get in, even at high tide. That keeps the water calm most of the time and reduces the impact of racers' weight differences, though a tide over 3 meters can still bring water in near the first mark.",
+      'The course is lit by LED lighting that racers rate highly, and Shimonoseki has raced under lights year-round since 2017 — plus late-night "Midnight" boat racing since 2021, for some of the latest post times in the sport.',
+    ],
+    access: [
+      '"Chofu" station is the nearest train station → about 10 minutes on foot to the main gate',
+      "About 10 minutes from Shin-Shimonoseki station by taxi or bus",
+    ],
+    facts: {
+      water:
+        "Seawater pool (breakwater-sheltered) — generally calm, tide affects mark 1 when over 3m",
+      character: "Calm and consistent most of the time",
+      nightRace: true,
+    },
+    tip: "Stable, well-lit conditions make this one of the more consistent venues to read — our AI still checks tide state near the first mark for every Shimonoseki prediction.",
+    nearbyAttractions: [
+      {
+        name: "Karato Market",
+        description:
+          "A famous fugu (pufferfish) and seafood market, with weekend food stalls selling sushi and seafood bowls.",
+      },
+      {
+        name: "Shimonoseki Kaikyokan Aquarium",
+        description:
+          "An aquarium overlooking the Kanmon Strait with the world's largest collection of pufferfish species.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        'A year-round night-racing venue since 2017, with late-night "Midnight" boat racing since 2021.',
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/shimonoseki.jpg",
+      alt: "Boat Race Shimonoseki stadium",
+      credit: "Photo by Muyo, CC BY-SA 3.0, via Wikimedia Commons",
+      creditUrl:
+        "https://commons.wikimedia.org/wiki/File:Shimonoseki_Kyotei.jpg",
+    },
+  },
+  {
+    slug: "wakamatsu",
+    code: 20,
+    name: "Wakamatsu",
+    kanji: "若松",
+    region: "Fukuoka (Kyushu)",
+    regionGroup: "kyushu",
+    tagline: "The birthplace of the All-Japan Championship, on Dokai Bay",
+    intro: [
+      'Boat Race Wakamatsu sits on Dokai Bay in Kitakyushu, and is known as the "birthplace of the Derby" — the first All-Japan Championship was held here. The seawater course connects directly to the bay near the second mark, so tide and wind can flow in from that side, though the water is generally calmer than the rougher venues in the sport.',
+      'Wakamatsu is also famous for being the closest pair of venues in Japan: Boat Race Ashiya is a short trip away, and some fans "hop" between the two, catching one card in the morning and another later in the day.',
+    ],
+    access: ['"Okudokai" station → about 5 minutes on foot'],
+    facts: {
+      water:
+        "Seawater, connects to Dokai Bay near mark 2 — generally calm, some winter roughness",
+      character: "Balanced water with both calm and technical traits",
+      nightRace: true,
+    },
+    tip: "Conditions here sit between calm and technical — our AI weighs both start data and venue volatility for every Wakamatsu prediction.",
+    nearbyAttractions: [
+      {
+        name: "Shabon Dama Soap factory tour",
+        description:
+          "A free factory tour at the well-known Japanese soap maker, a short trip from the venue.",
+      },
+      {
+        name: "Moly Fantasy Wakamatsu",
+        description:
+          "An indoor amusement arcade inside the nearby Aeon Wakamatsu shopping center — good for a rainy day.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/wakamatsu.jpg",
+      alt: "Boat Race Wakamatsu, near Okudokai station",
+      credit: "Photo by そらみみ, CC BY-SA 4.0, via Wikimedia Commons",
+      creditUrl:
+        "https://commons.wikimedia.org/wiki/File:Boat_Race_Wakamatsu_in_front_of_Okudokai_Station.jpg",
+    },
+  },
+  {
+    slug: "ashiya",
+    code: 21,
+    name: "Ashiya",
+    kanji: "芦屋",
+    region: "Fukuoka (Kyushu)",
+    regionGroup: "kyushu",
+    tagline: "A calm, technical freshwater course near the coast",
+    intro: [
+      "Boat Race Ashiya sits near the Onga River, about 2km from the Hibiki-nada sea. The course runs roughly east-west on a firm freshwater surface often compared to Tamagawa's — calm and technical rather than rough.",
+      "Ashiya is one half of Japan's closest pair of venues: Boat Race Wakamatsu is nearby, and some visitors combine both in a single day.",
+    ],
+    access: [
+      'JR Kagoshima Main Line "Orio" or "Onga-gawa" stations → free taxi or free bus',
+    ],
+    facts: {
+      water: "Freshwater, firm — runs roughly east-west",
+      character: "Calm and technical, similar in feel to Tamagawa",
+      nightRace: false,
+    },
+    tip: "Calm, technical water like this rewards consistent racers — our AI weighs racer and motor form heavily for every Ashiya prediction.",
+    nearbyAttractions: [
+      {
+        name: "Ashiya Beach",
+        description:
+          "A roughly 1km stretch of coastline on the Hibiki-nada sea, popular for swimming in summer.",
+      },
+      {
+        name: "Aqua Ocean",
+        description:
+          "A water park with a 120m water slide and a lazy river, a short trip from the venue.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/ashiya.jpg",
+      alt: "Boat Race Ashiya racecourse",
+      credit: "Photo by Umako, CC BY 4.0, via Wikimedia Commons",
+      creditUrl:
+        "https://commons.wikimedia.org/wiki/File:Boat_Race_Ashiya_racecourse_260508.jpg",
+    },
+  },
+  {
+    slug: "karatsu",
+    code: 23,
+    name: "Karatsu",
+    kanji: "唐津",
+    region: "Saga (Kyushu)",
+    regionGroup: "kyushu",
+    tagline:
+      "One of Japan's widest courses, framed by pine forest and bay views",
+    intro: [
+      "Boat Race Karatsu sits between Karatsu Bay and the famous Niji no Matsubara pine forest in Saga prefecture, on a freshwater pool course that's among the widest and largest in the country. The course runs roughly north-south, and the balance between land and sea breezes means early races tend to face a headwind while later races often get a tailwind.",
+      "Like Tokuyama, Karatsu is a year-round morning-racing venue (aside from special tournaments), so a visit pairs naturally with an afternoon exploring the coast.",
+    ],
+    access: [
+      'JR "Higashi-Karatsu" station → free shuttle bus, about 6 minutes (race days only)',
+    ],
+    facts: {
+      water: "Freshwater pool — one of the widest courses in Japan",
+      character:
+        "Headwind early, tailwind later in the day; no standout quirks otherwise",
+      nightRace: false,
+    },
+    tip: "The wind here tends to flip through the card in a predictable way — our AI factors race-order timing into every Karatsu prediction.",
+    nearbyAttractions: [
+      {
+        name: "Karatsu Castle",
+        description:
+          "A rebuilt 1608 castle with sweeping views of Karatsu Bay and the pine forest below.",
+      },
+      {
+        name: "Niji no Matsubara",
+        description:
+          "One of Japan's three great pine groves, a 4.5km stretch with over a million pine trees.",
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "A year-round morning-racing venue outside special tournaments. Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: null,
+  },
+  {
+    slug: "omura",
+    code: 24,
+    name: "Omura",
+    kanji: "大村",
+    region: "Nagasaki (Kyushu)",
+    regionGroup: "kyushu",
+    tagline:
+      "The birthplace of Kyotei itself, and one of the most inside-favored venues",
+    intro: [
+      "Boat Race Omura holds a unique place in the sport's history: it hosted Japan's first-ever motorboat race, on April 6, 1952, making it the literal birthplace of Kyotei. Wind screens have since been expanded to support night racing, and lane 1 wins here roughly 63% of the time — among the highest rates in the country.",
+      "The venue is close to Nagasaki Airport and racing runs about 180 days a year, with a food court (including Sasebo burgers) and play areas that make it an easy family stop.",
+    ],
+    access: [
+      '"Omura" station → about 2.4km, 29 minutes on foot — free shuttle bus recommended',
+      "Free buses and ferry connections from Nagasaki, Sasebo, Isahaya and Togitsu",
+    ],
+    facts: {
+      water: "Seawater, wind-screened for night racing",
+      character:
+        "One of the most inside-favored venues in Japan (lane 1 wins ~63%)",
+      nightRace: true,
+    },
+    tip: "With lane 1 winning this often, our AI weighs start-course strength especially heavily in every Omura prediction.",
+    nearbyAttractions: [
+      {
+        name: "Kotohira Sky Park",
+        description:
+          "A hilltop park (330m elevation) with sweeping views of Omura Bay and a roller slide.",
+      },
+      {
+        name: "Omura Park",
+        description:
+          'One of Japan\'s "100 Famous Cherry Blossom Spots," with about 2,000 cherry trees.',
+      },
+    ],
+    schedule: {
+      typicalRaceDays:
+        "Races about 180 days a year, more than most venues. Regular meets run several times a year, each lasting about 4-7 days.",
+      seasonalNotes:
+        "Occasionally hosts national-grade (G1/G2) tournaments — check the official schedule for exact dates.",
+    },
+    image: {
+      src: "/images/venues/omura.jpg",
+      alt: "Boat Race Omura stadium",
+      credit: "Photo by kajikawa, CC BY 3.0, via Wikimedia Commons",
+      creditUrl:
+        "https://commons.wikimedia.org/wiki/File:%E3%83%9C%E3%83%BC%E3%83%88%E3%83%AC%E3%83%BC%E3%82%B9%E5%A4%A7%E6%9D%91_-_panoramio.jpg",
+    },
   },
 ];
-
-export function getVenueGuideEn(slug) {
-  return VENUE_GUIDES_EN.find((v) => v.slug === slug) || null;
-}

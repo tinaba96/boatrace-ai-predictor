@@ -1,1 +1,12 @@
 export { default as OutcomeDistributionTable } from "./OutcomeDistributionTable";
+export { default as WinningTechniqueChart } from "./WinningTechniqueChart";
+export { default as MotorConditionChart } from "./MotorConditionChart";
+export { default as RacerFormChart } from "./RacerFormChart";
+export { default as StPredictabilityChart } from "./StPredictabilityChart";
+export { default as TopStartChart } from "./TopStartChart";
+export { default as LosingTechniqueChart } from "./LosingTechniqueChart";
+export { default as NigeOutcomeChart } from "./NigeOutcomeChart";
+export { default as ExhibitionTimeTopChart } from "./ExhibitionTimeTopChart";
+export { default as ExhibitionTimeTrendChart } from "./ExhibitionTimeTrendChart";
+export { default as RacerTechniqueProfileChart } from "./RacerTechniqueProfileChart";
+export { default as RacerFormRankingChart } from "./RacerFormRankingChart";
