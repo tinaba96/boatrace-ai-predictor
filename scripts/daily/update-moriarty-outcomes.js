@@ -224,13 +224,16 @@ async function upsertDailyPerformance(date, recs, resultsMap, venueMap) {
 
     if (venueCode != null) {
       if (!byVenue[venueCode])
-        byVenue[venueCode] = { investment: 0, payout: 0, count: 0 };
+        byVenue[venueCode] = { investment: 0, payout: 0, bets: 0, hits: 0 };
       byVenue[venueCode].investment += betAmount;
       byVenue[venueCode].payout += payout;
-      byVenue[venueCode].count++;
+      byVenue[venueCode].bets++;
+      if (isHit) byVenue[venueCode].hits++;
     }
   }
 
+  // フロント（moriartyService.getMoriartyVenueBreakdown）は bets/hits を読む。
+  // 旧実装は count のみ保存で bets/hits が常に0表示になるバグがあった
   const byVenueRoi = Object.fromEntries(
     Object.entries(byVenue).map(([code, v]) => [
       code,
@@ -238,7 +241,8 @@ async function upsertDailyPerformance(date, recs, resultsMap, venueMap) {
         investment: v.investment,
         payout: v.payout,
         roi: v.investment > 0 ? v.payout / v.investment : null,
-        count: v.count,
+        bets: v.bets,
+        hits: v.hits,
       },
     ]),
   );
