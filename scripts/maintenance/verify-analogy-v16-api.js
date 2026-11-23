@@ -12,39 +12,29 @@
  * 6. 夜の確認（verify-analogy-v16.js）の数え方と、similar/ を消す日付の選び方
  * 7. 展開シナリオの艇ごとの範囲（boatScopes、BOA-806）: 種類は1号艇の確定した範囲に追従、VA・VG・NA は null、ファイルの無い艇は null
  */
-import {
-  cacheControl,
-  isRaceId,
-  resolveStatus,
-} from "../../api/_lib/analogyV16.js";
+
 import fs from "fs";
+
 import zlib from "zlib";
-import { layerStatus } from "../../api/analogy/layer/[raceId].js";
-import { withoutSeriesScoreOnFinal } from "../../api/analogy/facts/[raceId].js";
-import { mergeExhibition } from "../../api/analogy/similar/[raceId].js";
-import { boatScopes } from "../../api/analogy/scenario/[raceId].js";
-import {
-  CLEANUP,
-  datesToClean,
-  datesToMeasure,
-  pruneLedger,
-  SIZE_PARALLEL,
-  SONAR_KINDS,
-  sizeOf,
-  summarizeDay,
-  usageLine,
-} from "./verify-analogy-v16.js";
-import {
-  SONAR_KEEP_DAYS,
-  sonarExpired,
-  sonarKeepFrom,
-} from "../../src/utils/analogyRetention.js";
+
+
+
+
+
+
 import {
   runAnalogyV16Exhibition,
   exhibitionNeighbors,
   selectExhibitionTargets,
   todayExhibition,
 } from "../../scripts/lib/analogyV16Exhibition.js";
+import { runAnalogyV16ApiScenes1 } from "./verifyData/analogy-v16-api-scenes-1.js";
+import { runAnalogyV16ApiScenes2 } from "./verifyData/analogy-v16-api-scenes-2.js";
+import {
+  runAnalogyV16ApiScenes3,
+  runAnalogyV16ApiScenes4,
+  runAnalogyV16ApiScenes5,
+} from "./verifyData/analogy-v16-api-scenes-3.js";
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -242,500 +232,11 @@ check(
 );
 check("出走表の時点の項目は候補ファイルのまま", nb[0].items.venue, 0);
 check("展示で決まる項目は判定し直す（晴と雨は違う）", nb[0].items.weather, 0);
-check("展示で決まる項目（曇りと晴は近い）", nb[1].items.weather, 1);
-check("結果を付ける", nb[0].finish, [4, 1, 5]);
-check("表示用の値は無ければ付けない", "display" in nb[0], false);
-const nbd = exhibitionNeighbors(
-  file,
-  { neighbors: [{ race_id: "y", d2: 0.25 }] },
-  { race: { wind_speed: 1 }, exh_time: [6.8, 6.8, 6.8, 6.8, 6.8, 6.8] },
-  {
-    columns: {
-      nat: [
-        [1, 1, 1, 1, 1, 1],
-        [2, 2, 2, 2, 2, 2],
-      ],
-      rn: [3, 7],
-    },
-  },
-);
-check("表示用の値は候補の位置で付ける", nbd[0].display, {
-  nat: [2, 2, 2, 2, 2, 2],
-  rn: 7,
-});
-check(
-  "今日の展示に風の成分と展示タイムの差",
-  Object.keys(te).filter((k) =>
-    ["weather_code", "wind_x", "wind_y", "exh_time_diff"].includes(k),
-  ),
-  ["exh_time_diff", "weather_code", "wind_x", "wind_y"],
-);
-// 展示後の類似レースは、層の情報を出走表の段のファイルから合わせる
-check(
-  "展示後の類似レースに層の情報を合わせる",
-  mergeExhibition(
-    {
-      conditions: { round: "yusho" },
-      n_layer: 15,
-      pool_rate: { venue: 0.04, weather: 0 },
-      neighbors: [1],
-    },
-    { neighbors: [2], exact: true },
-  ),
-  {
-    conditions: { round: "yusho" },
-    n_layer: 15,
-    pool_rate: { venue: 0.04, weather: 0 },
-    neighbors: [2],
-    pool_rate_exhibition: false,
-    exact: true,
-  },
-);
-// 展示で決まる項目の「全レースで同じ割合」は、展示後の段が今日の展示の値で数え直した値にする
-check(
-  "展示後の pool_rate は展示後の段の値で上書きする",
-  mergeExhibition(
-    { pool_rate: { venue: 0.04, weather: 0, wind_bin: 0 }, neighbors: [1] },
-    {
-      neighbors: [2],
-      exact: true,
-      pool_rate: { weather: 0.61, wind_bin: 0.497 },
-    },
-  ),
-  {
-    pool_rate: { venue: 0.04, weather: 0.61, wind_bin: 0.497 },
-    neighbors: [2],
-    pool_rate_exhibition: true,
-    exact: true,
-  },
-);
-check(
-  "展示後のファイルが無ければ null",
-  mergeExhibition({ n_layer: 1 }, null),
-  null,
-);
 
-// ---- 4. 状態とキャッシュ ----------------------------------------------------
-const st = (o, passed) =>
-  resolveStatus(
-    { racecard: null, exhibition: null, sixExhibition: false, ...o },
-    passed,
-  );
-const rc = { status: "ok" };
-check("racecard が無い", st({}, false), "not_saved");
-check("展示前", st({ racecard: rc }, false), "before_exhibition");
-check(
-  "展示タイムがそろい並べ直し待ち",
-  st({ racecard: rc, sixExhibition: true }, false),
-  "exhibition_reflecting",
-);
-check(
-  "展示後の段あり",
-  st({ racecard: rc, exhibition: { status: "ok" } }, false),
-  "exhibition_ready",
-);
-check(
-  "締切後も展示後の段が無い",
-  st({ racecard: rc, sixExhibition: true }, true),
-  "exhibition_missing",
-);
-check(
-  "欠場",
-  st({ racecard: rc, exhibition: { status: "absent" } }, false),
-  "absent",
-);
-check(
-  "layer: 層が0件",
-  layerStatus({ racecard: { status: "empty_layer" }, exhibition: null }),
-  "empty_layer",
-);
-check(
-  "layer: 欠場は racecard があっても absent",
-  layerStatus({ racecard: rc, exhibition: { status: "absent" } }),
-  "absent",
-);
-// 公開前点検 F01: 展示後の段を ok で書いた後や、締切後（展示後の段が書かない）に欠場が分かったレースも absent
-// （spec「時点」Q5。本番の 2026-10-06-02-05 は欠場があるのに exhibition_missing を返していた）
-check(
-  "展示後の段 ok の後に欠場が分かった",
-  st({ racecard: rc, exhibition: { status: "ok" }, absent: true }, false),
-  "absent",
-);
-check(
-  "締切後・展示後の段なしで欠場が分かった",
-  st({ racecard: rc, absent: true }, true),
-  "absent",
-);
-check(
-  "layer: 展示後の段 ok の後に欠場が分かったら absent",
-  layerStatus({ racecard: rc, exhibition: { status: "ok" }, absent: true }),
-  "absent",
-);
-check(
-  "キャッシュ: not_saved はしない",
-  cacheControl("not_saved", false),
-  "no-store",
-);
-check(
-  "キャッシュ: 締切前は60秒",
-  cacheControl("before_exhibition", false).includes("s-maxage=60"),
-  true,
-);
-check(
-  "キャッシュ: 締切後は1日",
-  cacheControl("exhibition_ready", true).includes("s-maxage=86400"),
-  true,
-);
-check(
-  "race_id の形",
-  [
-    isRaceId("2026-10-05-20-12"),
-    isRaceId("2026-10-05-20-12x"),
-    isRaceId("../x"),
-  ],
-  [true, false, false],
-);
-
-// ---- 5. NCR が優勝戦のときは今節の平均着順点を外す ----------------------------
-const facts = { n: 1, by: { 1: { series_score: {}, nat_win: {} } } };
-check(
-  "NCR 優勝戦",
-  Object.keys(withoutSeriesScoreOnFinal("NCR:6-0-0-0:1A1:yusho", facts).by[1]),
-  ["nat_win"],
-);
-check(
-  "NCR 準優勝戦はそのまま",
-  Object.keys(withoutSeriesScoreOnFinal("NCR:6-0-0-0:1A1:junyu", facts).by[1]),
-  ["series_score", "nat_win"],
-);
-check(
-  "VC はそのまま",
-  Object.keys(withoutSeriesScoreOnFinal("VC:20:6-0-0-0:1A1", facts).by[1]),
-  ["series_score", "nat_win"],
-);
-
-// ---- 6. 夜の確認の数え方 ----------------------------------------------------
-{
-  const r = (id, start, cancel = null) => ({
-    race_id: id,
-    race_date: "2026-10-05",
-    start_time: start,
-    cancellation_status: cancel,
-  });
-  const at = (hhmm) => `2026-10-05T${hhmm}:00+09:00`;
-  const races = [
-    r("p", "10:00:00"),
-    r("q", "11:00:00"),
-    r("x", "12:00:00", "confirmed"),
-    r("y", "13:00:00"),
-  ];
-  const snaps = [
-    { race_id: "p", stage: "racecard", computed_at: at("07:20"), exact: null },
-    {
-      race_id: "p",
-      stage: "exhibition",
-      computed_at: at("09:55"),
-      exact: true,
-    },
-    { race_id: "q", stage: "racecard", computed_at: at("11:05"), exact: null }, // 締切後
-  ];
-  const six = (id) =>
-    [1, 2, 3, 4, 5, 6].map((b) => ({
-      race_id: id,
-      boat_number: b,
-      exhibition_time: 6.8,
-      is_absent: false,
-    }));
-  const s = summarizeDay(
-    races,
-    snaps,
-    [...six("p"), ...six("q")],
-    [{ race_id: "y", is_absent: true }],
-  );
-  check("夜の確認: 中止・欠場を分母から除く", s.eligible, 2);
-  check("夜の確認: 出走表の段", [s.racecard, s.racecardOnTime], [2, 1]);
-  check(
-    "夜の確認: 展示後の段",
-    [s.exhEligible, s.exhibition, s.exhibitionOnTime, s.exact],
-    [2, 1, 1, 1],
-  );
-  check(
-    "夜の確認: 欠け",
-    [s.missingRacecard, s.missingExhibition],
-    [[], ["q"]],
-  );
-  check(
-    "similar/ を消す日付（7日より前）",
-    datesToClean(["2026-09-27", "2026-09-28", "2026-10-04", "x"], "2026-10-05"),
-    ["2026-09-27"],
-  );
-  const displayKeep = CLEANUP.find(([k]) => k === "similar-display")[1];
-  check(
-    "similar-display/ を消す日付（前日より前）",
-    datesToClean(
-      ["2026-10-03", "2026-10-04", "2026-10-05"],
-      "2026-10-05",
-      displayKeep,
-    ),
-    ["2026-10-03"],
-  );
-  check(
-    "pool/（母集団の展示の値）も前日より前を消す",
-    CLEANUP.find(([k]) => k === "pool")?.[1],
-    1,
-  );
-  check(
-    "龍神ソナーの表示用と STEP4 の元のレースの一覧は2年（730日）より前を消す（BOA-807）",
-    [
-      SONAR_KEEP_DAYS,
-      SONAR_KINDS.map((k) => CLEANUP.find(([x]) => x === k)?.[1]),
-    ],
-    [730, SONAR_KINDS.map(() => 730)],
-  );
-  check(
-    "朝のバッチ・API が書く13種類は全部、夜の掃除の対象にある（BOA-807）",
-    [
-      "facts",
-      "layer",
-      "pool",
-      "scenario",
-      "scenario-boat",
-      "scenario-boat-races",
-      "scenario-races",
-      "similar",
-      "similar-display",
-      "similar-exhibition",
-      "similar-racecard",
-      "today",
-      "today-exhibition",
-    ].filter((k) => !CLEANUP.some(([x]) => x === k)),
-    [],
-  );
-  check(
-    "消すのは残す日数の境目から30日前まで（消し終えた古い日を毎晩見直さない）",
-    datesToClean(
-      ["2024-08-13", "2024-09-12", "2024-09-13", "2024-10-12", "2024-10-13"],
-      "2026-10-13",
-      730,
-    ),
-    ["2024-09-13", "2024-10-12"],
-  );
-  check(
-    "容量の控え: 控えに無い日と新しい9日だけ数え直す",
-    datesToMeasure(
-      { "2026-09-01": 1, "2026-10-03": 1, "2026-10-04": 1 },
-      ["2026-09-01", "2026-09-02", "2026-10-03", "2026-10-04", "_usage"],
-      "2026-10-13",
-    ),
-    ["2026-09-02", "2026-10-04"],
-  );
-  check(
-    "容量の控え: もう無い日を外す",
-    pruneLedger({ "2024-01-01": 5, "2026-10-12": 3 }, ["2026-10-12"]),
-    { "2026-10-12": 3 },
-  );
-  check(
-    "容量の1行: 大きい順に並べ、80GB 以下は警告しない",
-    usageLine({ a: 1e9, "analogy-v16": 2.5e9 }),
-    {
-      line: "💾 Storage 合計 3.50GB（analogy-v16 2.50GB・a 1.00GB）",
-      warn: null,
-    },
-  );
-  check(
-    "容量の1行: 80GB を超えたら警告する",
-    usageLine({ "analogy-v16": 80.01e9 }).warn !== null,
-    true,
-  );
-  const keepFrom = sonarKeepFrom(Date.parse("2026-10-13T00:00:00+09:00"));
-  check(
-    "画面の「もう無い」は夜の掃除と同じ境目（JST の今日から730日前より前）",
-    [
-      keepFrom,
-      sonarExpired("2024-10-12-01-01", keepFrom),
-      sonarExpired("2024-10-13-01-01", keepFrom),
-    ],
-    ["2024-10-13", true, false],
-  );
-}
-
-// ---- 6b. 容量を数えるとき、同時に潜るフォルダは SIZE_PARALLEL 個まで（429 を避ける）。size が無ければ例外（BOA-807）
-{
-  process.env.SUPABASE_URL = "https://example.invalid";
-  process.env.SUPABASE_SERVICE_KEY = "test";
-  const realFetch = globalThis.fetch;
-  let inFlight = 0;
-  let maxInFlight = 0;
-  let noSize = false;
-  globalThis.fetch = async (_url, init) => {
-    inFlight += 1;
-    maxInFlight = Math.max(maxInFlight, inFlight);
-    await new Promise((r) => setTimeout(r, 5));
-    inFlight -= 1;
-    const { prefix } = JSON.parse(init.body);
-    // 根は30個のフォルダ、各フォルダは 10 バイトのファイル1つ
-    const body =
-      prefix === ""
-        ? Array.from({ length: 30 }, (_, i) => ({ id: null, name: `d${i}` }))
-        : [
-            {
-              id: "f",
-              name: "a.json.gz",
-              metadata: noSize ? {} : { size: 10 },
-            },
-          ];
-    return new Response(JSON.stringify(body), { status: 200 });
-  };
-  try {
-    check(
-      "容量: 30フォルダを数え、同時に潜るのは SIZE_PARALLEL 個まで",
-      [await sizeOf("", "x"), maxInFlight <= SIZE_PARALLEL],
-      [300, true],
-    );
-    noSize = true;
-    let err = null;
-    await sizeOf("", "x").catch((e) => (err = e.message));
-    check(
-      "容量: metadata.size が無いファイルは0と数えず例外にする",
-      /metadata\.size/.test(err ?? ""),
-      true,
-    );
-  } finally {
-    globalThis.fetch = realFetch;
-  }
-}
-
-// ---- 7. 展示後の段は、関数の上限の手前（shouldStop）で止まる -----------------------------
-{
-  process.env.SUPABASE_URL = "https://example.invalid";
-  process.env.SUPABASE_SERVICE_KEY = "test";
-  const calls = [];
-  const realFetch = globalThis.fetch;
-  globalThis.fetch = async (url) => {
-    calls.push(String(url));
-    const u = String(url);
-    const body = u.includes("analogy_v16_snapshots")
-      ? [
-          {
-            race_id: "2026-10-05-20-01",
-            stage: "racecard",
-            status: "ok",
-            run_id: "r",
-            n_layer: 5,
-            pool_cutoff: "2026-10-04",
-          },
-        ]
-      : u.includes("/races?")
-        ? [
-            {
-              race_id: "2026-10-05-20-01",
-              race_date: "2026-10-05",
-              start_time: "23:00:00",
-            },
-          ]
-        : u.includes("exhibition_data")
-          ? [1, 2, 3, 4, 5, 6].map((b) => ({
-              race_id: "2026-10-05-20-01",
-              boat_number: b,
-              exhibition_time: 6.8,
-              is_absent: false,
-            }))
-          : [];
-    return new Response(JSON.stringify(body), { status: 200 });
-  };
-  try {
-    const r = await runAnalogyV16Exhibition({
-      mode: "live",
-      now: () => new Date("2026-10-05T10:00:00+09:00"),
-      shouldStop: () => true,
-    });
-    check(
-      "展示後の段: shouldStop なら1レースも処理せず止まる",
-      [r.report.targets, r.report.written, r.report.stopped],
-      [1, 0, true],
-    );
-    check(
-      "展示後の段: 止まったら Storage を読まない",
-      calls.some((c) => c.includes("/storage/")),
-      false,
-    );
-  } finally {
-    globalThis.fetch = realFetch;
-  }
-}
-
-// ---- 8. 公開前点検 F02: 締切は snapshot を書く直前に確かめ直す ---------------------------
-// 欠場の経路（Storage を読まずに行が決まる）で動かす。締切の確認は、どの経路でも行を決めた後・書く直前の1か所
-{
-  process.env.SUPABASE_URL = "https://example.invalid";
-  process.env.SUPABASE_SERVICE_KEY = "test";
-  const RACES = [
-    ["2026-10-05-20-01", "10:00:00"],
-    ["2026-10-05-20-02", "10:30:00"],
-  ];
-  const runAt = async (times) => {
-    const posts = [];
-    const realFetch = globalThis.fetch;
-    globalThis.fetch = async (url, init) => {
-      const u = String(url);
-      if (init?.method === "POST") posts.push(JSON.parse(init.body)[0]);
-      const body = u.includes("analogy_v16_snapshots")
-        ? RACES.map(([race_id]) => ({
-            race_id,
-            stage: "racecard",
-            status: "ok",
-            run_id: "r",
-            n_layer: 5,
-            pool_cutoff: "2026-10-04",
-          }))
-        : u.includes("/races?")
-          ? RACES.map(([race_id, start_time]) => ({
-              race_id,
-              race_date: "2026-10-05",
-              start_time,
-            }))
-          : u.includes("exhibition_data")
-            ? RACES.flatMap(([race_id]) =>
-                [1, 2, 3, 4, 5, 6].map((b) => ({
-                  race_id,
-                  boat_number: b,
-                  exhibition_time: 6.8,
-                  is_absent: b === 6,
-                })),
-              )
-            : [];
-      return new Response(JSON.stringify(body), { status: 200 });
-    };
-    const queue = times.map((t) => new Date(`2026-10-05T${t}+09:00`));
-    try {
-      const r = await runAnalogyV16Exhibition({
-        mode: "live",
-        now: () => queue.shift(),
-      });
-      return { report: r.report, posts };
-    } finally {
-      globalThis.fetch = realFetch;
-    }
-  };
-  // 時計: 起動時、1件目を書く直前、2件目を書く直前
-  const a = await runAt(["09:59:30", "10:00:30", "10:00:40"]);
-  check(
-    "展示後の段: 処理中に締切を越えたレースは書かず、後ろの締切前のレースは書く",
-    [a.report.written, a.report.late, a.posts.map((p) => p.race_id)],
-    [1, ["2026-10-05-20-01"], ["2026-10-05-20-02"]],
-  );
-  check(
-    "展示後の段: computed_at は書く直前の時刻",
-    a.posts[0]?.computed_at,
-    "2026-10-05T01:00:40.000Z",
-  );
-  const b = await runAt(["09:59:30", "09:59:50", "10:30:00"]);
-  check(
-    "展示後の段: 締切と同時刻は書かない（締切前だけ書く）",
-    [b.report.written, b.report.late, b.posts.map((p) => p.race_id)],
-    [1, ["2026-10-05-20-02"], ["2026-10-05-20-01"]],
-  );
-}
+// ---- 後半の場面（verifyData/analogy-v16-api-scenes-1.js・analogy-v16-api-scenes-2.js・analogy-v16-api-scenes-3.js） ----
+runAnalogyV16ApiScenes1({ check, te, file, nb });
+await runAnalogyV16ApiScenes2({ check });
+await runAnalogyV16ApiScenes3({ check });
 
 // ---- 9. F02 の通常経路: 並べ直して Storage に書いた後でも、締切を越えていれば snapshot を書かない --------------
 // （候補ファイルは並べ直しの固定データ testdata/v16-rerank.json。Storage の読み書きと DB を作り物で返す）
@@ -836,67 +337,99 @@ check(
   );
 }
 
-// ---- 7. 展開シナリオの艇ごとの範囲（BOA-806） ------------------------------------
+// ---- 後半の場面（verifyData/analogy-v16-api-scenes-3.js） ----
+await runAnalogyV16ApiScenes4({ check });
+
+// ---- BOA-788: 古い気象は待ち、取得障害中も締切4分前からは作る（実通信なし） ----
 {
-  const keysOf = (b, cls) => ({
-    VC: `VC:20:1-3-2-0:${b}${cls}`,
-    NC: `NC:1-3-2-0:${b}${cls}`,
-    VA: "VA:20",
-    NA: "NA",
-  });
-  const allKeys = {
-    1: keysOf(1, "A1"),
-    2: keysOf(2, "A2"),
-    3: keysOf(3, "A2"),
-    4: keysOf(4, "B1"),
-    5: keysOf(5, "A2"),
-    6: keysOf(6, "B1"),
+  process.env.SUPABASE_URL = "https://example.invalid";
+  process.env.SUPABASE_SERVICE_KEY = "test";
+  const RACE = "2026-10-05-20-06";
+  const fixture = JSON.parse(fs.readFileSync(
+    new URL("../ml/analogy/testdata/v16-rerank.json", import.meta.url), "utf8",
+  ));
+  const file = { ...fixture.candidates, items_racecard: {},
+    results: fixture.candidates.candidates.map(() => ({})) };
+  const gz = (obj) => zlib.gzipSync(Buffer.from(JSON.stringify(obj)));
+  const runWeather = async (observed, time, options = {}) => {
+    const posts = [], writes = [], reads = [];
+    const raceId = options.first ? "2026-10-05-20-01" : RACE;
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = async (url, init) => {
+      const u = new URL(url);
+      if (u.hostname !== "example.invalid") throw new Error("実通信は禁止");
+      const post = init?.method === "POST";
+      if (u.pathname.includes("/storage/")) {
+        reads.push(u.pathname);
+        if (post) {
+          writes.push(JSON.parse(zlib.gunzipSync(Buffer.from(init.body))));
+          return new Response("{}", { status: 200 });
+        }
+        if (u.pathname.includes("/similar/")) return new Response(gz(file));
+        if (u.pathname.includes("/today/")) return new Response(gz({ wind_offset_deg: 0 }));
+        return new Response("not found", { status: 404 });
+      }
+      if (post) {
+        posts.push(...JSON.parse(init.body));
+        return new Response("", { status: 201 });
+      }
+      let body;
+      if (u.pathname.endsWith("/analogy_v16_snapshots")) body = [{
+        race_id: raceId, stage: "racecard", status: options.status ?? "ok",
+        run_id: "r", n_layer: file.n_layer, pool_cutoff: "2026-10-04",
+      }];
+      else if (u.pathname.endsWith("/races")) body = [
+        ...(!options.first ? [{ race_id: "2026-10-05-20-05",
+          race_date: "2026-10-05", start_time: "13:00:00" }] : []),
+        { race_id: raceId, race_date: "2026-10-05", start_time: "13:30:00" },
+        // 別会場の直前のレースを基準にしない。
+        { race_id: "2026-10-05-19-05", race_date: "2026-10-05", start_time: "13:20:00" },
+      ];
+      else if (u.pathname.endsWith("/exhibition_data")) body = [1, 2, 3, 4, 5, 6].map((b) => ({
+        race_id: raceId, boat_number: b, exhibition_time: 6.7 + b / 100,
+        exhibition_course: b, start_timing: 0.15, start_flag: null,
+        is_absent: options.absent === true && b === 6,
+      }));
+      else if (u.pathname.endsWith("/race_conditions")) {
+        check("観測時刻を気象と一緒に読む", u.searchParams.get("select").includes("weather_observed_at"), true);
+        body = [{ weather_observed_at: observed, wind_speed: 3, wave_height: 2 }];
+      } else if (u.pathname.endsWith("/race_entries")) body = [];
+      else throw new Error(`想定外のREST: ${u.pathname}`);
+      return new Response(JSON.stringify(body));
+    };
+    try {
+      const result = await runAnalogyV16Exhibition({ mode: "live",
+        now: () => new Date(`2026-10-05T${time}+09:00`) });
+      return { ...result, posts, writes, reads };
+    } finally { globalThis.fetch = realFetch; }
   };
-  const files = new Map(
-    [2, 3, 4, 5, 6].flatMap((b) =>
-      ["VC", "NC"].map((k) => [
-        allKeys[b][k],
-        { boat: b, kind: k, attack: { kado: k } },
-      ]),
-    ),
-  );
-  files.delete(allKeys[6].VC); // 6号艇の VC だけ作れなかった
-  const read = async (key) => files.get(key) ?? null;
-  const vc = await boatScopes(read, allKeys, "VC");
-  check(
-    "艇ごとの範囲: VC なら各艇の VC と、比べる相手は NC",
-    [2, 3, 4, 5].map((b) => [
-      vc[b].scope,
-      vc[b].data.kind,
-      vc[b].reference.scope,
-      vc[b].reference.attack,
-    ]),
-    [2, 3, 4, 5].map((b) => [
-      allKeys[b].VC,
-      "VC",
-      allKeys[b].NC,
-      { kado: "NC" },
-    ]),
-  );
-  check("艇ごとの範囲: ファイルの無い艇は null", vc["6"], null);
-  const nc = await boatScopes(read, allKeys, "NC");
-  check(
-    "艇ごとの範囲: 1号艇が NC（VC から替えた）なら全艇 NC、比べる相手は無し",
-    [2, 3, 4, 5, 6].map((b) => [nc[b].scope, nc[b].reference]),
-    [2, 3, 4, 5, 6].map((b) => [allKeys[b].NC, null]),
-  );
-  for (const kind of ["VA", "VG", "NA"])
-    check(
-      `艇ごとの範囲: ${kind} は級によらないので null`,
-      await boatScopes(read, allKeys, kind),
-      null,
-    );
-  check(
-    "艇ごとの範囲: scope_keys に艇が無くても落ちない",
-    await boatScopes(read, { 1: allKeys[1] }, "VC"),
-    { 2: null, 3: null, 4: null, 5: null, 6: null },
-  );
+  const old = "2026-10-05T12:40:00+09:00";
+  const waiting = await runWeather(old, "13:10:00");
+  check("朝の気象ではStorageもsnapshotも書かない",
+    [waiting.posts.length, waiting.writes.length, waiting.reads.length, waiting.report.failed], [0, 0, 0, []]);
+  check("待機理由をreportに残す", waiting.report.waiting_weather?.map((r) => [r.race_id, r.reason]),
+    [[RACE, "before_previous_race"]]);
+  for (const observed of ["2026-10-05T13:05:00+09:00", "2026-10-05T04:00:00Z"] ) {
+    const fresh = await runWeather(observed, "13:10:00");
+    check("前のレース以降の観測（境界・UTC含む）は作る", fresh.posts.map((p) => p.status), ["ok"]);
+    check("確認した気象で作る", fresh.writes.find((w) => w.wind_speed !== undefined)?.wind_speed, 3);
+  }
+  check("4分前の直前は待つ", (await runWeather(old, "13:25:59")).posts.length, 0);
+  for (const time of ["13:26:00", "13:28:00", "13:29:59"]) {
+    const fallback = await runWeather(old, time);
+    check("403等で観測が更新されなくても締切4分前以降は作る", fallback.posts.map((p) => p.status), ["ok"]);
+  }
+  check("締切以降には作らない", (await runWeather(old, "13:30:00")).posts.length, 0);
+  for (const options of [{ first: true }, { absent: true }]) {
+    check("1R・欠場は待機しない", (await runWeather(old, "13:10:00", options)).posts.length, 1);
+  }
+  check("層0件も古い気象なら待つ", (await runWeather(old, "13:10:00", { status: "empty_layer" })).posts.length, 0);
+  check("層0件も4分前以降は作る", (await runWeather(old, "13:26:00", { status: "empty_layer" })).posts.map((p) => p.status), ["empty_layer"]);
+  check("観測時刻なしは従来どおり作る", (await runWeather(null, "13:10:00")).posts.length, 1);
 }
+
+// ---- 後半の場面（verifyData/analogy-v16-api-scenes-3.js） ----
+await runAnalogyV16ApiScenes5({ check });
 
 if (failures > 0) {
   console.error(`\n❌ ${failures} 件の不一致`);

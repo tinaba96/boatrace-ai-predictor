@@ -9,7 +9,7 @@
 
 ## CLS
 - 読み込み中に高さの違う画面へ丸ごと差し替えない。本物と同じ CSS クラスのスケルトン（VenueGridSkeleton）で場所を取る（2026-09-01、memory cls_mobile_fix_2026_09_01、PR #467）
-- 画像は実寸の width/height で場所を取る（src/data/venueImageDimensions.js・blogImageDimensions.js）。一律の aspect-ratio: 16/9 はブログ画像121枚中57枚で文字が切れて撤回した。blogImageDimensions.js は画像を足すたびに手で更新し、漏れの機械検知は無い（2026-09-09、memory cls_mobile_followup_2026_09_09、PR #614）
+- 画像は実寸の width/height で場所を取る（会場は src/data/venueImageDimensions.js、ブログはビルドの時に作る表）。一律の aspect-ratio: 16/9 はブログ画像121枚中57枚で文字が切れて撤回した。ブログ画像の表は 2026-10-20 からビルドの時に画像のヘッダーから作る（vite.config.js の仮想モジュール、scripts/lib/blogImageDimensions.js、BOA-908）ので、手で直さない（2026-09-09、memory cls_mobile_followup_2026_09_09、PR #614）
 - preload="none" の video は height か aspect-ratio を指定する（poster の読み込みで高さが変わる）。CLS を調べるときは先に git log で過去の対策が撤回されていないか見る（2026-09-09、memory cls_mobile_followup_2026_09_09、PR #614）
 
 ## 機能を変えたときに古くなるもの
@@ -19,3 +19,44 @@
 ## 会場ガイド
 - Google Maps の埋め込み（API キー不要の形）は1地点だけで、複数地点・経路は X-Frame-Options で塞がれる。会場と観光地の位置関係は Leaflet＋OpenStreetMap（src/components/VenueMap.jsx）で出す。動画は BOATRACE 公式チャンネルの uploads の再生リストを埋め込む（2026-08-10、memory feedback_venue_guide_quality_upgrade）
 - 会場ガイドのデータは e2e/venue-guide-data.spec.js が検査する（観光地の件数・座標の範囲・image 必須等）。データの項目を足したらこの検査にも足す（2026-08-10、memory feedback_venue_guide_quality_upgrade、PR #199）
+
+## 撮影・描画の落とし穴
+- 要素単位の撮影は、長い要素なら対象行を表示範囲へ移してから矩形を決める。bounding box が画面内でもスクロール祖先に隠れると撮影されない。固定ヘッダーが要素内へ重なることもあるので、撮影画像の上下と完成フレームを目で確認する（2026-10-13、2026-10-13-venue-20261013-09-fukuoka.md・2026-10-16-full-picture-generator.md）
+- スマホで display: contents になる図の親は getBoundingClientRect が0になり、親を基点にした撮影は失敗する。実寸を持つ子要素を基点にする（2026-10-15、2026-10-15-scene4-trial.md）
+- headless 撮影では networkidle の後も会場別データ・集計行・記事本文の描画が終わっていないことがある。固有の行・見出しの visible を待ち、表示した会場・率・件数を保存データと照合する。通信の停止だけを描画完了と扱わない（2026-10-13、2026-10-13-venue-20261013-06-shimonoseki.md・2026-10-13-venue-20261013-13-ashiya.md）
+- 操作で折りたたまれる部品の撮影は、クリック前の座標を使い回さず、操作後の安定した節を再測定する。操作対象のラベルはクリック前に保存する（クリック後に同じ locator の文字を取ると停止する）（2026-10-15、2026-10-15-scene4-trial.md・2026-10-15-scene-similar.md）
+- 終了したレースのソナーは初期状態が展示後になることがある。展示前の試作では時点ボタンを明示的に選び、展示タイム軸の有無で確認する（2026-10-14、2026-10-14-scene2-trial.md）
+- 撮影依頼の部品名だけで同じ画面と決めない。思考アシストの会場シートとリンク先の会場ページの「過去90日」は、内容と集めた期間が違う。公開画面の期間・図・URL を確認する（2026-10-14、2026-10-14-scene1-trial.md）
+- リポジトリのコードと現行の公開画面は一致しないことがある。機能の存在は公開画面で、式・定義はコードで別々に確認し、台帳にも分けて残す（2026-10-14、2026-10-14-ryujin-feature-catalog.md）
+- sticky 要素を撮影用に relative へ変えるときは top 等の位置指定も点検する。position だけ変えて残った top が隣のボタンを覆った（2026-10-16、2026-10-16-generator-structure-progress.md）
+- 汎用のセレクタ（.line span 等）の変更は、局所の回帰検査に加えて全編でも確認する。語単位の span まで block にして締めが縦一列に崩れた（2026-10-16、2026-10-16-full-picture-generator.md）
+- 図の艇切替とカードの対象が共通なら、全艇比較後の特定艇の判定には対象艇の再確認が要る。「材料なし」の否定にも、正しい艇の走査証拠を残す（2026-10-16、2026-10-16-generator-structure-progress.md）
+- 保存 DOM の世代により Range 記録の有無が違う。native crop の処理は3例で試し、古い記録を黙って別時点の画像へ差し替えない（2026-10-17、2026-10-17-split-r13-r17.md）
+- 公開画面の上部を画像にするとき、viewport と画像実寸の指定は、当日データの生成済み・版一致・読みやすさの証拠にならない。元行の生成時刻・表示ロード・撮影時刻・承認媒体 hash を分けて固定する（2026-10-14、2026-10-14-plan-review-20261014-10.md）
+- 公開表示の marker は、状態で消える要素かを実 DOM の分岐で確認する。展示前の stage-chip を共通必須にすると、展示後の正常な画面を不合格にする（2026-10-13、2026-10-13-plan-review-20261013-33.md）
+- 指標の向き・文言を直す修正は、静的コピーだけでなく選定式・理由文・保存済みの日次の理由・スナップショットまで点検する（2026-10-15、2026-10-15-morning-info-discussion.md）
+- 保存済みの理由をそのまま表示する画面では、共通コピーの配備と日次行の再生成を別々に確認する。計算関数とテンプレートを直しても既存行の説明は置き換わらない（2026-10-15、2026-10-15-plan-review-20261015-10.md）
+- 非同期に届くデータからアンカーへスクロールするときは、データの有無だけでなく対象 DOM の描画条件も待ち、要素が実在して移動した後にだけ済み扱いにする（2026-10-15、2026-10-15-plan-review-20261015-07.md）
+- 子の送信完了をawaitして親パネルを閉じるときは、待機中の取消・再入場による世代変更を照合する。古い成功応答で新しい未送信本文を閉じない。送信ボタンのdisabledだけでは再マウント後の待機状態は保持できない。（2026-10-19、2026-10-19-review-20261019-06.md）
+- 画面の既定選択を投稿の型・時刻で別の観測窓へ読み替えるときは、比較関数に加えAPIの取得窓集合が全代替先を含むか確認する。戻り値だけのassertでは保存済み値の取得漏れを検出できない。（2026-10-19、2026-10-19-review-20261019-08.md）
+- 切り替えのあるブログ図は全viewにdescriptionを付け、最上位のdescriptionは既定viewと同じ文にする。札と棒だけが替わり、答えだけ既定の会場のまま残る誤読を防ぐ。数値は契約で許される図中の値と照合する（2026-10-20、docs/design/blog-charts/contract.md、src/utils/blogChartContract.js）
+- AnalogyFinderSection.target は艇番でなく着順条件（1〜3）。ソナー図の主役艇は ConditionFactsTab.boat → FactRadar.main で決まる。撮影URLのモック検査だけでは両者の混同を検出できない（2026-10-24、BOA-981、ConditionFactsTab.jsx・AnalogyControls.jsx・FactRadar.jsx）。
+- 年齢は生年月日だけでなく比較する「今日」もJSTの暦日にそろえる。端末の年月日で比較すると日本の誕生日直後にずれるため、getTodayJST を使いUTC・米国でも境界を検証する（2026-10-25、BOA-1099、racerFilterUtils.js・verify-formatters-timezone.js）。
+- 節の途中日URLは meetDays と節の日で絞った races が空になりうる。対象外案内には絞り込み前の指定日の race_grade を渡し、翌日以降の別の節の値を流用しない（2026-10-26、BOA-780、supabaseDataService.js・verify-meet-page-model.js）。
+- 途中帰郷で現在の得点率を「—」にする場合は、少走数の警告・減点印も同条件で隠す。比較表と早見の現在値・1〜6着の全セルへ条件が届くか確認する（2026-10-26、BOA-872回答案A、RaceMeetTab.jsx・meet-tab-prelim-official-penalty.spec.js。ブラウザ受入は未確認）。
+- 思考アシストの roughFew は、NCR不足でNCへ広げる説明と、イン崩れ注意度の lowSample の両方で使う。一方だけの説明修正で共有文言を一括置換しない（2026-10-26、BOA-893、RoughCard.jsx:52-71,134）。
+- Vercelで撮る画像のページは Noto Sans JP を明示し、手元も同じttfで確認する。Macの既定字体では数字幅と改行が変わるため、同じ画面幅だけでは本番の描画を再現できない（2026-10-27、visual-designer、launchChromium.js・PR #1984）。
+- オリジナル展示の出典項目は取得結果のkinds全体でなく、全艇欠測などを除いた後に実際に出した行の集合から作る（2026-10-26、BOA-772、verify-ai-copy-text.js の部分欠測ケース）。
+- basicInfoStats の isSmallSample は警告だけでなく、RaceBasicInfoTab の比較値抽出から除く条件にも使う。閾値の変更では警告文と比較表示の両方を確認する（2026-10-27、BOA-437、RaceBasicInfoTab.jsx）。
+- 表のJSXのchildrenを読み出してコピー文を作ると、要素の入れ子化でオブジェクトが混入する。純粋な文字列整形を表とコピーで共有し、描画構造を変えても文が保たれることを検証する（2026-10-27、BOA-772、verify-ai-copy-text.js）。
+- StrictModeのeffect再実行による要求重複は、完了応答のキャッシュだけでは防げない。対象を限定して処理中Promiseも共有し、古いeffectの応答無視とタイマーの後片付けを合わせて確認する（2026-10-27、BOA-798 v2、useAnalogyV16.js）。
+- Rechartsで等間隔の目盛りを保証したい図は YAxis のdomainだけでなくticksも明示する。展示タイム・勝率ではそれぞれ exhibitionTimeAxis・winRateAxis を使う（2026-10-29、BOA-1196、PR #2055）。
+- 節が終わったかは race_series.end_date がJSTの今日より前かで判定する。出走日の連続性や最終レースの時刻だけで推定すると、中止・順延でずれる（2026-10-29、BOA-1182、PR #2054）。
+- トップの会場カードの日目は get_today_races が返す seriesDay・isFinalDay を getVenueSeriesDayLabel へ渡して出す。日目表示のための追加取得は不要（2026-10-31、BOA-1199、157_rpc_in_caution.sql・PR #2074）。
+- ボット保存の完了判定は、同じ非表示DOMになる取得中・正常なデータなし・失敗を状態で区別する。表示対象なしにも完了目印を残し、networkidleやプロフィール完了だけで独立取得のモーター・履歴まで完了としない（2026-10-31、BOA-1183、RacerProfile.jsx・RacerPerformanceStats.jsx）。
+- 決まり手の色番号の順（差し→まくり）と公式表示順（まくり→差し）は別。RacerTechniqueProfileChart の表示順は色定数を並べ替えず、表示専用の sortTechniquesOfficial で指定する（2026-10-26、BOA-1028、src/utils/techniqueColors.js・verify-race-detail-color-tokens.js）。
+- ブログ本文の先頭h1を描画から除く場合は、FAQ抽出・進捗用の元contentを保持し、描画入力だけを加工する。目次のh2/h3の順序と先頭h1以外の描画一致も確認する（2026-11-02、BOA-919、src/utils/blogLeadingH1.js・scripts/maintenance/verify-blog-leading-h1.js）。
+- 思考アシストのオッズは開いたときだけでなく、次の取得窓の値がDBへ入る時刻にも読み直す。開いたまま締切を迎える場合を確認し、初回取得の成功だけで鮮度を保証しない（2026-11-02、BOA-1180・PR #2128、src/utils/assistModel.jsのnextOddsRefreshDelay）。
+- Recharts 3.6.0のLegendは既定でvalueの文字順に並べるため、Barの配列順を凡例にも使うときは `itemSorter={null}` を指定する（2026-11-03、BOA-1070、Legend.js・legendSelectors.jsの指定版確認、src/components/analysis/WinningTechniqueChart.jsx・LosingTechniqueChart.jsx）。
+- 会場の日目は seriesDay=1 と isFinalDay=true が重なる場合も「初日」を優先する。「最終日の印が1件でもあれば最終日」という説明だけで再実装せず、getSeriesDayLabelを共用する。ボット向けトップも人のカードと同じ次レースの有無に合わせる（2026-11-03、BOA-1220質問1の回答、src/utils/raceDetailHeading.js・scripts/maintenance/verify-bot-page-model.js）。
+- GS04の成績の一言は1〜29走では件数だけを出すが、既存の選手ページの枠番別表はtop2Rateの有無で率を表示し、30走の分岐はない。率の丸めをそろえることと、小標本の表示条件を共通化することを区別する（2026-11-03、BOA-1271、src/components/racer/RacerPerformanceStats.jsx・src/pure/favoriteRuns.js）。

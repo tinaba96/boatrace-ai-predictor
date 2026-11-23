@@ -8,7 +8,7 @@
     },
     {
       "file": "e2e/fixtures.js",
-      "code": "if (E2E_MODE === \"live\") return route.fetch(options);",
+      "code": "if (E2E_MODE === \"live\") return fromApiResponse(await route.fetch(options));",
       "reason": "live モード（本番データ・実時刻）では録画の再生を使わないため、本物の route.fetch で素通りさせてよい"
     },
     {
@@ -18,13 +18,13 @@
     },
     {
       "file": "e2e/fixtures.js",
-      "code": "return route.fetch(options);",
+      "code": "return fromApiResponse(await route.fetch(options));",
       "reason": "replay で録画に無いリクエストを本番へ素通しする fetchRecorded 自身の実装（A改、notePassthrough で一覧に残す）"
     },
     {
       "file": "e2e/fixtures.js",
-      "code": "response = await recordThrough(request, () => route.fetch());",
-      "reason": "record モードで context.route から本番の実応答を取って録画に書き出す fixtures.js 自身の実装"
+      "code": "route.fetch(keyedFetchOptions(request, request.url())),",
+      "reason": "record モードで context.route から本番の実応答を取って録画に書き出す fixtures.js 自身の実装（本番の /api/ には合言葉を付ける、BOA-1436）"
     },
     {
       "file": "e2e/acceptance/sns-x-send.spec.js",
@@ -45,6 +45,16 @@
       "file": "e2e/acceptance/sns-existing-fixes.spec.js",
       "code": "if (url.hostname === '127.0.0.1') return route.continue();",
       "reason": "直前でblog-pr-previewをfulfillでモックし、127.0.0.1以外をabortしている。continueに残るのはテスト用Viteのモジュール配信だけで、外部・本番には出ない"
+    },
+    {
+      "file": "e2e/route-after-test-end.spec.js",
+      "code": "await route.fetch();",
+      "reason": "テストの終わりで途中の route.fetch が投げる失敗（Test ended）を fixtures.js の guardRoutes が捨てることの再現。宛先はテスト内で立てた応答を返さない 127.0.0.1 のサーバーで、録画・本番を通らない。fetchRecorded は strict 再生で録画に無い要求を route.fetch の前に投げるので、CI で落ちた最後の一歩の route.fetch を直接呼ぶ"
+    },
+    {
+      "file": "e2e/release-check/site.release.js",
+      "code": "import { test, expect } from \"@playwright/test\";",
+      "reason": "配備先（本番の URL）を相手にする読むだけの確かめ（e2e/release-check/playwright.release.config.js、ZB02・BOA-1497）。録画の再生でなく配備済みの本番そのものを見るのが目的なので、fixtures.js の再生を通さず本物の test を使う。GET と画面の表示だけで、page.route・書き込み・送信はしない"
     }
   ]
 }

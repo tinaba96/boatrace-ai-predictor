@@ -96,6 +96,7 @@ flowchart TD
 ## 毎回の手順
 
 1. 適用したいマイグレーションが master にマージ済みであることを確認する（PR のブランチ上のファイルは適用できない）
+   - 本番のデプロイは ADR-0106 の切り替えの後（`vercel.json` の `git.deploymentEnabled.master` が false。それまではマージごとに出る）、1日3回の定時にまとめて出る。master に入っても本番のコードは古いままのことがある。今の本番のコードで壊れるもの（列・関数を消す・名前を変える、RPC の出力のキーを変える）は、それを要らなくするコードが定時で本番に出た後に当てる。足すだけのものは先に当ててよい
 2. Actions > **DB Apply (production)** > **Run workflow**
    - Use workflow from: `master`
    - 適用するファイル: `docs/db-migration/122_venues_first_win_rate_race_count.sql` のようにリポジトリ直下からのパス
@@ -130,10 +131,57 @@ flowchart TD
 
 起動（`gh workflow run db-apply` や API の dispatch）・deployment の承認（`pending_deployments`）・Environments の変更は、ユーザー本人だけが行う。
 Claude の役割は、マイグレーションを書いて PR にすることと、適用後の確認（読み取り）まで。
+定期の突き合わせ（`mode=reconcile`）は Vercel Cron（`api/cron/db-apply-dispatch.js`）が起動する。手での起動（`mode=manual`）はユーザー本人だけ。
 
 **技術的には止め切れていない。** Claude の `gh` はユーザーと同じアカウントで認証されているため、GitHub から見て Claude の承認と本人の承認は区別できない。
 `.claude/hooks/guard-deploy-approval.sh`（PreToolUse）と `.claude/settings.json` の deny は、よく使う書き方を文字列で止めているだけで、言い換え（workflow の表示名や数値の ID での起動、GraphQL での承認、ブラウザ操作）は通る。
-根本的に塞ぐには、Claude 用の `gh` を Environment の reviewer でない別アカウント（または権限を絞ったトークン）にする必要がある。それまでは「Claude は起動・承認しない」という規律が主な防御になる。
+根本的に塞ぐには、Claude 用の `gh` を Environment の reviewer でない別アカウント（または権限を絞ったトークン）にする必要がある。ADR-0097 の切替（Claude の `gh` を作成の App にする）がこれに当たる。それまでは「Claude は起動・承認しない」という規律が主な防御になる。
+
+## 自動の適用（ADR-0097）
+
+[ADR-0097](../adr/0097-identity-separation-auto-review-and-db-apply.md) で、手での起動に加えて、定期の起動が未適用のマイグレーションを当てる。同じ `db-apply.yml` の中にあり、手での起動の流れは変わらない。
+
+- 定期の起動は2つの出元がある。主は Vercel Cron（毎時17分、`api/cron/db-apply-dispatch.js`）が `mode=reconcile` で dispatch するもの。予備は `db-apply.yml` の schedule（毎時47分）。GitHub の schedule は高頻度だとほとんど来ないため（[plan §1](../design/db-apply-automation-finish/plan.md)）。どちらから来ても動きは同じで、同時に動けば互いを busy と見て何もしない
+- Vercel 側のモードは `scrape_job_state` の `job='db_apply_dispatch'`（off・shadow・live）。止めるときは `off`。monitor の job は off でも失敗の回数が残る間は scrape-monitor が知らせ続けるので、同じ行の `consecutive_failures` も 0 に戻す
+- dispatch の関数は、live の最初の起動から3時間を過ぎて、直近3時間に reconcile の job が success で終わった run が無いと、起動した上で失敗を記録する（scrape-monitor が Slack に出す）。skipped・queued のまま・起動の失敗の見張り
+
+- 今は試運転（`db-apply.yml` の `DB_APPLY_DRY_RUN: "true"`）。当てずに、未処理のファイル（最大10本）ごとに「当てるはずだった（軽い／重い／止める、理由）」を Slack と元の PR に1回だけ出す。当てるのは今までどおり上の「毎回の手順」
+- 1回だけにする印は、元の PR のコメントの `<!-- db-apply:… -->`。同じ印があれば出さない（止まったままのものは日付を入れて毎日1回）。job の失敗・承認待ちの6時間は毎回 Slack に出す
+- 対象は、`DB_APPLY_SWITCH_SHA`（切り替えのコミット）より後に、審査の App が承認した PR で足されたファイルだけ。それより前の「未適用」は手で当てる
+- repo の変数 `REVIEWER_BOT_USER_ID` が入るまでは、定期の起動は何もしない
+
+```mermaid
+flowchart TD
+  T[定期の起動] --> R{db-apply が<br/>実行中・承認待ち?}
+  R -->|はい| Z[何もせず終わる]
+  R -->|いいえ| C[突き合わせ db-reconcile.js<br/>5点の検査で未適用のファイルを1本選ぶ]
+  C -->|無し| Z
+  C --> J[judge<br/>鍵なしで classifyMigration]
+  J -->|軽い| A1[apply-auto<br/>Environment production-db-auto<br/>承認なし]
+  J -->|重い| A2[apply-gated<br/>Environment production-db<br/>オーナーの1タップ]
+  J -->|止める| N[当てずに通知]
+  A1 --> G[record<br/>台帳を適用済みに]
+  A2 --> G
+```
+
+- 試運転の間（段取り D〜D'）は judge までを動かし、当てずに「当てるはずだった」を通知する
+- 当てる対象の5点の検査・軽い／重いの列挙・削除の前の控えは ADR-0097 にある
+- 重いものの承認待ちが6時間を超えたら通知する
+- 自動の経路は手での起動より短い `lock_timeout`・`statement_timeout` で当てる。超えたら失敗として止め、通知する
+
+### 台帳の書き方（機械で読む）
+
+突き合わせは APPLIED.md の「適用状況」の列を先頭の語で読む。
+
+| 先頭の語 | 意味 | 自動で当てるか |
+|---|---|---|
+| `未適用` | 本番に無い | 当てる（そのファイルを足したのと同じ PR で行を足したときだけ） |
+| `適用済み` | 本番にある | 当てない |
+| `不明` | 突合で確かめられない | 当てない |
+| `廃止` | 当てない決定 | 当てない |
+
+- 新しいマイグレーションの PR では、行の「適用状況」を `未適用` で始める（括弧の中に補足を書いてよい）
+- 先頭が上の4つのどれでもない行（古い行に日付で始まるものがある）は当てない
 
 ## マイグレーションに書かないもの
 

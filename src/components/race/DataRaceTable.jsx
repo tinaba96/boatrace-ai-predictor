@@ -16,6 +16,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { BOAT_COLORS } from "../../utils/colors";
 import { useRaceAnalysisData } from "../../hooks/useRaceAnalysisData";
+import { useSixBoatCourseStats } from "../../hooks/useSixBoatCourseStats";
 import { buildBasicIndicatorRows } from "./raceIndicators";
 import { trackEvent } from "../../utils/analytics";
 import TermHintButton from "./TermHintButton";
@@ -23,6 +24,7 @@ import FlyingBadge from "./FlyingBadge";
 import { useRaceEntryFlyingRows } from "../../hooks/useRaceEntryFlyingRows";
 import { useCurrentMeetFlyingBoats } from "../../hooks/useCurrentMeetFlyingBoats";
 import InlineFetchError from "../InlineFetchError";
+import FavoriteStarButton from "../common/FavoriteStarButton.jsx";
 import "./DataRaceTable.css";
 import { splitRacerName } from "../../utils/racerName";
 
@@ -32,6 +34,109 @@ const nameParts = (name) =>
       {part}
     </span>
   ));
+
+const cellClass = (boat, best) =>
+  `drt-cell ${best?.has(boat) ? "drt-best" : ""}`;
+
+function BoatHeaderRows({ players }) {
+  return (
+    <>
+      <tr>
+        <th className="drt-label-th"></th>
+        {players.map((p) => {
+          const color = BOAT_COLORS[p.number] || {};
+          return (
+            <th
+              key={p.number}
+              className="drt-boat-th"
+              style={{ background: color.bg, color: color.text }}
+            >
+              {p.number}
+            </th>
+          );
+        })}
+      </tr>
+      <tr>
+        <th className="drt-label-th"></th>
+        {players.map((p) => (
+          <th key={p.number} className="drt-name-th">
+            {/* 姓と名を別の塊にする。スマホでは2行に分け、名前の途中で
+                折れないようにする（BOA-612。PCでは続けて1行に並ぶ） */}
+            {p.racerId ? (
+              <Link to={`/racer/${p.racerId}`} translate="no">
+                {nameParts(p.name)}
+              </Link>
+            ) : (
+              <span translate="no">{nameParts(p.name)}</span>
+            )}
+            {p.racerId && (
+              <div className="drt-name-favorite">
+                <FavoriteStarButton
+                  type="racer"
+                  id={p.racerId}
+                  name={p.name}
+                  entry="race_table"
+                />
+              </div>
+            )}
+          </th>
+        ))}
+      </tr>
+    </>
+  );
+}
+
+function RowLabelCell({ row, deepLink }) {
+  return (
+    <td className="drt-label-cell">
+      {row.tab ? (
+        <Link
+          to={deepLink(row.tab)}
+          className="drt-label-link"
+          onClick={() =>
+            trackEvent("deep_link_click", {
+              tab: row.tab,
+              link_source: "data_race_table",
+            })
+          }
+        >
+          <span className="drt-label-full">{row.label}</span>
+          <span className="drt-label-short">{row.shortLabel}</span>
+          <span className="drt-link-arrow">›</span>
+        </Link>
+      ) : (
+        <>
+          <span className="drt-label-full">{row.label}</span>
+          <span className="drt-label-short">{row.shortLabel}</span>
+        </>
+      )}
+      <TermHintButton
+        termKey={row.hintKey ?? row.key}
+        values={row.hintValues}
+      />
+      {row.note && (
+        <span
+          className={`drt-label-note${row.wrapNote ? " drt-label-note--wrap" : ""}`}
+        >
+          {row.note}
+        </span>
+      )}
+    </td>
+  );
+}
+
+function IndicatorRow({ row, players, deepLink }) {
+  return (
+    <tr>
+      <RowLabelCell row={row} deepLink={deepLink} />
+      {players.map((p) => (
+        <td key={p.number} className={cellClass(p.number, row.best)}>
+          {row.render(p)}
+        </td>
+      ))}
+    </tr>
+  );
+}
 
 function DataRaceTable({ raceId, prediction, venueCode }) {
   const { t, i18n } = useTranslation();
@@ -45,6 +150,12 @@ function DataRaceTable({ raceId, prediction, venueCode }) {
   const players = [...(prediction?.allPlayers ?? [])].sort(
     (a, b) => a.number - b.number,
   );
+  // 想定コース1着率の行は枠別情報タブの6艇の表と同じフック・同じ行から取る（BOA-1296）
+  const courseStats = useSixBoatCourseStats({
+    raceDate: raceId?.slice(0, 10),
+    venueCode,
+    players,
+  });
   if (players.length === 0) return null;
 
   const deepLink = (tab) =>
@@ -63,6 +174,7 @@ function DataRaceTable({ raceId, prediction, venueCode }) {
     t,
     players,
     analysis,
+    courseStats,
     pending: analysis.pending,
     motorDeepLink,
     gradeBadge: (p) => (
@@ -73,9 +185,6 @@ function DataRaceTable({ raceId, prediction, venueCode }) {
       />
     ),
   });
-
-  const cellClass = (boat, best) =>
-    `drt-cell ${best?.has(boat) ? "drt-best" : ""}`;
 
   return (
     <div className="data-race-table" id="data-race-table">
@@ -89,87 +198,33 @@ function DataRaceTable({ raceId, prediction, venueCode }) {
 
       {/* 取得失敗を「—」の羅列（データなし）に化けさせない（BOA-359） */}
       {analysis.hasFailure && <InlineFetchError onRetry={analysis.reload} />}
+      {/* 想定コース1着率（直近3期）の取得失敗も「—」だけにしない（BOA-1296 /code-review） */}
+      {courseStats.status === "error" && (
+        <InlineFetchError
+          message={t("wakuInfo.sixBoat.fetchError")}
+          onRetry={courseStats.reload}
+        />
+      )}
 
       <div className="drt-table-wrapper">
         <table className="drt-table">
           <thead>
-            <tr>
-              <th className="drt-label-th"></th>
-              {players.map((p) => {
-                const color = BOAT_COLORS[p.number] || {};
-                return (
-                  <th
-                    key={p.number}
-                    className="drt-boat-th"
-                    style={{ background: color.bg, color: color.text }}
-                  >
-                    {p.number}
-                  </th>
-                );
-              })}
-            </tr>
-            <tr>
-              <th className="drt-label-th"></th>
-              {players.map((p) => (
-                <th key={p.number} className="drt-name-th">
-                  {/* 姓と名を別の塊にする。スマホでは2行に分け、名前の途中で
-                      折れないようにする（BOA-612。PCでは続けて1行に並ぶ） */}
-                  {p.racerId ? (
-                    <Link to={`/racer/${p.racerId}`} translate="no">
-                      {nameParts(p.name)}
-                    </Link>
-                  ) : (
-                    <span translate="no">{nameParts(p.name)}</span>
-                  )}
-                </th>
-              ))}
-            </tr>
+            <BoatHeaderRows players={players} />
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.key}>
-                <td className="drt-label-cell">
-                  {row.tab ? (
-                    <Link
-                      to={deepLink(row.tab)}
-                      className="drt-label-link"
-                      onClick={() =>
-                        trackEvent("deep_link_click", {
-                          tab: row.tab,
-                          link_source: "data_race_table",
-                        })
-                      }
-                    >
-                      <span className="drt-label-full">{row.label}</span>
-                      <span className="drt-label-short">{row.shortLabel}</span>
-                      <span className="drt-link-arrow">›</span>
-                    </Link>
-                  ) : (
-                    <>
-                      <span className="drt-label-full">{row.label}</span>
-                      <span className="drt-label-short">{row.shortLabel}</span>
-                    </>
-                  )}
-                  <TermHintButton
-                    termKey={row.hintKey ?? row.key}
-                    values={row.hintValues}
-                  />
-                  {row.note && (
-                    <span className="drt-label-note">{row.note}</span>
-                  )}
-                </td>
-                {players.map((p) => (
-                  <td key={p.number} className={cellClass(p.number, row.best)}>
-                    {row.render(p)}
-                  </td>
-                ))}
-              </tr>
+              <IndicatorRow
+                key={row.key}
+                row={row}
+                players={players}
+                deepLink={deepLink}
+              />
             ))}
           </tbody>
         </table>
       </div>
 
-      <p className="drt-note">💡 {t("dataTable.note")}</p>
+      <p className="drt-note">💡 {t("dataTable.noteExpectedCourse")}</p>
       {i18n.language === "ja" && (
         <Link to="/blog/data-race-table-guide" className="drt-guide-link">
           📖 {t("dataTable.guideLink")} →

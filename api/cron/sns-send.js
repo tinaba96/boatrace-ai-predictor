@@ -12,11 +12,14 @@
  * screen_key の印（scripts/lib/snsScreenMarkers.js）が見えるかで確かめる。Chromium は1回の実行で1回だけ起動し、終わったら閉じる。
  * どれかに落ちたら claim しないので、外部へは何も送られない（fail-closed）
  *
- * cron式（vercel.json）は UTC。分は2分ごと、時は 23・0〜11（UTC）= JST 8:00〜20:58 の2分ごと
+ * cron式（vercel.json）は UTC。分は2分ごと、時は 22〜23・0〜13（UTC）= JST 7:00〜22:58 の2分ごと（ミッドナイトの優勝戦の送る時刻（締切の60分前）まで動かす。2026-10-14 オーナー決定。
+ *   朝は 2026-11-04 に 8:00 から 7:00 へ繰り上げた: YouTube Shorts【人気薄の1着】を毎朝 7:15 に送る、BOA-1284・ADR-0094 の追記）
  */
 import { createScrapeCronHandler } from "../../scripts/lib/scrapeJobs/cronWrapper.js";
 import { postSlack } from "../../scripts/lib/scrapeJobs/monitor.js";
 import {
+  SNS_SEND_HEADLESS_BUDGET,
+  createPostgrestEventWriter,
   createPostgrestReader,
   createSnsSendStore,
   runSnsSend,
@@ -47,7 +50,10 @@ const notify = async (text) => {
 export default createScrapeCronHandler({
   job: "sns_send",
   run: async (ctx) => {
-    const headless = createChromiumHeadless();
+    // runner は同じ上限で job ごとの検査の回数を見積もり、足りない job を次の実行に回す（BOA-1164）
+    const headless = createChromiumHeadless({
+      maxInspections: SNS_SEND_HEADLESS_BUDGET,
+    });
     try {
       return await runSnsSend(ctx, {
         store: createSnsSendStore({
@@ -56,6 +62,11 @@ export default createScrapeCronHandler({
             key: SUPABASE_SERVICE_KEY,
           }),
           xSendStore,
+          // 送らなかった理由（sns_send_events、191）。live のときだけ runner が書く（BOA-1201）
+          writeEvent: createPostgrestEventWriter({
+            url: SUPABASE_URL,
+            key: SUPABASE_SERVICE_KEY,
+          }),
         }),
         adapters: {
           x: async () =>

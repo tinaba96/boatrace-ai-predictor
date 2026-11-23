@@ -1,4 +1,5 @@
 import { test, expect, fetchRecorded } from "./fixtures.js";
+import { serveFixedHitRaces } from "./layout/helpers.js";
 
 /**
  * 展開予測の説明を「1着」にそろえる（BOA-710）。
@@ -15,8 +16,13 @@ const RACE = "/race/2026-09-29-16-12";
 async function showAsPreRace(page) {
   await page.route("**/api/predictions/**", async (route) => {
     const response = await fetchRecorded(route);
+    if (response.status() < 200 || response.status() >= 300) {
+      throw new Error(
+        `/api/predictions が ${response.status()} を返した（関門の 403 なら INTERNAL_API_KEY を確かめる）`,
+      );
+    }
     const body = await response.json().catch(() => null);
-    if (!body) return route.fulfill({ response });
+    if (!body) return route.fulfill(response.fulfillOptions());
     const clear = (v) => {
       if (Array.isArray(v)) v.forEach(clear);
       else if (v && typeof v === "object") {
@@ -88,6 +94,8 @@ test("的中レースの展開予測のカードは「的中した候補」と�
       return null;
     };
   });
+  // 当日の的中は 0:00〜7:00 JST に未生成なので、生成済みの過去日の的中に差し替える（BOA-1447）
+  await serveFixedHitRaces(page, "all");
   await page.goto("/hit-races");
   const label = page.locator(".turn-hit-course-label").first();
   await expect(label).toBeVisible({ timeout: 30000 });

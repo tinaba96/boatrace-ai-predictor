@@ -23,12 +23,8 @@ import {
 import { trifectaList } from "./analogyAggregate.js";
 import { wilsonInterval } from "./wilson.js";
 import { FEW_ROUND, bestBoats, sameClassLabel } from "./assistModel.js";
-import {
-  buildMeetResults,
-  finishPositionOf,
-  recordsBeforeRace,
-} from "../components/race/basicInfoStats.js";
-import { SCORE_POINTS } from "../components/race/seriesPoints.js";
+import { hasNoLocWin, techChip } from "../pure/predictionAssistDeepDive.js";
+import { OX_RULE, num } from "../pure/predictionAssistPower.js";
 
 // ---- 差がつく材料の範囲（D-37）----
 
@@ -228,6 +224,26 @@ export function attackTech(scenario, form) {
 const BANDS = ["top", "mid", "low"];
 const rateOfPair = (p) => (p?.[1] ? p[0] / p[1] : null);
 
+// 6艇そろった展示タイムの順位だけ返す（欠けがあれば null）
+const completeExhRanks = (exhRanks) =>
+  exhRanks?.length === 6 && exhRanks.every((r) => r != null) ? exhRanks : null;
+
+// exhBands の1艇分（攻める艇・1号艇）。by は今日のレースの形の区分表、natBy は全国の同じ表
+const exhSide = (ok, by, natBy, key, boat) => {
+  const rank = ok ? ok[boat - 1] : null;
+  return {
+    boat,
+    rank,
+    today: rankBand(rank),
+    rows: BANDS.map((band) => ({
+      band,
+      k: by?.[band]?.[key]?.[0] ?? 0,
+      n: by?.[band]?.[key]?.[1] ?? 0,
+    })),
+    nat: natBy ? BANDS.map((b) => rateOfPair(natBy[b]?.[key])) : null,
+  };
+};
+
 /**
  * 今日の展示を入れると（spec D-47 (5)）: 攻める艇の1着・1号艇の逃げを、その艇の展示タイムの順位の区分（1〜2位・3〜4位・5〜6位）ごとに。
  * 範囲は形の見立てと同じ scenario、nat は全国（NA）の同じ形の値。today は今日の区分（6艇の展示タイムがそろわなければ null。exhToday と同じ）
@@ -241,30 +257,24 @@ export function exhBands(scenario, national, form, exhRanks) {
   // 攻める艇の無い形（横一線・内3艇そろう）は by_exh が無く、1号艇の区分（b1_by_exh）だけある
   const a = scenario?.attack?.[form];
   if (!a?.by_exh && !a?.b1_by_exh) return null;
-  const na = national?.attack?.[form] ?? null;
-  const ok =
-    exhRanks?.length === 6 && exhRanks.every((r) => r != null) ? exhRanks : null;
-  const side = (by, natBy, key, boat) => {
-    const rank = ok ? ok[boat - 1] : null;
-    return {
-      boat,
-      rank,
-      today: rankBand(rank),
-      rows: BANDS.map((band) => ({
-        band,
-        k: by?.[band]?.[key]?.[0] ?? 0,
-        n: by?.[band]?.[key]?.[1] ?? 0,
-      })),
-      nat: natBy ? BANDS.map((b) => rateOfPair(natBy[b]?.[key])) : null,
-    };
-  };
+  return exhBandsOf(
+    a,
+    national?.attack?.[form] ?? null,
+    completeExhRanks(exhRanks),
+  );
+}
+
+// exhBands の本体。a は今日のレースの形の attack、na は全国の同じ形、ok は6艇そろった順位（無ければ null）
+function exhBandsOf(a, na, ok) {
   return {
     n: a.all?.n ?? 0,
     att:
       a.attacker && a.by_exh
-        ? side(a.by_exh, na?.by_exh, "att_win", a.attacker)
+        ? exhSide(ok, a.by_exh, na?.by_exh, "att_win", a.attacker)
         : null,
-    b1: a.b1_by_exh ? side(a.b1_by_exh, na?.b1_by_exh, "b1_nige", 1) : null,
+    b1: a.b1_by_exh
+      ? exhSide(ok, a.b1_by_exh, na?.b1_by_exh, "b1_nige", 1)
+      : null,
   };
 }
 
@@ -313,8 +323,7 @@ export function originalBest(original, racers) {
 export function exhToday(scenario, form, exhRanks) {
   // 区分の表（v16 の by_exh）は6艇の展示タイムがそろったレースだけで作る。欠けた日は5艇の順位になり母集団がずれるので出さない
   // （data-accuracy-verifier の指摘。10月の 1,692R 中 14R）
-  if (!exhRanks || exhRanks.length !== 6 || exhRanks.some((r) => r == null))
-    return null;
+  if (!completeExhRanks(exhRanks)) return null;
   const a = scenario?.attack?.[form];
   const att = a?.attacker ?? null;
   const rank = att ? (exhRanks?.[att - 1] ?? null) : null;
@@ -471,50 +480,6 @@ export function entrySummary(scenario, courseByBoat) {
   return { type, group, k: cell?.b1_win ?? 0, n: cell?.n ?? 0 };
 }
 
-// ---- 機力（screens「レンズごとの図 C」機力、FR-3a）----
-
-/** オリジナル展示の種別 → 最良の判定のキー（raceIndicators の ORIGINAL_EXHIBITION_ROW_META と同じく全種別 min） */
-export const OX_RULE = {
-  一周: "ox_lap",
-  まわり足: "ox_turn",
-  直線: "ox_straight",
-  半周ラップ: "ox_half_lap",
-};
-
-const num = (v) => {
-  if (v == null || v === "") return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-};
-
-/**
- * 機力の結論に出す「項目ごとの一番」。順は展示タイム → オリジナル展示（種目の順）→ モーター2連率で固定。
- * 展示タイムだけで結論を決めない（BOA-808 2: 徳山の一周・まわり足は1号艇が一番なのに出なかった）
- * @param {{table: ReturnType<typeof exhibitionTable>|null, motor: {best: Set<number>, valueOf: (boat: number) => number|null}}} args
- * @returns {Array<{label: string, boats: number[], text: string}>} text は単位つきの値（同着は先頭の艇の値）
- */
-export function powerWinners({ table, motor }) {
-  const sorted = (set) => [...set].sort((a, b) => a - b);
-  const rowOf = (boat) => table.rows.find((r) => r.boat === boat);
-  const items = [];
-  const push = (label, set, valueOf, fmt) => {
-    if (!set?.size) return;
-    const boats = sorted(set);
-    const v = valueOf(boats[0]);
-    if (v == null) return;
-    items.push({ label, boats, text: fmt(v) });
-  };
-  const sec = (v) => `${v.toFixed(2)}秒`;
-  if (table) {
-    push("展示タイム", table.best.exh, (b) => rowOf(b)?.exh ?? null, sec);
-    table.kinds.forEach((k, i) =>
-      push(k, table.best.ox[i], (b) => rowOf(b)?.ox[i] ?? null, sec),
-    );
-  }
-  push("モーター2連率", motor.best, motor.valueOf, (v) => `${v.toFixed(1)}%`);
-  return items;
-}
-
 /**
  * 展示の表（展示・オリジナル展示・展示ST・体重・チルト）。最良は展示・オリジナル展示・展示ST（F は除く）だけ。
  * 体重・チルトは向きが無いので付けない（D-33）。体重の一番軽い艇に light
@@ -568,116 +533,13 @@ export function exhibitionTable({ racers, maintenance, original }) {
   };
 }
 
-/** 部品交換・プロペラ交換のあった艇（raceIndicators の部品交換の行と同じ判定。parts_changed は部品名の配列） */
-export function partsChangedBoats(maintenance) {
-  return (maintenance ?? [])
-    .filter(
-      (r) =>
-        (Array.isArray(r.parts_changed) && r.parts_changed.length > 0) ||
-        Boolean(r.propeller_change),
-    )
-    .map((r) => r.boat_number)
-    .sort((a, b) => a - b);
-}
-
-/**
- * チルトが6艇の中で違う艇（一番多い値と違う艇）。多い値が1艇だけ（全艇ばらばら）なら印を付けない
- * @returns {Map<number, number>} 艇番 → チルト
- */
-export function tiltOutliers(racers) {
-  const vals = racers
-    .filter((r) => !r.absent && r.tilt != null)
-    .map((r) => [r.boat, r.tilt]);
-  const freq = new Map();
-  for (const [, t] of vals) freq.set(t, (freq.get(t) ?? 0) + 1);
-  const [mode, count] = [...freq].sort((a, b) => b[1] - a[1])[0] ?? [null, 0];
-  if (count < 2) return new Map();
-  return new Map(vals.filter(([, t]) => t !== mode));
-}
-
-// ---- 深掘り（FR-5・D-29・D-36 (10)(11)）----
-
-/** 1走の着（1〜6）。着が無い（欠場・失格等）は null */
-export const finishOf = (run) => finishPositionOf(run);
-
-/** 1走の点。着があれば着順点、欠場は null（走数に入れない）、F・L・失格・転覆など走って着の無い走は0点 */
-const pointsOf = (run) => {
-  const f = finishOf(run);
-  if (f != null) return SCORE_POINTS[f];
-  return run.absent ? null : 0;
+// 札の材料 key の6艇の中で boat が一番（同値を含む）か。会場の成績（loc_win）は 0 を「無し」として外す
+const isFirstOfSix = (today, key, hib, boat) => {
+  const v = today?.items?.[key]?.values;
+  if (!Array.isArray(v)) return false;
+  const vals = key === "loc_win" ? v.map((x) => (x === 0 ? null : x)) : v;
+  return todayPosition(vals, hib, boat)?.bucket === 1;
 };
-
-/**
- * 今節の各走（表示中のレースより前、同じ会場・同じ節）。今日の走は点に入れない（D-29）
- * @param {object[]} records getRacerScopedRaceStats の戻り値
- * @param {string} raceId 表示中のレース
- * @returns {{past: object[], today: object[], sum: number, count: number, avg: number|null, byDay: Array<{date: string, finishes: Array<number|string|null>}>}}
- *   finishes は着（1〜6）か、着の無い走の公式の記号（F・失 等）
- */
-export function meetRuns(records, raceId) {
-  const venueCode = Number(raceId.slice(11, 13));
-  const runs = buildMeetResults(records, { raceId, venueCode });
-  const date = raceId.slice(0, 10);
-  const past = runs.filter((r) => r.date !== date);
-  const today = runs.filter((r) => r.date === date);
-  // F・L・失格・転覆等は0点で走数に入れ、欠場だけ外す（v16 の今節の平均着順点・seriesPoints の規則3と同じ。
-  // data-accuracy-verifier の指摘: 分母から落とすと平均が v16 の値より高く出る）
-  const scored = past.filter((r) => pointsOf(r) != null);
-  const sum = scored.reduce((s, r) => s + pointsOf(r), 0);
-  const byDay = [];
-  for (const r of past) {
-    const mark = finishOf(r) ?? r.finishMark ?? null;
-    const last = byDay[byDay.length - 1];
-    if (last?.date === r.date) last.finishes.push(mark);
-    else byDay.push({ date: r.date, finishes: [mark] });
-  }
-  return {
-    past,
-    today,
-    sum,
-    count: scored.length,
-    avg: scored.length ? sum / scored.length : null,
-    byDay,
-  };
-}
-
-/** 日付 YYYY-MM-DD → 「10/2」（月・日とも0埋めしない。1走ずつの表と着順の並びで共通） */
-export const monthDay = (date) => {
-  const [, m, d] = String(date).split("-");
-  return `${Number(m)}/${Number(d)}`;
-};
-
-/** 着の色のクラス（既存の RaceHistoryTable と同じ: 1着＝金、5・6着＝赤） */
-export const finishClass = (f) =>
-  f === 1 ? " ta-fin-1" : f === 5 || f === 6 ? " ta-fin-bad" : "";
-
-/** 今節の走の点（今日の走・欠場は null） */
-export const runPoints = (run, today) => (today ? null : pointsOf(run));
-
-/**
- * 今節より前の5走（新しい順）。今節の走と表示中のレースより後の走を除いてから5走（D-36 (10)）
- * @param {object[]} records
- * @param {string} raceId
- * @param {object[]} meet meetRuns の past と today
- */
-export function priorRuns(records, raceId, meet) {
-  const ids = new Set(meet.map((r) => r.raceId));
-  return (recordsBeforeRace(records ?? [], raceId) ?? [])
-    .filter((r) => !ids.has(r.raceId))
-    .slice(-5)
-    .reverse();
-}
-
-/**
- * そのコースで走ったときの1着（進入コースで数える。D-36 (11)。表示中のレースより前、直近2年）
- * @returns {{k: number, n: number}}
- */
-export function courseWins(records, raceId, course) {
-  const runs = (recordsBeforeRace(records ?? [], raceId) ?? []).filter(
-    (r) => r.actualCourse === course && finishOf(r) != null,
-  );
-  return { k: runs.filter((r) => finishOf(r) === 1).length, n: runs.length };
-}
 
 /**
  * 成績から付けた札（D-41。承認モック v7 の featChips）。6艇の中の一番（同値を含む）だけ。
@@ -687,33 +549,32 @@ export function courseWins(records, raceId, course) {
  */
 export function featChips({ boat, today, finalRound, technique = null }) {
   const out = [];
-  const first = (key, hib) => {
-    const v = today?.items?.[key]?.values;
-    if (!Array.isArray(v)) return false;
-    const vals = key === "loc_win" ? v.map((x) => (x === 0 ? null : x)) : v;
-    return todayPosition(vals, hib, boat)?.bucket === 1;
-  };
+  const first = (key, hib) => isFirstOfSix(today, key, hib, boat);
   if (first("st_mean30", false)) out.push({ id: "stFast" });
   if (!finalRound && first("series_score", true))
     out.push({ id: "seriesGood" });
   if (first("recent_win30", true)) out.push({ id: "recentWin" });
   if (first("nat_win", true)) out.push({ id: "natTop" });
   if (first("loc_win", true)) out.push({ id: "locTop" });
-  const loc = today?.items?.loc_win?.values?.[boat - 1];
-  if (loc === 0 || (today?.items?.loc_win && loc == null))
-    out.push({ id: "locNone" });
-  const top = technique?.techniques?.[0];
-  if (
-    top &&
-    top.technique !== "逃げ" &&
-    technique.win_count >= 8 &&
-    top.count / technique.win_count >= 0.3
-  )
-    out.push({
-      id: "tech",
-      technique: top.technique,
-      wins: technique.win_count,
-      count: top.count,
-    });
+  if (hasNoLocWin(today, boat)) out.push({ id: "locNone" });
+  const tech = techChip(technique);
+  if (tech) out.push(tech);
   return out;
 }
+
+export {
+  finishOf,
+  meetRuns,
+  monthDay,
+  finishClass,
+  runPoints,
+  priorRuns,
+  courseWins,
+} from "../pure/predictionAssistDeepDive.js";
+
+export {
+  OX_RULE,
+  powerWinners,
+  partsChangedBoats,
+  tiltOutliers,
+} from "../pure/predictionAssistPower.js";

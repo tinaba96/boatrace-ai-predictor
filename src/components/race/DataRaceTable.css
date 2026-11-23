@@ -192,6 +192,19 @@ thead tr:last-child:not(:first-child) .drt-label-th {
   margin-top: 2px;
 }
 
+/* 長い行注記（想定コース1着率、BOA-1296）は、ラベル列の nowrap を受け継いで6艇の列を押し出さないよう、
+   列の幅の中で折り返す（width: 0 で注記の長さを列幅の計算に入れない） */
+.drt-label-note--wrap {
+  width: 0;
+  min-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.drt-value--muted {
+  color: var(--text-secondary);
+}
+
 .drt-cell {
   color: var(--text-primary);
 }
@@ -239,11 +252,16 @@ thead tr:last-child:not(:first-child) .drt-label-th {
   white-space: nowrap;
 }
 
-/* 小標本（n<6）の視覚的区別（BOA-304、RaceBasicInfoTabのis-small-sampleと
-   同じ配色規約: RaceBasicInfoTab.css参照） */
+/* まわり足の見出し「…足 ※ ?」の末尾。※と? だけが2行目に落ちないよう束ねる（BOA-1029）。
+   .drt-nowrap は 767px 以下で normal に戻されるので別の名前にする */
+.drt-turn-tail {
+  white-space: nowrap;
+}
+
+/* 小標本（n<6）は灰。RaceWakuInfoTab.css の is-small-sample と同じ規約（BOA-711 U5） */
 .drt-n-small-sample {
-  color: var(--color-warning-text);
-  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-normal);
 }
 
 /* 調子（勝率の変化）。上がった＝緑、下がった＝赤（race-detail-ui-unify R2）。以前は株価のように
@@ -395,4 +413,23 @@ thead tr:last-child:not(:first-child) .drt-label-th {
   .drt-name-part {
     display: block;
   }
+}
+
+/* 名前のリンクの下に☆を置く（BOA-1270）。リンクの外の別要素。
+   セルの padding・枠線は変えない。☆の枠・背景は消して見た目を詰め、
+   押せる範囲 44px は共通部品の min-width/min-height のまま。
+   横は負マージンでセルの内側幅（約41px）に収め、列幅を広げない。 */
+.drt-name-favorite {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--spacing-1);
+}
+
+.drt-name-favorite .favorite-star-button {
+  flex: 0 0 44px;
+  margin-left: -4px;
+  margin-right: -4px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
 }

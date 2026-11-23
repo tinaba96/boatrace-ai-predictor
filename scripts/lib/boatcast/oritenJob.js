@@ -2,9 +2,10 @@
  * BOATCASTのオリジナル展示（bc_oriten。N25）の取得ジョブ（docs/design/boatcast-original-exhibition/）。
  * api/cron/boatcast-oriten.js が、共通ラッパ（scripts/lib/scrapeJobs/cronWrapper.js）経由で使う。
  *
- * 窓型ジョブ（レジストリ boatcast_oriten）。1スロット＝1レース。期限は発走の8分前（公開は発走の9.9〜29.0分前に
- * 現れる実測。oritenRows.js の decideNotPublished）。対象は、公開マップ（publicMap.js）で status='public' の会場の
- * 全レースだけ（createOritenStore が、予定表のスロットを対象会場のレースにだけ作る）。
+ * 窓型ジョブ（レジストリ boatcast_oriten）。1スロット＝1レース。期限は発走の20分前で、未公開の間は発走の6分前まで
+ * 2分おきに取り、取れたら完了（公開は発走の2.3〜25.2分前の実測。oritenRows.js の decideNotPublished）。対象は、公開マップ
+ * （publicMap.js）で status='public' の会場の全レースだけ（createOritenStore が、予定表のスロットを対象会場のレースにだけ、
+ * 1レース1本だけ作る）。
  * 取得・解析・書き込みの本体 processOritenRace は、定期取得と過去分の一括取得（将来のCLI）が共有する。
  *
  * モード（scrape_job_state.mode。DBの更新のみで切り替える）:
@@ -14,13 +15,12 @@
  *
  * 403の扱い（boatcastClient.js の冒頭を参照）: 各tickの先頭（スロットを取った後の最初の取得の前）で、既知の存在ファイル
  * （カナリア）を1回取る。カナリアが失敗なら、その回の取得を全て止め、alerts に出す。カナリアが正常なときの403は、
- * 「未公開または公開されないレース」として、最大3回まで再試行し、打ち切る（skipped_not_target）。
+ * 「未公開または公開されないレース」として、最大10回（窓の8回＋発走の約1分前・約7分後）まで再試行し、打ち切る（skipped_not_target）。
  *
  * 書き込みの順序: 艇×項目の行 → レース単位の行（content_hash は「書き込み完了」の目印）。途中で失敗しても、
  * 次の取得が同じ内容を書き直す。マイグレーション091が未適用のDBでは、書かずに error を返す（成功にしない）。
  */
 import {
-  compareLabelsToMap,
   buildOritenRows,
   computeOritenHash,
   decideNotPublished,
@@ -44,11 +44,23 @@ import { createSupabaseStore } from "../scrapeJobs/store.js";
 import { SCRAPE_JOBS } from "../scrapeJobs/registry.js";
 import { computeRetryAt } from "../scrapeJobs/outcomes.js";
 import {
-  addSeconds,
   raceStartInstant,
   slotDeadline,
   slotWindowEnd,
 } from "../scrapeJobs/time.js";
+import {
+  buildOritenWarnings,
+  deleteStaleValues,
+  insertSlots,
+  loadSlotInputs,
+  mergeReport,
+  saveLastReport,
+  takeTick,
+  tickOf,
+} from "./oritenJobParts.js";
+
+// 起動の通知の材料（tick）と last_report の更新（mergeReport）は oritenJobParts.js（ここから再公開する）
+export { clearTicks, mergeReport, takeTick, tickOf } from "./oritenJobParts.js";
 
 export const ORITEN_JOB = "boatcast_oriten";
 
@@ -65,11 +77,6 @@ const failure = (message, extra = {}) => ({
   error: message,
   ...extra,
 });
-
-/** 通知の持続時間 */
-const CANARY_ALERT_MIN = 60;
-const ANOMALY_ALERT_HOURS = 6;
-const VENUE_ALERT_HOURS = 12;
 
 /** 会場の当日のデータ無し（打ち切り）が、この件数以上かつ、完了したレースの半分以上になったら通知する（暫定の閾値） */
 export const VENUE_NO_DATA_ALERT = Object.freeze({
@@ -138,18 +145,7 @@ export async function processOritenRace({
   }
 
   // 公開マップとの照合（位置ではなくラベル）。既知でないラベル・マップと違う項目名は、値を保存した上で通知する
-  const cmp = compareLabelsToMap(parsed.labels, entry.items);
-  const warnings = [];
-  if (parsed.unknownLabels.length > 0) {
-    warnings.push(
-      `${jo}${entry.name} ${raceId}: 未知の項目名 ${parsed.unknownLabels.join(",")}`,
-    );
-  }
-  if (cmp.unexpected.length > 0 || cmp.missing.length > 0) {
-    warnings.push(
-      `${jo}${entry.name} ${raceId}: 公開マップと項目名が違います（マップに無い: ${cmp.unexpected.join(",") || "なし"} / ファイルに無い: ${cmp.missing.join(",") || "なし"}）`,
-    );
-  }
+  const warnings = buildOritenWarnings({ jo, entry, raceId, parsed });
 
   const measured = parsed.status === ORITEN_STATUSES.measured;
   const base = {
@@ -163,7 +159,14 @@ export async function processOritenRace({
     return { ...base, outcome: ORITEN_OUTCOMES.ok, rowsWritten: 0 };
   }
 
-  // --- live の書き込み ---
+  return writeOritenLive({ client, raceId, parsed, res, base });
+}
+
+/**
+ * live の書き込み（processOritenRace の後半）。艇×項目の行 → 古い行の削除 → レース単位の行の順。
+ * 内容が既存と同じなら何も書かない。
+ */
+async function writeOritenLive({ client, raceId, parsed, res, base }) {
   if (!(await detectBoatcastSchema(client, ORITEN_TABLES))) {
     return failure(
       "マイグレーション091（race_original_exhibition・race_original_exhibition_values）が未適用のため、書き込みませんでした",
@@ -231,129 +234,6 @@ export async function processOritenRace({
   if (reportResult.error) return failure(reportResult.error.message, base);
   rowsWritten += reportResult.written;
   return { ...base, outcome: ORITEN_OUTCOMES.ok, rowsWritten };
-}
-
-/** 新しい内容に無い（艇, 項目）の既存行を消す。失敗なら、エラーメッセージ */
-async function deleteStaleValues(client, raceId, newValues) {
-  const { data, error } = await client
-    .from("race_original_exhibition_values")
-    .select("boat_number, kind")
-    .eq("race_id", raceId);
-  if (error) return `既存の値の読み取りに失敗しました: ${error.message}`;
-  const keep = new Set(newValues.map((v) => `${v.boat_number}|${v.kind}`));
-  for (const row of data ?? []) {
-    if (keep.has(`${row.boat_number}|${row.kind}`)) continue;
-    const { error: deleteError } = await client
-      .from("race_original_exhibition_values")
-      .delete()
-      .eq("race_id", raceId)
-      .eq("boat_number", row.boat_number)
-      .eq("kind", row.kind);
-    if (deleteError) {
-      return `古い値の削除に失敗しました: ${deleteError.message}`;
-    }
-  }
-  return null;
-}
-
-// ---------------------------------------------------------------------------
-// tick（1回の起動）ごとの通知の材料。ハンドラー（スロットごと）と、ストア（起動の終わりの記録）が共有する。
-// 起動ごとに一意な ctx.worker（cronWrapper の defaultWorker）を鍵にする（関数インスタンスが複数の起動を並行して
-// 処理しても、混ざらない）。
-// ---------------------------------------------------------------------------
-/** @type {Map<string, ReturnType<typeof newTick>>} */
-const ticks = new Map();
-const TICK_RETENTION_MS = 10 * 60 * 1000;
-
-function newTick(worker, nowMs) {
-  return {
-    worker,
-    startedMs: nowMs,
-    canary: null,
-    canaryPromise: null,
-    anomalies: [],
-    warnings: [],
-    venueAlerts: [],
-  };
-}
-
-/** 起動の通知の材料を、無ければ作る。古いものは捨てる */
-export function tickOf(worker, nowMs = Date.now()) {
-  for (const [key, t] of ticks) {
-    if (nowMs - t.startedMs > TICK_RETENTION_MS) ticks.delete(key);
-  }
-  let t = ticks.get(worker);
-  if (!t) {
-    t = newTick(worker, nowMs);
-    ticks.set(worker, t);
-  }
-  return t;
-}
-
-/** 起動の通知の材料を取り出して、消す */
-export function takeTick(worker) {
-  const t = ticks.get(worker);
-  ticks.delete(worker);
-  return t ?? null;
-}
-
-/** テスト用 */
-export function clearTicks() {
-  ticks.clear();
-}
-
-const iso = (date) => date.toISOString();
-
-/**
- * scrape_job_state.last_report（monitor が alerts を Slack に通知する）の更新内容を作る（純関数）。
- * 前回の通知のうち有効期限（until）内のものは残し、canary が正常なら canary_failed を外す。変化が無ければ undefined
- * （書かない）。
- *
- * @param {{alerts?: Array<{key: string, text: string, until?: string}>}|null|undefined} previous
- * @param {ReturnType<typeof newTick>} tick
- * @param {Date} now
- */
-export function mergeReport(previous, tick, now) {
-  const prevAlerts = Array.isArray(previous?.alerts) ? previous.alerts : [];
-  let alerts = prevAlerts.filter(
-    (a) => a?.until && new Date(a.until).getTime() > now.getTime(),
-  );
-  const drop = (key) => {
-    alerts = alerts.filter((a) => a.key !== key);
-  };
-  const put = (alert) => {
-    drop(alert.key);
-    alerts.push(alert);
-  };
-
-  if (tick.canary) {
-    if (tick.canary.ok) {
-      drop("canary_failed");
-    } else {
-      put({
-        key: "canary_failed",
-        text: `BOATCASTのカナリアが失敗しました（アクセス拒否・接続の異常の疑い。取得を止めています）: ${tick.canary.detail}`,
-        until: iso(addSeconds(now, CANARY_ALERT_MIN * 60)),
-      });
-    }
-  }
-  const anomalyCount = tick.anomalies.length + tick.warnings.length;
-  if (anomalyCount > 0) {
-    const example = tick.anomalies[0] ?? tick.warnings[0];
-    put({
-      key: "parse_anomaly",
-      text: `解析の異常 ${anomalyCount}件（構造の異常${tick.anomalies.length}件・項目名の不一致${tick.warnings.length}件。BOATCAST側の形式変更・公開マップの古さの疑い）: ${example}`,
-      until: iso(addSeconds(now, ANOMALY_ALERT_HOURS * 3600)),
-    });
-  }
-  for (const alert of tick.venueAlerts) {
-    put({ ...alert, until: iso(addSeconds(now, VENUE_ALERT_HOURS * 3600)) });
-  }
-
-  const next = { alerts };
-  const before = { alerts: prevAlerts };
-  if (JSON.stringify(next) === JSON.stringify(before)) return undefined;
-  return next;
 }
 
 /**
@@ -435,12 +315,16 @@ export function createOritenSlotHandler({
 
     const race = await load(ctx.client, slot.race_id);
     const now = ctx.now();
+    // 発走までの分は、claim した時刻（同じ起動のスロットで共通）から測る。処理の順番（1起動で最大 claimLimit 件を逐次）で
+    // 測る時刻がずれ、窓（2分おき）と後段の境目（decideNotPublished）をまたがないようにする
+    const claimedMs = new Date(slot.last_attempt_at ?? NaN).getTime();
+    const basisMs = Number.isFinite(claimedMs) ? claimedMs : now.getTime();
     let minutesToStart;
     try {
       if (race?.race_date && race?.start_time) {
         minutesToStart =
           (raceStartInstant(race.race_date, race.start_time).getTime() -
-            now.getTime()) /
+            basisMs) /
           60000;
       }
     } catch {
@@ -488,15 +372,7 @@ export function createOritenStore(
     registry = SCRAPE_JOBS,
     map = ORITEN_PUBLIC_MAP,
     // last_report だけを書き込む（全て失敗した起動では、共通ラッパが report を渡さないため、ここで直接書く）。テストで差し替える
-    saveReport = async (job, report) => {
-      const { error } = await client
-        .from("scrape_job_state")
-        .update({ last_report: report })
-        .eq("job", job);
-      if (error) {
-        console.warn(`⚠️ ${job}: 通知の記録に失敗: ${error.message}`);
-      }
-    },
+    saveReport = (job, report) => saveLastReport(client, job, report),
   } = {},
 ) {
   let myWorker = null;
@@ -513,19 +389,12 @@ export function createOritenStore(
     async ensureSlots({ date, now }) {
       const def = registry[ORITEN_JOB];
       const nowMs = (now ?? new Date()).getTime();
-      const { data, error } = await client
-        .from("races")
-        .select("race_id, race_date, start_time")
-        .eq("race_date", date)
-        .not("start_time", "is", null);
-      if (error) {
-        throw new Error(
-          `予定表の対象レースの取得に失敗しました: ${error.message}`,
-        );
-      }
+      const { data, hasSlot } = await loadSlotInputs(client, ORITEN_JOB, date);
       const rows = (data ?? [])
         .filter(
-          (r) => venueEntry(venueOfRaceId(r.race_id), map)?.status === "public",
+          (r) =>
+            !hasSlot.has(r.race_id) &&
+            venueEntry(venueOfRaceId(r.race_id), map)?.status === "public",
         )
         .flatMap((r) =>
           def.offsets
@@ -544,17 +413,7 @@ export function createOritenStore(
             })),
         );
       if (rows.length === 0) return 0;
-      const { data: inserted, error: insertError } = await client
-        .from("scrape_slots")
-        .upsert(rows, {
-          onConflict: "job,race_id,offset_min",
-          ignoreDuplicates: true,
-        })
-        .select("race_id");
-      if (insertError) {
-        throw new Error(`予定表の生成に失敗しました: ${insertError.message}`);
-      }
-      return inserted?.length ?? 0;
+      return insertSlots(client, rows);
     },
 
     async claimSlots(args) {

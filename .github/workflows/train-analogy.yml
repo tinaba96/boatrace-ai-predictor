@@ -29,8 +29,13 @@ concurrency:
   group: train-analogy
   cancel-in-progress: false
 
+# 最小の権限（CodeQL actions/missing-workflow-permissions）。GITHUB_TOKEN で書く手順は無い
+permissions:
+  contents: read
+
 jobs:
   train:
+    environment: prod-jobs
     runs-on: ubuntu-latest
     timeout-minutes: 240
     env:
@@ -42,7 +47,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version-file: .nvmrc
           cache: "npm"
       - run: npm ci
 

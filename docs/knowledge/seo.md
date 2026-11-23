@@ -19,6 +19,10 @@
 - blogFaqSchema.js の FAQ 見出しの検出は言語ごとの固定の文字列（例: 繁体字の「常見問題」）。新しい言語を足したら見出しの文字列も足す（2026-08-11、memory foreign_audience_growth_strategy_2026_08、PR #279〜281）
 - public/sitemap.xml は日次の cron（.github/workflows/update-sitemap.yml）が作り直す。PR には scripts/generate-sitemap.js の変更だけを入れ、生成物は入れない（2026-08-09、memory i18n_p1_analysis_tools_handoff）
 - 記事の文字数は表と Markdown の記法を除いた日本語の文字で測る。wc -m だと目安（2,000〜3,500字）を大きく超えて見える（2026-09-28、memory phase_a_content_rollout_2026_09_28、PR #884）
+- 開催向けの記事の slug に年号を入れない。開催後に古く見えるため。同じテーマの既存記事の slug の型（会場名＋テーマ。例 -water-wind-guide）にそろえる（2026-10-13、#1548 の SEO P2）
+- ブログの図の既定状態（既定の会場の値・札・figcaption）は、スナップショットが図の読み込みを待つので DOM の文字としてボットに届く。遅延描画（画面に入ってから描く）にすると届かない。切り替え後の値は見えないので、根拠にしたい数字は本文の1行と表に置く（2026-10-20、seo-marketer・system-architect、scripts/generate-ai-snapshots.js の waitForBlogCharts、ADR 0098）
+- 図の切り替えで見せるだけの会場（全会場分）は本文の表にしない。会場別記事・会場ガイドと食い合い、問いから外れる。記事内の1図に Dataset の構造化データは付けない（2026-10-20、seo-marketer）
+- public の静的ファイルは `/blog/{名前}` の1段に置かない。aiCrawlerBots.js の `^\/blog\/([^/]+)$` に合い、ボットにだけ ai-snapshots へ書き換えられる。図の JSON は `/blog-charts/` に置く（2026-10-20、system-architect、src/config/aiCrawlerBots.js）
 
 ## インデックスと順位
 - 2026-04〜07 の自然検索の減少（平均掲載順位 6.0→7.5）は、日本語ブログの新規記事が4月以降ほぼ0になった時期と一致した。記事の鮮度を順位の先行指標とし、最新記事から2週間空いたら次の記事の種を探す（2026-07-28、memory boa_pv_plateau_diagnosis_2026_07・feedback_content_cadence_proactive_check）
@@ -27,6 +31,9 @@
 - 新記事が検索に出ないときは、まず Search Console の URL 検査で未インデックスかを分ける。2026-03-12 公開の13本は7本が未インデックスで、内部リンク数・文字数と関係が無かった。一括確認は urlInspection API で1件ごとに300〜400ms 空ける（scripts/analysis/check-venue-indexing.js）（2026-08-26、memory boa_pv_plateau_diagnosis_2026_07、PR #406）
 - 選手ページの index の判定は src/utils/racerIndexPolicy.js をページと sitemap で共用する（2026-10-02 時点は現役A1の322人）。/races/:date は sitemap に直近7日だけ、/race/:raceId は sitemap の対象外（2026-10-02、memory seo_keyword_strategy_2026_09_29、PR #1120）
 - Search Console の反映は数日〜2週間遅れ、新しい記事や title・description の修正の効果は2〜4週間後に出る。CTR の低いページを改善候補に出す前に git log -- <ファイル> で直近に直していないか確かめる（2026-08〜09、memory feedback_growth_pdca_design・growth_pdca_2026_09_05・growth_report_skills_2026_08）
+- 選手ページは取得に失敗すると noindex を付けていた。2026-10-03 の Googlebot の描画で、条件を満たす85人が noindex になり、canonical が2ページ（/racer/4760・5208）に集まった（失敗の画面が全員同じ中身）。noindex の判定は取得が成功したときだけにする（2026-10-28、Search Console の URL 検査 10/25・本番 DB、PR #2049）
+- URL 検査で同じ型のページの googleCanonical が1ページに集まっていたら、Googlebot が同じ中身（読み込み中・エラーの画面）を見た印。描画の失敗を疑う（2026-10-28、同上）
+- 選手ページの title・description は全選手が同型で、登録番号は画面に無く、name_kana は取得していたが未使用だった。description に登録番号・支部・級、画面に登録番号とよみ、取得中・失敗・該当なしの画面にも登録番号を入れた（2026-10-28、seo-marketer、PR #2050）
 - Search Console レポートの順位変動は「+ が下落、− が上昇」で、見た目と逆になる（2026-09-05、memory growth_pdca_2026_09_05）
 
 ## AI 検索での見え方
@@ -40,3 +47,58 @@
 - 「BoatAI」系の名前のサービスが複数ある（com.boatai・boat.ai・boat-ai.site・boating-ai.com）ほか、boatraceai.com（通称ボートアイ）もある。poseidon-boatrace.net は独自指標「海神指数」を持つ（2026-08-19、memory boatai_rebrand_investigation_2026_08_19）
 - search-console-report.js の指名検索の条件「ボートアイ」「boat ai」は競合 boatraceai.com の名前と同じで、指名の比率は実際より高く出る。「ボートアイ」は分けて見る（2026-09-29、memory growth_pdca_2026_09_29）
 - キーワードの需要には「会場名＋観光／周辺」の地域の軸を入れる。会場の近くに来た観光客を会場ガイド（/venues/{slug}）へ連れてくる狙い（2026-08-10 オーナーの発案、memory feedback_growth_pdca_design）
+
+## 点検での見落としを防ぐ知見
+- URL取得の成功とAIの最終回答のFOUND/UNREADABLEは別に記録し、別UAの取得と食い違う場合も取得条件・時刻を残す。（2026-10-12、2026-10-12-task-36-ai-cited-pages.md）
+- AIの引用先が答える期間・区分・条件と質問の条件を照合し、引用の成立だけで適切な回答例としない。（2026-10-12、2026-10-12-task-36-ai-cited-pages.md）
+- FAQPageの構造化データを出す案と検索結果でFAQが表示される期待は分け、表示可否は採用時点の公式仕様で確認する。（2026-10-12、2026-10-12-top-faq.md）
+- 掲載本文が参照稿と一致していても、記事が案内する現在の画面の表示名は別に照合する。（2026-10-13、2026-10-13-audit-20261013-01.md）
+- Search Consoleに実クエリがあることと、新記事を作る露出根拠・既存稿との差があることは別に確認する。（2026-10-13、2026-10-13-plan-1408.md）
+- ブログの metaTitle・metaDescription は <title>・meta description・OGP/Twitter にだけ効く。AI 向けスナップショットは描画後の HTML を保存するのでビルドで自動的に反映されるが、llms.txt（generate-llms-txt.js）・トップのブログ欄の bot 向け HTML（api/_lib/botPage.js）・BlogPosting の JSON-LD は画面用の title・description を使い、「競艇」を入れない（2026-10-19、PR #1673 の seo-marketer 調査）
+- 会場記事の新稿の前に、一般ガイドだけでなく会場名を含む固有分析 slug・データ記事・開催日別稿を公開 sitemap と照合する（2026-10-13、2026-10-13-plan-1636.md・2026-10-13-venue-20261013-05-edogawa.md）
+- 問いと答えが同じなら、会場名・母数・大会名だけを替えた同型稿を作らない。同一会場・同一日程の複数大会は1依頼にまとめる（2026-10-13、2026-10-13-venue-20261013-08-hamanako.md・2026-10-13-plan-1739.md）
+- 会場記事の問いは、その会場の公開比較（全体との上下、強さ別の件数）から決める。既存ガイドに定性記述があっても固有の問いに答えられるかを確認し、別会場の問いへ数字だけ替えて流用しない（2026-10-13、2026-10-13-venue-20261013-10-wakamatsu.md・2026-10-13-venue-20261013-12-tamagawa.md）
+- 年内の対象が尽きたら、公式日程の翌年表の公開を確認する。年越しの先行稿は大会当日の成績にせず、公開前に日程・データを更新確認する（2026-10-13、2026-10-13-plan-1840.md）
+- 将来の大会向けの会場稿は、公式表（日程・季節別表）の年・期間と大会の年を別に確認する（2026-10-13、2026-10-13-venue-20261013-06-shimonoseki.md）
+- 承認範囲が SG・G1 の計画では、公式の「SG・PGⅠ」表の分類名だけで PGⅠ を GⅠ として起票しない（2026-10-13、2026-10-13-plan-1840.md）
+- 自動計画は、前の計画の未制作一覧で止めず、その後の完成報告と専用出力先を照合する。再起動だけを新しい制作根拠にしない（2026-10-13、2026-10-13-plan-1739.md・2026-10-13-plan-2201.md）
+- 根拠のある新規記事を確保できない回は起票 0 件とし、監査・採否待ちの note や別名の重複主題で枠を埋めない。再開条件（全クエリ明細・日程の更新）を残す（2026-10-13、2026-10-13-plan-2057.md・2026-10-13-plan-2201.md）
+- 依頼の呼び名（Search Console 等）やファイル名だけでデータ種別を決めず、JSON のキー（byLanguage・bySource 等）で中身を確認する（2026-10-13、2026-10-13-plan-2057.md）
+- 既存記事の数値と評価語の整合は、別レースの最新値を取らず保存本文だけで照合できる。限定訂正は元の問い・URL を維持し、旧閾値の妥当性や記事全体の正確性まで認定しない（2026-10-13、2026-10-13-audit-20261013-06.md）
+- 新稿から一般ガイドへ内部リンクを張るときは、リポジトリ上の本文だけでなく公開本文とメタを確認する。新稿の一次資料と矛盾する説明が旧ガイドに残るなら、リンク付近に相違と採用する出典を示す（2026-10-13、2026-10-13-venue-20261013-11-tsu.md・2026-10-13-venue-20261013-03-gamagori.md）
+- 会場ガイドの事実訂正は、同じ事実を出す全箇所（場別記事・総合観戦ガイドと翻訳・開催時間表・開催場表・schedule 等の別欄・title/description/tag）で完了を判断する。場別記事の修正を総合ガイドの同じ誤りの解消に読み替えない（2026-10-13、2026-10-13-venue-guide-fact-audit.md・2026-10-13-plan-review-20261013-17.md）
+- 記事修正の追跡に行番号だけを使わない。別の行の追加で位置が動く（2026-10-13、2026-10-13-plan-review-20261013-21.md）
+- 修正 PR が「N 点解消」と申告していても、元の照合報告が無ければ、差分の整合確認と解消の認定を分ける（2026-10-13、2026-10-13-plan-2033.md）
+- SPA の /blog URL は HTTP 200 でも記事の実在の証拠にならない。指定 URL で記事の見出し・本文か「記事なし」表示かを確認する。翻訳名を直結した URL の不成立から翻訳全体の非公開を推定しない（2026-10-13、2026-10-13-venue-guide-fact-audit.md）
+- ブログ JSON の date がレース日でも、現行 BlogPost は datePublished と dateModified に同値を出す。レース日を初回公開日・更新日とみなす前に制作・公開履歴を確認する（2026-10-13、2026-10-13-plan-review-20261013-07.md）
+- 再計画では前回報告の候補状態に加え、同日付の制作稿と引継ぎを照合し、制作済みの記事を再び新規候補にしない。（2026-10-19、2026-10-19-plan-1758.md）
+- 会場記事の候補は保存稿一覧と今後の開催会場を突き合わせ、一般ガイドと水面・風の記事の主題を区別する。期間を限った確認結果を恒久的な需要なしへ広げない。（2026-10-19、2026-10-19-plan-2103.md）
+- 翻訳のメタ（blogPostsEn/Ko/ZhTw.js）と blogImageDimensions.js はデータではなく画面のバンドルに入る JS なので、記事の PR の許可のパスに入れるとコードを入れられる。#1699 で翻訳のメタを src/data/blog-posts/{lang}/{id}.json に、寸法をビルドの時に作る形に移す（対応中、2026-10-20、system-architect の content-publish の審査、旧 src/data/blogPostsEn.js:7,369-373、BOA-908 ②）
+- public/blog の217本で、生の HTML タグは0件、本文の「競艇」は venue-visit-guide-ko.md:23 の1件だけ。どちらも、変えたファイルに当てる関門にしても今の記事は壊れない（2026-10-20、system-architect の content-publish の審査、git grep・origin/master）
+- 日替わりページの読取失敗は、測定URLの日付とボットHTMLの配信対象日を先に照合する。レース詳細のボット向けHTMLは本日（JST）だけで、過去・未来はSPAになるため、固定した過去URLの失敗を当日ページの配信障害と同一視しない（2026-10-20、ai-visibility、src/config/aiCrawlerBots.js の resolveBotPagePath）
+- ページへの到達方法を記事で案内するときは、入口ルートと遷移元にあるリンクを別々に確認する。会場ページと開催別ランキングが両方実在しても両者のリンクは保証されず、経路が裏付けられなければ各ページの役割だけを書く（2026-10-20、BOA-921、src/pages/VenueRaceListPage.jsx、fanの指摘）
+- ブログのFAQ後へ導線を足すときは、次の第2階層見出しでFAQ節を閉じるか、導線をFAQ前へ置く。blogFaqSchema.jsは次の第2階層見出しまでをFAQとして読むため、見出しなしの誘導文が最後の回答へ混ざる（2026-10-20、seo-marketerの指摘、src/utils/blogFaqSchema.js の extractFaqItems）
+- 主題語がllms.txtの既存記事紹介にだけ出る場合、それを機能の実在根拠にしない。記事由来の説明を記事の根拠へ戻す循環を避け、画面の名称・値の定義・公開ルートを別に照合してから紹介する（2026-10-21、ai-index-reading-guideのcontent-qa指摘、public/llms.txt・src/locales/ja/common.json）
+- 展示後の読み方で根拠表へ案内するときは、表の名前・会場の行・期間の列まで示す。「コース別の行」だけで済ませず、進入コースと枠番、長期表と短期表を取り違えずに同じ根拠へ戻れるようにする（2026-10-22、seo-humanへのfan P1「参照するコース別の行」）
+- 審査後に本文の見出しを直したら、記事設計のh2も更新し、出稿前に順序と文面を照合する。設計に古い結論を残したまま、本文の問いと根拠が対応していると判断しない（2026-10-23、seo-human、桐生記事のoutlineと本文h2の不一致への審査助言）
+- seo-measures.jsonの構文・kind・id検査とverify-seo-keyword-kpiの成功だけでは、施策の欠落を検知できない。出典台帳のPR集合とmaster入り日を照合し、各施策が月曜始まりの該当週へ配置されることも別に検証する（2026-10-23、BOA-906、Codex報告2026-10-23-boa-906.md、scripts/maintenance/verify-seo-keyword-kpi.js・scripts/analysis/search-console-report.js）
+- llms.txtのブログ一覧は、タイトルのMarkdownエスケープだけでなく、記事IDを括弧も含めURLの1区画として符号化し、説明の改行やリンク構造の混入も抑止する。特殊文字を含む入力で行・リンク構造を検証する（2026-10-23、BOA-920、Codex報告2026-10-23-boa-920.md、scripts/maintenance/verify-output-escape.js）
+- Google-Extended は robots.txt の印で、取得の UA には現れない（Google の common crawlers の文書）。UA の一覧に入れても何にも一致しない。ボット向け HTML を出す Google の取得器は利用者起点の Google-GeminiNotebook だけで、Googlebot・Google-InspectionTool・GoogleOther・Google-Agent には出さない（2026-11-02、BOA-899、ADR 0032 追記）
+- UA を足すときは各社の文書の UA 全文を verify-middleware-routing.js に写し、出典を添える。照合は部分一致なので、綴りの1字違いは「何も配られない」形で黙って壊れる。一覧は aiCrawlerBots.js と vercel.json の missing 6か所の2つにあり、一致は同スクリプトの [7] が守る（2026-11-02、system-architect の審査、BOA-899）
+- Gemini API の url_context は「まず内部の索引キャッシュ、無ければその場で取得」で、取得 UA は公式文書に無い。2026-11-02 に配信の経路が同じ3 URL のうち1つだけ本文が取れたので、url_context の差を UA の一覧で直そうとしない（2026-11-02、BOA-899、hq の試験と curl）
+- 選手ページは URL 検査が PASS・登録済みで、10月に選手名の検索で42件に表示がある（選手名は JS の描画後にしか無い）ので Google は描画して索引している。平均順位30前後・クリック0は描画ではなく競争力（内部リンク・中身）の問題として扱う（2026-11-02、Search Console の query+page、BOA-899）
+- /today のボットHTMLは区分固有の emptyMessage を優先する。逃がしは保存行があっても2号艇の抽出後に0件になりうるので、行なしと全行3号艇を両方検査する（2026-10-24、BOA-1004、api/_lib/botToday.js・verify-bot-today-function.js）。
+- breadcrumbLd.js の isValidCrumbs は名前とURLの非空文字列だけを確認し、文字列の /undefined は通す。有効判定を未定義値混入の防止保証と扱わない（2026-10-24、BOA-1040、verify-breadcrumb-ld.js の KNOWN_GAPS）。
+- /venue/:venueCode は数字の文字列を整数化するため /venue/3 と /venue/03 は同じ会場を開く。ブログの内部リンクは既存記事に合わせ、先頭0なしの /venue/3 にそろえる（2026-10-25、seo-human、src/pages/VenueRaceListPage.jsx）。
+- 古い記事の改稿は数値だけでなく、用語の説明・会場例・閾値・選手名を含む主張を1文ずつデータか定義へ照合する。根拠の無い定性説明は数字の追加では直らないため、書き直すか外す（2026-10-31、seo-human、course-prediction-tips.md と venue-course-win-rate.json の照合）。
+- /race の状態別メタを変えるときは、共通メタ関数だけでなく人・ボットの両呼び出し元が状態を渡すか確認する。識別情報だけの引数のままでは状態別に切り替えられない（2026-10-31、BOA-1200、RaceDetailPage.jsx・api/_lib/botRace.js）。
+- 節ページは初日でも出走表と当日の節の日があれば、結果0件だけで preOpen にはならない。サイトマップ除外条件で「初日の結果待ち」とpreOpenを同一視しない（2026-10-31、BOA-1204、BOA-1187取込SHA ca2c9e2 の meetPageState 固定入力確認）。
+- 記事の「Nレース中X回」は、提出時の事実照合が参照するJSONの葉でN・Xを確認できる形にする。docsのMarkdown表にしか無い集計は先に根拠JSONの取り込みを扱い、それまでは照合可能な定義・差の幅・実例で答える（2026-11-02、seo-human、hq/platform/facts.py の bind_probs、motor-condition-guide改稿）。
+- 改稿候補は語ごとの表示回数だけでなく、search-console-reportのページ別CTRギャップも確認する。検索語が分散すると各語は少数でもページ全体の表示は多いことがあり、順位相応の目安の半分未満のCTRは候補を探す手掛かりになる（2026-11-02、seo-human、search-console-reportのmotor-condition-guide、20261102T100127）。
+- Perplexityの許可判定はUA例文全体や版番号に固定せず、PerplexityBot・Perplexity-Userそれぞれの名前と対応する公式IP一覧を組み合わせる。例文の変更だけで障害とせず、既存の部分一致方式とWAFの評価順を確認する（2026-11-03、ai-visibility、Perplexity公式文書の10/30差分・src/config/aiCrawlerBots.js）。
+- 同じ主題の記事は検索意図で役割を分け、「とは」は定義、深掘りは落とし穴・使い方に答える。同じ問いや更新時点・平均の定義表を記事内外で重複させず、詳しく答える1か所へリンクする。二重管理は改稿時の食い違いを生む（2026-11-02〜03、seo-human、BOA-1223・BOA-1256、motor-condition-guideとmotor-performance-deep-dive）。
+- 掲載済み記事の部分改稿でも、提出用メタのtitleは30〜60字、descriptionは120〜160字の検査を受ける。本文の変更が1節だけでもメタの字数を確認し、範囲外なら併せて直す（2026-11-02、seo-human、hq/platform/blog_post.pyのmeta_probs・title_len・description_len、what-pros-avoid改稿）。
+- 記事の題・率・期間・母数を改稿したら、リンク元の表示文と添え書きも確認する。改稿前にpublic/blogをリンク先の/blog/<id>で検索し、数字入りの関連記事リンクを洗い出す。本文だけ直すとリンク元とリンク先で同じ主張の数字が食い違う（2026-11-03、seo-human、BOA-1007・BOA-958）。
+- 掲載済み記事は執筆直前のマージ済み版を土台にする。refの写しの時刻と成果台帳outcomes.jsonlのmerged_atを比べ、写しより後のマージがあればその差分を反映してから改稿する。古い版による丸ごとの置換で直近の数字・表を消さない（2026-11-03、seo-human、BOA-1256・BOA-1257、PR #2131・#2125・#2088）。
+- 大きなJSONを記事の根拠にするときは、sourcesにファイル名だけでなく該当キーと行番号の範囲を添える。記事の問いに不要な期間・会場・数値は省き、照合対象を明確にする。行番号だけには依存しない（2026-11-03、seo-human、BOA-1275、heiwajima-course1-winrateの審査がmax_turns 12で終了した例）。
+- /winning-techniqueのボット用HTMLは、generateWinningTechniqueSnapshotの専用テンプレートから生成する。ブログのようにReactの描画後HTMLを保存する方式ではないため、ページへのuseSocialMeta追加だけではボット用HTMLのOGP・Xカードを変更できない（2026-11-03、BOA-1239、scripts/generate-ai-snapshots.js の generateWinningTechniqueSnapshot）。

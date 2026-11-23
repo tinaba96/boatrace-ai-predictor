@@ -9,6 +9,12 @@
  *   (e) v16 の朝のバッチ（T2-5b）: analogy-v16-morning.yml を起動する。7:40 の起動だけ、出走表の段が無い今日のレース
  *       （締切まで10分以上・中止でない）があるときに起動し、ほかの起動は常に起動する。配線（レジストリ・api/cron・vercel.json）
  *   (f) BOA-822 イン崩れ注意度の夜の表（in-caution-nightly.yml）: inputs 空で起動、配線（レジストリ・api/cron・vercel.json の JST 2:30・workflow の concurrency）
+ *   (g) ADR-0097 db-apply の定期の突き合わせ（db-apply.yml の mode=reconcile、scripts/lib/dbApplyDispatch.js）: inputs、
+ *       見張り（live の最初の起動から3時間を過ぎ、直近3時間に reconcile の job が success で終わった run が無ければ、起動した上で失敗）、
+ *       配線（レジストリ・api/cron・vercel.json の毎時17分・db-apply.yml の予備の schedule 47分と mode の choice）
+ *   (h) BOA-929 E2E の録画の撮り直し（e2e-rerecord.yml）・BOA-917 鍵のカナリア（key-canary.yml）: e2e は inputs.gate="true"、
+ *       カナリアは inputs 空で起動。配線（レジストリ・api/cron・vercel.json）。vercel.json の時刻が workflow の予備の
+ *       schedule と同じ（e2e は JST 10:23・12:47・14:37・16:13、カナリアは 7・37分）
  *
  * 使い方: node scripts/maintenance/verify-analogy-dispatch.js
  */
@@ -21,8 +27,11 @@ import {
   morningRetryNeeded,
   morningShouldDispatch,
 } from "../lib/analogyDispatch.js";
+
 import { SCRAPE_JOBS, validateRegistry } from "../lib/scrapeJobs/registry.js";
 import { evaluateJobStates } from "../lib/scrapeJobs/monitor.js";
+import { cronWiring } from "./verifyData/cronWiring.js";
+import { runAnalogyDispatchScenes1 } from "./verifyData/analogy-dispatch-scenes.js";
 
 const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -36,6 +45,12 @@ const check = (ok, label, detail = "") => {
   if (!ok) failures++;
 };
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const vercel = JSON.parse(
+  fs.readFileSync(path.join(ROOT, "vercel.json"), "utf8"),
+);
+/** .github/workflows の yml の本文（コードではない） */
+const readWorkflow = (name) =>
+  fs.readFileSync(path.join(ROOT, ".github/workflows", name), "utf8");
 
 const at = (hhmm) => new Date(`2026-10-04T${hhmm}:00+09:00`);
 function fakeFetch(status = 204) {
@@ -52,6 +67,32 @@ function fakeFetch(status = 204) {
   return f;
 }
 const ctxOf = (now, mode = "live") => ({ now: () => now, client: null, mode });
+
+/**
+ * api/cron の本の配線。本文の字は読まず、export（config・default）と、共通ラッパへ渡した引数で見る
+ * （verifyData/cronWiring.js）。run は shadow で呼び（GitHub を起動しない）、report の target で起動の対象を見る
+ */
+async function wiringOf(load) {
+  const api = await cronWiring(load);
+  const opts = api.made[0]?.options ?? {};
+  const shadow = await opts.run?.(ctxOf(at("04:00"), "shadow"));
+  return {
+    maxDuration: api.config?.maxDuration,
+    job: opts.job,
+    modeGated: opts.modeGated,
+    target: shadow?.report?.target,
+    exported: api.made.length === 1 && api.handler === api.made[0].handler,
+    run: opts.run,
+  };
+}
+/** wiringOf の期待（レジストリの maxDuration・job 名・モードのゲート・起動の対象・default export）。run は JSON に出ないので比べない */
+const wired = (def, job, target) => ({
+  maxDuration: def?.maxDurationSec,
+  job,
+  modeGated: true,
+  target,
+  exported: true,
+});
 const ENV = { GITHUB_ACTIONS_DISPATCH_TOKEN: "t0ken" };
 const run = (f, env = ENV) =>
   createAnalogyDispatchRun("train", { fetchImpl: f, env });
@@ -170,24 +211,18 @@ const run = (f, env = ENV) =>
     "(d) validateRegistry に問題が無い",
     JSON.stringify(validateRegistry()),
   );
-  const vercel = JSON.parse(
-    fs.readFileSync(path.join(ROOT, "vercel.json"), "utf8"),
-  );
   const def = SCRAPE_JOBS.analogy_dispatch_train;
   check(
     def?.kind === "monitor" && def.failureAlertAfter === 1,
     "(d) analogy_dispatch_train: monitor・failureAlertAfter 1",
   );
-  const src = fs.readFileSync(
-    path.join(ROOT, "api/cron/analogy-dispatch-train.js"),
-    "utf8",
+  const w = await wiringOf(
+    () => import("../../api/cron/analogy-dispatch-train.js"),
   );
-  const m = /maxDuration:\s*(\d+)/.exec(src);
   check(
-    Number(m?.[1]) === def?.maxDurationSec &&
-      /modeGated:\s*true/.test(src) &&
-      src.includes('job: "analogy_dispatch_train"'),
+    same(w, wired(def, "analogy_dispatch_train", "train")),
     "(d) api/cron/analogy-dispatch-train.js: maxDuration がレジストリと一致し、モードのゲートを掛ける",
+    JSON.stringify(w),
   );
   const crons = vercel.crons
     .filter((c) => c.path === "/api/cron/analogy-dispatch-train")
@@ -285,18 +320,13 @@ const run = (f, env = ENV) =>
     def?.kind === "monitor" && def.failureAlertAfter === 1,
     "(e) analogy_dispatch_morning: monitor・failureAlertAfter 1",
   );
-  const src = fs.readFileSync(
-    path.join(ROOT, "api/cron/analogy-dispatch-morning.js"),
-    "utf8",
+  const w = await wiringOf(
+    () => import("../../api/cron/analogy-dispatch-morning.js"),
   );
   check(
-    Number(/maxDuration:\s*(\d+)/.exec(src)?.[1]) === def?.maxDurationSec &&
-      /modeGated:\s*true/.test(src) &&
-      src.includes('job: "analogy_dispatch_morning"'),
+    same(w, wired(def, "analogy_dispatch_morning", "v16_morning")),
     "(e) api/cron/analogy-dispatch-morning.js: maxDuration がレジストリと一致し、モードのゲートを掛ける",
-  );
-  const vercel = JSON.parse(
-    fs.readFileSync(path.join(ROOT, "vercel.json"), "utf8"),
+    JSON.stringify(w),
   );
   const crons = vercel.crons
     .filter((c) => c.path === "/api/cron/analogy-dispatch-morning")
@@ -308,58 +338,91 @@ const run = (f, env = ENV) =>
   );
 }
 
-// ---------------------------------------------------------------- (f)
+// ---- 後半の場面（verifyData/analogy-dispatch-scenes.js） ----
+await runAnalogyDispatchScenes1({ check, same, vercel, readWorkflow, at, fakeFetch, ctxOf, wiringOf, wired, ENV });
+
+// ---------------------------------------------------------------- (h)
 {
-  const f = fakeFetch();
-  const r = await createAnalogyDispatchRun("in_caution_nightly", {
-    fetchImpl: f,
-    env: ENV,
-  })(ctxOf(at("02:30")));
+  const cases = [
+    {
+      target: "e2e_rerecord",
+      job: "e2e_rerecord_dispatch",
+      api: "e2e-rerecord-dispatch",
+      workflow: "e2e-rerecord.yml",
+      inputs: { gate: "true" },
+      crons: ["23 1 * * *", "47 3 * * *", "37 5 * * *", "13 7 * * *"],
+      alertAfter: 1,
+    },
+    {
+      target: "key_canary",
+      job: "key_canary_dispatch",
+      api: "key-canary-dispatch",
+      workflow: "key-canary.yml",
+      inputs: {},
+      crons: ["7,37 * * * *"],
+      // 1日48回なので一時的な失敗の1回では通知しない
+      alertAfter: 3,
+    },
+  ];
+  for (const c of cases) {
+    const f = fakeFetch();
+    const r = await createAnalogyDispatchRun(c.target, {
+      fetchImpl: f,
+      env: ENV,
+    })(ctxOf(at("10:23")));
+    check(
+      r.report?.dispatched === true &&
+        f.calls.length === 1 &&
+        f.calls[0].url.endsWith(
+          `/actions/workflows/${c.workflow}/dispatches`,
+        ) &&
+        same(JSON.parse(f.calls[0].init.body), {
+          ref: "master",
+          inputs: c.inputs,
+        }),
+      `(h) ${c.target} は ${c.workflow} を master で inputs ${JSON.stringify(c.inputs)} で起動する`,
+      JSON.stringify(f.calls[0]),
+    );
+
+    const def = SCRAPE_JOBS[c.job];
+    check(
+      def?.kind === "monitor" && def?.failureAlertAfter === c.alertAfter,
+      `(h) ${c.job}: monitor・failureAlertAfter ${c.alertAfter}`,
+      JSON.stringify(def),
+    );
+    const w = await wiringOf(() => import(`../../api/cron/${c.api}.js`));
+    check(
+      same(w, wired(def, c.job, c.target)),
+      `(h) api/cron/${c.api}.js: maxDuration がレジストリと一致し、モードのゲートを掛ける`,
+      JSON.stringify(w),
+    );
+    const crons = vercel.crons
+      .filter((x) => x.path === `/api/cron/${c.api}`)
+      .map((x) => x.schedule);
+    check(
+      same(crons, c.crons),
+      `(h) vercel.json: ${c.api} の時刻が ${c.crons.join("・")}（UTC）`,
+      JSON.stringify(crons),
+    );
+    // 予備の schedule を残し、Vercel Cron と同じ時刻にする（片方が来なくても同じ時刻に起動する）
+    const wf = readWorkflow(c.workflow);
+    const scheduled = [...wf.matchAll(/^\s*- cron:\s*['"]([^'"]+)['"]/gm)].map(
+      (m) => m[1],
+    );
+    check(
+      same(scheduled, c.crons),
+      `(h) ${c.workflow}: 予備の schedule が vercel.json と同じ時刻`,
+      JSON.stringify(scheduled),
+    );
+  }
+
+  // e2e は gate=true で起動する。workflow 側の入力は boolean・既定 false（人の起動は今と同じく判定せずに撮る）
+  const e2e = readWorkflow("e2e-rerecord.yml");
   check(
-    r.report?.dispatched === true &&
-      f.calls[0]?.url.endsWith(
-        "/workflows/in-caution-nightly.yml/dispatches",
-      ) &&
-      same(JSON.parse(f.calls[0].init.body), { ref: "master", inputs: {} }),
-    "(f) in_caution_nightly は in-caution-nightly.yml を inputs 空（直近14日・時間外は書かない）で起動する",
-    JSON.stringify(f.calls[0]),
-  );
-  const def = SCRAPE_JOBS.in_caution_dispatch;
-  check(
-    def?.kind === "monitor" && def.failureAlertAfter === 1,
-    "(f) in_caution_dispatch: monitor・failureAlertAfter 1",
-  );
-  const src = fs.readFileSync(
-    path.join(ROOT, "api/cron/in-caution-dispatch.js"),
-    "utf8",
-  );
-  check(
-    Number(/maxDuration:\s*(\d+)/.exec(src)?.[1]) === def?.maxDurationSec &&
-      /modeGated:\s*true/.test(src) &&
-      src.includes('job: "in_caution_dispatch"') &&
-      src.includes('createAnalogyDispatchRun("in_caution_nightly")'),
-    "(f) api/cron/in-caution-dispatch.js: maxDuration がレジストリと一致し、モードのゲートを掛ける",
-  );
-  const vercel = JSON.parse(
-    fs.readFileSync(path.join(ROOT, "vercel.json"), "utf8"),
-  );
-  const crons = vercel.crons
-    .filter((c) => c.path === "/api/cron/in-caution-dispatch")
-    .map((c) => c.schedule);
-  check(
-    same(crons, ["30 17 * * *"]),
-    "(f) vercel.json: JST 2:30（UTC 17:30）に1本（結果の確定の後、races-init の前）",
-    JSON.stringify(crons),
-  );
-  const wf = fs.readFileSync(
-    path.join(ROOT, ".github/workflows/in-caution-nightly.yml"),
-    "utf8",
-  );
-  check(
-    !/^\s*schedule:/m.test(wf) &&
-      /group:\s*in-caution-nightly/.test(wf) &&
-      /if: failure\(\)/.test(wf),
-    "(f) in-caution-nightly.yml: schedule を使わない・concurrency・失敗は Slack",
+    /\n {6}gate:\s*\n(?: {8}description: .*\n)? {8}type: boolean\s*\n {8}default: false/.test(
+      e2e,
+    ) && e2e.includes("github.event.inputs.gate == 'true'"),
+    "(h) e2e-rerecord.yml: inputs.gate は boolean・既定 false で、文字列の 'true' と比べる",
   );
 }
 
@@ -368,3 +431,4 @@ if (failures > 0) {
   process.exit(1);
 }
 console.log("\n✅ すべての検査が通過");
+

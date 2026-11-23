@@ -11,9 +11,9 @@ import {
   formatObservedTime,
   translateWeather,
   translateWindDirection,
-} from "../components/race/weatherInfo.js";
+} from "./weatherInfo.js";
 import { getRaceStageCategory } from "../constants/raceStageConfig.js";
-import { localizePath } from "../config/languages.js";
+import { localizePath } from "../pure/localizePath.js";
 
 const DASH = "—";
 
@@ -33,6 +33,7 @@ export const AI_COPY_NOTE_KEYS = [
   "exhibitionCourse",
   "partsChanged",
   "courseRate",
+  "expectedCourseWinRate",
   "technique",
   "returnRate",
 ];
@@ -258,6 +259,12 @@ export function buildNotes(t, rows) {
   const lines = AI_COPY_NOTE_KEYS.filter((key) => labelByKey.has(key)).map(
     (key) => `- ${labelByKey.get(key)}: ${t(`aiCopy.note.${key}`)}`,
   );
+  const originalLabels = rows.map((r) => r.originalExhibitionLabel).filter(Boolean);
+  if (originalLabels.length) {
+    lines.push(`- ${t("beforeInfo.originalExhibitionSource", {
+      items: originalLabels.join(t("beforeInfo.originalExhibitionItemSeparator")),
+    })}`);
+  }
   return [
     `${t("aiCopy.notesHeading")}:`,
     ...lines,

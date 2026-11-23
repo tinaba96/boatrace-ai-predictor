@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures.js";
+import { settled } from "./settled.js";
 
 // レース詳細の表示の細部（BOA-613・618・619）
 const RACE = "/race/2026-09-29-16-12"; // 児島12R（ピットレポートあり）
@@ -64,14 +65,18 @@ test.describe("レース詳細の表示の細部", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     // 発走前の AI予想（.prediction-result）と確定後の振り返り（.race-ai-prediction-tab）の
     // どちらになるかは録画の時刻しだいなので、トップのレースから辿って出た方を測る
+    // トップにレースのリンクが無い時刻（夜の live）は固定のレースの確定後の表示を測る（BOA-1372）
     await page.goto("/");
     // ブログ欄の記事タイトルにもRレース番号が入ることがある（例:「唐津12Rで読む」）ため、
     // href が /race/ のリンクだけを対象にする（アクセシブルネームでの絞り込みだとブログ記事に先に一致する）。
-    await page
+    const raceLinks = page
       .locator('a[href*="/race/"]')
-      .filter({ hasText: /\d{1,2}\s*R/ })
-      .first()
-      .click();
+      .filter({ hasText: /\d{1,2}\s*R/ });
+    if ((await raceLinks.count()) > 0) {
+      await raceLinks.first().click();
+    } else {
+      await page.goto(`${RACE}?tab=aiPrediction`);
+    }
     await page.waitForURL(/\/race\//);
     await page.locator(".race-tabs-btn", { hasText: "AI予想" }).click();
     const row = page.locator(".turn-pattern-row").first();
@@ -141,6 +146,52 @@ test.describe("レース詳細の表示の細部", () => {
     ).toHaveCount(0);
   });
 
+  // 375px で「今節まわり足 ※ ?」の※と? だけが2行目に落ちない（BOA-1029）。
+  // 見出しの最後の「足」・※・? の上端が同じ行（4px 以内）にある
+  test("直前情報: 375pxでまわり足の「※」と「?」が見出しの最後の字と同じ行に残る（BOA-1029）", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.goto("/race/2026-10-02-12-12?tab=beforeInfo");
+    await expect(page.getByTestId("rbi-turn-time-venue-note")).toBeVisible({
+      timeout: 30000,
+    });
+    const cells = page
+      .locator(".race-before-info-tab .drt-label-cell")
+      .filter({ hasText: "まわり足" });
+    await expect(cells).toHaveCount(2);
+    const tops = await cells.evaluateAll((els) =>
+      els.map((cell) => {
+        const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
+        let foot = null;
+        let mark = null;
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          const parent = n.parentElement;
+          if (!parent || getComputedStyle(parent).display === "none") continue;
+          const text = n.textContent;
+          const f = text.indexOf("足");
+          const m = text.indexOf("※");
+          const topOf = (i) => {
+            const r = document.createRange();
+            r.setStart(n, i);
+            r.setEnd(n, i + 1);
+            return r.getBoundingClientRect().top;
+          };
+          if (f >= 0) foot = topOf(f);
+          if (m >= 0) mark = topOf(m);
+        }
+        const btn = cell.querySelector(".term-hint__button");
+        return { foot, mark, hint: btn.getBoundingClientRect().top };
+      }),
+    );
+    for (const { foot, mark, hint } of tops) {
+      expect(foot).not.toBeNull();
+      expect(mark).not.toBeNull();
+      expect(Math.abs(mark - foot)).toBeLessThanOrEqual(4);
+      expect(Math.abs(hint - foot)).toBeLessThanOrEqual(4);
+    }
+  });
+
   test("基本情報の勝率バー: 最下位の艇も棒が空にならない（BOA-618）", async ({
     page,
   }) => {
@@ -199,7 +250,9 @@ test.describe("レース詳細の表示の細部", () => {
     const names = page.locator(".rpr-racer-name");
     await expect(names.first()).toBeVisible({ timeout: 30000 });
     const texts = await names.allTextContents();
-    for (const n of texts) expect(n).not.toMatch(/　/);
+    for (const n of texts) {
+      expect(n.includes(String.fromCharCode(0x3000))).toBe(false);
+    }
   });
 
   test("1440・1920px: ST考察の6艇の列は等幅、枠別情報のカードの右端がそろう（BOA-619）", async ({
@@ -703,6 +756,9 @@ test.describe("レース詳細の表示の細部", () => {
       sticky: ".race-history-table tbody tr:first-child td:first-child",
       table: ".race-history-table",
       pinned: 2,
+      // 文字の読み込みで固定した列の幅だけが後から変わる状態を作る（表自身の幅は min-width で
+      // 変わらないので、表の大きさの変化だけを見ていると固定の列の幅が古いまま残る）
+      lateWiden: ".race-history-table tr:first-child > :nth-child(2)",
     },
     {
       name: "モーターのコース別成績",
@@ -759,15 +815,61 @@ test.describe("レース詳細の表示の細部", () => {
           const box = el.getBoundingClientRect();
           return Math.round(cell.left - box.left);
         }, screen.sticky);
+      // 送る先は、押した瞬間の列の幅・固定の列の幅から決まる。読み込み・文字の読み込みで列の幅が
+      // 動いている間に押すと、送り先が古い幅の境目になり、のちに幅が決まると境目から外れる。
+      // 幅が落ち着いてから押す（CI のトレースでは、固定の列の幅 scroll-padding-left が
+      // 86px→107px と読み込み中に変わっていた）
+      await page.evaluate(() => document.fonts.ready);
+      await settled(() =>
+        hint.evaluate((el) => {
+          const row = el.querySelector("tr");
+          if (!row) return null;
+          const snap = el.matches("[data-hscroll-snap]")
+            ? el
+            : el.querySelector("[data-hscroll-snap]");
+          return {
+            padding: snap?.style.scrollPaddingLeft ?? null,
+            widths: [...row.children].map(
+              (c) => Math.round(c.getBoundingClientRect().width * 10) / 10,
+            ),
+          };
+        }),
+      );
+      if (screen.lateWiden) {
+        await hint.evaluate((el, sel) => {
+          el.querySelector(sel).style.minWidth = "170px";
+        }, screen.lateWiden);
+      }
       const before = await stickyLeft();
       await more.click();
       const less = hint.locator(":scope > .hscroll-less");
       await expect(less).toBeVisible();
       // 送った先は列の境目。固定の列のすぐ右に、切れた列の破片を残さない（PR #1202 ファン評価2周目。
-      // 375px のコース別成績で「1コース 2%」（実際は 87.2%）と読めた）
+      // 375px のコース別成績で「1コース 2%」（実際は 87.2%）と読めた）。
+      // 境目に止める測り直し（ResizeObserver・フォントの読み込み後）が済む前は 54px 残って見えるので、
+      // 位置が落ち着いてから測る（上限 1px は変えない）
+      const cut = await settled(() => cutAtSticky(hint));
+      // 落ちたとき原因を絞れるよう、送った位置と固定の列の幅・列の位置を文に残す（CI で 54.34 が出て
+      // 再現できなかったため）。判定の値（1px）は変えない
+      const state = await hint.evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        const row = el.querySelector("tr");
+        const snap = el.matches("[data-hscroll-snap]")
+          ? el
+          : el.querySelector("[data-hscroll-snap]");
+        return JSON.stringify({
+          scrollLeft: snap?.scrollLeft,
+          padding: snap?.style.scrollPaddingLeft,
+          margin: snap?.firstElementChild?.style.marginRight,
+          lefts: [...(row?.children ?? [])].map(
+            (c) =>
+              Math.round((c.getBoundingClientRect().left - box.left) * 10) / 10,
+          ),
+        });
+      });
       expect(
-        await cutAtSticky(hint),
-        "固定の列の右に切れた列が残らない",
+        cut,
+        `固定の列の右に切れた列が残らない ${state}`,
       ).toBeLessThanOrEqual(1);
       // 送ったあとも、左端の列は同じ位置に残る
       expect(Math.abs((await stickyLeft()) - before)).toBeLessThanOrEqual(1);
@@ -915,11 +1017,30 @@ test.describe("レース詳細の表示の細部", () => {
     await page.goto(`${RACE}?tab=meet`);
     const row = page.locator(".race-history-table-row").first();
     await expect(row).toBeVisible({ timeout: 90000 });
+    // 表は records（日別の行）と board（ST の順位）が別々に届き、board が後から列を足して行の幅・位置が
+    // 変わる。先に乗せると、動いた後の行の上にポインタが無いまま「乗せていない行」を測った
+    // （HR22: CI で 11/17・11/18 に2回、行 rgba(0,0,0,0)・日付の列 rgb(251,249,243)。trace では
+    // hover の後に meet-scoreboard が届いていた）。読み込み中の表示が消え、行の位置が落ち着いてから乗せる
+    await expect(page.locator(".race-meet-tab .rmt-loading")).toHaveCount(0, {
+      timeout: 90000,
+    });
+    await page.evaluate(() => document.fonts.ready);
+    await settled(() =>
+      page.evaluate(() => {
+        const r = document.querySelector(".race-history-table-row");
+        if (!r) return null;
+        const b = r.getBoundingClientRect();
+        return [b.x, b.y, b.width, b.height].map(Math.round);
+      }),
+    );
     await row.hover();
-    const [rowBg, cellBg] = await row.evaluate((r) => [
-      getComputedStyle(r).backgroundColor,
-      getComputedStyle(r.querySelector("td")).backgroundColor,
-    ]);
+    // 行の色の変化（hover の遷移）が終わってから測る。行と日付の列の色が同じかの判定はそのまま
+    const [rowBg, cellBg] = await settled(() =>
+      row.evaluate((r) => [
+        getComputedStyle(r).backgroundColor,
+        getComputedStyle(r.querySelector("td")).backgroundColor,
+      ]),
+    );
     expect(cellBg).toBe(rowBg);
   });
   test("320px: 今節の日別表は日付とRの列を固定し、1日2走の日もどの走か分かる（PR #1202 ファン評価1周目）", async ({
@@ -1145,6 +1266,9 @@ test.describe("横スクロールの表の仕上げ", () => {
       const hint = page.locator(".mcc-list-hint");
       await hint.locator(":scope > .hscroll-more").click();
       await expect(hint.locator(":scope > .hscroll-less")).toBeVisible();
+      await page.evaluate(() =>
+        Promise.all(document.getAnimations().map((a) => a.finished)),
+      );
       const { line, bg, ring } = await hint.evaluate((el) => {
         const td = el.querySelector("tbody tr td:nth-child(2)");
         const shadow = getComputedStyle(td).boxShadow;

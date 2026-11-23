@@ -18,11 +18,21 @@
  * （二重取得）。validateRegistry がこの関係を検査する。
  */
 
+import { graceMinFor } from "./registryParts.js";
+import { validateJobDef } from "./registryValidate.js";
+
+export {
+  SOFT_DEADLINE_MARGIN_SEC,
+  activeMinutesOf,
+  graceMinFor,
+  isScheduledDate,
+  isCatchupOffset,
+  isWeightOnlyOffset,
+  mainWindowOffsetsOf,
+} from "./registryParts.js";
+
 /** ホスト単位のサーキットブレーカーの scrape_job_state.job の接頭辞（例: host:boatrace.jp） */
 export const HOST_JOB_PREFIX = "host:";
-
-/** 関数の maxDuration からこの秒数を引いた時点で、新しいスロットに着手しない */
-export const SOFT_DEADLINE_MARGIN_SEC = 30;
 
 export const SCRAPE_JOBS = Object.freeze({
   // A1 レース情報更新。発走60分前の1本。出走表（racelist）だけを取る（beforeinfo は展示 A2 が全項目を取る。D2の解消）
@@ -30,6 +40,7 @@ export const SCRAPE_JOBS = Object.freeze({
   // 完了後に予測の再計算（案1。約8〜10秒）を1回呼ぶ余裕を含めて180秒（スロットの処理は、ソフトデッドライン150秒まで）
   race_info: {
     kind: "window",
+    fetchPaths: ["/owpc/pc/race/racelist"],
     offsets: [-60],
     graceMin: 3,
     retrySec: 60,
@@ -66,21 +77,43 @@ export const SCRAPE_JOBS = Object.freeze({
   // 分母に入れず、期限切れを通知しない（体重の公開が遅れても -33 の窓が同じ行を埋める。best effort の前倒し。monitor.js）。
   // スロットは翌朝の予定表の生成（ensure_scrape_slots）から作られる。切り戻し: offsets から -60 を消す
   // （weightOnlyOffsets は残す。DBに残った offset -60 のスロットは、claim されても体重だけの窓として扱われる）
+  //
+  // 取得の回数を減らす（BOA-1145。2026-10-26 15:50 から beforeinfo が当社の取得だけ 403 になった。10/25 は beforeinfo を
+  // 1日1,874回、1レース約11回取っていた。うち -33 の窓が120秒おきで平均8.95回）:
+  //   - -33 の窓は、締切（races.start_time）の pollMinBefore 分前（20・16・13・10・8分前）にだけ取りに行く。-33 のスロットを
+  //     claim した時点で20分前より前なら、取得せずに20分前まで戻す（not_due。試行回数は数えない）。offsets の -33 は
+  //     変えない（その日の予定表に既にある -33 のスロットと、新しい offset のスロットが二重にならないよう）。
+  //     根拠（10/19〜25 の1,088レース、-33 のスロットの完了時刻の締切までの分）: 最も遅い公開は8.43分前、中央値16.4分前。
+  //     この予定で1レース平均2.3〜2.5回（今は8.95回）、締切8分前までに取れる割合100%、10分前まで99.7%。
+  //     公開（20分前より前の公開は20分前とみなす）から取得までの遅れは平均約2分（今は約0.4分）。8分前の後は
+  //     取りに行かず、窓の終わり（7分前）で期限切れにする（その後は +10 の補完が拾う）。7分前は予定に入れない: 窓の
+  //     終わり（offset＋許容幅＝−7）と同じ時刻で、claim_scrape_slots は「期限＋許容幅 < now」を claim の前に expired にする
+  //     （075）ため、毎分の Cron の起動が分の頭から数秒遅れるだけで取れない（Codex の指摘、BOA-1145）。許容幅を延ばして
+  //     窓の終わりを後ろへずらす案は、-60 の体重の窓（−60＋許容幅）が -33 の窓と重なり、offset ごとの許容幅（092）が要るうえ、
+  //     締切8分前にそろえる画面・材料の目標には8分前の取得で足りるため採らない。切り戻し: pollMinBefore を消す（120秒おきに戻る）
+  //   - 体重だけの窓（-60）の再試行は900秒おき（最大2回。実測は平均1.00回）
+  //   - claimLimit 8・concurrency 1・leaseSec 110: 1回の起動で1件ずつ取り、403 を受けたらパスのブレーカー（breakerUrls・
+  //     politeFetch.js）が開いて、その起動の残りは叩かない（再開・半開の試行が、その起動では1件で止まる）。1分あたりの claim は、
+  //     7日の実測から多くて7件（not_due・skipped_have_data は取得なし）。8件 × 12秒 = 96秒 ≦ リース110秒−10秒
+  //   - breakerUrls: 起動の最初に、このページのパスのブレーカーも見る（開いていれば claim せずに終える。cronWrapper.js）
   exhibition: {
     kind: "window",
+    fetchPaths: ["/owpc/pc/race/beforeinfo"],
     offsets: [-60, -33, 10],
     catchupOffsets: [10],
     catchupRetrySec: 600,
     weightOnlyOffsets: [-60],
-    weightOnlyRetrySec: 300,
+    weightOnlyRetrySec: 900,
+    pollMinBefore: [20, 16, 13, 10, 8],
     graceMin: 26,
     retrySec: 120,
-    leaseSec: 90,
-    claimLimit: 24,
-    concurrency: 4,
+    leaseSec: 110,
+    claimLimit: 8,
+    concurrency: 1,
     slotSecEstimate: 12,
     maxDurationSec: 300,
     hosts: ["boatrace.jp"],
+    breakerUrls: ["https://www.boatrace.jp/owpc/pc/race/beforeinfo"],
   },
   // A3 オッズ。6窓×5ページ。許容幅3分のため、リースは許容幅より短く（120秒）
   // 実装: scripts/lib/scrapeJobs/oddsHandlers.js、api/cron/odds.js（T4b-04）。1スロット＝1レース×1窓（5ページを並列）
@@ -95,6 +128,13 @@ export const SCRAPE_JOBS = Object.freeze({
   // 延長は効かない。ログと last_report のアラートに残す。store.js）。切り戻し: graceMinByOffset を消す
   odds: {
     kind: "window",
+    fetchPaths: [
+      "/owpc/pc/race/oddstf",
+      "/owpc/pc/race/odds2tf",
+      "/owpc/pc/race/oddsk",
+      "/owpc/pc/race/odds3t",
+      "/owpc/pc/race/odds3f",
+    ],
     offsets: [-60, -30, -15, -10, -5, 0],
     graceMin: 3,
     graceMinByOffset: { [-60]: 30 },
@@ -115,6 +155,13 @@ export const SCRAPE_JOBS = Object.freeze({
   // 実装: scripts/lib/scrapeJobs/finalOddsHandlers.js、api/cron/odds-final.js
   odds_final: {
     kind: "window",
+    fetchPaths: [
+      "/owpc/pc/race/oddstf",
+      "/owpc/pc/race/odds2tf",
+      "/owpc/pc/race/oddsk",
+      "/owpc/pc/race/odds3t",
+      "/owpc/pc/race/odds3f",
+    ],
     offsets: [5],
     graceMin: 55,
     retrySec: 300,
@@ -125,11 +172,12 @@ export const SCRAPE_JOBS = Object.freeze({
     maxDurationSec: 300,
     hosts: ["boatrace.jp"],
   },
-  // A6 結果取得。発走5分後から90分後まで、5分おきに再試行
+  // A6 結果取得。発走10分後から90分後まで、5分おきに再試行
   result: {
     kind: "window",
-    offsets: [5],
-    graceMin: 85,
+    fetchPaths: ["/owpc/pc/race/raceresult"],
+    offsets: [10],
+    graceMin: 80,
     retrySec: 300,
     leaseSec: 180,
     claimLimit: 40,
@@ -139,15 +187,16 @@ export const SCRAPE_JOBS = Object.freeze({
     hosts: ["boatrace.jp"],
   },
   // B1 公式コンピュータ予想。朝（-720分）から発走30分前まで。1レース約10.6秒（GitHub Actionsの実測）のため、
-  // 20件×3並列で約75秒。公式予想は静的（2026-09-21の実測: 8.5時間後の再取得が朝の値と一致）で、朝1回の取得で足りる。
+  // 6件×3並列で約22秒。窓の始まりの取得の山をならす。公式予想は静的（2026-09-21の実測: 8.5時間後の再取得が朝の値と一致）で、朝1回の取得で足りる。
   // 実装: scripts/lib/scrapeJobs/pcexpectHandlers.js、api/cron/pcexpect.js（T4b-08）
   pcexpect: {
     kind: "window",
+    fetchPaths: ["/owpc/pc/race/pcexpect"],
     offsets: [-720],
     graceMin: 690,
     retrySec: 600,
     leaseSec: 300,
-    claimLimit: 20,
+    claimLimit: 6,
     concurrency: 3,
     slotSecEstimate: 12,
     maxDurationSec: 300,
@@ -169,6 +218,7 @@ export const SCRAPE_JOBS = Object.freeze({
   // 実装: scripts/lib/pitReportJob.js、api/cron/pit-reports.js
   pit_reports: {
     kind: "window",
+    fetchPaths: ["/owpc/pc/race/pitreport"],
     offsets: [-240],
     graceMin: 420,
     retrySec: 300,
@@ -257,10 +307,11 @@ export const SCRAPE_JOBS = Object.freeze({
     runDaysOfMonth: { default: [2], 5: [2, 9, 16], 11: [2, 9, 16] },
   },
   // N16 節（race_series）。04:00指定（cron: 04:00・05:30 JST）。前月・当月・翌月の月間スケジュール（3リクエスト、
-  // 1ページ約1〜10秒）から、開始日が当月・翌月の節を書く。翌月の節名は後から公式に載るため毎日取る。
+  // 1ページ約1〜10秒）から、開始日が当月・翌月の節を書く。月曜と月末3日・月初3日に取る。
   // 実装: scripts/lib/raceSeriesJob.js、api/cron/race-series.js
   race_series: {
     kind: "daily",
+    weeklyWithMonthBoundary: true,
     targetTimeJst: "04:00",
     leaseSec: 120,
     maxDurationSec: 120,
@@ -277,6 +328,30 @@ export const SCRAPE_JOBS = Object.freeze({
     leaseSec: 120,
     maxDurationSec: 120,
     hosts: ["boatrace.jp"],
+  },
+
+  // 前夜の締切予定（eve_race_deadlines、マイグレーション202、BOA-1282。オーナー 2026-11-04「前夜の投稿に翌日の締切を書く」）。
+  // 20:40指定（cron: 20:40・21:00・21:10・21:20 JST の4回）。対象日（20:40 から解決）の翌日の raceindex を、race_series で節のある
+  // 会場（約15）ごとに1ページ、1件ずつ5秒空けて取る（その晩の最初の起動だけ24場とも）。最終日の会場は racelist の 12・11・10R も取る。
+  // 1ページ約8〜10秒＋5秒で、約15会場＋最終日の会場×3で最大約12分（ソフトデッドラインで打ち切り、残りは次の起動）。
+  // finalRunAfterJst より前に始まった起動は incomplete（同じ対象日をもう一度取る）。その時刻以後の起動で取り切れたら済み。
+  // 実装: scripts/lib/eveDeadlinesJob.js、api/cron/eve-deadlines.js。設計: docs/design/eve-race-deadlines/plan.md
+  eve_deadlines: {
+    kind: "daily",
+    targetTimeJst: "20:40",
+    finalRunAfterJst: "21:20",
+    leaseSec: 800,
+    maxDurationSec: 800,
+    hosts: ["boatrace.jp"],
+  },
+  // 前夜の締切予定と当日の races.start_time の照合（取得なし）。06:30指定（cron: 06:30・08:00 JST）。races_init がその日の分を
+  // 終えるまで incomplete。食い違いは last_report.alerts（その日の 12:00 まで）。実装: scripts/lib/eveDeadlinesJob.js
+  eve_deadlines_reconcile: {
+    kind: "daily",
+    targetTimeJst: "06:30",
+    leaseSec: 120,
+    maxDurationSec: 60,
+    hosts: [],
   },
 
   // A5 レース特記事項（race_special_notes）。夜1回、その日の開催会場のページを全部取る（22:30指定。cron: 22:30・
@@ -327,18 +402,23 @@ export const SCRAPE_JOBS = Object.freeze({
 
   // N25 BOATCASTのオリジナル展示（一周/半周ラップ・まわり足・直線。docs/design/boatcast-original-exhibition/）。
   // 別ホスト race.boatcast.jp（boatrace.jp のブレーカーとは独立）。対象は、公開マップ（scripts/lib/boatcast/publicMap.js）で
-  // 公開を確認済みの23会場（江戸川は常時403で対象外）の全レース。公開時刻の実測（2026-09-21、n=21）: ファイルは発走の
-  // 9.9〜29.0分前に現れる（HTTPのLast-Modified）。期限は発走の8分前の1本で、未公開（403）は最大3回（発走の約3分前・約5分後）
-  // まで再試行し、打ち切る（oritenRows.js の decideNotPublished。許容幅30分は、3回目の取得を含む）。リクエストは逐次で
-  // 2.2秒以上の間隔（同時数1）。各tickの先頭にカナリア（既知の存在ファイル）を1回取るため、1スロットの見積りは4秒。
+  // 公開を確認済みの23会場（江戸川は常時403で対象外）の全レース。公開時刻の実測（直近30日、HTTPのLast-Modified）: 発走の
+  // 2.3〜25.2分前、中央11.4分。期限は発走の20分前の1本で、未公開（403）は発走の6分前まで2分おきに再試行し（窓）、その後は
+  // 発走の約1分前・約7分後の2回で打ち切る（最大10回。oritenRows.js の decideNotPublished）。取れた時点でスロットは done に
+  // なり、それ以上取らない。2026-10-25 にオーナー決定（締切8分前に DB にそろっている割合を上げる。旧: 発走8分前の1回）。
+  // 許容幅40分（期限+40分＝発走の20分後）は、最後の取得（約7分後）を含む。retrySec（error のときの再試行）は5分のまま。
+  // claimLimit: 1分あたりに期限・再試行が来るスロットは、10/18〜10/24 の実測で最大6件。10件なら、カナリア＋10件×4秒＝44秒で、
+  // ソフトデッドライン（60秒）とリース（60秒）の中に収まる。リクエストは逐次で2.2秒以上の間隔（同時数1）。各tickの先頭に
+  // カナリア（既知の存在ファイル）を1回取るため、1スロットの見積りは4秒。
   // 実装: scripts/lib/boatcast/oritenJob.js、api/cron/boatcast-oriten.js
   boatcast_oriten: {
     kind: "window",
-    offsets: [-8],
-    graceMin: 30,
+    fetchPaths: ["/txt/{jo}/bc_oriten_{YYYYMMDD}_{jo}_{RR}.txt"],
+    offsets: [-20],
+    graceMin: 40,
     retrySec: 300,
     leaseSec: 60,
-    claimLimit: 6,
+    claimLimit: 10,
     concurrency: 1,
     slotSecEstimate: 4,
     maxDurationSec: 90,
@@ -359,6 +439,7 @@ export const SCRAPE_JOBS = Object.freeze({
   // 期限計算の検証用。api/cron/scrape-pseudo.js）。Cronには登録しない（手動リクエストのみ）。検証後は削除してよい
   pseudo: {
     kind: "window",
+    fetchPaths: [],
     offsets: [-60],
     graceMin: 30,
     retrySec: 10,
@@ -382,6 +463,18 @@ export const SCRAPE_JOBS = Object.freeze({
     targetTimeJst: "06:30",
     leaseSec: 120,
     maxDurationSec: 120,
+    hosts: [],
+  },
+  // 朝の生成の監視（龍神ソナーの出走表の段の当日の件数 > 0、締め 07:50。ポアロ・モリアーティは info）。07:50指定
+  // （cron: 07:55・08:55 JST。08:55 は補足で、処理済みなら last_target_date で何もしない）。data_health は live では
+  // 06:35 の成功で対象日を済みにし、07:35 以降は何もしないため、07:50 の締めは別のジョブ（状態の行）で見る。
+  // DB読み取りのみ。通知は data_health と同じく last_report.alerts → scrape-monitor。
+  // 実装: scripts/lib/dataHealth/job.js の runDataHealthMorningJob、api/cron/data-health-morning.js
+  data_health_morning: {
+    kind: "daily",
+    targetTimeJst: "07:50",
+    leaseSec: 60,
+    maxDurationSec: 60,
     hosts: [],
   },
 
@@ -428,6 +521,45 @@ export const SCRAPE_JOBS = Object.freeze({
     maxDurationSec: 60,
     hosts: [],
     failureAlertAfter: 1,
+  },
+  // ADR-0097 db-apply の定期の突き合わせの起動（db-apply.yml の mode=reconcile。scripts/lib/dbApplyDispatch.js）。毎時17分。
+  // 学習の起動と同じく monitor でモードのゲートを api/cron 側で掛ける。dispatch の失敗と、見張り（直近3時間に
+  // reconcile の job が success で終わっていない）は1回目から通知する
+  db_apply_dispatch: {
+    kind: "monitor",
+    leaseSec: 60,
+    maxDurationSec: 60,
+    hosts: [],
+    failureAlertAfter: 1,
+  },
+  // E2E の録画の撮り直し（e2e-rerecord.yml、BOA-929）と鍵のカナリア（key-canary.yml、BOA-917）の起動
+  // （scripts/lib/analogyDispatch.js）。GitHub の schedule が来ないための迂回で、schedule は予備に残す。
+  // 学習の起動と同じく monitor でモードのゲートを api/cron 側で掛ける。e2e の dispatch の失敗は1回目から通知する
+  e2e_rerecord_dispatch: {
+    kind: "monitor",
+    leaseSec: 60,
+    maxDurationSec: 60,
+    hosts: [],
+    failureAlertAfter: 1,
+  },
+  // カナリアは1日48回起動する。GitHub API の一時的な 5xx の1回で通知しないよう、3回連続（1.5時間）で通知する
+  key_canary_dispatch: {
+    kind: "monitor",
+    leaseSec: 60,
+    maxDurationSec: 60,
+    hosts: [],
+    failureAlertAfter: 3,
+  },
+  // 本番のデプロイをまとめて出す（ADR-0106、scripts/lib/releaseDispatch.js）。1日3回。出せない・前回が出ていない・
+  // master の検査が赤いは1回目から通知する（次の定時まで6〜12時間空くため）。
+  // 死活は livenessStaleMin（定時の間は最大12時間＋拾い直しの20分）を過ぎたら通知する（monitor.js、shadow・live の間）
+  release_dispatch: {
+    kind: "monitor",
+    leaseSec: 60,
+    maxDurationSec: 60,
+    hosts: [],
+    failureAlertAfter: 1,
+    livenessStaleMin: 13 * 60,
   },
   // BOA-822 イン崩れ注意度の監視（scripts/lib/inCautionHealth.js）。DB は読み取りだけ。問題は実行の失敗にして1回目から通知する。
   // 夜の表（JST 04:30、api/cron/in-caution-health.js）と今日の unified（05:45、api/cron/in-caution-today-health.js）を
@@ -484,6 +616,32 @@ export const SCRAPE_JOBS = Object.freeze({
     maxDurationSec: 300,
   },
 
+  // BOA-1479 決まり手・逃げの分布の集計（outcome_distribution・nige_outcome_distribution）。
+  // 過去90日の race_results を会場ごとに集計する。外部サイトへの通信は無い。
+  // 実装: scripts/daily/update-outcome-distribution.js・update-nige-outcome-distribution.js
+  // （1回の呼び出しで2本を続けて回す）。実測の実行時間は shadow の last_report で確かめる。
+  //
+  // 07:30 JST（cron: 07:30・12:30 JST）なのは、材料の race_results を書く kfile_sync
+  // （07:00 / 12:00）より後にするため。GitHub 側の 00:30・00:42 JST は前日分が揃う前で、
+  // 前々日までの集計になっていた。
+  outcome_distribution_update: {
+    kind: "daily",
+    targetTimeJst: "07:30",
+    leaseSec: 300,
+    maxDurationSec: 300,
+  },
+
+  // GS00 案2 選手ページの集計の表の main 層（racer_venue_stats・racer_term_stats・racer_course_stats・racer_championships、
+  // マイグレーション190）。外部サイトへの通信は無く、数えるのは SQL 側（RPC compute_racer_career_counts）。
+  // 23:30 指定（cron: 23:30・01:00 JST）。直近3日に出た選手（約700〜950人）を50人ずつ、main の全期間で計算し直す。
+  // 1回の RPC は実測で約3秒（100人、2026-10-31 の本番の読み取り）。実装: scripts/lib/racerCareerJob.js
+  racer_career_main: {
+    kind: "daily",
+    targetTimeJst: "23:30",
+    leaseSec: 300,
+    maxDurationSec: 300,
+  },
+
   // BOA-402 「本日のデータ一覧」（/today）の抽出結果。外部サイトへの通信は無い。
   // 実測の実行時間は約5秒。実装: scripts/daily/generate-morning-digest.js
   //
@@ -505,7 +663,7 @@ export const SCRAPE_JOBS = Object.freeze({
     leaseSec: 120,
     maxDurationSec: 120,
   },
-  // sns-pdca-loop tasks 19 SNS の送信（X・YouTube）。2分ごと（JST 8:00〜21:00）に、送る時刻を過ぎた job を最大3件送る。
+  // sns-pdca-loop tasks 19 SNS の送信（X・YouTube）。2分ごと（JST 7:00〜23:00。ミッドナイトの優勝戦の送る時刻まで、2026-10-14 オーナー決定。朝は 2026-11-04 に 8:00 から 7:00 へ、BOA-1284）に、送る時刻を過ぎた job を最大3件送る。
   // YouTube は1回の実行の中でアップロード→処理の確認→公開まで進める（ADR 0094・plan §3）ので、maxDuration は 300秒。
   // 外部サイトの取得はしない（ADR-0066 改訂1 の先例）。稼働時間の外は、死活の監視が鳴らない（activeHoursJst）。
   // 実装: scripts/lib/snsSendRunner.js、api/cron/sns-send.js
@@ -513,7 +671,8 @@ export const SCRAPE_JOBS = Object.freeze({
     kind: "continuous",
     leaseSec: 300,
     maxDurationSec: 300,
-    activeHoursJst: { start: "08:00", end: "21:00" },
+    // 7:00 から（YouTube Shorts【人気薄の1着】を 7:15 に送る。BOA-1284、2026-11-04）。vercel.json の sns-send の cron と同じ時間にそろえる
+    activeHoursJst: { start: "07:00", end: "23:00" },
   },
   // sns-pdca-loop tasks 21 SNS の 48h・7d の取り込み。5分ごと（終日）に、due_at を過ぎた sns_metric_jobs を最大50件処理する。
   // 累積値は窓の終わりから15分以内だけ保存する（SQL154）ので、終日動かす。X は自分の投稿の読み取り（Owned Reads）だけ。
@@ -523,78 +682,52 @@ export const SCRAPE_JOBS = Object.freeze({
     leaseSec: 120,
     maxDurationSec: 120,
   },
+  // sns-pdca-loop tasks 12 SNS の自動送信の計画。5分ごと（JST 5:30〜23:00）に、その日の優勝戦・準優勝戦の素材 v1 から
+  // レース×チャネルの item を作り、検査（数値の照合・リンク先の表示・禁止表現・承認の条件）して個別承認に回す。
+  // リンク先の表示の確認で Chromium を起動するので maxDuration は 300秒。龍神の公開 API と公開画面だけを読む（外部サイトは取得しない）。
+  // 実装: scripts/lib/snsAutoPlanRunner.js、api/cron/sns-auto-plan.js
+  sns_auto_plan: {
+    kind: "continuous",
+    leaseSec: 300,
+    maxDurationSec: 300,
+    activeHoursJst: { start: "05:30", end: "23:00" },
+  },
+  // sns-pdca-loop tasks 22 SNS の暦日の値（YouTube Analytics・GA4）。10:00指定（cron: 10:00・11:30 JST）。毎日 D−3〜D−1 を取り直し、
+  // 値が変わった行だけ sns_channel_daily に書く。YouTube Analytics は動画ごとに1回（直近の投稿の数だけ、L3 でも約60回）。
+  // 実装: scripts/lib/snsDailyRunner.js、api/cron/sns-daily.js
+  sns_daily: {
+    kind: "daily",
+    targetTimeJst: "10:00",
+    leaseSec: 300,
+    maxDurationSec: 300,
+    hosts: [],
+  },
 });
 
-/** JST の HH:MM を、0時からの分にする */
-const hhmmToMinutes = (text) => {
-  const [h, m] = String(text).split(":").map(Number);
-  return h * 60 + m;
-};
+/** nextPollTime が予定の時刻から引く秒数（毎分の Cron の起動のぶれで、その分の起動を1回飛ばさないため） */
+export const POLL_EARLY_SEC = 10;
 
 /**
- * ジョブの稼働時間（JST、分）。activeHoursJst の無いジョブは null（監視の運用窓に従う）。
- * @param {{activeHoursJst?: {start: string, end: string}}|undefined} def
- */
-export function activeMinutesOf(def) {
-  if (!def?.activeHoursJst) return null;
-  return {
-    start: hhmmToMinutes(def.activeHoursJst.start),
-    end: hhmmToMinutes(def.activeHoursJst.end),
-  };
-}
-
-/**
- * 日次ジョブが、その日（JST の YYYY-MM-DD）に起動する予定か。runDaysOfMonth の無いジョブは毎日。
- * runDaysOfMonth: { default: [日...], [月]: [日...] }（月ごとの指定が default に優先する）。
- * 月次ジョブ（B6）の未処理を、起動しない日に誤報しないため。
+ * 通常の窓で、次に取りに行く時刻（BOA-1145。レジストリの pollMinBefore＝締切の何分前か）。
+ *   - 最初の予定より前（締切まで pollMinBefore[0] 分より長い）: {due: false, retryAt: 最初の予定}（取得しない）
+ *   - それ以外: {due: true, nextAt: 今より後の次の予定、無ければ null}
+ * 予定の時刻から POLL_EARLY_SEC（10秒）を引く（毎分の Cron の起動のぶれで、その分の起動を1回飛ばさないため）。
+ * 「今より後」は、30秒の余白を見る（17分前の予定を 17.3分前に処理したとき、次を17分前にしない）
  *
- * @param {{runDaysOfMonth?: Record<string, number[]>}} def
- * @param {string} dateJst YYYY-MM-DD
+ * @param {number[]} pollMinBefore 狭義の降順
+ * @param {{deadline: Date, now: Date}} params
  */
-export function isScheduledDate(def, dateJst) {
-  const days = def.runDaysOfMonth;
-  if (!days) return true;
-  const month = Number(dateJst.slice(5, 7));
-  const day = Number(dateJst.slice(8, 10));
-  return (days[month] ?? days.default ?? []).includes(day);
-}
-
-/**
- * 窓の外の補完のスロット（発走の後の、取得済みなら何もしない再取得。展示 BOA-382）の offset か。
- * ハンドラー（気象・再計算をしない）と監視（窓内取得率の分母に入れない、中止・順延の疑いの期限切れを通知しない）が使う。
- *
- * @param {{catchupOffsets?: number[]}|undefined} def
- * @param {number} offsetMin
- */
-export function isCatchupOffset(def, offsetMin) {
-  return Array.isArray(def?.catchupOffsets)
-    ? def.catchupOffsets.includes(offsetMin)
-    : false;
-}
-
-/**
- * 体重だけの窓（発走前の、当日体重・調整重量が取れたら完了とするスロット。展示 BOA-500）の offset か。
- * ハンドラー（完了の判定を変える・気象・再計算をしない）と監視（窓内取得率の分母に入れない、期限切れを通知しない）が使う。
- *
- * @param {{weightOnlyOffsets?: number[]}|undefined} def
- * @param {number} offsetMin
- */
-export function isWeightOnlyOffset(def, offsetMin) {
-  return Array.isArray(def?.weightOnlyOffsets)
-    ? def.weightOnlyOffsets.includes(offsetMin)
-    : false;
-}
-
-/**
- * 窓（offset_min）ごとの許容幅（分）。graceMinByOffset に指定があればその値、なければジョブの graceMin
- * （odds の -60 だけ、未公開の間の延長で30分。ファイル内の odds の説明）
- *
- * @param {{graceMin: number, graceMinByOffset?: Record<number, number>}|undefined} def
- * @param {number} offsetMin
- */
-export function graceMinFor(def, offsetMin) {
-  const override = def?.graceMinByOffset?.[offsetMin];
-  return Number.isInteger(override) ? override : def?.graceMin;
+export function nextPollTime(pollMinBefore, { deadline, now }) {
+  const minutesBefore = (deadline.getTime() - now.getTime()) / 60000;
+  const at = (m) =>
+    new Date(deadline.getTime() - m * 60000 - POLL_EARLY_SEC * 1000);
+  const first = pollMinBefore[0];
+  // 最初の予定の時刻（−10秒）に claim された分は、Vercel と DB の時計の小さなずれ（30秒まで）があっても、取りに行く
+  if (minutesBefore > first + POLL_EARLY_SEC / 60 + 0.5) {
+    return { due: false, retryAt: at(first) };
+  }
+  const next = pollMinBefore.find((m) => m < minutesBefore - 0.5);
+  return { due: true, nextAt: next === undefined ? null : at(next) };
 }
 
 /**
@@ -647,183 +780,7 @@ export function slotDefsFor(jobs, registry = SCRAPE_JOBS) {
 export function validateRegistry(registry = SCRAPE_JOBS) {
   const problems = [];
   for (const [name, def] of Object.entries(registry)) {
-    if (!["window", "daily", "continuous", "monitor"].includes(def.kind)) {
-      problems.push(`${name}: kind が不正です: ${def.kind}`);
-      continue;
-    }
-    if (!(def.maxDurationSec - SOFT_DEADLINE_MARGIN_SEC > 0)) {
-      problems.push(
-        `${name}: maxDurationSec(${def.maxDurationSec}) がソフトデッドラインの余白(${SOFT_DEADLINE_MARGIN_SEC}秒)以下です`,
-      );
-    }
-    if (!Number.isInteger(def.leaseSec) || def.leaseSec < 1) {
-      problems.push(`${name}: leaseSec が不正です: ${def.leaseSec}`);
-    }
-    if (def.activeHoursJst !== undefined) {
-      const ok = (t) => /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(t ?? "");
-      if (
-        !ok(def.activeHoursJst.start) ||
-        !ok(def.activeHoursJst.end) ||
-        hhmmToMinutes(def.activeHoursJst.start) >=
-          hhmmToMinutes(def.activeHoursJst.end)
-      ) {
-        problems.push(
-          `${name}: activeHoursJst は同じ日の HH:MM で start < end にしてください: ${JSON.stringify(def.activeHoursJst)}`,
-        );
-      }
-    }
-    if (def.kind === "window") {
-      const graceSec = def.graceMin * 60;
-      if (!Number.isInteger(def.graceMin) || def.graceMin < 0) {
-        problems.push(`${name}: graceMin が不正です: ${def.graceMin}`);
-      }
-      if (def.leaseSec >= graceSec) {
-        problems.push(
-          `${name}: リース(${def.leaseSec}秒)は許容幅(${graceSec}秒)より短くしてください`,
-        );
-      }
-      if (def.retrySec >= graceSec) {
-        problems.push(
-          `${name}: 再試行の間隔(${def.retrySec}秒)は許容幅(${graceSec}秒)より短くしてください`,
-        );
-      }
-      if (
-        !Array.isArray(def.offsets) ||
-        def.offsets.length === 0 ||
-        def.offsets.some(
-          (o) => !Number.isInteger(o) || o < -32768 || o > 32767,
-        ) ||
-        new Set(def.offsets).size !== def.offsets.length
-      ) {
-        problems.push(`${name}: offsets が不正です: ${def.offsets}`);
-      }
-      const waves = Math.ceil(def.claimLimit / def.concurrency);
-      if (waves * def.slotSecEstimate > def.leaseSec - 10) {
-        problems.push(
-          `${name}: 最後のスロットの完了見込み(${waves}回 × ${def.slotSecEstimate}秒)が、リース(${def.leaseSec}秒)に余裕(10秒)を残して収まりません。claimLimit を減らすか、リースを延ばしてください`,
-        );
-      }
-      if (!(def.concurrency >= 1) || def.concurrency > def.claimLimit) {
-        problems.push(
-          `${name}: concurrency(${def.concurrency}) は 1以上・claimLimit(${def.claimLimit})以下にしてください`,
-        );
-      }
-      // 窓ごとの許容幅の上書き（graceMinByOffset）: 窓（offsets）に含まれ、ジョブの許容幅以上の整数。
-      // 延長した窓は、リース・再試行の間隔より長く、次の窓の開始（発走に近い側の隣の窓の期限）を超えない
-      // （超えると、次の窓と同じ時間帯に2つの窓が重なる）
-      if (def.graceMinByOffset !== undefined) {
-        const sortedOffsets = [...(def.offsets ?? [])].sort((a, b) => a - b);
-        for (const [key, grace] of Object.entries(def.graceMinByOffset)) {
-          const offset = Number(key);
-          if (!Array.isArray(def.offsets) || !def.offsets.includes(offset)) {
-            problems.push(
-              `${name}: graceMinByOffset のキー(${key})が offsets に含まれていません`,
-            );
-            continue;
-          }
-          if (!Number.isInteger(grace) || grace < def.graceMin) {
-            problems.push(
-              `${name}: graceMinByOffset[${key}] は、graceMin(${def.graceMin})以上の整数にしてください: ${grace}`,
-            );
-            continue;
-          }
-          if (def.leaseSec >= grace * 60 || def.retrySec >= grace * 60) {
-            problems.push(
-              `${name}: graceMinByOffset[${key}](${grace}分)は、リース(${def.leaseSec}秒)・再試行の間隔(${def.retrySec}秒)より長くしてください`,
-            );
-          }
-          const next = sortedOffsets.find((o) => o > offset);
-          if (next !== undefined && offset + grace > next) {
-            problems.push(
-              `${name}: graceMinByOffset[${key}](${grace}分)は、次の窓(${next})の開始を超えています（窓が重なります）`,
-            );
-          }
-        }
-      }
-      // 窓の外の補完のスロット（catchupOffsets）: 発走の後（正の整数）。補完の再試行の間隔は、許容幅より短い
-      if (def.catchupOffsets !== undefined) {
-        if (
-          !Array.isArray(def.catchupOffsets) ||
-          def.catchupOffsets.length === 0 ||
-          def.catchupOffsets.some((o) => !Number.isInteger(o) || o <= 0)
-        ) {
-          problems.push(
-            `${name}: catchupOffsets が不正です（発走の後の分を表す正の整数の配列）: ${JSON.stringify(def.catchupOffsets)}`,
-          );
-        }
-        if (
-          !Number.isInteger(def.catchupRetrySec) ||
-          def.catchupRetrySec < 1 ||
-          def.catchupRetrySec >= graceSec
-        ) {
-          problems.push(
-            `${name}: catchupRetrySec(${def.catchupRetrySec}) は、許容幅(${graceSec}秒)より短い正の整数にしてください`,
-          );
-        }
-      }
-      // 体重だけの窓（weightOnlyOffsets）: 発走の前（負の整数）で offsets に含まれ、補完の窓と重ならない。
-      // 次の窓の開始を超えない（超えると、同じレースの2つの窓が同じ時間帯に重なる）。再試行の間隔は許容幅より短い
-      if (def.weightOnlyOffsets !== undefined) {
-        const sortedOffsets = [...(def.offsets ?? [])].sort((a, b) => a - b);
-        if (
-          !Array.isArray(def.weightOnlyOffsets) ||
-          def.weightOnlyOffsets.length === 0 ||
-          def.weightOnlyOffsets.some(
-            (o) =>
-              !Number.isInteger(o) ||
-              o >= 0 ||
-              !(def.offsets ?? []).includes(o) ||
-              isCatchupOffset(def, o),
-          )
-        ) {
-          problems.push(
-            `${name}: weightOnlyOffsets が不正です（offsets に含まれる、発走の前の分を表す負の整数の配列。補完の窓とは別）: ${JSON.stringify(def.weightOnlyOffsets)}`,
-          );
-        } else {
-          for (const offset of def.weightOnlyOffsets) {
-            const next = sortedOffsets.find((o) => o > offset);
-            if (
-              next !== undefined &&
-              offset + graceMinFor(def, offset) > next
-            ) {
-              problems.push(
-                `${name}: 体重だけの窓(${offset})の許容幅(${graceMinFor(def, offset)}分)が、次の窓(${next})の開始を超えています（窓が重なります）`,
-              );
-            }
-          }
-        }
-        if (
-          !Number.isInteger(def.weightOnlyRetrySec) ||
-          def.weightOnlyRetrySec < 1 ||
-          def.weightOnlyRetrySec >= graceSec
-        ) {
-          problems.push(
-            `${name}: weightOnlyRetrySec(${def.weightOnlyRetrySec}) は、許容幅(${graceSec}秒)より短い正の整数にしてください`,
-          );
-        }
-      }
-    }
-    if (
-      def.kind === "daily" &&
-      !/^([01]\d|2[0-3]):[0-5]\d$/.test(def.targetTimeJst ?? "")
-    ) {
-      problems.push(
-        `${name}: targetTimeJst が HH:MM ではありません: ${def.targetTimeJst}`,
-      );
-    }
-    if (def.runDaysOfMonth !== undefined) {
-      const ok = Object.values(def.runDaysOfMonth).every(
-        (days) =>
-          Array.isArray(days) &&
-          days.length > 0 &&
-          days.every((d) => Number.isInteger(d) && d >= 1 && d <= 31),
-      );
-      if (!ok || !Array.isArray(def.runDaysOfMonth.default)) {
-        problems.push(
-          `${name}: runDaysOfMonth が不正です（{default: [日], [月]: [日]}、日は1〜31）: ${JSON.stringify(def.runDaysOfMonth)}`,
-        );
-      }
-    }
+    validateJobDef(name, def, problems);
   }
   return problems;
 }

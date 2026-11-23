@@ -15,6 +15,7 @@ import {
 } from "./config/languages";
 import { refreshAdsOnRouteChange, trackPageView } from "./utils/analytics";
 import { pageViewPath } from "./utils/raceUrlState";
+import useSingleTitle from "./hooks/useSingleTitle";
 import App from "./App";
 import VenueGridPage from "./pages/VenueGridPage";
 import VenueRaceListPage from "./pages/VenueRaceListPage";
@@ -25,6 +26,7 @@ import BlogPost from "./pages/BlogPost";
 import About from "./pages/About";
 import FAQ from "./pages/FAQ";
 import HowToUse from "./pages/HowToUse";
+import SiteUpdates from "./pages/SiteUpdates";
 import RaceHistory from "./pages/RaceHistory";
 import RacerProfile from "./pages/RacerProfile";
 import RacersPage from "./pages/RacersPage";
@@ -32,6 +34,7 @@ import Profile from "./pages/Profile";
 import AccuracyHistory from "./pages/AccuracyHistory";
 import WinningTechniqueAnalysis from "./pages/WinningTechniqueAnalysis";
 import MorningDataDigest from "./pages/MorningDataDigest";
+import TodaySheet from "./pages/TodaySheet";
 import ThinkingAssistPage from "./pages/ThinkingAssistPage";
 import Holmes from "./pages/Holmes";
 import ContentHub from "./pages/ContentHub";
@@ -52,6 +55,9 @@ import KoVenueGuide, {
 } from "./pages/KoVenueGuide";
 import AdminRules from "./pages/admin/AdminRules";
 import SnsHubAdmin from "./pages/admin/SnsHubAdmin";
+import SnsHubAutoSendPage from "./pages/admin/sns-hub/AutoSendPage";
+import SnsHubMetricsPage from "./pages/admin/sns-hub/MetricsPage";
+import SnsHubLibraryPage from "./pages/admin/sns-hub/LibraryPage";
 import ResponsibleGambling from "./pages/ResponsibleGambling";
 import Poirot from "./pages/Poirot";
 import CookieConsent from "./components/CookieConsent";
@@ -185,10 +191,7 @@ function LocalizedRoutes({ lng = "ja" }) {
       <Route path="/" element={<VenueGridPage />} />
       <Route path="venue/:venueCode" element={<VenueRaceListPage />} />
       {/* 節ページ（SG/G1/G2 の全選手の得点率ランキング・準優ボーダー・勝ち上がり、BOA-682） */}
-      <Route
-        path="venue/:venueCode/meet/:startDate"
-        element={<MeetPage />}
-      />
+      <Route path="venue/:venueCode/meet/:startDate" element={<MeetPage />} />
       <Route path="race/:raceId" element={<RaceDetailPage />} />
       {/* 思考アシスト（BOA-430）。ja 専用（languages.js の JA_ONLY_UNDER_TRANSLATED）。言語付きの URL は ja 版へ移る */}
       <Route path="race/:raceId/assist" element={<ThinkingAssistPage />} />
@@ -205,6 +208,8 @@ function LocalizedRoutes({ lng = "ja" }) {
       <Route path="winning-technique" element={<WinningTechniqueAnalysis />} />
       {/* 本日のデータ一覧（BOA-402）。ja専用のためTRANSLATED_PATHSには登録しない */}
       <Route path="today" element={<MorningDataDigest />} />
+      {/* /today の X 投稿の型 b の画像の撮影用（人が見るページではない。noindex、ja 専用） */}
+      <Route path="share/today-sheet" element={<TodaySheet />} />
       <Route path="privacy" element={<App tab="privacy" />} />
       <Route path="terms" element={<App tab="terms" />} />
       <Route path="contact" element={<App tab="contact" />} />
@@ -228,6 +233,8 @@ function LocalizedRoutes({ lng = "ja" }) {
       <Route path="about" element={<About />} />
       <Route path="faq" element={<FAQ />} />
       <Route path="how-to-use" element={<HowToUse />} />
+      {/* 更新のお知らせ（ja 専用、docs/design/site-updates/） */}
+      <Route path="updates" element={<SiteUpdates />} />
       <Route path="profile" element={<Profile />} />
       {/* 言語別: 初心者向け入門ガイド（対応言語は GUIDE_BY_LANG）、日本語はコンテンツハブ */}
       <Route path="guide" element={<Guide />} />
@@ -250,6 +257,22 @@ function LocalizedRoutes({ lng = "ja" }) {
         )}
       <Route path="responsible-gambling" element={<ResponsibleGambling />} />
 
+      {adminRoutes()}
+
+      {/* α版・動線非公開ページ（Watson/Mycroft等の実験モデルが継続開発中のため維持） */}
+      <Route path="holmes" element={<Holmes />} />
+      <Route path="poirot" element={<Poirot />} />
+
+      {/* Fallback: 不明なパスはトップへ */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+// 管理画面のルート（LocalizedRoutes の Routes の子へそのまま展開する）
+function adminRoutes() {
+  return (
+    <>
       {/* Admin Pages (Hidden)。Basic認証は middleware.js。綴り違いの回避は AdminRouteGuard で塞ぐ */}
       <Route
         path="admin/rules"
@@ -267,14 +290,23 @@ function LocalizedRoutes({ lng = "ja" }) {
           </AdminRouteGuard>
         }
       />
-
-      {/* α版・動線非公開ページ（Watson/Mycroft等の実験モデルが継続開発中のため維持） */}
-      <Route path="holmes" element={<Holmes />} />
-      <Route path="poirot" element={<Poirot />} />
-
-      {/* Fallback: 不明なパスはトップへ */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      {/* SNS ハブは用途ごとに4ページ（2026-10-18）。Basic認証は middleware の /admin/sns-hub/:path* */}
+      {[
+        ["auto", <SnsHubAutoSendPage />],
+        ["metrics", <SnsHubMetricsPage />],
+        ["library", <SnsHubLibraryPage />],
+      ].map(([sub, page]) => (
+        <Route
+          key={sub}
+          path={`admin/sns-hub/${sub}`}
+          element={
+            <AdminRouteGuard path={`/admin/sns-hub/${sub}`}>
+              {page}
+            </AdminRouteGuard>
+          }
+        />
+      ))}
+    </>
   );
 }
 
@@ -366,6 +398,7 @@ function LocalizedLayout({ lng }) {
 }
 
 export default function AppRouter() {
+  useSingleTitle();
   return (
     <>
       <HashRedirect />

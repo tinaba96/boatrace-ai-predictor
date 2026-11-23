@@ -1,0 +1,256 @@
+#!/usr/bin/env node
+/**
+ * E2E の組の分け方（e2e/shards.json・e2e-shards.js）を固定の入力で検査する（BOA-929・BOA-769）。
+ * 外部ネットワーク・Playwright の実行には触らない。
+ *
+ * 守るもの: 分け方の正本が1つ（両ワークフローが e2e/shards.json から matrix を作る）、最後の組が
+ * 上に書いた spec をちょうど除く、分け方の誤り（rest の位置・実在しない spec）を落とす。
+ */
+
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  listSpecFiles,
+  loadShards,
+  shardArgs,
+  validateShards,
+} from "./e2e-shards.js";
+
+const repoRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../..",
+);
+const failures = [];
+let checked = 0;
+function check(label, actual, expected) {
+  checked += 1;
+  if (JSON.stringify(actual) !== JSON.stringify(expected))
+    failures.push(
+      `${label}: 期待 ${JSON.stringify(expected)} / 実際 ${JSON.stringify(actual)}`,
+    );
+}
+
+// --- 引数の組み立て ---
+const sample = {
+  shards: [
+    { specs: ["smoke.spec.js"] },
+    {
+      specs: ["layout.spec.js", "a-b.spec.js"],
+      projects: ["layout-mobile", "smoke"],
+    },
+    { specs: ["layout.spec.js"], projects: ["layout-wide"] },
+    { rest: true },
+  ],
+};
+const args = shardArgs(sample);
+check(
+  "組の番号は1から順",
+  args.map((a) => a.shard),
+  [1, 2, 3, 4],
+);
+check("spec だけの組", args[0].args, "e2e/smoke.spec.js");
+check(
+  "projects つきの組",
+  args[1].args,
+  "--project=layout-mobile --project=smoke e2e/layout.spec.js e2e/a-b.spec.js",
+);
+// 最後の組の正規表現を、Playwright が --grep-invert を当てる題（ファイル名を含む）に当てる
+const rest = new RegExp(args[3].args.match(/--grep-invert "(.*)"$/)[1]);
+check(
+  "残り全部の組は上に書いた spec を除く",
+  ["smoke.spec.js › x", "layout.spec.js › y", "a-b.spec.js › z"].map((t) =>
+    rest.test(t),
+  ),
+  [true, true, true],
+);
+check(
+  "名前の一部が同じ別の spec は除かない",
+  ["race-smoke.spec.js › x", "b.spec.js › y", "layoutx.spec.js › z"].map((t) =>
+    rest.test(t),
+  ),
+  [false, false, false],
+);
+check(
+  "同じ spec を2つの組に書いても除く一覧には1回",
+  (args[3].args.match(/layout/g) ?? []).length,
+  1,
+);
+
+// --- 分け方の誤り ---
+const specs = ["smoke.spec.js", "layout.spec.js", "a-b.spec.js"];
+check("正しい分け方は誤り0件", validateShards(sample, specs), []);
+check(
+  "rest が最後に無ければ落とす",
+  validateShards(
+    { shards: [{ rest: true }, { specs: ["smoke.spec.js"] }] },
+    specs,
+  ).length > 0,
+  true,
+);
+check(
+  "rest が2つあれば落とす",
+  validateShards(
+    { shards: [{ specs: ["smoke.spec.js"] }, { rest: true }, { rest: true }] },
+    specs,
+  ).length > 0,
+  true,
+);
+check(
+  "実在しない spec を落とす（改名・削除の取り残し）",
+  validateShards(
+    { shards: [{ specs: ["gone.spec.js"] }, { rest: true }] },
+    specs,
+  ).some((p) => p.includes("gone.spec.js")),
+  true,
+);
+check(
+  "空の projects を落とす",
+  validateShards(
+    { shards: [{ specs: ["smoke.spec.js"], projects: [] }, { rest: true }] },
+    specs,
+  ).length > 0,
+  true,
+);
+
+check(
+  "projects の無い組と同じ spec を別の組に書けば落とす（レビューの指摘）",
+  validateShards(
+    {
+      shards: [
+        { specs: ["smoke.spec.js"] },
+        { specs: ["smoke.spec.js"], projects: ["smoke"] },
+        { rest: true },
+      ],
+    },
+    specs,
+  ).some((p) => p.includes("2回走ります")),
+  true,
+);
+
+check(
+  "rest の組に specs・projects を書けば落とす（黙って無視しない）",
+  validateShards(
+    {
+      shards: [
+        { specs: ["smoke.spec.js"] },
+        { rest: true, specs: ["a-b.spec.js"] },
+      ],
+    },
+    specs,
+  ).length > 0,
+  true,
+);
+check(
+  "同じ組に同じ spec を2回書いたら、組をまたぐ二重とは別の文で落とす",
+  validateShards(
+    { shards: [{ specs: ["smoke.spec.js", "smoke.spec.js"] }, { rest: true }] },
+    specs,
+  ).some((p) => p.includes("同じ組に2回")),
+  true,
+);
+for (const name of ["e2e-smoke-test.yml", "e2e-rerecord.yml", "e2e-live.yml"]) {
+  const wf = readFileSync(
+    path.join(repoRoot, ".github/workflows", name),
+    "utf8",
+  );
+  check(
+    `${name} の matrix を作る段は pipefail で node の失敗を落とす（審査の指摘）`,
+    /set -euo pipefail\n\s*node scripts\/maintenance\/e2e-shards\.js --matrix/.test(
+      wf,
+    ),
+    true,
+  );
+}
+
+// --- 今の e2e/shards.json ---
+let config = null;
+try {
+  config = loadShards();
+} catch (error) {
+  failures.push(`e2e/shards.json を読めない: ${error.message}`);
+}
+if (config) {
+  check("今の分け方は2組以上", config.shards.length >= 2, true);
+  check(
+    "今の分け方の spec は全部実在する",
+    validateShards(config, listSpecFiles()),
+    [],
+  );
+}
+
+// --- 分け方の正本は1つ（ワークフローに matrix を手で書かない） ---
+for (const [file, from] of [
+  ["e2e-smoke-test.yml", "needs.e2e-scope.outputs.matrix"],
+  ["e2e-rerecord.yml", "needs.record.outputs.matrix"],
+  // 本番データの E2E も同じ組に分ける（1ジョブでは7回とも60分で切れた。design.md 2.4）
+  ["e2e-live.yml", "needs.shards.outputs.matrix"],
+]) {
+  const wf = readFileSync(
+    path.join(repoRoot, ".github/workflows", file),
+    "utf8",
+  );
+  check(
+    `${file} の組は e2e/shards.json から作る`,
+    wf.includes(`matrix: \${{ fromJSON(${from}) }}`) &&
+      wf.includes("node scripts/maintenance/e2e-shards.js --matrix"),
+    true,
+  );
+  check(`${file} に組の spec を手で書かない`, /--grep-invert/.test(wf), false);
+}
+
+// --- 全ジョブに timeout-minutes（既定の360分で止まった組がランナーを使い続けない。design.md 2.4） ---
+for (const file of ["e2e-smoke-test.yml", "e2e-live.yml", "e2e-rerecord.yml"]) {
+  const wf = readFileSync(
+    path.join(repoRoot, ".github/workflows", file),
+    "utf8",
+  ).replace(/^\s*#.*\n/gm, "");
+  const body = wf.slice(wf.indexOf("\njobs:\n"));
+  const jobs = [
+    ...body.matchAll(
+      /^ {2}([a-z0-9-]+):\n([\s\S]*?)(?=^ {2}[a-z0-9-]+:\n|(?![\s\S]))/gm,
+    ),
+  ];
+  check(`${file} のジョブを読めた`, jobs.length > 0, true);
+  const missing = jobs
+    .filter(([, , text]) => !/^ {4}timeout-minutes: \d+$/m.test(text))
+    .map(([, name]) => name);
+  check(`${file} の全ジョブに timeout-minutes がある`, missing, []);
+}
+
+// e2e の集約（必須の check の e2e）。skipped の必須 check は通過扱いになるので、取り消しで skipped にならないこと、
+// 組の結果が success 以外なら落とすこと（もとは verify-review-workflow.js の 7。review.yml を外したのでここへ移した）
+{
+  const e2e = readFileSync(
+    path.join(repoRoot, ".github/workflows/e2e-smoke-test.yml"),
+    "utf8",
+  );
+  const agg = e2e.slice(e2e.indexOf("\n  e2e:\n"));
+  check(
+    "e2e の集約の job は always() で走る（取り消しで skipped にならない）",
+    /^ {2}e2e:\n {4}needs: \[e2e-scope, e2e-shard, e2e-light\]\n(?: {4}#.*\n)* {4}if: always\(\)\n/m.test(
+      e2e,
+    ),
+    true,
+  );
+  // 範囲（ADR-0100）ごとに走るべき組の結果を見る。範囲が分からないときも落とす
+  check(
+    "e2e の集約は組の結果が success 以外なら落とす",
+    /full\) job=e2e-shard; result="\$\{\{ needs\.e2e-shard\.result \}\}"/.test(
+      agg,
+    ) &&
+      /light\) job=e2e-light; result="\$\{\{ needs\.e2e-light\.result \}\}"/.test(
+        agg,
+      ) &&
+      /\*\) echo "[^"\n]*"; exit 1 ;;/.test(agg) &&
+      /if \[ "\$result" != "success" \]; then[\s\S]*?exit 1/.test(agg),
+    true,
+  );
+}
+
+if (failures.length > 0) {
+  console.error("NG: e2e の組の分け方の検査に失敗");
+  for (const f of failures) console.error(`  - ${f}`);
+  process.exit(1);
+}
+console.log(`OK: e2e の組の分け方の判定${checked}件を検証`);

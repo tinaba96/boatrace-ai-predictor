@@ -22,47 +22,28 @@ export default function XSendPanel({
   blocked,
   onChanged,
   onStateChange,
-  externalOperation,
-  getExternalOperation,
 }) {
   const [status, setStatus] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [unknown, setUnknown] = useState(true);
-  const [confirmedExternalEpoch, setConfirmedExternalEpoch] = useState(0);
-  const externalEpoch = externalOperation?.epoch || 0,
-    externalPending = Boolean(externalOperation?.pending);
   const operation = useRef({ epoch: 0, pending: false });
   const [scheduledAt, setScheduledAt] = useState("");
   useEffect(() => {
     let active = true;
     const refresh = async () => {
       if (operation.current.pending) return;
-      const external = getExternalOperation?.(draft.id);
-      if (external?.pending) return;
-      const mobileEpoch = external?.epoch || 0;
       const epoch = operation.current.epoch;
       try {
         const data = await getXSendStatus(draft.id);
-        if (
-          active &&
-          epoch === operation.current.epoch &&
-          mobileEpoch === (getExternalOperation?.(draft.id)?.epoch || 0) &&
-          !getExternalOperation?.(draft.id)?.pending
-        ) {
+        if (active && epoch === operation.current.epoch) {
           setStatus(data);
           setUnknown(false);
           setError("");
-          setConfirmedExternalEpoch(mobileEpoch);
           onStateChange?.(data.job?.state || "none");
         }
       } catch {
-        if (
-          active &&
-          epoch === operation.current.epoch &&
-          mobileEpoch === (getExternalOperation?.(draft.id)?.epoch || 0) &&
-          !getExternalOperation?.(draft.id)?.pending
-        ) {
+        if (active && epoch === operation.current.epoch) {
           setUnknown(true);
           setError("X送信状態を取得できません");
           onStateChange?.("unknown");
@@ -75,18 +56,9 @@ export default function XSendPanel({
       active = false;
       clearInterval(timer);
     };
-  }, [
-    draft.id,
-    draft.status,
-    onStateChange,
-    externalEpoch,
-    externalPending,
-    getExternalOperation,
-  ]);
+  }, [draft.id, draft.status, onStateChange]);
 
   async function act(action) {
-    const mobileEpoch = getExternalOperation?.(draft.id)?.epoch || 0;
-    if (getExternalOperation?.(draft.id)?.pending) return;
     operation.current = { epoch: operation.current.epoch + 1, pending: true };
     setUnknown(true);
     onStateChange?.("unknown");
@@ -95,18 +67,9 @@ export default function XSendPanel({
     try {
       await action();
       const updated = await getXSendStatus(draft.id);
-      // MobileApprovalPanel側の操作が割り込んだ場合でも、このパネルの表示だけ古い状態を
-      // 上書きしないようにする。ただし親の一覧更新（onChanged）は、割り込みの有無に関わらず
-      // 必ず呼ぶ（スキップすると、X送信操作の結果が一覧に反映されないまま残ることがある）。
-      if (
-        mobileEpoch === (getExternalOperation?.(draft.id)?.epoch || 0) &&
-        !getExternalOperation?.(draft.id)?.pending
-      ) {
-        setStatus(updated);
-        setUnknown(false);
-        onStateChange?.(updated.job?.state || "none");
-        setConfirmedExternalEpoch(mobileEpoch);
-      }
+      setStatus(updated);
+      setUnknown(false);
+      onStateChange?.(updated.job?.state || "none");
       onChanged();
     } catch {
       setError(
@@ -117,20 +80,58 @@ export default function XSendPanel({
       setBusy(false);
     }
   }
-  const stateUnknown =
-    unknown || externalPending || confirmedExternalEpoch !== externalEpoch;
   const locked =
-    stateUnknown ||
+    unknown ||
     ["queued", "sending", "reconcile", "posted"].includes(status?.job?.state);
   const canApprove = ["pending_review", "approved"].includes(draft.status);
   return (
     <section className="draft-background-details" aria-label="X送信">
+      <XSendStatusLines status={status} unknown={unknown} />
+      {canApprove && (
+        <XSendApprove
+          draft={draft}
+          approverId={approverId}
+          blocked={blocked}
+          status={status}
+          busy={busy}
+          locked={locked}
+          scheduledAt={scheduledAt}
+          onScheduledAtChange={setScheduledAt}
+          act={act}
+        />
+      )}
+      <XSendCancelAndStop
+        draft={draft}
+        status={status}
+        busy={busy}
+        unknown={unknown}
+        act={act}
+      />
+      {error && <p role="alert">{error}</p>}
+    </section>
+  );
+}
+
+// 送信の状態の表示（元の XSendPanel の先頭の塊）。state は持たず props だけ受ける
+function XSendStatusLines({ status, unknown }) {
+  return (
+    <>
       <p>
         X送信:{" "}
-        {stateUnknown
+        {unknown
           ? "要照合（状態未確定）"
           : LABELS[status?.job?.state] || "未登録"}
       </p>
+      <XSendControlLines status={status} />
+      <XSendJobLines status={status} />
+    </>
+  );
+}
+
+// 接続・停止・月額上限の行
+function XSendControlLines({ status }) {
+  return (
+    <>
       {!status?.connected && (
         <p>接続準備中。公開・予約送信はまだ利用できません。</p>
       )}
@@ -141,6 +142,14 @@ export default function XSendPanel({
           予約済み ${(status.control.reserved_microusd / 1000000).toFixed(2)}
         </p>
       )}
+    </>
+  );
+}
+
+// 予定・保留理由・送信期限・投稿へのリンクの行
+function XSendJobLines({ status }) {
+  return (
+    <>
       {status?.job?.scheduled_at && (
         <p>
           予定:{" "}
@@ -165,47 +174,69 @@ export default function XSendPanel({
           Xの投稿を確認
         </a>
       )}
-      {canApprove && (
-        <>
-          <label>
-            予約日時（JST・空欄は即時）
-            <input
-              aria-label="X予約日時"
-              type="datetime-local"
-              value={scheduledAt}
-              onChange={(e) => setScheduledAt(e.target.value)}
-            />
-          </label>
-          <button
-            className="draft-action-btn approve"
-            disabled={
-              busy ||
-              blocked ||
-              locked ||
-              !approverId ||
-              !status?.connected ||
-              status?.control?.paused
-            }
-            onClick={() =>
-              act(() =>
-                approveXSend(
-                  draft.id,
-                  approverId,
-                  scheduledAt
-                    ? new Date(scheduledAt + ":00+09:00").toISOString()
-                    : null,
-                ),
-              )
-            }
-          >
-            {scheduledAt ? "承認して予約" : "承認して公開"}
-          </button>
-        </>
-      )}
+    </>
+  );
+}
+
+// 予約日時と承認ボタン（canApprove のときだけ呼ばれる）。予約日時の state は XSendPanel が持つ
+function XSendApprove({
+  draft,
+  approverId,
+  blocked,
+  status,
+  busy,
+  locked,
+  scheduledAt,
+  onScheduledAtChange,
+  act,
+}) {
+  return (
+    <>
+      <label>
+        予約日時（JST・空欄は即時）
+        <input
+          aria-label="X予約日時"
+          type="datetime-local"
+          value={scheduledAt}
+          onChange={(e) => onScheduledAtChange(e.target.value)}
+        />
+      </label>
+      <button
+        className="draft-action-btn approve"
+        disabled={
+          busy ||
+          blocked ||
+          locked ||
+          !approverId ||
+          !status?.connected ||
+          status?.control?.paused
+        }
+        onClick={() =>
+          act(() =>
+            approveXSend(
+              draft.id,
+              approverId,
+              scheduledAt
+                ? new Date(scheduledAt + ":00+09:00").toISOString()
+                : null,
+            ),
+          )
+        }
+      >
+        {scheduledAt ? "承認して予約" : "承認して公開"}
+      </button>
+    </>
+  );
+}
+
+// 予約・待機の取消、送信の停止、手動投稿の注意（元の XSendPanel の末尾の塊）
+function XSendCancelAndStop({ draft, status, busy, unknown, act }) {
+  return (
+    <>
       {status?.job?.state === "queued" && (
         <button
           className="draft-action-btn revise"
-          disabled={busy || stateUnknown}
+          disabled={busy || unknown}
           onClick={() => act(() => cancelXSend(draft.id))}
         >
           X予約・待機を取消
@@ -213,16 +244,15 @@ export default function XSendPanel({
       )}
       <button
         className="draft-action-btn revise"
-        disabled={busy || externalPending || !status?.control}
+        disabled={busy || !status?.control}
         onClick={() => act(stopXSend)}
       >
         X送信を停止
       </button>
-      {(stateUnknown ||
+      {(unknown ||
         ["sending", "reconcile"].includes(status?.job?.state)) && (
         <p>手動投稿も照合が済むまで停止してください。</p>
       )}
-      {error && <p role="alert">{error}</p>}
-    </section>
+    </>
   );
 }

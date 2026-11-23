@@ -20,16 +20,21 @@ concurrency:
   group: bot-html-parity
   cancel-in-progress: true
 
+# 最小の権限（CodeQL actions/missing-workflow-permissions）。GITHUB_TOKEN で書く手順は無い
+permissions:
+  contents: read
+
 jobs:
   parity:
-    runs-on: ubuntu-latest
+    environment: prod-jobs
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version-file: .nvmrc
           cache: 'npm'
 
       - run: npm ci
@@ -38,6 +43,9 @@ jobs:
 
       - name: 本番のボット向け HTML を照合
         id: parity
+        env:
+          # /api の合言葉（BOA-1110 段階1、ADR-0103）。prod-jobs の environment secret。値はログに出さない
+          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
         run: |
           set +e
           RESULT=$(node scripts/maintenance/verify-bot-html-parity.js 2>&1)

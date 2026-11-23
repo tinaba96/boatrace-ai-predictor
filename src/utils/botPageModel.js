@@ -3,7 +3,8 @@
  *
  * - 人の画面の部分集合にする。人のトップ（VenueGridPage・VenueGridCard）と会場ページ（VenueRaceListPage・
  *   RaceCard）が出している文字のうち、開催の予定（会場名・節の名前・レース番号・締切時刻・グレード・中止）
- *   と、ページの見出し・最終更新時刻・title・meta description・canonical・パンくず（BreadcrumbList 用）だけを入れる
+ *   と、ページの見出し・最終更新時刻・title・meta description・canonical・パンくず（BreadcrumbList 用）だけを入れる。
+ *   会場ページには、見出しの直下の常設の要約2行（VenueSummaryLines と同じ venueSummaryLines、BOA-1189）も入れる
  * - 整形は人の画面と同じ transformTodayRaces、文字は人の画面と同じ関数（raceListDisplay.js・pageMeta.js）と
  *   i18n のキーで作る。t は表示する言語の i18next の t を渡す（既定は ja。言語版は BOA-848 の第2段）
  * - リンク先・canonical・パンくずは、人の画面と同じく localizePath で言語の接頭辞を付ける（ja は接頭辞なし）
@@ -12,12 +13,15 @@
  *   文言は人の画面と同じ i18n のキー、FAQ と記事の選び方は人の画面と同じ関数（homeAiIntroFaq.js・blogPosts.js）
  * - 選手一覧・オッズ・払戻・着順・展開予測・荒れ度は入れない（ADR 0089 決定7）。
  *   トップの「本日のイン崩れ注意度ハイライト」（TodaysVolatilityHighlights）も入れない
- * - 時刻で変わる状態（次のレース・締切間近・発売中・全レース終了）は入れない（同 決定3）
+ * - 時刻で変わる状態（次のレース・締切間近・発売中・全レース終了）は入れない（同 決定3）。
+ *   節の日目だけは人のカードに合わせ、次レースが残る会場に限って出す（BOA-1220）。
+ *   トップの「まもなく締切のレース」の節（PV09 T1、BOA-1690）は票の決定で人と同じ行を同じ並びに出す
+ *   （行の選び方は人の画面と同じ src/pure/upcomingDeadlineRaces.js。nowHHMM が無ければ出さない）
  * - 形が壊れた入力は例外にする。正しく取れて0件のときだけ「開催なし」のモデルを返す（ADR 0069）
  *
  * Node から import するため、ブラウザ専用の依存を持ち込まない。検証: scripts/maintenance/verify-bot-page-model.js
  */
-import { ALL_VENUE_CODES } from "../constants/index.js";
+import { ALL_VENUE_CODES, OPERATOR_NAME } from "../constants/index.js";
 import { transformTodayRaces } from "./todayRaces.js";
 import {
   getTopPageMeta,
@@ -25,18 +29,27 @@ import {
   getTodayVenueBreadcrumbItems,
 } from "./pageMeta.js";
 import {
+  findNextRace,
   venueNameOf,
   venueCardHeadline,
   gradeConfigOf,
   raceNumberLabel,
   deadlineValueText,
+  pickUpcomingDeadlineRaces,
 } from "./raceListDisplay.js";
+import { getVenueSeriesDayLabel } from "./raceDetailHeading.js";
 import { isRaceCancelled } from "./raceCancellation.js";
+import { venueSummaryLines } from "./venueSummary.js";
 import { getRaceId } from "./raceId.js";
-import { formatDateShortLocalized, formatCapturedAtJst } from "./formatters.js";
-import { localizePath } from "../config/languages.js";
+import {
+  formatDateShortLocalized,
+  formatCapturedAtJst,
+  formatUpdatedAtJstParts,
+} from "./formatters.js";
+import { localizePath } from "../pure/localizePath.js";
 import { buildFaqItems, isAssistShown, toFaqPageLd } from "./homeAiIntroFaq.js";
 import { getHomeBlogPosts } from "../data/blogPosts.js";
+import { meetBannerSeriesOf, seriesOfDate } from "./meetPageModel.js";
 
 const DEFAULT_LANG = "ja";
 
@@ -108,14 +121,45 @@ function updatedText(t, scrapedAt) {
   return t("updateStatus.updatedLabel", { dataType: t("home.dataType"), time });
 }
 
+// 説明文の直後の運営・データ・成績の3行（PV09 T2）。人の HomeAiIntro と同じキー・同じ並び・同じ年つき JST の時刻。
+// /profile・/accuracy・/hit-races は ja だけのページなので、人の画面と同じく言語の接頭辞を付けない。
+// 運営者の名は OPERATOR_NAME（/profile と同じ字、全言語で訳さない）。時刻が読めなければ updated は null（行は残す）
+function buildAiIntroFacts(t, scrapedAt) {
+  const updated = formatUpdatedAtJstParts(scrapedAt);
+  return {
+    operator: {
+      text: t("home.aiIntro.operator", { name: OPERATOR_NAME }),
+      link: { text: t("home.aiIntro.profileLink"), href: "/profile" },
+    },
+    data: {
+      text: t("home.aiIntro.data"),
+      updated: updated
+        ? {
+            datetime: updated.datetime,
+            text: t("home.aiIntro.updated", updated),
+          }
+        : null,
+    },
+    results: {
+      text: t("home.aiIntro.results"),
+      links: [
+        { text: t("home.aiIntro.accuracyLink"), href: "/accuracy" },
+        { text: t("home.aiIntro.hitRacesLink"), href: "/hit-races" },
+      ],
+      note: t("home.aiIntro.hitRacesNote"),
+    },
+  };
+}
+
 // 人のトップの HomeAiIntro と同じ文言・同じ並び。思考アシストのカードと文は ja だけ（isAssistShown）
-function buildAiIntro(t, lang) {
+function buildAiIntro(t, lang, scrapedAt) {
   const showAssist = isAssistShown(lang);
   const faqItems = buildFaqItems(t, showAssist);
   return {
     title: t("home.aiIntro.title"),
+    lead: t("home.aiIntro.lead"),
+    facts: buildAiIntroFacts(t, scrapedAt),
     paragraphs: [
-      t("home.aiIntro.lead"),
       t("home.aiIntro.method"),
       showAssist
         ? t("home.aiIntro.toolsIntro")
@@ -149,11 +193,6 @@ function buildAiIntro(t, lang) {
     // 人の画面と同じページ内リンク（本日開催中のレースの欄）
     venuesLink: { text: t("home.aiIntro.venuesLink"), href: "#today-venues" },
     note: t("home.aiIntro.disclaimer"),
-    // /accuracy・/hit-races は ja だけのページなので、人の画面と同じく言語の接頭辞を付けない
-    links: [
-      { text: t("home.aiIntro.accuracyLink"), href: "/accuracy" },
-      { text: t("home.aiIntro.hitRacesLink"), href: "/hit-races" },
-    ],
     faqTitle: t("home.aiIntro.faqTitle"),
     faqItems,
     faqPageLd: toFaqPageLd(faqItems),
@@ -187,6 +226,29 @@ function buildBlog(t, lang) {
   };
 }
 
+// まもなく締切のレース（PV09 T1、BOA-1690）。人の UpcomingDeadlineRaces と同じ行・同じ並び・同じキー。残りが0なら null。
+// イン崩れ注意度の札（「崩れやすい」）は入れない。人の画面は機能の公開（featureFlags の isInCautionEnabled）の後か
+// 内部確認の印のときだけ出すが、featureFlags は window を読むのでこの木（Node）に持ち込めない（verify-bot-page-model）。
+// 札を除いても人の画面の部分集合のまま。トップの注意度のハイライト（TodaysVolatilityHighlights）もボットに入れていない
+function buildUpcomingDeadline(t, lang, transformed, nowHHMM) {
+  const rows = pickUpcomingDeadlineRaces(transformed.data, nowHHMM);
+  if (rows.length === 0) return null;
+  return {
+    title: `⏱️ ${t("home.upcomingDeadline.title")}`,
+    rows: rows.map((r) => ({
+      href: localizePath(`/race/${r.raceId}`, lang),
+      race: `${venueNameOf(t, r.venueCode)} ${raceNumberLabel(r.raceNo)}`,
+      deadline: {
+        label: t("home.upcomingDeadline.deadline"),
+        value: deadlineValueText(t, r.startTime),
+      },
+      gradeLabel: r.gradeLabel,
+      finalLabel: r.isFinal ? t("raceStage.final") : null,
+      racer: r.boat1,
+    })),
+  };
+}
+
 // 案内の帯（IntroBanner）。人の ja のトップは初回訪問なら FirstVisitGuideCard（i18n に無い日本語の固定文）を出し、
 // 帯を出さない。クローラーは毎回初回訪問なので、ja は出さない。言語版は常に帯（閉じるボタンは入れない）
 function buildIntroBanner(t, lang) {
@@ -201,10 +263,11 @@ function buildIntroBanner(t, lang) {
  * トップ（/）のモデル
  *
  * @param {unknown} todayJson - /api/races/today の応答
- * @param {{t: (key: string, params?: object) => string, today: string, lang?: string}} options - today は JST の日付（YYYY-MM-DD）。
+ * @param {{t: (key: string, params?: object) => string, today: string, nowHHMM?: string, lang?: string}} options - today は JST の日付（YYYY-MM-DD）。
+ *   nowHHMM は JST の現在時刻（HH:MM）。無ければ日目を出さない。
  *   人の画面の見出しと同じく、実行時の JST の日付を渡す（0件の日は JSON に日付が無いため）。lang は表示する言語（既定 ja）
  */
-export function buildTopModel(todayJson, { t, today, lang = DEFAULT_LANG }) {
+export function buildTopModel(todayJson, { t, today, nowHHMM, lang = DEFAULT_LANG }) {
   assertTodayRacesJson(todayJson);
   const transformed = transformTodayRaces(todayJson);
   const byVenue = racesByVenue(transformed);
@@ -224,6 +287,10 @@ export function buildTopModel(todayJson, { t, today, lang = DEFAULT_LANG }) {
       href: localizePath(`/venue/${venueCode}`, lang),
       gradeLabel: gradeConfig?.label ?? null,
       raceTitle,
+      seriesDayLabel:
+        nowHHMM && findNextRace(races, nowHHMM)
+          ? getVenueSeriesDayLabel(races, t)
+          : null,
     };
   });
 
@@ -234,10 +301,11 @@ export function buildTopModel(todayJson, { t, today, lang = DEFAULT_LANG }) {
     meta: getTopPageMeta(t, lang),
     heading: `🏁 ${t("home.todayRaces")} ${formatDateShortLocalized(today, lang)}`,
     updatedText: updatedText(t, transformed.scrapedAt),
+    upcomingDeadline: buildUpcomingDeadline(t, lang, transformed, nowHHMM),
     openVenueCount: venues.filter((v) => v.isOpen).length,
     venues,
     introBanner: buildIntroBanner(t, lang),
-    aiIntro: buildAiIntro(t, lang),
+    aiIntro: buildAiIntro(t, lang, transformed.scrapedAt),
     blog: buildBlog(t, lang),
   };
 }
@@ -247,12 +315,12 @@ export function buildTopModel(todayJson, { t, today, lang = DEFAULT_LANG }) {
  *
  * @param {unknown} todayJson - /api/races/today の応答
  * @param {number} venueCode - 1〜24
- * @param {{t: (key: string, params?: object) => string, lang?: string}} options - lang は表示する言語（既定 ja）
+ * @param {{t: Function, lang?: string, today?: string, seriesRows?: object[]}} options - today は JST の日付、seriesRows は会場で絞った race_series
  */
 export function buildVenueModel(
   todayJson,
   venueCode,
-  { t, lang = DEFAULT_LANG },
+  { t, lang = DEFAULT_LANG, today, seriesRows = [] },
 ) {
   if (!Number.isInteger(venueCode) || venueCode < 1 || venueCode > 24) {
     throw new RangeError(`会場コードが 1〜24 の整数でない: ${venueCode}`);
@@ -261,6 +329,9 @@ export function buildVenueModel(
   const transformed = transformTodayRaces(todayJson);
   const races = racesByVenue(transformed).get(venueCode) || [];
   const venueName = venueNameOf(t, venueCode);
+  const summary = venueSummaryLines(t, venueCode);
+  const bannerSeries = meetBannerSeriesOf(races);
+  const meet = bannerSeries && today ? seriesOfDate(seriesRows, today) : null;
 
   return {
     path: `/venue/${venueCode}`,
@@ -269,6 +340,19 @@ export function buildVenueModel(
     // 人の画面のパンくず（BreadcrumbList の JSON-LD に使う）
     breadcrumbItems: getTodayVenueBreadcrumbItems(t, venueCode, lang),
     heading: `🏁 ${venueName} ${t("venueRaceList.todayTitle")}`,
+    // 見出しの直下の要約2行（直近1年の1コースの1着率・決まり手）。開催の有無に関係なく出す（人の画面と同じ）
+    summaryLines: summary ? [summary.course, summary.techniques] : [],
+    meetBannerEligible: Boolean(bannerSeries),
+    meetBanner: meet
+      ? {
+          href: localizePath(`/venue/${venueCode}/meet/${meet.start_date}`, lang),
+          name: bannerSeries.title
+            ? `${bannerSeries.grade} ${bannerSeries.title}`
+            : bannerSeries.grade,
+          inProgress: t("venueMeetBanner.inProgress"),
+          link: t("venueMeetBanner.link"),
+        }
+      : null,
     // 人の画面と同じく、0件なら「本日、このレース場での開催はありません」
     emptyText: races.length === 0 ? t("home.noRacesToday") : null,
     races: races.map((race) => {

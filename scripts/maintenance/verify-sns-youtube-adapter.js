@@ -5,12 +5,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 import { createXSnapshot, sha256 } from "../../api/_lib/snsXSend.js";
+import { deadlineSchedule, runYoutubeQueueJob } from "../../api/_lib/snsDeadlineQueue.js";
 import {
-  deadlineSchedule,
-  reconcileYoutubeJob,
-  runYoutubeQueueJob,
-} from "../../api/_lib/snsDeadlineQueue.js";
-import { createYoutubeQueueAdapter } from "../../api/_lib/youtubeQueueAdapter.js";
+  createYoutubeQueueAdapter,
+  THUMBNAIL_TIMEOUT_MS,
+} from "../../api/_lib/youtubeQueueAdapter.js";
+import { runSnsYoutubeAdapterScenes1 } from "./verifyData/sns-youtube-adapter-scenes-1.js";
+import { runSnsYoutubeAdapterScenes2, runSnsYoutubeAdapterScenes3 } from "./verifyData/sns-youtube-adapter-scenes-2.js";
 
 const db = new PGlite();
 const first = async (sql, args = []) => (await db.query(sql, args)).rows[0];
@@ -225,7 +226,7 @@ test("非公開で上げ、サムネイル、処理の確認、公開、公開�
   assert.equal(ledger.processing_polls, 1);
 });
 
-test("処理中なら公開せず要照合のまま、サムネイルの 403 は公開せず非公開のまま残す", async () => {
+test("処理中なら公開せず要照合のまま、サムネイルの 403 は記録する先（onThumbnailFailed）が無い呼び出しなら公開せず非公開のまま残す", async () => {
   const processingJob = await approvedJob();
   const slow = fakeYoutube({ processing: "processing" });
   const waiting = await run(processingJob, slow);
@@ -256,286 +257,83 @@ test("処理中なら公開せず要照合のまま、サムネイルの 403 は
   );
 });
 
-test("本人の動画と確かめられない（processingDetails が無い・題名が承認と違う）ときは公開しない", async () => {
-  for (const options of [{ ownVideo: false }, { title: "別の題名" }]) {
-    const job = await approvedJob({ withCover: false });
-    const fake = fakeYoutube(options);
-    await assert.rejects(run(job, fake), /youtube_processing_unconfirmed/);
-    assert.equal(
-      fake.calls.some((c) => c.options.method === "PUT"),
-      false,
-    );
-    assert.equal(
-      (await first("SELECT state FROM sns_x_send_jobs WHERE id=$1", [job.id]))
-        .state,
-      "reconcile",
-    );
-  }
-});
-
-test("照合（lookup）: 公開済みなら complete、まだ非公開なら要照合のまま", async () => {
-  const job = await approvedJob({ withCover: false });
-  const slow = fakeYoutube({
-    processing: "processing",
-    videoId: "lookupvid01",
-  });
-  const waiting = await run(job, slow);
-  assert.equal(waiting.state, "reconcile");
-  const privateResult = await reconcileYoutubeJob(waiting, {
-    store,
-    lookup: createYoutubeQueueAdapter({
-      accessToken: "tok",
-      fetchImpl: slow.fetchImpl,
-    }).lookup,
-  });
-  assert.equal(privateResult.state, "reconcile");
-
-  const published = fakeYoutube({ videoId: "lookupvid01" });
-  await published.fetchImpl(
-    "https://www.googleapis.com/youtube/v3/videos?part=status",
-    {
-      method: "PUT",
-      body: JSON.stringify({
-        id: "abcdefghijk",
-        status: { privacyStatus: "public" },
-      }),
+// BOA-1172: サムネイルが付かなくても動画の公開は止めず、理由を記録する
+test("BOA-1172: サムネイルの 403・通信の例外でも動画は公開まで進み、理由を onThumbnailFailed に渡す（API の本文は入れない）", async () => {
+  const throwing = (fake) => ({
+    ...fake,
+    fetchImpl: async (url, options) => {
+      if (new URL(url).pathname === "/upload/youtube/v3/thumbnails/set") {
+        fake.calls.push({ method: "POST", path: "thumb", options });
+        throw new TypeError("fetch failed");
+      }
+      return fake.fetchImpl(url, options);
     },
-  );
-  const reconciled = await reconcileYoutubeJob(waiting, {
-    store,
-    lookup: createYoutubeQueueAdapter({
-      accessToken: "tok",
-      fetchImpl: published.fetchImpl,
-    }).lookup,
   });
-  assert.equal(reconciled.state, "posted");
-});
-
-test("非公開以外での upload・予約公開・トークン無しは受け付けない", async () => {
-  const youtube = createYoutubeQueueAdapter({
-    accessToken: "tok",
-    fetchImpl: async () => assert.fail("呼ばない"),
-  });
-  await assert.rejects(
-    youtube.upload({
-      snapshot: {},
-      media: [],
-      privacyStatus: "public",
-      publishAt: null,
-    }),
-    /非公開でだけ/,
-  );
-  await assert.rejects(
-    youtube.makePublic({
-      job: {},
-      privacyStatus: "public",
-      publishAt: "2026-10-14T00:00:00Z",
-    }),
-    /即時だけ/,
-  );
-  assert.throws(
-    () => createYoutubeQueueAdapter({}),
-    /access token がありません/,
-  );
-});
-
-test("題名が YouTube の決まりに合わないときは begin_post の前に held にし、何も呼ばない", async () => {
-  for (const title of ["あ".repeat(101), "<告知>"]) {
-    const job = await approvedJob({ withCover: false, title });
-    const fake = fakeYoutube();
-    await assert.rejects(run(job, fake));
-    assert.equal(fake.calls.length, 0);
-    assert.equal(
-      (await first("SELECT state FROM sns_x_send_jobs WHERE id=$1", [job.id]))
-        .state,
-      "held",
-    );
-  }
-});
-
-test("videos.update の失敗は update_started の要照合に残し、公開の確認で private が返れば公開済みと扱わない", async () => {
-  const job = await approvedJob({ withCover: false });
-  const base = fakeYoutube();
-  const failingUpdate = {
-    calls: base.calls,
-    fetchImpl: async (url, options = {}) =>
-      options.method === "PUT"
-        ? (base.calls.push({
-            method: "PUT",
-            path: new URL(url).pathname,
-            options,
-          }),
-          json({ error: { errors: [{ reason: "backendError" }] } }, 500))
-        : base.fetchImpl(url, options),
-  };
-  await assert.rejects(run(job, failingUpdate), /HTTP 500 backendError/);
-  assert.deepEqual(
-    await first(
-      "SELECT state, youtube_stage FROM sns_x_send_jobs WHERE id=$1",
-      [job.id],
-    ),
-    {
-      state: "reconcile",
-      youtube_stage: "update_started",
-    },
-  );
-
-  const stillPrivate = await approvedJob({ withCover: false });
-  const base2 = fakeYoutube();
-  const ignoresUpdate = {
-    calls: base2.calls,
-    fetchImpl: async (url, options = {}) =>
-      options.method === "PUT"
-        ? json({ id: "ignored" })
-        : base2.fetchImpl(url, options),
-  };
-  await assert.rejects(
-    run(stillPrivate, ignoresUpdate),
-    /youtube_publication_unconfirmed/,
-  );
-  assert.equal(
-    (
-      await first("SELECT state FROM sns_x_send_jobs WHERE id=$1", [
-        stillPrivate.id,
-      ])
-    ).state,
-    "reconcile",
-  );
-});
-
-test("動画 ID の無い job の照合は YouTube を呼ばず要照合のまま", async () => {
-  const youtube = createYoutubeQueueAdapter({
-    accessToken: "tok",
-    fetchImpl: async () => assert.fail("呼ばない"),
-  });
-  assert.equal(
-    (await youtube.lookup({ external_post_id: null })).confirmed,
-    false,
-  );
-});
-
-// 送った multipart の metadata（1つ目のパート）を取り出す
-async function uploadedMetadata(call) {
-  const text = await new Response(call.options.body).text();
-  return JSON.parse(text.split("\r\n\r\n")[1].split("\r\n")[0]);
-}
-
-test("承認したタグと本文を YouTube に送る（承認の hash に入る値と同じ）", async () => {
-  const job = await approvedJob({
-    withCover: false,
-    hashtags: ["#ボートレース", "#唐津", "#ボートレース", ""],
-  });
-  const fake = fakeYoutube();
-  await run(job, fake);
-  const meta = await uploadedMetadata(fake.calls[0]);
-  const approved = JSON.parse(job.snapshot_text);
-  assert.equal(meta.snippet.description, approved.text);
-  assert.equal(
-    meta.snippet.description,
-    "説明\n\n#ボートレース #唐津 #ボートレース",
-  );
-  assert.deepEqual(meta.snippet.tags, ["ボートレース", "唐津"]);
-  assert.deepEqual(approved.source.hashtags, [
-    "#ボートレース",
-    "#唐津",
-    "#ボートレース",
-    "",
-  ]);
-  // タグの無い下書きは空の配列
-  const plain = await approvedJob({ withCover: false });
-  const fake2 = fakeYoutube();
-  await run(plain, fake2);
-  assert.deepEqual((await uploadedMetadata(fake2.calls[0])).snippet.tags, []);
-});
-
-test("表紙が JPEG なら Content-Type は image/jpeg", async () => {
-  const job = await approvedJob({ cover: "c.jpg" });
-  const fake = fakeYoutube();
-  assert.equal((await run(job, fake)).state, "posted");
-  assert.equal(fake.calls[1].options.headers["Content-Type"], "image/jpeg");
-});
-
-test("題名は100文字（絵文字などの補助文字も1文字）までは通る", async () => {
-  for (const title of ["あ".repeat(100), "🚤".repeat(100)]) {
-    const job = await approvedJob({ withCover: false, title });
-    assert.equal((await run(job, fakeYoutube({ title }))).state, "posted");
-  }
-});
-
-test("upload の成功の応答が JSON でない・通信が例外で切れたときは、要照合に残し表紙も公開も試さない", async () => {
-  for (const failing of [
-    async () => new Response("<html>ok</html>", { status: 200 }),
-    async () => {
-      throw new DOMException(
-        "The operation was aborted due to timeout",
-        "TimeoutError",
-      );
-    },
+  for (const [label, makeFake, expected] of [
+    ["403", () => fakeYoutube({ thumbnailStatus: 403 }), /HTTP 403 forbidden/],
+    ["通信の例外", () => throwing(fakeYoutube()), /fetch failed/],
   ]) {
     const job = await approvedJob();
-    const calls = [];
-    const fetchImpl = async (url) => {
-      calls.push(new URL(url).pathname);
-      if (new URL(url).pathname === "/upload/youtube/v3/videos")
-        return failing();
-      throw new Error("ここまで進まない: " + url);
-    };
-    await assert.rejects(run(job, { calls, fetchImpl }));
-    assert.deepEqual(calls, ["/upload/youtube/v3/videos"]);
-    const row = await first(
-      "SELECT state, youtube_stage, external_post_id FROM sns_x_send_jobs WHERE id=$1",
-      [job.id],
-    );
-    // 動画が上がったかは分からないので非公開と断定せず、要照合（ID 不明）のまま
-    assert.deepEqual(row, {
-      state: "reconcile",
-      youtube_stage: null,
-      external_post_id: null,
+    const fake = makeFake();
+    const reasons = [];
+    const done = await run(job, fake, {
+      onThumbnailFailed: (reason) => reasons.push(reason),
     });
+    assert.equal(done.state, "posted", label);
+    assert.equal(reasons.length, 1, label);
+    assert.match(reasons[0], expected, label);
+    assert.ok(!reasons[0].includes("secret detail"), label);
+    assert.equal(
+      fake.calls.filter((c) => c.options.method === "PUT").length,
+      1,
+      `${label}: 公開の videos.update を呼ぶ`,
+    );
+    // 台帳には thumbnails.set の前の記録が残る（50単位を数えたまま。再試行しない）
+    assert.deepEqual(
+      (
+        await first(
+          "SELECT calls FROM sns_youtube_quota_attempts WHERE job_id=$1",
+          [job.id],
+        )
+      ).calls,
+      ["videos.insert", "thumbnails.set", "videos.update", "videos.list"],
+      label,
+    );
   }
 });
 
-test("公開の更新の後の確認の読み取りが失われても、公開済み・非公開のどちらとも断定せず update_started の要照合に残す", async () => {
-  const job = await approvedJob({ withCover: false });
-  const base = fakeYoutube();
-  let gets = 0;
-  const fetchImpl = async (url, options = {}) => {
-    const u = new URL(url);
-    if (
-      u.pathname === "/youtube/v3/videos" &&
-      (options.method || "GET") === "GET" &&
-      ++gets === 2
-    ) {
-      throw new TypeError("fetch failed");
-    }
-    return base.fetchImpl(url, options);
-  };
-  await assert.rejects(
-    run(job, { calls: base.calls, fetchImpl }),
-    /fetch failed/,
-  );
-  assert.deepEqual(
-    await first(
-      "SELECT state, youtube_stage FROM sns_x_send_jobs WHERE id=$1",
-      [job.id],
-    ),
-    {
-      state: "reconcile",
-      youtube_stage: "update_started",
+test("BOA-1172: thumbnails.set の待ちは30秒（ほかの呼び出しは120秒）。失敗しても公開に進むので、公開の段が関数の上限に近づかない（審査 P3）", async (t) => {
+  const timeouts = [];
+  const original = AbortSignal.timeout;
+  t.mock.method(AbortSignal, "timeout", (ms) => {
+    timeouts.push(ms);
+    return original.call(AbortSignal, ms);
+  });
+  const job = await approvedJob();
+  const fake = fakeYoutube();
+  const seen = [];
+  const done = await run(job, {
+    ...fake,
+    fetchImpl: async (url, options) => {
+      seen.push([new URL(url).pathname, timeouts.at(-1)]);
+      return fake.fetchImpl(url, options);
     },
+  });
+  assert.equal(done.state, "posted");
+  assert.equal(THUMBNAIL_TIMEOUT_MS, 30000);
+  const thumb = seen.filter(([p]) => p === "/upload/youtube/v3/thumbnails/set");
+  assert.equal(thumb.length, 1);
+  assert.equal(thumb[0][1], 30000);
+  assert.ok(
+    seen
+      .filter(([p]) => p !== "/upload/youtube/v3/thumbnails/set")
+      .every(([, ms]) => ms === 120000),
   );
 });
 
-test("公開を読めても publishedAt が無いときは公開済みにしない", async () => {
-  const job = await approvedJob({ withCover: false });
-  const fake = fakeYoutube({ publishedAt: null });
-  await assert.rejects(run(job, fake), /youtube_publication_unconfirmed/);
-  assert.equal(
-    (await first("SELECT state FROM sns_x_send_jobs WHERE id=$1", [job.id]))
-      .state,
-    "reconcile",
-  );
-});
+// ---- 後半の場面（verifyData/sns-youtube-adapter-scenes-1.js・sns-youtube-adapter-scenes-2.js） ----
+runSnsYoutubeAdapterScenes1({ first, store, approvedJob, json, fakeYoutube, run });
+runSnsYoutubeAdapterScenes2({ first, approvedJob, json, fakeYoutube, run });
 
 test("32 MiB を超える動画は begin_post の前に held にし、何も呼ばない", async () => {
   const big = new Uint8Array(32 * 1024 * 1024 + 1);
@@ -596,3 +394,6 @@ test("32 MiB を超える動画は begin_post の前に held にし、何も呼�
     "held",
   );
 });
+
+// ---- 後半の場面（verifyData/sns-youtube-adapter-scenes-2.js） ----
+runSnsYoutubeAdapterScenes3({ first, approvedJob, json, fakeYoutube, run });

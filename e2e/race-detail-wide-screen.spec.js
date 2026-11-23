@@ -1,11 +1,13 @@
 import { test, expect } from "./fixtures.js";
+import { settled } from "./settled.js";
 
-// BOA-612: レース詳細を 1600px まで広げる。6艇を列に並べる表は広く使い、
-// 1行に1艇を並べるリスト・グラフは読みやすい幅（1200px）で止める
+// BOA-612: 広い画面で6艇の表の文字を大きくし、1行に1艇を並べるリスト・グラフは読みやすい幅（1200px）で止める。
+// BOA-881（2026-10-16 オーナー承認）で、ページは 1600px から最大1200の列（画面の中央）に変えた。
+// 6艇の表も列の幅（1200）に入る
 test.describe("レース詳細の広い画面（BOA-612）", () => {
   test.slow();
 
-  test("1920px: 6艇の表は1600pxの枠いっぱい、リストとグラフは1200pxで止まり、表の文字がそろう", async ({
+  test("1920px: 6艇の表は列（1200px）いっぱい、リストとグラフは1200pxで止まり、表の文字がそろう", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1920, height: 1000 });
@@ -29,9 +31,10 @@ test.describe("レース詳細の広い画面（BOA-612）", () => {
         .first()
         .evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
 
-    expect(await width(".race-detail-page-v2")).toBe(1600);
-    // 6艇の列を持つ表は、以前（1118px）より広い
-    expect(await width(".drt-table")).toBeGreaterThan(1400);
+    // ページは列 1200 ＋ 左右の余白 24px（BOA-881）
+    expect(await width(".race-detail-page-v2")).toBe(1248);
+    // 6艇の列を持つ表は、列の中のカードの内側いっぱい（1920px で 1166px）
+    expect(await width(".drt-table")).toBeGreaterThanOrEqual(1150);
     // 1行に1艇のバーは 1200px で止める（名前と数値が離れすぎない。ファン評価1周目）
     expect(await width(".rbit-bars")).toBeLessThanOrEqual(1200);
     // 行見出し・補足行も数値に合わせて大きくする（ファン評価1周目）
@@ -64,16 +67,21 @@ test.describe("レース詳細の広い画面（BOA-612）", () => {
     await expect(page.locator(".race-odds-list-tab").first()).toBeVisible({
       timeout: 30000,
     });
-    const smallest = await page
-      .locator(".race-odds-list-tab")
-      .first()
-      .evaluate((root) =>
-        Math.min(
+    // 読み込み中の箱から本体に差し替わる間は、握った要素が外れて文字の大きさが空（NaN）になる。
+    // 毎回 document から引き直し、値が落ち着いてから測る（12.5px の下限は変えない）
+    const smallest = await settled(() =>
+      page.evaluate(() => {
+        const root = document.querySelector(".race-odds-list-tab");
+        if (!root) return null;
+        const min = Math.min(
           ...[...root.querySelectorAll("*")]
             .filter((el) => el.children.length === 0 && el.textContent.trim())
             .map((el) => parseFloat(getComputedStyle(el).fontSize)),
-        ),
-      );
+        );
+        return Number.isFinite(min) ? min : null;
+      }),
+    );
+    expect(smallest, "オッズ一覧の文字の大きさが測れる").not.toBeNull();
     expect(smallest).toBeGreaterThanOrEqual(12.5);
 
     // ページ全体は横スクロールしない

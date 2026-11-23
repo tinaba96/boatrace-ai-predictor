@@ -6,47 +6,33 @@
  * 「AI予想」タブ（RaceAiPredictionTab.jsx）へ移設した。結果タブは着順・配当・決まり手の
  * みのシンプルな内容に絞る方針（BOA-305〜312フィードバック#7の延長）
  */
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { translateTechnique } from "./raceIndicators";
-import { BOAT_COLORS } from "../../utils/colors";
-import { supabaseDataService } from "../../services/supabaseDataService";
 import { parseRaceId } from "../../utils/raceId";
 import VenueDaySummaryCard from "./VenueDaySummaryCard";
 import RaceStartFormation from "./RaceStartFormation";
-import { startFormationRows } from "./startFormation";
+
+import { RaceResultTable } from "./RaceResultTable";
+import { RaceResultPayoutSection } from "./RaceResultPayoutSection";
+import { useRaceResultData } from "./RaceResultData";
 import InlineFetchError from "../InlineFetchError";
+import PastRateLayerGate from "./pastRate/PastRateLayerGate";
+import PastRateReview from "./pastRate/PastRateReview";
+import { getDeadlineDate } from "../../utils/raceDeadlineStatus";
 import {
   FINISH_MARKS,
-  PAYOUT_BET_TYPES,
-  PAYOUT_STATUS,
   RACE_OUTCOME,
-  describePartialVoid,
   getRaceOutcomeState,
   getRefundBoats,
   isBoatRefunded,
-  isPayoutAmountCountable,
   normalizeFinishMark,
 } from "../../utils/raceOutcome";
-
-// 選手名は公式の元データで姓と名の間を全角スペースで詰めてある（「丹下」「将」の間に全角スペース3つ）。そのまま出すと
-// 375pxで姓だけに切れ、級別も見えなくなるため、空白を1つにまとめる（BOA-559）
-function displayName(name) {
-  return name ? name.replace(/[\s\u3000]+/g, " ").trim() : name;
-}
-
-function BoatChip({ number }) {
-  const color = BOAT_COLORS[number] || BOAT_COLORS[1];
-  return (
-    <span
-      className="rr-boat-chip"
-      style={{ background: color.bg, color: color.text }}
-    >
-      {number}
-    </span>
-  );
-}
-
+import {
+  derivePayoutInfo,
+  deriveStartTimingInfo,
+  podiumDecision,
+} from "./raceResultPayoutInfo";
+import { PayoutRowsTable } from "./RaceResultPayoutRows";
 // 結果表の行を組み立てる（BOA-543）。rank1〜rank6 は公式ページの並び順のままで、
 // 返還艇（F・L・欠）や不成立レースの艇も着順の列に入っている（浜名湖 2026-09-14 6R の
 // rank=4-1-2 はうち1・2号艇がF）。そのため race_start_timings の finish_rank・finish_mark が
@@ -141,26 +127,6 @@ function buildResultRows(result, startTimings, boatsInRace) {
   return [...ranked, ...unranked];
 }
 
-// 着欄の記号の短いラベル（「F（フライング・返還）」等）。記号が分からない返還艇は「返還」、
-// 不成立で記号の無い艇は「着順なし（不成立）」。意味は src/utils/raceOutcome.js の FINISH_MARKS
-function markLabel(t, row, isNoRace) {
-  // 「＿」は不成立のレースにしか出ない記号だが、成立状態が届いていない（109未適用）ときに
-  // 「（不成立）」と書くと、同じページの的中表示（成立状態を知らない）と食い違う。そのときは
-  // 「着順なし」だけにする（ファン評価 第1周 指摘1）
-  if (row.mark === "_" && !isNoRace) return t("result.mark.noPositionPlain");
-  const info = row.mark ? FINISH_MARKS[row.mark] : null;
-  if (info) return t(`result.mark.${info.key}`);
-  if (row.refunded) return t("result.mark.refunded");
-  if (isNoRace) return t("result.mark.noPosition");
-  return null;
-}
-
-// 着欄の表示。「＿」（着順なし）は罫線と見分けにくいので「—」にする
-function markSymbol(row) {
-  if (row.mark === "_" || row.mark == null) return "—";
-  return row.mark;
-}
-
 // 不成立の理由の1行（「フライング5艇（1・2・3・5・6号艇）で不成立」）。着順なし（＿）以外の
 // 全艇が返還の記号（F・L・欠）のときだけ出す。それ以外（失格が混ざる等）は理由を省く
 function noRaceReason(t, rows) {
@@ -188,385 +154,22 @@ function noRaceReason(t, rows) {
   return t("result.noRace.reason", { list });
 }
 
-function PayoutRow({
-  typeLabel,
-  boats,
-  separator,
-  amount,
-  popularity,
-  popularityTo = null,
-  popularityMarked = false,
-  isBest,
-  note = null,
-  isVoid = false,
-  noAmount = false,
-  t,
-}) {
-  return (
-    <div
-      className={`rr-payout-row${isBest ? " is-best" : ""}${isVoid ? " is-void" : ""}`}
-    >
-      <span className="rr-payout-type">{typeLabel}</span>
-      <span className="rr-combo">
-        {note ? (
-          <span className="rr-payout-note">{note}</span>
-        ) : (
-          boats.map((boat, index) => (
-            <span className="rr-combo-item" key={`${boat}-${index}`}>
-              {index > 0 && <span className="sep">{separator}</span>}
-              <BoatChip number={boat} />
-            </span>
-          ))
-        )}
-      </span>
-      <span
-        className="rr-amount num"
-        title={noAmount ? t("result.payoutNoAmount") : undefined}
-      >
-        {typeof amount === "number"
-          ? `¥${amount.toLocaleString()}`
-          : noAmount
-            ? "—"
-            : ""}
-      </span>
-      <span className="rr-pop">
-        {popularity
-          ? popularityTo
-            ? t("result.popularityRange", {
-                from: popularity,
-                to: popularityTo,
-              })
-            : t("result.popularity", { rank: popularity })
-          : ""}
-        {popularity && popularityMarked && (
-          <span className="rr-pop-mark" aria-hidden="true">
-            ※
-          </span>
-        )}
-      </span>
-    </div>
-  );
-}
-
-// 払戻明細（race_payouts）の行で払戻表を出す（BOA-543）。不成立は「不成立（返還）」とだけ書き、
-// 金額（返還額の¥100）は出さない。特払は組番の位置に「特払」、金額なしは組番だけ。
-// 最高配当の強調は、通常の払戻と特払だけで計算する
-function PayoutRowsTable({ rows, t }) {
-  const amounts = rows.filter(isPayoutAmountCountable).map((row) => row.amount);
-  // 最高額が ¥100（元返し）のときは強調しない。一部返還で単勝・2連単がともに ¥100 だった
-  // レースで、¥100 の2行が「最高配当」として金色になっていた（BOA-558）
-  const maxAmount =
-    amounts.length && Math.max(...amounts) > 100 ? Math.max(...amounts) : null;
-  return (
-    <div className="rr-payout-table">
-      {rows.map((row) => {
-        const isNoRaceRow = row.status === PAYOUT_STATUS.NO_RACE;
-        const isSpecial = row.status === PAYOUT_STATUS.SPECIAL;
-        return (
-          <PayoutRow
-            key={`${row.betType}-${row.seq}`}
-            typeLabel={t(`result.payoutType.${row.typeKey}`)}
-            boats={row.boats}
-            separator={row.separator}
-            amount={isNoRaceRow ? null : row.amount}
-            popularity={isNoRaceRow ? null : row.popularity}
-            popularityTo={isNoRaceRow ? null : (row.popularityTo ?? null)}
-            popularityMarked={!isNoRaceRow && !!row.popularityFromFinalOdds}
-            isBest={
-              isPayoutAmountCountable(row) &&
-              maxAmount != null &&
-              row.amount === maxAmount
-            }
-            note={
-              isNoRaceRow
-                ? t("result.payoutNoRace")
-                : isSpecial && row.boats.length === 0
-                  ? t("result.payoutSpecial")
-                  : null
-            }
-            isVoid={isNoRaceRow}
-            // 公式の払戻に金額が無い行（例: 津 2026-09-27 1R の複勝6）。空欄だとデータの
-            // 欠けに見えるので「—」を出す（BOA-558）
-            noAmount={row.status === PAYOUT_STATUS.NO_AMOUNT}
-            t={t}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-// 単勝・複勝の人気（BOA-534）。公式の払戻（race_payouts）は3連単〜拡連複にだけ人気が付き、単勝・複勝には
-// 付かない（公式の結果ページにも出ない）。そこで締切時オッズ（race_odds_final、BOA-496）から順位を出す。
-// - 単勝: オッズの小さい順（2連単・3連単で、締切時オッズの小さい順が公式の人気と40/40件一致）
-// - 複勝: 上限の小さい順、同じ上限なら下限の小さい順。公式は複勝の人気を出さないため、同じ幅のあるオッズの
-//   拡連複で公式の人気と比べた（9/29 の40レース・120件）: 上限→下限 114件一致、下限→上限 100件一致。
-//   上限は「相手が最も票の少ない艇」のときの値で、自分の票数に対して単調になりやすい
-// - 公式は丸める前の票数で順位を付けるため、同じオッズの艇どうしの順位はオッズからは決まらない。
-//   同じオッズの艇がいるときは「4〜5人気」のように幅で返す（{ from, to }）。票なし（0.0）・欠場（キーなし）は
-//   順位を付けない
-function popularityFromFinalOdds(map, boat, isRange) {
-  const valid = (v) =>
-    v != null && (isRange ? v.low > 0 : typeof v === "number" && v > 0);
-  const mine = map?.[String(boat)];
-  if (!valid(mine)) return null;
-  const sortKey = (v) => (isRange ? [v.high, v.low] : [v, 0]);
-  const [a0, a1] = sortKey(mine);
-  const others = Object.entries(map)
-    .filter(([key, v]) => key !== String(boat) && valid(v))
-    .map(([, v]) => sortKey(v));
-  const better = others.filter(([b0, b1]) => b0 < a0 || (b0 === a0 && b1 < a1));
-  const tied = others.filter(([b0, b1]) => b0 === a0 && b1 === a1);
-  const from = better.length + 1;
-  return { from, to: from + tied.length };
-}
-
-// 払戻の行のうち、単勝・複勝で公式の人気が無い行に、締切時オッズから出した人気を補う。
-// 払戻のある行（paid）だけ。不成立・特払・金額なしの行、締切時オッズが無いレースでは付けない
-function withFinalOddsPopularity(rows, finalOdds) {
-  if (!rows || !finalOdds) return rows;
-  const sources = {
-    win: { map: finalOdds.win, isRange: false },
-    place: { map: finalOdds.place, isRange: true },
-  };
-  return rows.map((row) => {
-    const source = sources[row.typeKey];
-    if (
-      !source?.map ||
-      row.status !== PAYOUT_STATUS.PAID ||
-      row.popularity != null ||
-      row.boats.length !== 1
-    ) {
-      return row;
-    }
-    const popularity = popularityFromFinalOdds(
-      source.map,
-      row.boats[0],
-      source.isRange,
-    );
-    if (popularity == null) return row;
-    return {
-      ...row,
-      popularity: popularity.from,
-      popularityTo: popularity.to > popularity.from ? popularity.to : null,
-      popularityFromFinalOdds: true,
-    };
-  });
-}
-
-// 払戻明細（payoutRows）が届いていない（RPC未適用・過去データ・直接クエリのフォールバック・
-// 軽量版の取得直後）ときの払戻表。旧 payout_* 列の payouts を払戻明細と同じ行の形に直す。
-// 旧列では不成立の勝式が NULL になる（078）ため、成立状態が分かっているときだけ補う:
-// - 不成立: 7勝式すべて「不成立（返還）」
-// - 一部返還: 旧列に無い勝式を「不成立（返還）」（BOA-543 の「黙って消える」を直接クエリ経路でも起こさない）
-// 成立状態が分からない（unknown）・通常のときは、今までどおり旧列にある勝式だけを出す
-function legacyPayoutRows(payouts, outcome) {
-  const meta = new Map(PAYOUT_BET_TYPES.map((b) => [b.typeKey, b]));
-  const paid = (typeKey, seq, entry) =>
-    entry && typeof entry.amount === "number"
-      ? {
-          ...meta.get(typeKey),
-          seq,
-          boats: entry.boats ?? (entry.boat != null ? [entry.boat] : []),
-          amount: entry.amount,
-          status: PAYOUT_STATUS.PAID,
-          popularity: entry.popularity ?? null,
-        }
-      : null;
-  const noRace = (typeKey) => ({
-    ...meta.get(typeKey),
-    seq: 1,
-    boats: [],
-    amount: null,
-    status: PAYOUT_STATUS.NO_RACE,
-    popularity: null,
-  });
-  if (outcome === RACE_OUTCOME.NO_RACE) {
-    return PAYOUT_BET_TYPES.map((b) => noRace(b.typeKey));
-  }
-  // 英語の正しい賭式名はTrifecta=着順通り(3連単)/Trio=順不同(3連複)。旧列由来の payouts の
-  // キーは sanrentan=3連単・sanrenpuku=3連複（buildRaceResult() のコメント参照）
-  const byType = {
-    win: [paid("win", 1, payouts?.win)],
-    place: (payouts?.place ?? []).map((e, i) => paid("place", i + 1, e)),
-    trifecta: [paid("trifecta", 1, payouts?.sanrentan)],
-    trio: [paid("trio", 1, payouts?.sanrenpuku)],
-    exacta: [paid("exacta", 1, payouts?.exacta)],
-    quinella: [paid("quinella", 1, payouts?.quinella)],
-    wide: (payouts?.wide ?? []).map((e, i) => paid("wide", i + 1, e)),
-  };
-  const hasAnyPaid = Object.values(byType).some((rows) => rows.some(Boolean));
-  if (!hasAnyPaid) return null;
-  return PAYOUT_BET_TYPES.flatMap((b) => {
-    const rows = byType[b.typeKey].filter(Boolean);
-    if (rows.length > 0) return rows;
-    return outcome === RACE_OUTCOME.PARTIAL_REFUND ? [noRace(b.typeKey)] : [];
-  });
-}
-
-function RaceResult({ prediction, raceId }) {
-  // 会場コードと開催日は raceId から導出する（propsを増やさない）
-  const parsedRaceId = parseRaceId(raceId);
-  const { t } = useTranslation();
-  // 取得結果は raceId とセットで持つ（別レースへ移ったとき前レースのデータを混ぜない）。
-  // 失敗も state に残し、「データなし」と区別して InlineFetchError を出す（frontend-data-fetch.md）
-  const [startTimingState, setStartTimingState] = useState({
-    raceId: null,
-    data: null,
-    failed: false,
-  });
-  const [reloadKey, setReloadKey] = useState(0);
-  // 締切時オッズ（公式、BOA-496）。単勝・複勝の人気を出すためだけに使う（BOA-534）。取れなくても払戻は出す
-  const [finalOddsState, setFinalOddsState] = useState({
-    raceId: null,
-    data: null,
-  });
-
-  const result = prediction?.result;
-  const finished = Boolean(result?.finished);
-
-  // スタート情報は1対多テーブル（race_start_timings）のため、一覧取得のRPCには
-  // 含めず結果確定後にレース単位で個別フェッチする（BOA-238）
-  useEffect(() => {
-    if (!finished || !raceId) return undefined;
-    let cancelled = false;
-    supabaseDataService
-      .getRaceStartTimings(raceId)
-      .then((data) => {
-        if (!cancelled) setStartTimingState({ raceId, data, failed: false });
-      })
-      .catch((err) => {
-        // 取得失敗時はST列を空欄にし、着順は rank1〜 の表示に倒す（レイアウトは維持）。
-        // 失敗したことは state に残して InlineFetchError を出す
-        console.error(
-          "スタートタイミング取得エラー:",
-          err?.message ?? String(err),
-        );
-        if (!cancelled) {
-          setStartTimingState({ raceId, data: null, failed: true });
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [finished, raceId, reloadKey]);
-
-  useEffect(() => {
-    if (!finished || !raceId) return undefined;
-    let cancelled = false;
-    supabaseDataService
-      .getRaceFinalOdds(raceId)
-      .then((data) => {
-        if (!cancelled) setFinalOddsState({ raceId, data });
-      })
-      .catch((err) => {
-        // 単勝・複勝の人気を出さないだけ（公式の払戻と他の券種の人気はそのまま出す）
-        console.error("締切時オッズ取得エラー:", err?.message ?? String(err));
-        if (!cancelled) setFinalOddsState({ raceId, data: null });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [finished, raceId]);
-
-  const isCurrentRace = startTimingState.raceId === raceId;
-  const startTimings = isCurrentRace ? startTimingState.data : null;
-  const startTimingFailed = isCurrentRace && startTimingState.failed;
-
-  if (!prediction || !result || !finished) {
-    return null;
-  }
-
-  // is_cancelled は現状どのスクリプトからも書き込まれていない（BOA-238調査時点）。中止は
-  // races.cancellation_status の担当（isRaceCancelled）で、結果の行自体が無い。
-  // 不成立は旧フラグ is_no_race（全行 false）ではなく raceStatus で判定する（BOA-543、下の isNoRace）
-  if (result.isCancelled) {
-    return (
-      <div className="race-result">
-        <div className="result-empty-state">
-          <h4>🏁 {t("result.title")}</h4>
-          <div className="result-empty-icon">🚫</div>
-          <p className="result-empty-title">{t("result.cancelledTitle")}</p>
-          <p className="result-empty-body">{t("result.cancelledBody")}</p>
-        </div>
-      </div>
-    );
-  }
-
-  const players = prediction.allPlayers ?? [];
-  const findPlayer = (boat) => players.find((p) => p.number === boat);
-
-  const outcome = getRaceOutcomeState(result);
-  const isNoRace = outcome === RACE_OUTCOME.NO_RACE;
-  const isPartialRefund = outcome === RACE_OUTCOME.PARTIAL_REFUND;
-  // スタート情報（着欄の記号）を読み込んでいる間は、rank1〜 の並び（返還艇が混ざる）を
-  // 一瞬でも着順として見せないよう、表の代わりにスケルトンを出す（BOA-543）
-  // raceId が無いときは取得自体をしない（useEffect が早期 return する）ので、読み込み中にしない
-  const isLoadingStartTimings = Boolean(raceId) && !isCurrentRace;
-
-  // 統一結果テーブルの行（着／艇／選手名／ST／タイム）。バックフィルしていない過去データは
-  // rank4以降が無いため、その場合は3行のみになる。返還艇の行も数に含める（BOA-543）
-  const boatsInRace = players.length
-    ? players.map((p) => p.number).sort((a, b) => a - b)
-    : [1, 2, 3, 4, 5, 6];
-  const rows = buildResultRows(result, startTimings, boatsInRace);
-  const noRaceReasonText = isNoRace ? noRaceReason(t, rows) : null;
-
-  const startTimingByBoat = new Map(
-    (startTimings ?? []).map((st) => [st.boatNumber, st]),
-  );
-  const validStartTimings = (startTimings ?? []).filter(
-    (st) => st.startTiming != null,
-  );
-  // 進入コース順に並べた艇番（公式の「スタート情報」の並び。BOA-625）。
-  // 進入が1艇も入っていない（2026-09-20 以前の一部・取得前）ときは空
-  const courseOrder = (startTimings ?? [])
-    .filter((st) => st.entryCourse != null)
-    .sort((a, b) => a.entryCourse - b.entryCourse)
-    .map((st) => st.boatNumber);
-  // フライングは異常値のため「最速」判定からは除外する（update-top-start-stats.jsと同じ扱い。BOA-559）
-  const nonFlyingStartTimings = validStartTimings.filter((st) => !st.isFlying);
-  // スタート隊形（コース順）の行（BOA-811）。進入が1艇も分からないレースは null（絵を出さない）
-  const formationRows = startFormationRows(startTimings);
-  // 「最速」は比べる相手がいるときだけ付ける。不成立レースで F 以外が1艇だけのとき、
-  // その1艇に「最速」が付いていた（BOA-586）
-  const fastestStartTiming =
-    nonFlyingStartTimings.length >= 2
-      ? Math.min(...nonFlyingStartTimings.map((st) => st.startTiming))
-      : null;
-
-  // 払戻は払戻明細（race_payouts、payoutRows）を正とする。届いていないときだけ旧 payout_* 列から
-  // 同じ行の形を組み立てる（legacyPayoutRows）
-  const payoutRowsToShow = withFinalOddsPopularity(
-    result.payoutRows ?? legacyPayoutRows(result.payouts, outcome),
-    finalOddsState.raceId === raceId ? finalOddsState.data : null,
-  );
-  // 完走した艇の数は、着欄の記号が取れているときだけ数える（取れていない過去分は null）
-  const finishers = (startTimings ?? []).some((st) => st.finishMark != null)
-    ? startTimings.filter((st) => st.finishRank != null).length
-    : null;
-  const partialVoid = isPartialRefund
-    ? describePartialVoid({
-        boatsInRace: boatsInRace.length,
-        refundBoats: getRefundBoats(result),
-        finishers,
-        payoutRows: payoutRowsToShow,
-      })
-    : null;
-  const hasFinalOddsPopularity = (payoutRowsToShow ?? []).some(
-    (row) => row.popularityFromFinalOdds,
-  );
-
-  const rowClassName = (position) => {
-    if (position == null) return "rr-row is-unranked";
-    if (position === 1) return "rr-row is-winner";
-    if (position === 2) return "rr-row is-second";
-    if (position === 3) return "rr-row is-third";
-    return "rr-row";
-  };
-
+function CancelledResult({ t }) {
   return (
     <div className="race-result">
+      <div className="result-empty-state">
+        <h4>🏁 {t("result.title")}</h4>
+        <div className="result-empty-icon">🚫</div>
+        <p className="result-empty-title">{t("result.cancelledTitle")}</p>
+        <p className="result-empty-body">{t("result.cancelledBody")}</p>
+      </div>
+    </div>
+  );
+}
+
+function ResultHead({ result, isNoRace, isPartialRefund, noRaceReasonText, t }) {
+  return (
+    <>
       <div className="rr-head">
         <div className="rr-title">
           <h4>🏁 {isNoRace ? t("result.noRace.title") : t("result.title")}</h4>
@@ -593,176 +196,229 @@ function RaceResult({ prediction, raceId }) {
             : t("result.noRace.body")}
         </p>
       )}
+    </>
+  );
+}
 
-      {!isLoadingStartTimings && formationRows && (
-        // スタート隊形（コース順）の絵。結果の表の上（BOA-811、承認モック
-        // docs/design/race-result-start-formation/mock）。進入の並びもこの絵で見る（前の「進入」の1行は外した）
-        <RaceStartFormation rows={formationRows} />
-      )}
-      {isLoadingStartTimings ? (
-        <div className="rr-table-skeleton" aria-busy="true">
-          {boatsInRace.map((boat) => (
-            <div className="rr-skeleton-row" key={boat}>
-              <span className="rr-skeleton-bar" />
-            </div>
-          ))}
+function ResultSkeleton({ boatsInRace }) {
+  return (
+    <div className="rr-table-skeleton" aria-busy="true">
+      {boatsInRace.map((boat) => (
+        <div className="rr-skeleton-row" key={boat}>
+          <span className="rr-skeleton-bar" />
         </div>
-      ) : (
-        <div className="rr-table">
-          {/* 列見出し。公式の結果ページと同じ「着・枠・ボートレーサー・レースタイム」に、
-              スタートの図の「ST」を足す。不成立で全行のタイムが「—」になっても、何の列か分かる */}
-          <div className="rr-row-head" aria-hidden="true">
-            <span>{t("result.columns.position")}</span>
-            <span>{t("result.columns.boat")}</span>
-            <span>{t("result.columns.racer")}</span>
-            <span className="rr-head-st">{t("result.columns.start")}</span>
-            {/* 768px 以下は列が 2.4〜2.8rem しか無く、「レースタイム」が 15px はみ出して
-                カードの外で切れた（race-detail-ui-unify PR5 ファン評価1周目）。短い見出しにする */}
-            <span className="rr-head-time">
-              <span className="rr-head-time-full">
-                {t("result.columns.time")}
-              </span>
-              <span className="rr-head-time-short">
-                {t("result.columns.timeShort")}
-              </span>
-            </span>
-          </div>
-          {rows.map((row) => {
-            const { key, position, boat, time } = row;
-            const player = findPlayer(boat);
-            const st = startTimingByBoat.get(boat);
-            const isFastest =
-              Boolean(st) &&
-              !st.isFlying &&
-              fastestStartTiming != null &&
-              st.startTiming === fastestStartTiming;
-            const label = position == null ? markLabel(t, row, isNoRace) : null;
+      ))}
+    </div>
+  );
+}
 
-            return (
-              <div className={rowClassName(position)} key={key}>
-                <span className="rr-pos">
-                  {position != null
-                    ? t(`result.rank${position}`)
-                    : markSymbol(row)}
-                </span>
-                <BoatChip number={boat} />
-                <span className="rr-name">
-                  <span className="rr-name-text" translate="no">
-                    {displayName(player?.name)}
-                    {player?.grade && <small>{player.grade}</small>}
-                  </span>
-                  {label && <span className="rr-mark-label">{label}</span>}
-                  {st?.entryCourse != null && (
-                    <span
-                      className={`rr-course${st.entryCourse !== boat ? " is-moved" : ""}`}
-                    >
-                      {t("result.entryCourseLabel", {
-                        course: st.entryCourse,
-                      })}
-                    </span>
-                  )}
-                </span>
-                <span className="rr-st-cell">
-                  {st && st.startTiming != null ? (
-                    <>
-                      {/* ST の矢印は外し、数字と「最速」だけ。並びは上のスタート隊形の絵で見る（BOA-811） */}
-                      <span className="rr-st-value num">
-                        {/* フライングは公式と同じ「F.01」。選手ページ・直近10走とそろえる（BOA-583） */}
-                        {st.isFlying
-                          ? `F${st.startTiming.toFixed(2).replace(/^0/, "")}`
-                          : st.startTiming.toFixed(2)}
-                      </span>
-                      {isFastest && (
-                        <span className="rr-st-fastest-tag">
-                          {t("result.fastestStartTag")}
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    <span className="rr-st-value num">—</span>
-                  )}
-                </span>
-                <span className="rr-time num">{time || "—"}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-      {startTimingFailed && (
-        <InlineFetchError onRetry={() => setReloadKey((key) => key + 1)} />
-      )}
+// 表の下の注記（ST図の読み方・進入データなし・着順の欠け）
+function ResultTableNotes({
+  isLoadingStartTimings,
+  isNoRace,
+  info,
+  rowCount,
+  t,
+}) {
+  return (
+    <>
       {/* ST図の読み方。初見では黄線が何か・どちらが早いかが分からない
           （BOA-559 ファン評価3周目） */}
-      {validStartTimings.length > 0 && (
+      {info.validStartTimings.length > 0 && (
         <p className="rr-note rr-st-legend">{t("result.stLegend")}</p>
       )}
       {/* 以前は「進入コースは精度確認中のため表示していない」と出していた（BOA-238 の頃は
           進入の元データが無かった）。今は本番STの進入を出すので、データが無いレースだけ断る（BOA-625） */}
-      {!isLoadingStartTimings && !isNoRace && courseOrder.length === 0 && (
+      {!isLoadingStartTimings && !isNoRace && info.courseOrder.length === 0 && (
         <p className="rr-note">{t("result.courseNoData")}</p>
       )}
-      {!isLoadingStartTimings && !isNoRace && rows.length < 6 && (
+      {!isLoadingStartTimings && !isNoRace && rowCount < 6 && (
         <p className="rr-note rr-note-missing-ranks">
           {t("result.missingRanksNote")}
         </p>
       )}
+    </>
+  );
+}
 
-      {payoutRowsToShow && (
-        <>
-          <div className="rr-section-title">
-            {t("result.payoutSectionTitle")}
-          </div>
-          <PayoutRowsTable rows={payoutRowsToShow} t={t} />
-          {/* 一部の勝式だけ不成立になった理由を、事実だけ1行で書く。払戻明細の不成立が
-              正常スタート・完走の艇数から決まる表と一致するときだけ出す（BOA-558） */}
-          {partialVoid && (
-            <p className="rr-note rr-payout-void-note">
-              {t(
-                partialVoid.kind === "starters"
-                  ? "result.partialVoidByStarters"
-                  : "result.partialVoidByFinishers",
-                {
-                  count: partialVoid.count,
-                  types: partialVoid.betTypes
-                    .map((betType) =>
-                      t(
-                        `result.payoutType.${PAYOUT_BET_TYPES.find((b) => b.betType === betType).typeKey}`,
-                      ),
-                    )
-                    .join(t("result.noRace.boatSeparator")),
-                },
-              )}
-            </p>
-          )}
-          {/* 単勝・複勝の人気だけは公式の発表でなく締切時オッズから出しているため、その旨を書く */}
-          {hasFinalOddsPopularity && (
-            <p
-              className="rr-note rr-payout-popularity-note"
-              data-testid="payout-popularity-note"
-            >
-              {t("result.popularityFromFinalOddsNote")}
-            </p>
-          )}
-          {/* 「—」の意味は title だけだとスマホで読めないので、表の下にも書く（#1074 ファン評価1周目） */}
-          {payoutRowsToShow.some(
-            (row) => row.status === PAYOUT_STATUS.NO_AMOUNT,
-          ) && (
-            <p className="rr-note rr-payout-no-amount-note">
-              {t("result.payoutNoAmountNote")}
-            </p>
-          )}
-        </>
-      )}
-
-      {/* この日の水面傾向（phase a FR-5 / BOA-222）。払戻の下＝結果タブの最下部。
-          払戻が無い過去データでも出すため、払戻の条件ブロックの外に置く */}
-      {parsedRaceId && (
-        <VenueDaySummaryCard
-          venueCode={parsedRaceId.venueCode}
-          date={parsedRaceId.date}
-          raceId={raceId}
+// PC（1200px 以上）はスタート隊形を左、着順の表を右の2段（BOA-881）
+function StartSplit({
+  rows,
+  players,
+  boatsInRace,
+  info,
+  isNoRace,
+  isLoadingStartTimings,
+  startTimingFailed,
+  onRetry,
+  t,
+}) {
+  return (
+    <div className="race-split">
+      <div className="race-split__main">
+        {!isLoadingStartTimings && info.formationRows && (
+          // スタート隊形（コース順）の絵。結果の表の上（BOA-811、承認モック
+          // docs/design/race-result-start-formation/mock）。進入の並びもこの絵で見る（前の「進入」の1行は外した）
+          <RaceStartFormation rows={info.formationRows} />
+        )}
+      </div>
+      <div className="race-split__side">
+        {isLoadingStartTimings ? (
+          <ResultSkeleton boatsInRace={boatsInRace} />
+        ) : (
+          <RaceResultTable
+            rows={rows}
+            players={players}
+            startTimingByBoat={info.startTimingByBoat}
+            fastestStartTiming={info.fastestStartTiming}
+            isNoRace={isNoRace}
+            t={t}
+          />
+        )}
+        {startTimingFailed && <InlineFetchError onRetry={onRetry} />}
+        <ResultTableNotes
+          isLoadingStartTimings={isLoadingStartTimings}
+          isNoRace={isNoRace}
+          info={info}
+          rowCount={rows.length}
+          t={t}
         />
-      )}
+      </div>
+    </div>
+  );
+}
+
+// PC（1200px 以上）は払戻金を左、この日の水面傾向を右の2段（BOA-881）
+function PayoutSplit({
+  payoutInfo,
+  raceId,
+  raceStartTime,
+  isNoRace,
+  decision,
+  parsedRaceId,
+  t,
+}) {
+  const { payoutRowsToShow, partialVoid, hasFinalOddsPopularity } = payoutInfo;
+  return (
+    <div className="race-split">
+      <div className="race-split__main">
+        {payoutRowsToShow && (
+          <RaceResultPayoutSection
+            payoutRows={payoutRowsToShow}
+            partialVoid={partialVoid}
+            hasFinalOddsPopularity={hasFinalOddsPopularity}
+            t={t}
+          >
+            <PayoutRowsTable rows={payoutRowsToShow} t={t} />
+          </RaceResultPayoutSection>
+        )}
+        {/* 過去に発生した割合を見る の振り返り（BOA-635 spec FR-4）。不成立のレースでは出さない */}
+        {raceId && !isNoRace && (
+          <PastRateLayerGate raceId={raceId}>
+            {(layer) => (
+              <PastRateReview
+                layer={layer}
+                raceId={raceId}
+                deadline={getDeadlineDate(raceId, raceStartTime)}
+                decision={decision}
+              />
+            )}
+          </PastRateLayerGate>
+        )}
+      </div>
+      <div className="race-split__side">
+        {/* この日の水面傾向（phase a FR-5 / BOA-222）。払戻の下＝結果タブの最下部。
+            払戻が無い過去データでも出すため、払戻の条件ブロックの外に置く */}
+        {parsedRaceId && (
+          <VenueDaySummaryCard
+            venueCode={parsedRaceId.venueCode}
+            date={parsedRaceId.date}
+            raceId={raceId}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RaceResult({ prediction, raceId, raceStartTime = null }) {
+  // 会場コードと開催日は raceId から導出する（propsを増やさない）
+  const parsedRaceId = parseRaceId(raceId);
+  const { t } = useTranslation();
+  const result = prediction?.result;
+  const finished = Boolean(result?.finished);
+  const { startTimingState, finalOddsState, reload } = useRaceResultData(
+    finished,
+    raceId,
+  );
+
+  const isCurrentRace = startTimingState.raceId === raceId;
+  const startTimings = isCurrentRace ? startTimingState.data : null;
+  const startTimingFailed = isCurrentRace && startTimingState.failed;
+
+  if (!prediction || !result || !finished) {
+    return null;
+  }
+
+  // is_cancelled は現状どのスクリプトからも書き込まれていない（BOA-238調査時点）。中止は
+  // races.cancellation_status の担当（isRaceCancelled）で、結果の行自体が無い。
+  // 不成立は旧フラグ is_no_race（全行 false）ではなく raceStatus で判定する（BOA-543、下の isNoRace）
+  if (result.isCancelled) {
+    return <CancelledResult t={t} />;
+  }
+
+  const players = prediction.allPlayers ?? [];
+
+  const outcome = getRaceOutcomeState(result);
+  const isNoRace = outcome === RACE_OUTCOME.NO_RACE;
+  // スタート情報（着欄の記号）を読み込んでいる間は、rank1〜 の並び（返還艇が混ざる）を
+  // 一瞬でも着順として見せないよう、表の代わりにスケルトンを出す（BOA-543）
+  // raceId が無いときは取得自体をしない（useEffect が早期 return する）ので、読み込み中にしない
+  const isLoadingStartTimings = Boolean(raceId) && !isCurrentRace;
+
+  // 統一結果テーブルの行（着／艇／選手名／ST／タイム）。バックフィルしていない過去データは
+  // rank4以降が無いため、その場合は3行のみになる。返還艇の行も数に含める（BOA-543）
+  const boatsInRace = players.length
+    ? players.map((p) => p.number).sort((a, b) => a - b)
+    : [1, 2, 3, 4, 5, 6];
+  const rows = buildResultRows(result, startTimings, boatsInRace);
+  const payoutInfo = derivePayoutInfo({
+    result,
+    outcome,
+    startTimings,
+    boatsInRace,
+    finalOdds: finalOddsState.raceId === raceId ? finalOddsState.data : null,
+  });
+
+  return (
+    <div className="race-result">
+      <ResultHead
+        result={result}
+        isNoRace={isNoRace}
+        isPartialRefund={outcome === RACE_OUTCOME.PARTIAL_REFUND}
+        noRaceReasonText={isNoRace ? noRaceReason(t, rows) : null}
+        t={t}
+      />
+      <StartSplit
+        rows={rows}
+        players={players}
+        boatsInRace={boatsInRace}
+        info={deriveStartTimingInfo(startTimings)}
+        isNoRace={isNoRace}
+        isLoadingStartTimings={isLoadingStartTimings}
+        startTimingFailed={startTimingFailed}
+        onRetry={reload}
+        t={t}
+      />
+      <PayoutSplit
+        payoutInfo={payoutInfo}
+        raceId={raceId}
+        raceStartTime={raceStartTime}
+        isNoRace={isNoRace}
+        decision={podiumDecision(rows)}
+        parsedRaceId={parsedRaceId}
+        t={t}
+      />
     </div>
   );
 }

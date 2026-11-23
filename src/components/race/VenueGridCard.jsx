@@ -1,7 +1,8 @@
 /**
  * VenueGridCard - 開催場一覧グリッドの1会場分カード
- * 開催中: 大会名・グレードバッジ・時間帯アイコン・次レース時刻を表示しリンク化
- * 非開催: 次開催日（BOA-225）が分かれば「次開催 M/D」、無ければ「本日開催なし」（リンクなし）
+ * 開催中: 大会名・節の日目（BOA-1199）・グレードバッジ・時間帯アイコン・次レース時刻を表示しリンク化
+ * 非開催: 次開催日（BOA-225）が分かれば「次開催 M/D」、無ければ「本日開催なし」。
+ *   linkClosed（既定 true）なら開催中と同じリンク先の Link（BOA-1694）、false ならリンクなしの div
  */
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -16,6 +17,7 @@ import {
 } from "../../constants/raceStageConfig";
 import { getVenueTimeOfDay, TIME_OF_DAY } from "../../utils/raceTimeOfDay";
 import { formatMonthDay } from "../../utils/nextOpenDate";
+import { getVenueSeriesDayLabel } from "../../utils/raceDetailHeading";
 import "./VenueGridCard.css";
 
 const TIME_OF_DAY_ICON = {
@@ -42,32 +44,76 @@ function findHighlightedStageRace(races) {
   );
 }
 
-function VenueGridCard({
-  venueCode,
-  venueData,
-  linkTo,
-  nowHHMM,
-  nextOpenDate,
-}) {
-  const { t } = useTranslation();
-  const venueName = venueNameOf(t, venueCode);
-
-  const races = venueData?.races || [];
-  const isOpen = races.length > 0;
-
-  if (!isOpen) {
-    return (
-      <div className="venue-grid-card venue-grid-card--closed">
-        <div className="venue-grid-card__name">{venueName}</div>
-        <div className="venue-grid-card__closed-label">
-          {nextOpenDate
-            ? t("venueGrid.nextOpen", { date: formatMonthDay(nextOpenDate) })
-            : t("venueGrid.noRacesToday")}
-        </div>
+function ClosedVenueCard({ t, venueName, nextOpenDate, linkTo }) {
+  const className = "venue-grid-card venue-grid-card--closed";
+  const body = (
+    <>
+      <div className="venue-grid-card__name">{venueName}</div>
+      <div className="venue-grid-card__closed-label">
+        {nextOpenDate
+          ? t("venueGrid.nextOpen", { date: formatMonthDay(nextOpenDate) })
+          : t("venueGrid.noRacesToday")}
       </div>
-    );
-  }
+    </>
+  );
+  if (!linkTo) return <div className={className}>{body}</div>;
+  return (
+    <Link to={linkTo} className={className}>
+      {body}
+    </Link>
+  );
+}
 
+function StageBadge({ t, stageConfig, highlightedStageRace }) {
+  if (!stageConfig) return null;
+  return (
+    <span
+      className="venue-grid-card__stage"
+      style={{ background: stageConfig.color }}
+    >
+      {stageConfig.emoji} {t(stageConfig.i18nKey)}{" "}
+      {raceNumberLabel(highlightedStageRace.raceNo)}
+    </span>
+  );
+}
+
+function TimeIcon({ timeIcon, timeLabel }) {
+  if (!timeIcon) return null;
+  return (
+    <span
+      className="venue-grid-card__time-icon"
+      title={timeLabel ?? undefined}
+      aria-label={timeLabel ?? undefined}
+    >
+      {timeIcon}
+    </span>
+  );
+}
+
+function VenueStatus({ t, nextRace }) {
+  return (
+    <div className="venue-grid-card__status">
+      {nextRace ? (
+        <>
+          <span className="venue-grid-card__next-race">
+            {t("venueGrid.nextRace", { race: nextRace.raceNo })}
+          </span>
+          {nextRace.startTime && (
+            <span className="venue-grid-card__next-time">
+              {nextRace.startTime}
+            </span>
+          )}
+        </>
+      ) : (
+        <span className="venue-grid-card__finished">
+          {t("venueGrid.allFinished")}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function OpenVenueCard({ t, venueName, races, linkTo, nowHHMM }) {
   const timeOfDay = getVenueTimeOfDay(races);
   const timeIcon = TIME_OF_DAY_ICON[timeOfDay];
   const timeLabel =
@@ -82,32 +128,33 @@ function VenueGridCard({
     highlightedStageRace && getRaceStageBadge(highlightedStageRace.raceStage);
 
   const nextRace = nowHHMM ? findNextRace(races, nowHHMM) : null;
+  // 節の何日目か（BOA-1199）。レース詳細の見出しと同じ値。全レース終了の会場には出さない
+  const seriesDayLabel = nextRace ? getVenueSeriesDayLabel(races, t) : null;
 
   return (
     <Link to={linkTo} className="venue-grid-card venue-grid-card--open">
       <div className="venue-grid-card__header">
-        <span className="venue-grid-card__name">{venueName}</span>
-        {timeIcon && (
-          <span
-            className="venue-grid-card__time-icon"
-            title={timeLabel ?? undefined}
-            aria-label={timeLabel ?? undefined}
-          >
-            {timeIcon}
-          </span>
-        )}
+        <span className="venue-grid-card__name-row">
+          <span className="venue-grid-card__name">{venueName}</span>
+          {seriesDayLabel && (
+            <span className="venue-grid-card__series-day">
+              {seriesDayLabel}
+            </span>
+          )}
+          {/* 承認したモック（A案）どおり、優勝戦・準優勝戦のバッジは日目の札と同じ行に並べる。
+              入らない幅（375px の3列）ではバッジごと次の行へ送る（バッジの中では折り返さない） */}
+          <StageBadge
+            t={t}
+            stageConfig={stageConfig}
+            highlightedStageRace={highlightedStageRace}
+          />
+          {/* 時間帯のアイコンも同じ行に入れ、右端へ寄せる。行の外に置くと、アイコンのある会場だけ
+              札・バッジに使える幅が狭くなり、英語の「Semifinal 9R」がバッジの中で割れた（ファン評価1周目） */}
+          <TimeIcon timeIcon={timeIcon} timeLabel={timeLabel} />
+        </span>
       </div>
 
       <div className="venue-grid-card__badges">
-        {stageConfig && (
-          <span
-            className="venue-grid-card__stage"
-            style={{ background: stageConfig.color }}
-          >
-            {stageConfig.emoji} {t(stageConfig.i18nKey)}{" "}
-            {raceNumberLabel(highlightedStageRace.raceNo)}
-          </span>
-        )}
         {gradeConfig && (
           <span
             className="venue-grid-card__grade"
@@ -128,25 +175,44 @@ function VenueGridCard({
         </div>
       )}
 
-      <div className="venue-grid-card__status">
-        {nextRace ? (
-          <>
-            <span className="venue-grid-card__next-race">
-              {t("venueGrid.nextRace", { race: nextRace.raceNo })}
-            </span>
-            {nextRace.startTime && (
-              <span className="venue-grid-card__next-time">
-                {nextRace.startTime}
-              </span>
-            )}
-          </>
-        ) : (
-          <span className="venue-grid-card__finished">
-            {t("venueGrid.allFinished")}
-          </span>
-        )}
-      </div>
+      <VenueStatus t={t} nextRace={nextRace} />
     </Link>
+  );
+}
+
+function VenueGridCard({
+  venueCode,
+  venueData,
+  linkTo,
+  nowHHMM,
+  nextOpenDate,
+  linkClosed = true,
+}) {
+  const { t } = useTranslation();
+  const venueName = venueNameOf(t, venueCode);
+
+  const races = venueData?.races || [];
+  const isOpen = races.length > 0;
+
+  if (!isOpen) {
+    return (
+      <ClosedVenueCard
+        t={t}
+        venueName={venueName}
+        nextOpenDate={nextOpenDate}
+        linkTo={linkClosed ? linkTo : null}
+      />
+    );
+  }
+
+  return (
+    <OpenVenueCard
+      t={t}
+      venueName={venueName}
+      races={races}
+      linkTo={linkTo}
+      nowHHMM={nowHHMM}
+    />
   );
 }
 

@@ -1,0 +1,83 @@
+# 全貌動画をデータから描く（Remotion）— 計画
+
+全貌動画（1日1本以上の縦動画）を、実画面の撮影ではなく龍神の材料データからコードで描く。
+2026-10-20 オーナー決定: (a) データから描く（生成の速さ・トークンの少なさ・質・再現性の4つを解く）、(b) 比べる文は文型で固定し、
+LLM はつなぐ語だけ（整えた版はやめた）、(c) 場面2は1艇4.5秒・約45秒、(d) 完全版（約3分）は YouTube の通常の動画、
+X・Shorts は59秒以内の入口版（条件＋6艇の重ね図＋結論1拍）。場面の型の正本は hq の `full-picture-scene-contract.md`。
+
+## 持ち場
+
+| 段階 | 誰 | 中身 |
+|---|---|---|
+| 作る | 龍神の開発 | 材料 JSON の出口（版つきの契約・JSON Schema・CI）、Remotion の場面の型、検査 |
+| 毎日回す | hq の集客部署 | レース選び、`run-full.mjs` の実行、送る前の確かめ、投稿、数字の PDCA |
+
+毎日の実行は「材料 JSON 1つ → 文の JSON・完全版と入口版の MP4・本文」の1本のコマンド（`sns-video-studio/remotion/scripts/full-picture/run-full.mjs`）。
+龍神の鍵が要るのは材料の取得だけ。文は描画の前に1度だけ作って保存し、同じ文の JSON なら同じ MP4 になる。
+
+## 毎日の実行（daily.mjs）の契約と鍵の分け方
+
+hq の全貌の切替案 v2（`~/hq/drafts/full-picture-switch-20261020.md` §9、2026-10-20）の依頼に合わせた。hq の集客部署は次の2つの使い方だけを呼ぶ。
+
+| 使い方 | コマンド（sns-video-studio/remotion で） | 標準出力（JSON 1つ） |
+|---|---|---|
+| 選ぶ | `node scripts/full-picture/daily.mjs --select --date YYYY-MM-DD [--count N] --plan-only` | `{status, stage, reasons, plan: [{race_id, deadline}], rule}` |
+| 作る | `node scripts/full-picture/daily.mjs <race_id> --out <dir> --bgm <mp3> [--concurrency N] [--text connected\|template]` | `{status, stage, reasons, files, video{full_s, entry_s, full_mib}, llm{calls, tokens_in, tokens_out}, text_mode, missing, ref_commit}` |
+
+- exit: 0 合格、1 止める、2 使い方の誤り。ログは標準エラー
+- 選び方の規則は龍神が持つ（`SELECT_RULE`）: 締切 21:58 前・中止でない優勝戦か準優勝戦のうち締切の一番遅いもの。無ければ 12R の一番遅いもの
+- 作る中身: 材料（`--stage racecard`。例外・契約に合わない・facts か展開が無いなら1回だけ取り直す）→ `run-full.mjs`（完全版・入口版・bundle。
+  文・本文・尺・大きさ・章・省略禁止の場面の機械の検査に落ちたら止める）→ 送信の道の受け取りの検査（`push-full-picture.js` の `checkFullPicture`
+  と動画の大きさ。DB・Storage に書かない。評価役の P0 は hq の側なので数えない）。**送信は含めない**
+- `stage` は止まった段（`select`・`materials`・`run-full`・`bundle`・`push-check`）。合格なら `done`
+- 材料は、facts・類似レース・展開（4つの範囲）・出走表・24会場の過去90日・モーターのどれかが欠けたら1回取り直し、それでも欠けたら止める
+  （一時的な失敗で「全国」の値や場面6が黙って変わらないように）。1号艇の選手の成績は、選手が無い日があるので省いて続ける
+- 予期しない例外でも、標準出力に JSON 1つ（止まった段と理由）を出して exit 1。待ち時間の上限は、API 30秒・LLM 5分・run-full 45分
+- 選ぶ（--select）は今の時刻を見ない。送信の道は締切の45分前を過ぎると受け取らず、作るのに約11分かかるので、起動の時刻は hq の運用で決める
+
+### 鍵の分け方
+
+- daily.mjs は送信をしないので、service key（`SUPABASE_SERVICE_KEY`）を読まない。材料の取得に要るのは Supabase の匿名の読み取り
+  （`VITE_SUPABASE_URL`・`VITE_SUPABASE_ANON_KEY`、画面の配信物と同じ公開キー）だけで、`--env-file` を使わず `.env.local` からこの2つだけを読む
+- 子のプロセス（run-full と、その中で呼ぶ claude）には、通す名前を並べた環境変数（PATH・HOME・LANG・TMPDIR・NODE_*・CLAUDE_*・ANTHROPIC_* 等）
+  だけを渡す。送信の鍵（service key・Slack・X・YouTube）と一緒に起動されたら、使い方の誤り（exit 2）で止める
+- claude（つなぐ語の LLM）は、道具・設定・CLAUDE.md・MCP を使わせず（`--tools "" --safe-mode --strict-mcp-config`）、空の一時ディレクトリで動かす。
+  リポジトリの `.env.local` を読めない
+- 送信は今までどおり `node --env-file=.env.local scripts/sns/push-full-picture.js <bundle_dir>` が受け持つ（service key はこの node だけが読む）
+
+### 落ちた日
+
+hq の包みが「全貌: <stage> で落ちる」を起票する。全貌レーン（龍神の開発）が拾い、`reasons` と `missing` から直す。
+
+## 材料 JSON の契約
+
+- 形: `full-picture-materials/{版}` の JSON。公開 API の応答と Supabase の匿名読み取りの行を、計算せずに1つにまとめたもの
+  （`fetch-materials.mjs`）。場面の値と facts は run-full.mjs の build（`build-all.mjs`）が画面と同じ関数で計算する。
+  当初の案（材料に場面ごとの節と facts を入れる）から変えた: 計算を1か所（build）にまとめ、材料の取得（鍵あり）を薄くするため
+- JSON Schema は `sns-video-studio/remotion/scripts/full-picture/materials.schema.json`（build が読む所だけを required）。
+  run-full.mjs は描く前に検査し、合わなければ止める。`verify-full-picture-scene2.js`（ci）が (1) 固定の材料（4レースの最小の写し、
+  `fixtures/`）が Schema に合う、(2) 取得のコードの出力（API・Supabase は偽物）が Schema に合う、(3) Schema の版と
+  `MATERIALS_VERSION` が同じ、を確かめる。形を変えたら版を上げ、Schema・取得・build を同じ PR で直さないと CI が落ちる
+- 画面が API を通さず Supabase を直接読む場面（3・6）は、取得スクリプトの中で行を取り、build が画面と同じ数え方で集計する
+- 欠けた値はその要素を省いて `omitted` に記録する（全体は止めない）
+
+## 残りの場面（順と見込み）
+
+見込みは1場面を「材料の節＋描画の型＋検査＋3レースの書き出し」まで終える作業の量。データの出口が既にある場面から先にやる。
+
+| 順 | 場面 | 材料の出どころ | 新しく描く部品 | 見込み |
+|---|---|---|---|---|
+| 1 | 2b 類似レース | `/api/analogy/similar` | 類似度の円、サンキー図（帯を押して2・3着）、よく出た3連単 | 1日 |
+| 2 | 4 展開（省略禁止） | `/api/analogy/scenario`（boats=1・NA・VA） | 進入の割合と内訳、スリット図（平均STまで走らせる）、形の一致、2b のサンキーを再利用、「全体」での繰り返し | 2日 |
+| 3 | 5 相手 | scenario・facts（思考アシスト「相手」と同じ集計） | 2着以内の棒、軸ボタンを1→6で押す棒 | 1日 |
+| 4 | 8 展示後に見るところ | 場面4〜6の鍵の艇（固定の文言＋艇番） | まとめカード（2群、色の線と札） | 0.5日 |
+| 5 | 1 条件 | `/api/outcome-distribution`・`/api/predictions`・facts の VA（風） | コース別1着率の棒＋全国の目印、枠番別の連対率の表、水面傾向、風の比較表 | 1.5日 |
+| 6 | 3 軸 | facts（思考アシスト①）＋選手の成績（Supabase。会場別。枠番別回収率は 2026-10-20 に外した） | 「堅い？荒れる？」の棒、選手の表（縦に伸ばす） | 1.5日 |
+| 7 | 6 機力と調子 | モーターの表・今節展示（Supabase）、facts の深掘り | モーターの表、展示の前走・平均、先頭カード＋札 | 1.5日 |
+| 8 | つなぎ | 全場面 | 場面の間の縦スクロール、全体の尺（59秒の予算と場面ごとの配分）、BGM | 1日 |
+
+- 場面ごとに、visual-designer・wording-editor を当て、P0・P1 を直してから次へ進む。場面2で決めた型（配置の純粋関数と検査、
+  答えを次の拍で押すまで残す、1行は全角22字分以内、禁止表現は risk-rules.json）を全場面で使う
+- 尺: 完全版は削らない（約3分半。答えを毎秒8字で読める長さに伸ばした）。X・Shorts は入口版（59秒以内、`entry.mjs`）
+- 本番の送信に移る前に、`.claude/CLAUDE.md` の全貌の自動送信の例外（「評価役の検査で P0 が0件」）を「機械の検査」に変える。
+  .claude の変更なのでオーナーの直接承認が要る

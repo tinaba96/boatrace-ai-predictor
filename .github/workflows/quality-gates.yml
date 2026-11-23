@@ -14,10 +14,11 @@ on:
   pull_request:
     branches:
       - master
-  # masterへのマージ後にも1回走らせる。masterにブランチ保護が無く
-  # "Require branches to be up to date" も効かないため、2つのPRが同じ
+  # masterへのマージ後にも1回走らせる。master には ruleset（master-guard）があるが、
+  # "Require branches to be up to date" は求めていないため、2つのPRが同じ
   # 時点のmasterに対して緑になり、片方がマージされた後にもう片方が
   # 再検証されずマージされうる（063の番号重複はこの経路で入った）。
+  # bot の直接 push（e2e-rerecord 等、ruleset の bypass）も PR を通らない。
   # マージ後に走らせることで、少なくとも検知はできる状態にする。
   push:
     branches:
@@ -30,6 +31,10 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# 最小の権限（CodeQL actions/missing-workflow-permissions）。GITHUB_TOKEN で書く手順は無い
+permissions:
+  contents: read
 
 jobs:
   verify:
@@ -52,7 +57,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version-file: .nvmrc
           cache: 'npm'
 
       - name: Install dependencies
@@ -65,6 +70,37 @@ jobs:
 
       - name: Run CI-tier verifications
         run: npm run verify:ci
+
+      # 差分のファイルだけの eslint と、大きさ・複雑さの線・循環の import（madge）・重複のコード（jscpd）（T3・T5、2026-11-07）。
+      # 手元の `npm run verify:pr` と同じ検査。--ci で madge・jscpd を足す（devDependencies の固定の版を npx --no で使う、CI03）。
+      # 編集ごとの hook（prettier・eslint --fix）を外した代わり。ジョブの名（verify）は ruleset の必須の check なので変えない
+      - name: Lint the changed files
+        run: node scripts/maintenance/lint-changed.js --ci --base=origin/master
+
+      # 本番向けの build（vite build ＋ AI クローラー向けのスナップショット）。claude/**・codex/** は Vercel の Preview を
+      # 作らない（#2304）ので、Vercel の Preview の build の代わりにここで確かめる。e2e の束（build:e2e）は録画の宛先で
+      # 焼くうえ docs だけの PR では走らないので、全 PR で走る verify の job に置く（必須の check に入る）。
+      # VERCEL_ENV=preview で、記事・選手のスナップショットは Preview と同じく作らない（全記事の描画で数分延びるため）。
+      # そのため本番だけの道（記事の描画・選手ページの写し）はここでは確かめない。記事の描画の失敗は本番でも build を
+      # 落とさない作り（generate-ai-snapshots.js）で、落ちるのは /winning-technique・/today の生成と vite build の失敗。
+      # master への push は Vercel の本番の build が同じことをするので、PR だけで走らせる
+      - name: Production build (npm run build)
+        if: github.event_name == 'pull_request'
+        env:
+          VERCEL_ENV: preview
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: npm run build
+
+      # verify-sns-japanese-font.js が本番と同じ Chromium で撮った日本語の見本（/today の X 投稿の画像の確認用、2026-10-16）
+      - name: Upload Japanese font check image
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sns-font-check
+          path: tmp/sns-font-check.png
+          if-no-files-found: ignore
+          retention-days: 7
 
   # scripts/ml/ の変更があるときだけ、アナロジー・ファインダーの学習の pytest（as-of・リーク防止・
   # ラウンド区分・集計・品質ゲート）を回す。以前は train-analogy.yml の手動実行時にしか走らなかった
@@ -88,7 +124,7 @@ jobs:
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
-          if git diff --quiet "$BASE" HEAD -- scripts/ml/ src/constants/raceStageConfig.js; then
+          if git diff --quiet "$BASE" HEAD -- scripts/ml/ src/constants/raceStageConfig.js src/pure/raceStageConfig.js; then
             echo "run=false" >> "$GITHUB_OUTPUT"
           else
             echo "run=true" >> "$GITHUB_OUTPUT"
@@ -104,7 +140,7 @@ jobs:
         if: steps.changed.outputs.run == 'true'
         run: pip install -r scripts/ml/analogy/requirements.txt
 
-      # ラウンド区分のテストは node で src/constants/raceStageConfig.js を読む（依存パッケージは不要）
+      # ラウンド区分のテストは node で src/constants/raceStageConfig.js（再 export。本体は src/pure/raceStageConfig.js）を読む（依存パッケージは不要）
       - name: pytest (scripts/ml/analogy/tests)
         if: steps.changed.outputs.run == 'true'
         run: python -m pytest scripts/ml/analogy/tests -q

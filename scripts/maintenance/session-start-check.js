@@ -2,39 +2,36 @@
 /**
  * セッション開始時チェックの統合スクリプト。
  *
- * これまでCLAUDE.mdに散在していた5つの「セッション開始時確認」ルール
- * （Xツイート下書き・X動画・選手ニュース・集客調査スキル。TikTok は 2026-10-05 にアカウントが
- * バンされたため外した）と、
- * 新設した2項目（トレーサビリティ索引カバレッジ・品質バックログ）を
- * 1回の実行で集約する。CLAUDE.md側は「このスクリプトを実行し結果を
+ * セッション開始時の確認（X動画・選手ニュース・集客調査スキル・トレーサビリティ索引・
+ * 品質バックログなど）を1回の実行で集約する。CLAUDE.md側は「このスクリプトを実行し結果を
  * 報告する」の1行に統合する（詳細ロジックの説明はこのファイルのコメント
  * が正本）。
  *
  * 各項目の判定ロジック・出典:
- * 1) tweetDrafts   … note-articles/tweet-drafts.md の `- [ ] 投稿済み` 件数
- * 2) xVideo        … data/analysis/x-posts/history.json の本日投稿状況
- * 4) racerNews     … 要確認リストの pending件数（DBの表 racer_news_pending＋移行期間の
+ * 1) xVideo        … data/analysis/x-posts/history.json の本日投稿状況
+ * 2) racerNews     … 要確認リストの pending件数（DBの表 racer_news_pending＋移行期間の
  *                    data/analysis/racer-news-pending-review/pending.json を id で統合。DBが優先）
- * 5) growthSkills  … data/analysis/{x,note}-growth/ の最新レポート鮮度
- * 6) contentIndex  … docs/design/content-ops-flow/spec.md C5
- * 7) qualityBacklog… docs/design/content-ops-flow/spec.md C6
- * 8) recentFlowA   … docs/design/content-ops-flow/spec.md A4（sns-hub型選定ロジックへの素材提示）
- * 9) deprecatedTerms… docs/reference/deprecated-terms.json に対する grep 検知（フローC-7）
- * 10) missingContentIndex… AppRouter.jsxの新規ルートのうちcontent-index.json
- *     未カバーのものを検知（フローA-1、2026-09-01追加）。「PRマージを単一
+ * 3) growthSkills  … data/analysis/x-growth/ の最新レポート鮮度（note-growth は note.com/boatai の
+ *                    noindex は 2026-11-01 に解除。11/11 まで出さない。2026-11-03 オーナー決定、docs/knowledge/note.md）
+ * 4) contentIndex  … docs/design/content-ops-flow/spec.md C5
+ * 5) qualityBacklog… docs/design/content-ops-flow/spec.md C6
+ * 6) recentFlowA   … docs/design/content-ops-flow/spec.md A4（sns-hub の型・題材の選び方への素材提示）
+ * 7) deprecatedTerms… docs/reference/deprecated-terms.json に対する grep 検知（content-ops.md フローC-10）
+ * 8) missingContentIndex… AppRouter.jsxの新規ルートのうちcontent-index.json
+ *     未カバーのものを検知（content-ops.md フローA-1）。「PRマージを単一
  *     トリガーとする」という運用ルール自体には検知機構が無かった穴を埋める。
  *     新ルート＝ブログが要る新機能とは限らないため強制はせず提示のみ
- * 11) contentQualityAudit… 直近公開ブログ/note記事のスポットチェック対象を
+ * 9) contentQualityAudit… 直近公開ブログ/note記事のスポットチェック対象を
  *     ローテーション提示（FR4b、content-multi-channel-pipeline/spec.md）。
  *     生成時の自己採点だけでは気づけない盲点を人間の目で拾う
- * 12) pendingInsights… sns_strategy_insightsのstatus='proposed'（要判断）件数
- *     （フローC-8、2026-09-05追加）。戦略メモの手動採用ボタン（PR #514）が
+ * 10) pendingInsights… sns_strategy_insightsのstatus='proposed'（要判断）件数
+ *     （content-ops.md フローC-11）。戦略メモの手動採用ボタン（PR #514）が
  *     セッション開始時チェックを欠いたまま滞留するのを防ぐ
- * 13) campaignDraftLag… 稼働中企画のネタ（sns_topics）のうち、承認済みなのに
- *     チャネル別生成Routineが下書きをまだ作っていないもの（sns_topic_targets.status
- *     が'pending'のまま3時間以上経過）の件数（2026-09-09追加）。下書き生成は
- *     このリポジトリ外の生成Routineに依存しており、その稼働状況を直接監視する
- *     手段が無いため、症状（承認済みなのに下書きが作られない）で間接的に検知する
+ * 11) schemaSnapshot… 本番スキーマの写し docs/reference/schema-snapshot.json が7日以上古いか、
+ *     台帳 docs/db-migration/APPLIED.md より古い（本番と食い違う）か（ADR-0102）。写しの後に
+ *     「適用済み」になったファイルがあるか、取得（capturedAt）から7日以上なら stale=true と理由・
+ *     取り直しのコマンドを出す。日数は台帳に載らない変更（SQL Editor で直に当てた等）を拾うため
+ *     （オーナー 2026-10-27）。写しの取得日と台帳を読むだけで、DB には触れない
  *
  * 使い方: node scripts/maintenance/session-start-check.js [--json]
  */
@@ -48,19 +45,25 @@ import { checkVisualAssetAge } from "./content-ops-checks/check-visual-asset-age
 import { checkQualityBacklog } from "./content-ops-checks/check-quality-backlog.js";
 import { checkRecentFlowAContent } from "./content-ops-checks/check-recent-flow-a-content.js";
 import { checkDeprecatedTerms } from "./content-ops-checks/check-deprecated-terms.js";
-import { checkMissingContentIndex } from "./content-ops-checks/check-missing-content-index.js";
+import { checkMissingContentIndex } from "../lib/contentTopics/missingContentIndex.js";
 import { checkContentQualityAudit } from "./content-ops-checks/check-content-quality-audit.js";
 import { checkPendingInsights } from "./content-ops-checks/check-pending-insights.js";
-import { checkCampaignDraftLag } from "./content-ops-checks/check-campaign-draft-lag.js";
 import { supabase } from "../lib/supabaseClient.js";
 import {
   createDbPendingStore,
   mergePendingLists,
 } from "../lib/racerNews/pendingReview.js";
+import {
+  LEDGER_FILE,
+  SNAPSHOT_FILE,
+  snapshotFreshness,
+} from "../lib/schemaSnapshot.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.join(__dirname, "../..");
 const VISUAL_ASSET_STALE_DAYS = 90;
+// 本番スキーマの写しを日数でも取り直す（台帳に載らない変更を拾うため。オーナー 2026-10-27）
+const SCHEMA_SNAPSHOT_STALE_DAYS = 7;
 
 async function readJsonSafe(relPath, fallback) {
   try {
@@ -73,39 +76,6 @@ async function readJsonSafe(relPath, fallback) {
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
-}
-
-async function checkTweetDrafts() {
-  let raw;
-  try {
-    raw = await fs.readFile(
-      path.join(REPO_ROOT, "note-articles/tweet-drafts.md"),
-      "utf-8",
-    );
-  } catch {
-    return { pendingCount: 0, oldestDate: null };
-  }
-
-  const lines = raw.split("\n");
-  let currentDate = null;
-  let pendingCount = 0;
-  let oldestDate = null;
-
-  for (const line of lines) {
-    const headingMatch = line.match(/^##\s+(\d{4}-\d{2}-\d{2})/);
-    if (headingMatch) {
-      currentDate = headingMatch[1];
-      continue;
-    }
-    if (/^- \[ \] 投稿済み/.test(line)) {
-      pendingCount += 1;
-      if (currentDate && (!oldestDate || currentDate < oldestDate)) {
-        oldestDate = currentDate;
-      }
-    }
-  }
-
-  return { pendingCount, oldestDate };
 }
 
 async function checkDailyPostStatus(relPath) {
@@ -183,19 +153,58 @@ async function latestReportAgeDays(dirRelPath) {
 }
 
 async function checkGrowthSkillsFreshness() {
-  const [xGrowth, noteGrowth] = await Promise.all([
-    latestReportAgeDays("data/analysis/x-growth"),
-    latestReportAgeDays("data/analysis/note-growth"),
-  ]);
-  return {
-    xGrowth,
-    noteGrowth,
-  };
+  // note-growth の鮮度はまだ出さない。noindex は 2026-11-01 に解除され、11/4 から毎日1本を出す。
+  // 1週間たつ 11/11 から data/analysis/note-growth を戻す（2026-11-03 オーナー決定、docs/knowledge/note.md）。
+  const xGrowth = await latestReportAgeDays("data/analysis/x-growth");
+  return { xGrowth };
+}
+
+async function checkSchemaSnapshot(now = new Date()) {
+  try {
+    const [snapshotText, ledger] = await Promise.all([
+      fs.readFile(path.join(REPO_ROOT, SNAPSHOT_FILE), "utf-8"),
+      fs.readFile(path.join(REPO_ROOT, LEDGER_FILE), "utf-8"),
+    ]);
+    const snapshot = JSON.parse(snapshotText);
+    const freshness = snapshotFreshness(snapshot, ledger);
+    const capturedMs = Date.parse(snapshot.capturedAt);
+    if (!Number.isFinite(capturedMs)) {
+      throw new Error(
+        `capturedAt が日時として読めない（${snapshot.capturedAt}）`,
+      );
+    }
+    const ageDays = Math.floor((now.getTime() - capturedMs) / 86400000);
+    // 台帳に載らない変更（SQL Editor で直に当てた等）は台帳の比較で出ないので、日数でも取り直す
+    const tooOld = ageDays >= SCHEMA_SNAPSHOT_STALE_DAYS;
+    const stale = freshness.stale || tooOld;
+    return {
+      ...freshness,
+      stale,
+      reasons: [
+        ...(freshness.stale
+          ? ["台帳で写しの後に適用済みになったファイルがある"]
+          : []),
+        ...(tooOld
+          ? [`取得から${ageDays}日（${SCHEMA_SNAPSHOT_STALE_DAYS}日以上）`]
+          : []),
+      ],
+      capturedAt: snapshot.capturedAt,
+      ageDays,
+      staleThresholdDays: SCHEMA_SNAPSHOT_STALE_DAYS,
+      command: stale
+        ? "gh pr list --search schema-snapshot.json で開いた取り直しの PR が無いことを確かめ、git fetch で master の台帳に合わせてから node --env-file=.env.local scripts/db/schema-snapshot.js で取り直し、PR にする（ADR-0102）"
+        : undefined,
+    };
+  } catch (error) {
+    return {
+      stale: null,
+      error: `${SNAPSHOT_FILE} の鮮度を確かめられない: ${error.message}`,
+    };
+  }
 }
 
 async function main() {
   const [
-    tweetDrafts,
     xVideo,
     racerNews,
     growthSkills,
@@ -207,9 +216,8 @@ async function main() {
     missingContentIndex,
     contentQualityAudit,
     pendingInsights,
-    campaignDraftLag,
+    schemaSnapshot,
   ] = await Promise.all([
-    checkTweetDrafts(),
     checkDailyPostStatus("data/analysis/x-posts/history.json"),
     checkRacerNewsPending(),
     checkGrowthSkillsFreshness(),
@@ -233,7 +241,7 @@ async function main() {
       error: error.message,
     })),
     checkPendingInsights(),
-    checkCampaignDraftLag(),
+    checkSchemaSnapshot(),
   ]);
 
   const staleVisualAssets = visualAssetAge.assets.filter(
@@ -241,7 +249,6 @@ async function main() {
   );
 
   const result = {
-    tweetDrafts,
     xVideo,
     racerNews,
     growthSkills,
@@ -266,7 +273,7 @@ async function main() {
           : undefined,
     },
     pendingInsights,
-    campaignDraftLag,
+    schemaSnapshot,
   };
 
   if (process.argv.includes("--json")) {

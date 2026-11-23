@@ -1,0 +1,439 @@
+#!/usr/bin/env node
+/**
+ * job-watch.js - 定期の job の見張り（.github/workflows/job-watch.yml、ADR-0097 の追記「定期の job の見張り」）。
+ * Node の組み込みだけを使う（npm ci をしない）。
+ *
+ *   scan   見張る workflow の直近24時間の失敗を全部見回し、規則で分類して Issue に書く（actions: read・issues: write）。
+ *          rerun するものを出力 reruns（JSON の run ID の配列）に出す。試運転（dryRun）の間は出さず、Issue に書くだけ。
+ *          イベントを取りこぼしても次の見回りで拾うので、毎回全部を見る（冪等）
+ *   rerun  reruns の各 run を当てる直前に確かめ直し（許可の一覧・1回目・失敗のまま）、失敗した job だけ rerun する（actions: write）
+ *
+ * env: GITHUB_TOKEN・GITHUB_REPOSITORY・RERUNS（rerun のときだけ）
+ * 設定の正本は scripts/watch/job-watch.json。
+ */
+import { appendFileSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  cancelledByTimeout,
+  classifyLog,
+  decideRun,
+  handledMarkers,
+  jstDate,
+  nightlyFailureItem,
+  recoveryReruns,
+  rerunBlockers,
+  runMarker,
+} from "../lib/jobWatch.js";
+
+const ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../..",
+);
+const CONFIG = JSON.parse(
+  readFileSync(path.join(ROOT, "scripts/watch/job-watch.json"), "utf8"),
+);
+const KEY_LABEL = "job-watch-key";
+const FAILURE_LABEL = "job-watch-failure";
+const CANARY_PATH = ".github/workflows/key-canary.yml";
+const LOG_TAIL = 200_000;
+
+function fail(message) {
+  console.error(`::error::${message}`);
+  process.exit(1);
+}
+
+const token = process.env.GITHUB_TOKEN;
+const repo = process.env.GITHUB_REPOSITORY ?? "";
+// 直に回したとき（node scripts/watch/job-watch.js scan|rerun）だけ確かめて動く。verify は import して scan を偽の fetch で回す
+const isMain =
+  Boolean(process.argv[1]) &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMain && !token) fail("GITHUB_TOKEN が無い");
+if (isMain && !/^[\w.-]+\/[\w.-]+$/.test(repo))
+  fail("GITHUB_REPOSITORY の形が違う");
+
+async function gh(
+  method,
+  pathAndQuery,
+  body,
+  { raw = false, accept = "application/vnd.github+json" } = {},
+) {
+  const res = await fetch(`https://api.github.com${pathAndQuery}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: accept,
+      "X-GitHub-Api-Version": "2022-11-28",
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok)
+    fail(
+      `GitHub API ${method} ${pathAndQuery.split("?")[0]} が ${res.status} を返した`,
+    );
+  const text = await res.text();
+  if (raw) return text;
+  // rerun-failed-jobs・close 等は本文が空のことがある
+  return text ? JSON.parse(text) : null;
+}
+
+async function listAll(pathAndQuery, key) {
+  const out = [];
+  for (let page = 1; page <= 10; page += 1) {
+    const sep = pathAndQuery.includes("?") ? "&" : "?";
+    const data = await gh(
+      "GET",
+      `${pathAndQuery}${sep}per_page=100&page=${page}`,
+    );
+    const items = key ? data[key] : data;
+    out.push(...items);
+    if (items.length < 100) return out;
+  }
+  return out;
+}
+
+const isProductionRun = (r) =>
+  CONFIG.watched.includes(r.path) &&
+  r.head_branch === "master" &&
+  r.head_repository?.full_name === repo &&
+  // push は master へのマージ・自動コミットで動くもの（Post-merge Checks・Regenerate Generated Docs 等）。
+  // rerun の許可の一覧には入っていないので、知らせるだけになる。
+  // workflow_run は Key Canary の完了で起きる物（schedule が来ない workflow の主の起動、11/23）
+  (r.event === "schedule" ||
+    r.event === "workflow_dispatch" ||
+    r.event === "push" ||
+    r.event === "workflow_run");
+
+const runJobs = (runId) =>
+  listAll(`/repos/${repo}/actions/runs/${runId}/jobs?filter=latest`, "jobs");
+
+// 時間切れの job は cancelled になる（BOA-1162）。時間切れと分かった run だけ cancelled の job のログも読む
+async function failedJobLog(jobs, { timedOut = false } = {}) {
+  const texts = [];
+  for (const j of jobs.filter(
+    (x) =>
+      x.conclusion === "failure" ||
+      x.conclusion === "timed_out" ||
+      (timedOut && x.conclusion === "cancelled"),
+  )) {
+    const text = await gh(
+      "GET",
+      `/repos/${repo}/actions/jobs/${j.id}/logs`,
+      null,
+      { raw: true },
+    );
+    texts.push(text.slice(-LOG_TAIL));
+  }
+  return texts.join("\n");
+}
+
+/**
+ * 結論が cancelled の run が GitHub の時間切れか（concurrency の置き換え・人の取り消しでないか）。
+ * 上限はその run の SHA の workflow の YAML から読む（master の今の値は、その後に変わっていることがある）
+ */
+async function timedOutCancel(r, jobs) {
+  if (!jobs.some((j) => j.conclusion === "cancelled")) return false;
+  const yaml = await gh(
+    "GET",
+    `/repos/${repo}/contents/${r.path}?ref=${r.head_sha}`,
+    null,
+    { raw: true, accept: "application/vnd.github.raw" },
+  );
+  return cancelledByTimeout(jobs, yaml);
+}
+
+async function openIssue(label) {
+  const issues = await gh(
+    "GET",
+    `/repos/${repo}/issues?labels=${label}&state=open&per_page=10`,
+  );
+  return issues.find((i) => !i.pull_request) ?? null;
+}
+
+// scan の窓（since）の中に更新された、閉じた Issue（件数の上限つき）
+async function closedIssues(label, since) {
+  const issues = await gh(
+    "GET",
+    `/repos/${repo}/issues?labels=${label}&state=closed&since=${since}&per_page=10`,
+  );
+  return issues.filter((i) => !i.pull_request);
+}
+
+async function issueTexts(issue) {
+  if (!issue) return [];
+  const comments = await listAll(
+    `/repos/${repo}/issues/${issue.number}/comments`,
+  );
+  return [issue.body ?? "", ...comments.map((c) => c.body ?? "")];
+}
+
+const line = (r, reason) =>
+  `- [${r.name} #${r.run_number}（${r.attempt}回目）](${r.html_url}) ${jstDate(r.createdAt)} ${r.timedOut ? "時間切れ（GitHub の上限で cancelled）・" : ""}${reason}`;
+
+async function writeIssue(label, title, intro, items) {
+  if (items.length === 0) return;
+  const issue = await openIssue(label);
+  const text = items.map((x) => `${x.text}\n${x.marker}`).join("\n");
+  if (!issue) {
+    await gh("POST", `/repos/${repo}/issues`, {
+      title,
+      labels: [label],
+      body: `${intro}\n\n${text}`,
+    });
+  } else {
+    await gh("POST", `/repos/${repo}/issues/${issue.number}/comments`, {
+      body: text,
+    });
+  }
+}
+
+// 開いている・閉じた（窓の中に更新された）Issue の本文から、扱い済みの印を集める
+async function handledInIssues(keyIssue, failureIssue, since) {
+  const openTexts = [
+    ...(await issueTexts(keyIssue)),
+    ...(await issueTexts(failureIssue)),
+  ];
+  // 閉じた Issue も、窓（since）の中に更新されたものは読む。閉じて立て直す繰り返しで同じ run を書き直さない
+  const closedTexts = [];
+  for (const label of [KEY_LABEL, FAILURE_LABEL]) {
+    for (const issue of await closedIssues(label, since)) {
+      closedTexts.push(...(await issueTexts(issue)));
+    }
+  }
+  return {
+    openDone: handledMarkers(openTexts),
+    done: handledMarkers([...openTexts, ...closedTexts]),
+  };
+}
+
+// この run より後にカナリアが成功しているか（鍵は正しい）
+const canaryOkAfterIn = (runs) => (r) =>
+  runs.some(
+    (o) =>
+      o.path === CANARY_PATH &&
+      o.conclusion === "success" &&
+      Date.parse(o.created_at) > Date.parse(r.created_at),
+  );
+
+// 同じ workflow の後の run が成功済み・動いているか（rerun しても重なるだけ）
+const newerRunIn = (runs) => (r) =>
+  runs.some(
+    (o) =>
+      o.path === r.path &&
+      Date.parse(o.created_at) > Date.parse(r.created_at) &&
+      (o.conclusion === "success" || o.status !== "completed"),
+  );
+
+// cancelled は、時間切れ（BOA-1162）かを後で確かめる。concurrency の置き換え・人の取り消しは数えない
+const failedCandidates = (runs) =>
+  runs.filter(
+    (r) =>
+      r.status === "completed" &&
+      (r.conclusion === "failure" ||
+        r.conclusion === "timed_out" ||
+        r.conclusion === "cancelled"),
+  );
+
+// 判断（decideRun）を Issue の項目にする。list は書く先（key・failure）、rerun は rerun に入れるか
+function decidedItem(run, r, d) {
+  if (d.action === "key-issue") {
+    return {
+      list: "key",
+      text: line(run, d.reason),
+      marker: runMarker(r.id, r.attempt, "key"),
+      rerun: false,
+    };
+  }
+  if (d.action === "rerun") {
+    return {
+      list: "failure",
+      text: line(
+        run,
+        CONFIG.dryRun
+          ? `${d.reason}。試運転なので rerun していない（rerun するはずだった）`
+          : d.reason,
+      ),
+      marker: runMarker(r.id, r.attempt, "rerun"),
+      rerun: !CONFIG.dryRun,
+    };
+  }
+  return {
+    list: "failure",
+    text: line(run, d.reason),
+    marker: runMarker(r.id, r.attempt, "failure"),
+    rerun: false,
+  };
+}
+
+// 鍵が直ったか: 開いた鍵の Issue より後に、カナリアが成功している。直っていれば Issue に書いて閉じ、rerun する run の id を返す
+async function closeKeyIssueIfRecovered(keyIssue, runs, classified, opts) {
+  if (!keyIssue) return [];
+  const canaryOk = runs.some(
+    (r) =>
+      r.path === CANARY_PATH &&
+      r.conclusion === "success" &&
+      Date.parse(r.created_at) > Date.parse(keyIssue.created_at),
+  );
+  if (!canaryOk) return [];
+  const targets = recoveryReruns(classified, opts);
+  const body =
+    `カナリアが成功した（鍵が直った）。` +
+    (targets.length === 0
+      ? "同じ日に rerun してよい失敗は無い。"
+      : CONFIG.dryRun
+        ? `試運転なので rerun していない。rerun するはずだったもの:\n${targets.map((r) => line(r, "")).join("\n")}`
+        : `次を1回ずつ rerun する:\n${targets.map((r) => line(r, "")).join("\n")}`) +
+    "\n日をまたいだ失敗・許可の一覧に無い失敗は、手で確かめる。";
+  await gh("POST", `/repos/${repo}/issues/${keyIssue.number}/comments`, {
+    body,
+  });
+  await gh("PATCH", `/repos/${repo}/issues/${keyIssue.number}`, {
+    state: "closed",
+  });
+  return CONFIG.dryRun ? [] : targets.map((r) => r.id);
+}
+
+async function scan() {
+  const now = new Date();
+  const since = new Date(now.getTime() - 24 * 3_600_000).toISOString();
+  const rerunAllowed = new Set(CONFIG.rerunAllowed);
+  const runs = (
+    await listAll(
+      // master だけに絞る（PR の CI の run を取らない）
+      `/repos/${repo}/actions/runs?branch=master&created=%3E%3D${since}`,
+      "workflow_runs",
+    )
+  )
+    .filter(isProductionRun)
+    .map((r) => ({ ...r, attempt: r.run_attempt, createdAt: r.created_at }));
+
+  const keyIssue = await openIssue(KEY_LABEL);
+  const failureIssue = await openIssue(FAILURE_LABEL);
+  const { openDone, done } = await handledInIssues(keyIssue, failureIssue, since);
+  const canaryOkAfter = canaryOkAfterIn(runs);
+  const newerRun = newerRunIn(runs);
+
+  const candidates = failedCandidates(runs);
+  let failedCount = 0;
+  const keyItems = [];
+  const failureItems = [];
+  const reruns = [];
+  const classified = [];
+  for (const r of candidates) {
+    const kinds = ["key", "failure", "rerun"].map((k) =>
+      runMarker(r.id, r.attempt, k),
+    );
+    const alreadyNoted = kinds.some((m) => done.has(m));
+    if (alreadyNoted) {
+      // 印は時間切れと判った cancelled にしか書かないので、印のある run はどれも失敗に数える
+      failedCount += 1;
+      // 既に書いた run のログは読み直さない。開いている鍵の Issue に書いたものだけ、鍵が直った後の追い上げの候補に入れる
+      // （閉じた鍵の Issue に書いたものは、閉じたときに扱い済み）
+      if (openDone.has(runMarker(r.id, r.attempt, "key"))) {
+        classified.push({ ...r, category: "config", newerRun: newerRun(r) });
+      }
+      continue;
+    }
+    const jobs = await runJobs(r.id);
+    const timedOut =
+      r.conclusion === "cancelled" && (await timedOutCancel(r, jobs));
+    if (r.conclusion === "cancelled" && !timedOut) continue;
+    failedCount += 1;
+    const category = classifyLog(await failedJobLog(jobs, { timedOut }));
+    const run = { ...r, category, timedOut, newerRun: newerRun(r) };
+    classified.push(run);
+    const d = decideRun(run, {
+      rerunAllowed,
+      now,
+      canaryOkAfter: canaryOkAfter(r),
+    });
+    const item = decidedItem(run, r, d);
+    (item.list === "key" ? keyItems : failureItems).push({
+      text: item.text,
+      marker: item.marker,
+    });
+    if (item.rerun) reruns.push(r.id);
+  }
+
+  // 毎晩の網羅の表が7日より古い（PR の選別が古い表で選ぶのを防ぐ）。同じ最後の成功では1回だけ書く
+  const nightly = await nightlyFailureItem({ gh, repo, now, done });
+  if (nightly) failureItems.push(nightly);
+
+  await writeIssue(
+    KEY_LABEL,
+    "定期の job: 鍵・設定の誤り（job-watch）",
+    "Environment prod-jobs・ryujin-bot の鍵・設定の誤りで、定期の job が落ちている。鍵を直すと、カナリア（key-canary.yml、30分ごと）が成功した時点で、同じ日の失敗分のうち許可の一覧の workflow を1回ずつ rerun して、この Issue を閉じる。",
+    keyItems,
+  );
+  await writeIssue(
+    FAILURE_LABEL,
+    "定期の job の失敗（job-watch）",
+    "定期の job の失敗のうち、鍵・設定の誤り以外のもの。一時的な失敗は許可の一覧の workflow だけ1回 rerun する。直ったら閉じる。",
+    failureItems,
+  );
+
+  reruns.push(
+    ...(await closeKeyIssueIfRecovered(keyIssue, runs, classified, {
+      rerunAllowed,
+      now,
+    })),
+  );
+
+  const out = process.env.GITHUB_OUTPUT;
+  const value = JSON.stringify([...new Set(reruns)]);
+  if (out) appendFileSync(out, `reruns=${value}\n`);
+  console.log(
+    `失敗 ${failedCount} 件（時間切れの cancelled を含む。新しく書いた: 鍵 ${keyItems.length}・その他 ${failureItems.length}）、rerun ${value}`,
+  );
+}
+
+async function rerun() {
+  let ids;
+  try {
+    ids = JSON.parse(process.env.RERUNS ?? "[]");
+  } catch {
+    fail("RERUNS が JSON として読めない");
+  }
+  if (!Array.isArray(ids) || !ids.every((x) => Number.isInteger(x)))
+    fail("RERUNS が数の配列でない");
+  if (CONFIG.dryRun) fail("試運転の間は rerun しない");
+  const rerunAllowed = new Set(CONFIG.rerunAllowed);
+  const now = new Date();
+  for (const id of ids) {
+    // 当てる直前に確かめ直す（scan の出力を信じ切らない）
+    const r = await gh("GET", `/repos/${repo}/actions/runs/${id}`);
+    const run = {
+      id,
+      path: r.path,
+      attempt: r.run_attempt,
+      createdAt: r.created_at,
+      category: "transient",
+      newerRun: false,
+    };
+    const why = rerunBlockers(run, { rerunAllowed, now });
+    if (
+      !isProductionRun(r) ||
+      r.status !== "completed" ||
+      r.conclusion === "success" ||
+      why.length > 0
+    ) {
+      console.log(
+        `rerun しない: ${id}（${why.join("・") || "状態が変わった"}）`,
+      );
+      continue;
+    }
+    await gh("POST", `/repos/${repo}/actions/runs/${id}/rerun-failed-jobs`);
+    console.log(`rerun した: ${r.name} #${r.run_number}`);
+  }
+}
+
+export { CANARY_PATH, scan };
+
+if (isMain) {
+  const command = process.argv[2];
+  const main = command === "scan" ? scan : command === "rerun" ? rerun : null;
+  if (!main) fail("使い方: job-watch.js scan | rerun");
+  main().catch((err) => fail(`見張りで失敗: ${err.message}`));
+}

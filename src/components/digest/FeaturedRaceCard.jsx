@@ -11,12 +11,14 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLocalizedPath } from "../../hooks/useLocalizedPath";
+import RacerLink from "../race/assist/RacerLink";
 import "./FeaturedRaceCard.css";
 
 /** 何を分母に何を数えた割合か、文で書く（RateWithBaseline と同じ方針） */
 const SECTION_LABEL = {
   nige: (course) => `${course}コースに入ったときに逃げ切った割合`,
   makuri: (course) => `${course}コースに入ったときにまくりで1着になった割合`,
+  // 新規の注目レースには入らない（2026-11-04）。過去日の保存済み行（detail.from=nigashi）の表示用に残す
   nigashi: (course) => `${course}コースに入ったときに1号艇に逃げ切られた割合`,
 };
 
@@ -64,7 +66,7 @@ function FeaturedRaceCard({ row }) {
             {row.racer_id}
           </span>
           <span className="featured-race__racer-name" translate="no">
-            {row.racer_name}
+            <RacerLink racerId={row.racer_id}>{row.racer_name}</RacerLink>
           </span>
           {row.grade && (
             <span className="featured-race__grade" translate="no">

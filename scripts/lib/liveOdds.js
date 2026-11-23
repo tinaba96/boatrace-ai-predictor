@@ -18,7 +18,7 @@ import {
   parseOddsUpdatedAt,
   isFinalOdds,
 } from "./oddsParser.js";
-import { scrapeWinOdds, scrapePlaceOdds } from "../daily/scrape-odds.js";
+import { scrapeWinOdds, scrapePlaceOdds } from "./oddsPageParse.js";
 import { toJstDateString } from "./scrapeJobs/time.js";
 import { BreakerOpenError } from "./scrapeJobs/circuitBreaker.js";
 import { FetchError } from "./scrapeJobs/politeFetch.js";
@@ -83,6 +83,20 @@ export function validateLiveOddsQuery(query, now = new Date()) {
   return { ok: true, raceId, page, date, venue, raceNo };
 }
 
+/**
+ * 生のクエリが、画面（src/services/liveOddsService.js の URLSearchParams({ raceId, page })）と同じ1つの形か（BOA-1110）。
+ *
+ * validateLiveOddsQuery はデコード後の値だけを見るので、並びを替えた・パーセントエンコードした・空の値を足した
+ * クエリも通る。CDN のキャッシュのキーは生のクエリで分かれうるので、形の違う要求は毎回 boatrace.jp まで届き、
+ * 公式への匿名の中継になる（ADR-0059 §2）。正しい形の1つだけを受ける
+ *
+ * @param {string} rawSearch 例: "?raceId=2026-10-25-01-01&page=3t"
+ * @param {{raceId: string, page: string}} target validateLiveOddsQuery が通した値
+ */
+export function isCanonicalLiveOddsSearch(rawSearch, { raceId, page }) {
+  return rawSearch === `?raceId=${raceId}&page=${page}`;
+}
+
 /** 公式オッズページのURL */
 export function liveOddsUrl({ date, venue, raceNo, page }) {
   const hd = date.replace(/-/g, "");
@@ -111,9 +125,7 @@ const mapToObject = (map) => Object.fromEntries(map);
 // 「締切予定時刻」の行（同じ日の12レース分）。レース番号の位置のまま返す（時刻の無いレースは null）
 function parseDeadlineTimes($) {
   const row = $("tbody tr")
-    .filter((_, tr) =>
-      $(tr).find("td").first().text().includes("締切予定時刻"),
-    )
+    .filter((_, tr) => $(tr).find("td").first().text().includes("締切予定時刻"))
     .first();
   return row
     .find("td")
@@ -229,6 +241,51 @@ export function successResponse(target, parsed, fetchedAt) {
   });
 }
 
+const hasSnapshotData = (snapshot) =>
+  Object.values(snapshot.data ?? {}).some(
+    (values) => values && Object.keys(values).length > 0,
+  );
+
+/** 締切が遠い・過ぎたレースは公式へ取りに行かず、保存したスナップショットから返す */
+async function snapshotResponse(target, getLatestSnapshot) {
+  const snapshot = await getLatestSnapshot(target.raceId, target.page);
+  if (!snapshot || !hasSnapshotData(snapshot))
+    return upstreamErrorResponse("snapshot_unavailable", 60);
+  return json(200, CACHE_OK, {
+    ok: true,
+    raceId: target.raceId,
+    page: target.page,
+    fetchedAt: snapshot.fetchedAt,
+    officialUpdatedAt: snapshot.officialUpdatedAt,
+    final: snapshot.final,
+    data: snapshot.data,
+  });
+}
+
+/** 締切の90分より前・10分より後は、公式のライブではなくスナップショットの時間帯 */
+function isSnapshotWindow(deadline, now) {
+  if (deadline == null) return false;
+  const minutes = (deadline.getTime() - now().getTime()) / 60000;
+  return minutes > 90 || minutes < -10;
+}
+
+/** 公式の取得で例外になったとき。ブレーカー・取得の失敗は応答にし、それ以外は投げ直す */
+function fetchFailureResponse(error, target, now) {
+  if (error instanceof BreakerOpenError) {
+    return upstreamErrorResponse(
+      "breaker_open",
+      (error.until - now().getTime()) / 1000,
+    );
+  }
+  if (error instanceof FetchError) {
+    console.warn(
+      `オッズのライブ取得に失敗 ${target.raceId} ${target.page}: ${error.message}`,
+    );
+    return upstreamErrorResponse("fetch_failed", 10);
+  }
+  throw error;
+}
+
 /**
  * 1回の要求を処理し、{status, cacheControl, body} を返す（HTTP に依存しない。検証ではこれを直接呼ぶ）。
  *
@@ -236,37 +293,44 @@ export function successResponse(target, parsed, fetchedAt) {
  * @param {Record<string, unknown>} options.query
  * @param {string} [options.method]
  * @param {(url: string) => Promise<Response>} options.politeFetch createPoliteFetch の返り値（ブレーカー込み）
+ * @param {(raceId: string) => Promise<Date|null>} [options.getDeadline]
+ * @param {(raceId: string, page: string) => Promise<Object|null>} [options.getLatestSnapshot]
  * @param {() => Date} [options.now]
+ * @param {string} [options.rawSearch] 生のクエリ（req.url の ? から。渡したときだけ isCanonicalLiveOddsSearch で検査する）
  */
 export async function handleLiveOddsRequest({
   query,
   method = "GET",
   politeFetch,
   now = () => new Date(),
+  rawSearch,
+  getDeadline = async () => null,
+  getLatestSnapshot = async () => null,
 }) {
   if (method !== "GET") {
     return { ...badRequestResponse("GET のみ"), status: 405 };
   }
   const target = validateLiveOddsQuery(query ?? {}, now());
   if (!target.ok) return badRequestResponse(target.error);
+  if (
+    rawSearch !== undefined &&
+    !isCanonicalLiveOddsSearch(rawSearch, target)
+  ) {
+    return badRequestResponse(
+      "クエリは ?raceId=…&page=… の順・エンコードなしで指定してください",
+    );
+  }
+
+  const deadline = await getDeadline(target.raceId);
+  if (isSnapshotWindow(deadline, now)) {
+    return snapshotResponse(target, getLatestSnapshot);
+  }
 
   let response;
   try {
     response = await politeFetch(liveOddsUrl(target));
   } catch (error) {
-    if (error instanceof BreakerOpenError) {
-      return upstreamErrorResponse(
-        "breaker_open",
-        (error.until - now().getTime()) / 1000,
-      );
-    }
-    if (error instanceof FetchError) {
-      console.warn(
-        `オッズのライブ取得に失敗 ${target.raceId} ${target.page}: ${error.message}`,
-      );
-      return upstreamErrorResponse("fetch_failed", 10);
-    }
-    throw error;
+    return fetchFailureResponse(error, target, now);
   }
   if (!response.ok) {
     console.warn(

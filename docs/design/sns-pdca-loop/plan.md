@@ -63,7 +63,7 @@ flowchart TB
 
 ## 2. 自動承認と事前通知（spec A3〜A7・A10、cron `sns-auto-plan`、ADR 0094）
 
-5分ごと（JST 8:00〜21:00）。1回の流れ:
+5分ごと（JST 5:30〜23:00。ミッドナイトの優勝戦のため 2026-10-14 オーナー決定で 23:00 まで）。1回の流れ:
 
 ```mermaid
 flowchart TD
@@ -114,7 +114,7 @@ flowchart TD
 ## 4. 送信（spec A1・A9、cron `sns-send`）
 
 - **5本の cron と共通ラッパ**: `sns_auto_plan`（continuous、5分）・`sns_send`（continuous、2分）・`sns_metrics`（continuous、5分）・`sns_daily`（daily、JST 10:00）・`sns_insights`（daily、月曜 JST 5:00）を `scripts/lib/scrapeJobs/registry.js` に登録し、すべて `createScrapeCronHandler` を通す。`scrape_job_state` の行は mode=off で作られるので、153 で5行を `mode='shadow'` で入れ、L1 でオーナーが `live` にする
-- `sns-send` は2分ごと（JST 8:00〜21:00）。`createScrapeCronHandler`（`scripts/lib/scrapeJobs/cronWrapper.js`）に新しいジョブ `sns_send` を登録する（ADR-0066 改訂1 に、外部サイトを取得しないジョブが乗った先例がある）。`maxDuration=300`、`leaseSec` は300以上。monitor の死活の通知は JST 8:00〜21:30 だけにする（レジストリにジョブごとの稼働時間を足す）
+- `sns-send` は2分ごと（JST 7:00〜23:00。22:00 以降に発走するミッドナイトの優勝戦の送る時刻（締切の60分前）まで動かす。2026-10-14 オーナー決定。朝は 2026-11-04 に 8:00 から 7:00 へ繰り上げた。YouTube Shorts【人気薄の1着】を 7:15 に送るため、BOA-1284・ADR-0094 の追記）。`createScrapeCronHandler`（`scripts/lib/scrapeJobs/cronWrapper.js`）に新しいジョブ `sns_send` を登録する（ADR-0066 改訂1 に、外部サイトを取得しないジョブが乗った先例がある）。`maxDuration=300`、`leaseSec` は300以上。monitor の死活の通知は稼働時間の中だけにする（レジストリにジョブごとの稼働時間を足す。今は registry.js の activeHoursJst で JST 7:00〜23:00）
 - 1回の流れ: `xSendStore.sweep()` → `queued` で `scheduled_at` を過ぎた job（子は親が posted のものだけ）を古い順に最大3件 → チャネルごとに既存の `runXSendJob` / `runYoutubeQueueJob` / `runYoutubePublishJob` を呼ぶ
 - **X adapter**（新規 `api/_lib/xApiAdapter.js`）: fetch で X API v2 を直接呼ぶ。`initialize`/`append`/`finalize`/`status` は `/2/media/upload/*`、`createPost` は `POST /2/tweets`（子は `reply.in_reply_to_tweet_id`）。動画は Storage から読み、5 MB ずつ送る
 - **X のトークン**（ADR 0093）: 154 の `sns_oauth_tokens` に AES-256-GCM（IV と認証タグを列に持つ）で暗号化して保存。refresh は X の HTTP をはさむので1つのトランザクションにはできない。`lock_until` と `locked_by` を条件付き UPDATE で取り、保存は `WHERE locked_by=自分` の条件付き UPDATE にする。ロックは HTTP のタイムアウト（30秒）より長い90秒。refresh に成功して保存に失敗したら refresh token を失うので、Slack に「X の連携のやり直しが要る」と通知する
@@ -128,6 +128,37 @@ flowchart TD
 - **日次上限をチャネル別にする**（153）: 既存の `daily_limit` は X・YouTube で1つ。スレッドの子も1回と数えるので、上限1では子が送れず、6では YouTube も6本通る。`daily_limit_x`（スレッドの投稿の数で6）・`daily_limit_youtube`（1）に分ける
 - **L3 の本数と費用**（2026-10-13 オーナー決定）: L3 ではその日の優勝戦・準優勝戦をすべて自動で出す（L2 は1日1レースのまま）。直近30日は月269レース・1日最多16。X の実費は月 約$77、予約の上限額で月 約$111 になるので、153 で月の上限額の CHECK を $200 まで広げ、額は $130（2026-10-13 オーナー決定。X の Developer Console の spending limit も同額。L2 の間は $10）をオーナーが本番 SQL で入れる（153-runbook.md「L2・L3 の送信の設定」）。日次上限は「その日のレース数」を毎日入れる形にせず、直近30日の最多（X 96・YouTube 16）を天井として置く（item は該当レースにしか作らないので、本数はレース数で決まる）。YouTube の1日16本のアップロードのクォータは L3 の前にオーナーが確認する
 - **費用**: X の予約台帳そのものは既存のまま。153 で `renew_sns_x_send_period(start, end)`（オーナーが本番 SQL で実行。今の期間が終わってからだけ実行でき、`reserved_microusd` を0に戻す）を足した。**月の切り替えは同じ額で自動にする**（2026-10-13 オーナー決定）: 158 で `roll_sns_x_send_period()`（service_role）を足し、`sns-auto-plan` が毎回呼ぶ。`now() >= period_end` のときだけ、期間を `[period_end, period_end + 1 month)` に進め `reserved_microusd` を0にする（額は変えない）。額を変えるときだけオーナーが本番 SQL で `budget_microusd` を変え、Console の spending limit も合わせる。期間の終わりの3日前の Slack は「自動で切り替わる・額は $X」の知らせに変える。取り込みの読み取りも同じ台帳に予約する（154 の `reserve_sns_x_read`。残りが「月の残り日数×1日の送信の予約額」を下回ったら拒否）
+
+## 4b. 非公開のまま残った YouTube を閉じる・検査の枠・残した理由（BOA-1164、マイグレーション 186）
+
+事実（2026-10-27 本番の読み取り）: 0853d7d9（10/25 浜名湖10R）・0883093d（10/26 びわこ12R）は `reconcile`・`youtube_stage='private_retained'`・`error_code='youtube_private_retained'` のまま、`expires_at` もリースも過ぎている。0853d7d9 は同じ実行に別レースの X の job が先に入り Chromium の上限6を使った（public_check_budget）、0883093d は claim から retain まで73秒で処理の確認3回（30秒おき）を使い切った見込み。retain は理由を残さず、閉じる遷移も無いので、要照合の通知が毎回 DB から作られ続ける。
+
+- **閉じる遷移 `youtube_close_private`**（186、`transition_sns_x_send` の YouTube の分岐に足す。153 の本文が土台）: 次を全部満たすときだけ `state='cancelled'`・`error_code='youtube_closed_private'` にする。`external_post_id`・`youtube_stage='private_retained'` は記録として残す（管理画面は「非公開のまま残置（削除はオーナー操作）」を出し続ける）
+  - `channel='youtube'`・`state='reconcile'`・`youtube_stage='private_retained'`（`update_started` は retain にならないので、videos.update を呼んだかもしれない job は閉じない。BOA-988 の 666ebe45 のように後の実行で posted に戻る job は対象外）
+  - `now() >= expires_at`（期限の後は youtube_call_guard が公開を許さないので、この job が公開に進む道はもう無い）・リースが切れている（実行中の worker がいない）
+  - 同じ試行の `youtube_lookup`（videos.list、クォータの読み取りの台帳）が10分以内にあり、結果が「自分の動画で非公開」（`owned=true`・`privacyStatus='private'`・`id=external_post_id`）か「削除済み」（videos.list が成功して items が空、`found=false` → `error_code='youtube_closed_deleted'`。2026-10-27、0853d7d9・0883093d の動画はオーナーが Studio で消した。items の無い応答は adapter が投げるので削除済みと読まない）。public・unlisted・他人の動画は閉じない（要照合のまま）
+  - 子（`parent_job_id` がこの job の queued・attempts=0）は `held`・`error_code='parent_closed'` にする（全貌の Shorts が親待ちのまま期限まで警告を出し続けないため）
+  - 下書きと item は触らない（下書きは approved のまま、148 のガードの外になるが、自動の再承認は pending_review の下書きだけなので再送されない。item は notified のまま。レースは終わっている）
+  - オーナーが手で承認し直すと、approve の ON CONFLICT が `external_post_id`・`youtube_stage` を NULL に戻す（177:145）。期限は過ぎているので再アップロードには進まない（sweep で held）。動画 ID は閉じたときの Slack の通知に残す（approve は変えない。審査の P2 の別案を採った: 期限の後のレースを承認し直す運用が無く、approve の置き換えは 177 の本文の写しで差分が大きい）
+  - DB は `owned`・`privacyStatus` を呼び手（service_role の runner）の申告のまま信じる。DB が確かめるのは10分以内の読み取りの記録まで
+- **runner が自動で閉じる**（`scripts/lib/snsSendRunner.js`）: live のとき、要照合の一覧のうち上の条件（private_retained・期限とリースの後）に当たる job を、1回の実行で最大3件、`youtube_lookup` → adapter の `lookup` → `youtube_close_private` で閉じ、閉じたら Slack に1回知らせる（動画 ID と「YouTube Studio で削除するか残すかはオーナー」）。Chromium は使わない。閉じられなかった（186 未適用・非公開でない・クォータの基準日が未確認）ら、その job の要照合の通知に理由を足し、30分は同じ job の読み取りを繰り返さない（クォータを2分ごとに使わない）
+- **検査の枠**（runner）: 1回の実行の Chromium の上限（`SNS_SEND_HEADLESS_BUDGET=6`、`createChromiumHeadless` の `maxInspections` に同じ値を渡す）に対し、job ごとの必要数を見積もる。X は3（runner の検査1・`runXSendJob` の2）、YouTube は5（カバーありは6）、試運転（dry_run・shadow）は検査だけの1。この実行で既に検査を使っていて、残りが次の job の必要数に足りなければ、その job から先は次の実行に回す（走査位置をその手前に置く。次の実行はその job から始まり、使用0で必ず進む）。X は1回の実行で2件までになる（今までは3件目が public_check_budget で検査に落ちていた）。
+  - videos.list（公開の確認の読み取り）の前の検査を外す（`runYoutubePublishJob` の beforeCall）。videos.update の後なので止められるものが無く、落ちると確認だけを失って update_started の要照合に残る（カバーありで7回目がここに当たっていた。審査の P2）。台帳への記録（youtube_call）は今までどおりPostgREST の行の取り直しは要らない（`snapshot` は dueJobs の `select=*` にある）
+- **retain の理由**（186）: `youtube_retain` は `p_result.reason`（`budget`・`processing`・`check_failed`・`error`）を受け、`error_code='youtube_retained_<reason>'` にする。試行のクォータの日（`sns_youtube_quota_attempts.quota_day`）が今の太平洋時間の日と違えば、渡された理由によらず `youtube_retained_pt_day`（BOA-973 の日付の境目）。理由が無い・知らない値は今までの `youtube_private_retained`（186 の前のコードと互換）。JS は送る前の検査の失敗に `retainReason`（`public_check_budget` は budget、他は check_failed）を付け、処理の確認を使い切った・時間切れは processing を渡す
+- **契約の変更**: `docs/design/sns-hub-shorts-send/contract.md` の「要照合解除の自動経路はない」を、この条件でだけ自動で閉じると直す
+- **適用の順**: コードと 186 はどちらが先でもよい。186 の前のコードは理由を渡さず、186 の前の DB は `p_result` を読まない。186 の前の DB に `youtube_close_private` を呼ぶと「不正な操作です」で失敗し、runner は30分おきに1回だけ試す
+
+## 4c. 処理待ちで残した YouTube を期限の前に公開する（BOA-1283、マイグレーション 196）
+
+事実（2026-11-03・04 本番の読み取り）: Shorts「節の機力」の job 926ef626（動画 sRLtGyhpw6M、16秒・縦）は、claim 21:30:41 JST の後の処理の確認3回（30秒おき、約1分）がどれも `processing` で `youtube_retained_processing` になり、4b の後は期限（22:30）まで誰も読み直さず、期限の後に `youtube_closed_private` で閉じた。11/4 の読み取りでは `uploadStatus=processed`・`processingStatus=succeeded`・`private`（処理は済んでいた）。同じ日の完全版3本は2回目の確認（約30秒）で succeeded。YouTube の文書は処理の時間を決めていない（`processingProgress.timeLeftMs` は見込み）。
+
+- **見直し**（runner、`resumeRetainedYoutubeJob`）: live・YouTube の dry_run が false・太平洋時間の日付境界の外のとき、送る時刻の job を回した後に、要照合・`private_retained`・理由が `youtube_retained_processing` か `youtube_retained_budget`（または error_code なしの `ready`）・期限の前・リース（claim から5分）の後の job を1回の実行で1件、`youtube_lookup`（クォータ1、`sns_youtube_quota_reads`）→ adapter の `processing` で読む。まだ processing なら何も変えない（次の実行でまた読む。期限60分なら最大で約27回）。succeeded なら `youtube_resume` で段を `ready` に戻し、今までの公開の段（検査→`youtube_publish_begin`→検査→`videos.update`→`videos.list`→`complete`）に進む。failed・terminated は `youtube_retain`（理由 error）で見直しから外す。読み取りの失敗・本人の動画と確かめられないときは理由を変えない（期限の後は 4b が閉じる）
+- 公開に検査が2回要るので、この実行の検査の枠に残りが無ければ次の実行に回す。この実行で上げたばかりの job は見ない。実行の始まりから120秒（目安、根拠なし）を過ぎていたら始めない（公開の途中の ready・publishing で関数の上限300秒に当たると、閉じる道にも見直しにも乗らない）。読み取りに失敗した job は10分、本人の非公開の動画と確かめられない job は期限まで読み直さない（report.resume_retry）。トークンを取れなければ通知（token:youtube）に残す
+- 公開の段の途中で実行が切れ、`ready`（error_code なし）のままリースも切れた job も同じ見直しで拾う（閉じる道は private_retained しか拾わないため）。`youtube_resume` はリースを5分付ける
+- 限界: 見直しの後の公開の検査（停止・日の上限・鮮度）で落ちると `youtube_retained_error` で見直しから外れ、期限の後に閉じる（fail-closed。一時的な停止の後に自動で戻らない）
+- カバーのある job は thumbnails.set を台帳に記録した後だけ戻す（thumbnails.set の前の検査で budget になった job をカバー無しで公開しない）
+- **`youtube_resume`**（196）: 上の条件に加え、試行のクォータの日が今の太平洋時間の日・`videos.update` をまだ呼んでいない・10分以内の `youtube_lookup` があり、p_result が `owned=true`・`privacyStatus=private`・ID 一致・`processingStatus=succeeded` のときだけ。`youtube_poll` の3回の上限と `general_reserved=104` は変えない
+- **適用の順**: コードと 196 はどちらが先でもよい。196 の前の DB では、処理が済んだ job の `youtube_resume` が「不正な操作です」で落ち、`youtube_retain`（理由 error）で見直しから外れて Slack に1回知らせ、今までどおり期限の後に閉じる。まだ処理中の間は読み取りだけを繰り返す
 
 ## 5. 取り込み（spec C1〜C4、cron `sns-metrics`・`sns-daily`）
 
@@ -171,6 +202,8 @@ sns-hub は1つのまま、中を2本の通り道に分ける。別の仕組み�
 - **X の1日の本数・間隔は A＋B の合計で数える**: `daily_limit_x` は1つのまま（A と B の合計の天井）。**A を先に枠に入れ、B は残り**: 158 の claim で、B の job は「今日まだ送っていない A の予定の本数」（今日の A の item のうち notified まで進んだもののスレッドの本数＋/today の1本で、まだ claim していないもの）を枠から先に引いてから判定する。A は今までどおり。間隔は、B の送る時刻を A の送る時刻の前後30分に入れない（B の下書きの予定時刻を決めるときに避ける。DB では本数だけを守る）
 - **計測は A・B 共通**: 48h・7d の取り込み（`sns_metric_jobs`）・UTM・暦日の値は同じ表に入る。hq のダッシュボードと `weekly-export.js` は `sns_drafts.send_lane` で A・B を並べる
 - **/today の X 投稿**（A）: 7:45 に送り、事前通知は 5:45（2時間前）。毎朝の一覧は JST 5:30 に作られる（6:30・8:00 にやり直し）。`sns-auto-plan` の稼働時間は JST 5:30〜21:00 にする。158 で `sns_auto_send_items` に種類（`kind`: `race`・`digest`）を足し、digest は `bundle_import_id` を持たない（`race_id` は `today:YYYY-MM-DD`）。承認の関数は digest の item を下書きの ID で引く。日次上限は1本ぶん足し、L2 は `daily_limit_x=7`、L3 は 97。費用は月 約$6（予約で 約$7.5）増え、L3 の予約の合計は約$119（上限 $130 に収まる）
+  - **画像**（2026-10-14 オーナー決定）: 未ログインの本番の /today を、スマホ幅の上部 4:5（1170×1464 の PNG）で1枚撮って付ける。範囲を上部にするのは、X のタイムラインで1枚の縦長の画像は縦横比の上限で切られ、全体を撮ると文字が読めないほど縮むため。撮影は送る前の表示の確認と同じ未ログインの Chromium（ADR 0091、#1518）を使い、一覧ができた後（5:30、やり直しの 6:30・8:00 の後も）に撮る。5:45 の事前通知に画像を載せる。一覧がやり直されて画像が変わったら承認を外して撮り直す。費用: X の料金表（docs.x.com、2026-10-14 確認）に媒体のアップロードの単価は無い（課金されるのは代替テキストの Media Metadata $0.005 だけ）。仮にアップロードの3回（INITIALIZE・APPEND・FINALIZE）が1回 $0.015 で数えられても1日 $0.045・月 約$1.4 で、L3 の予約の合計 約$119 に足して $130 に収まる
+  - **画像の変更**（2026-10-16 ユーザー決定）: 上の /today の画面の画像をやめ、対象レース（注目レース＋一覧の締切順、同じレースは1回）の龍神ソナーの図を別々に最大4枚付ける（X の1投稿の上限）。図には「会場R 締切」の見出しを差し込む。下書きの `source_data.image_paths`（先頭は `cover_image_path`）に順を持ち、承認の関数（DB 160）がその数・順・型（png・jpeg、1枚 5 MB まで）で媒体を照合する。図の元データ（analogy-v16-morning）は JST 5:30 から作られるので、7:00 まではそろうまでやり直す。画像のアップロードは X の料金表に単価が無く、投稿1件の費用は変わらない見込み（初回の投稿の後に Console で実費を確かめる）
 
 ## 7. 画面（screens.md）
 

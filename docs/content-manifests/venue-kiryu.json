@@ -1,0 +1,103 @@
+{
+ "schema": "content-pr-manifest/v1",
+ "id": "venue-kiryu",
+ "kind": "revision",
+ "ticket": "OC-20261111T100243-seo-human-1",
+ "paths": [
+  "public/blog/venue-kiryu.md",
+  "src/data/blog-posts/venue-kiryu.json"
+ ],
+ "files": {
+  "public/blog/venue-kiryu.md": "fc393ed2be2aa3694dfa032f4c1eb147d106c08d04654b054a8e060859a1636b",
+  "src/data/blog-posts/venue-kiryu.json": "a78e260bc56e73957aa665d1a17bbe1b29f276e91663ac29b8908f4aab2a4d1c"
+ },
+ "content_sha256": "f9a4a252d7c9bf3002adc61a86e4063700878438f5074dd79eae6b82a76cbe9f",
+ "judgement_words": [],
+ "reviews": [
+  {
+   "role": "content-qa",
+   "agent": "hq-review:article+content-qa",
+   "result": "pass",
+   "p0": 0,
+   "p1": 0,
+   "reviewed_sha256": "f9a4a252d7c9bf3002adc61a86e4063700878438f5074dd79eae6b82a76cbe9f",
+   "model": "opus",
+   "at": "2026-11-11T10:04:57+09:00"
+  },
+  {
+   "role": "wording-editor",
+   "agent": "hq-review:wording",
+   "result": "pass",
+   "p0": 0,
+   "p1": 0,
+   "reviewed_sha256": "f9a4a252d7c9bf3002adc61a86e4063700878438f5074dd79eae6b82a76cbe9f",
+   "model": "opus",
+   "at": "2026-11-11T10:04:57+09:00"
+  },
+  {
+   "role": "fan",
+   "agent": "hq-review:fan",
+   "result": "pass",
+   "p0": 0,
+   "p1": 0,
+   "reviewed_sha256": "f9a4a252d7c9bf3002adc61a86e4063700878438f5074dd79eae6b82a76cbe9f",
+   "model": "opus",
+   "at": "2026-11-11T10:04:57+09:00"
+  },
+  {
+   "role": "seo-marketer",
+   "agent": "hq-review:seo+marketing",
+   "result": "pass",
+   "p0": 0,
+   "p1": 0,
+   "reviewed_sha256": "f9a4a252d7c9bf3002adc61a86e4063700878438f5074dd79eae6b82a76cbe9f",
+   "model": "opus",
+   "at": "2026-11-11T10:04:57+09:00"
+  }
+ ],
+ "evidence": [
+  {
+   "h2": "桐生ボートレース場の基本情報",
+   "evidence": [
+    "public/blog/venue-kiryu.md",
+    "src/data/venueWaterProfiles.js",
+    "src/components/venue/VenueCharacteristicsCard.jsx",
+    "src/locales/ja/common.json"
+   ]
+  },
+  {
+   "h2": "1号艇と1コースの1着を分ける（2025年10月20日〜2026年10月19日）",
+   "evidence": [
+    "data/analysis/venue-course-win-rate/venue-course-win-rate.json"
+   ]
+  },
+  {
+   "h2": "風の向きと強さ別の1コース1着率（2020年2月1日〜2026年9月30日）",
+   "evidence": [
+    "data/analysis/weather-in-escape.json",
+    "docs/design/weather-in-escape/preregistration.md",
+    "scripts/analysis/analyze-weather-in-escape.js"
+   ]
+  },
+  {
+   "h2": "今日の桐生は風の行と展示進入を重ねて読む",
+   "evidence": [
+    "public/blog/kiryu-water-wind-guide.md"
+   ]
+  },
+  {
+   "h2": "数字の範囲と注意",
+   "evidence": [
+    "data/analysis/venue-course-win-rate/venue-course-win-rate.json",
+    "data/analysis/weather-in-escape.json",
+    "docs/design/weather-in-escape/preregistration.md",
+    "src/components/analysis/WeatherInEscapeChart.jsx"
+   ]
+  }
+ ],
+ "sources": "数は 11/04 掲載版から変えていない。data/analysis/venue-course-win-rate/venue-course-win-rate.json#periods.12m.venues.01（scripts/analysis/venue-course-win-rate/count-venue-course-wins.mjs）、2025-10-20〜2026-10-19、不成立を除く2,409レース、返還艇の1着を除き同着は艇番の小さい艇。風別は data/analysis/weather-in-escape.json#wind.venues.1.bins（scripts/analysis/analyze-weather-in-escape.js）、2020-02-01〜2026-09-30、逃げ41.6%は506÷1,216×100を1回丸め。\n直した段落の根拠: src/config/languages.js:15（/venues は en・zh-TW・ko だけ）、src/AppRouter.jsx:190、src/pages/VenueRaceListPage.jsx:320-323（会場ページに折りたたみのカード）、src/components/venue/VenueCharacteristicsCard.jsx:55-66、src/data/venueWaterProfiles.js:15（桐生 fresh）、src/locales/ja/common.json:110-119・135・137・115（注記に期間とレース数）。",
+ "author": "hq-employee:seo-human",
+ "created_at": "2026-11-11T10:05:39+09:00",
+ "run": "20261111T100243-seo-human",
+ "engine": "claude"
+}

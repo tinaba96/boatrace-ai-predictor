@@ -1,7 +1,8 @@
 import { SUPABASE_URL, SUPABASE_SERVICE_KEY } from "./snsHubHelpers.js";
 import { X_MEDIA_MAX_BYTES } from "./snsXSend.js";
 
-async function db(path, options = {}) {
+/** PostgREST（service key）。失敗は cause に PostgREST の code・message（BOA-1201）。消す口（BOA-1279）も使う */
+export async function db(path, options = {}) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...options,
     headers: {
@@ -11,8 +12,23 @@ async function db(path, options = {}) {
       Prefer: "return=representation",
     },
   });
-  if (!response.ok) throw new Error("X送信のDB操作に失敗しました");
-  return response.json();
+  if (!response.ok) {
+    // 利用者には今までどおりの文言を返す。DB の拒否の元の文言（RAISE の文）は cause に持たせ、送信の runner が
+    // 送らなかった理由（sns_send_events、191）の code に写す（BOA-1201）。PostgREST の本文は code・message だけ読む（details は残さない）
+    const body = await response.json().catch(() => null);
+    throw new Error("X送信のDB操作に失敗しました", {
+      cause: {
+        kind: "db_rejected",
+        status: response.status,
+        code: typeof body?.code === "string" ? body.code : null,
+        message: typeof body?.message === "string" ? body.message : null,
+      },
+    });
+  }
+  // RETURNS void の RPC（sweep_sns_deadline_queue 等）は本文が空で返る。json() にすると
+  // "Unexpected end of JSON input" で落ち、送信の cron が毎回失敗する（2026-10-14、L1 で sns_send を live にした後に304回連続）
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
 }
 async function allRows(path) {
   const rows = [];
@@ -36,105 +52,6 @@ export const xSendStore = {
         p_id: id,
         p_revision: revision,
         p_snapshot: snapshot,
-      }),
-    });
-  },
-  async saveInspection(draftId, revision, engine, findings) {
-    return db("rpc/save_sns_edit_inspection", {
-      method: "POST",
-      body: JSON.stringify({
-        p_draft_id: draftId,
-        p_revision: revision,
-        p_engine: engine,
-        p_findings: findings,
-      }),
-    });
-  },
-  async decideFinding(body, revision) {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/rpc/decide_sns_edit_finding`,
-      {
-        method: "POST",
-        headers: {
-          apikey: SUPABASE_SERVICE_KEY,
-          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-          "Content-Type": "application/json",
-          Prefer: "return=representation",
-        },
-        body: JSON.stringify({
-          p_draft_id: body.draftId,
-          p_revision: revision,
-          p_inspection_id: body.inspectionId,
-          p_finding_id: body.findingId,
-          p_approver_id: body.approverId,
-          p_decision: body.decision,
-        }),
-      },
-    );
-    if (!response.ok) {
-      // decide_sns_edit_findingのRAISE EXCEPTIONは固定の安全な文言のみ（SQLの定数、
-      // 利用者入力は含まない）。承認者が「本人」以外（例: 自動承認）を選んだ場合の
-      // メッセージだけを安全に通す。他は既存どおり汎用文言に倒す。
-      const detail = await response.json().catch(() => null);
-      if (detail?.message === "本人の判断が必要です") {
-        throw new Error(detail.message);
-      }
-      throw new Error("X送信のDB操作に失敗しました");
-    }
-    return response.json();
-  },
-  async mobileGroups(date) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("対象日が不正です");
-    const query = new URLSearchParams({
-      platform: "in.(x,youtube)",
-      language: "eq.ja",
-      status: "neq.archived",
-      content_group_id: "not.is.null",
-      "source_data->>race_id": `like.${date}-*`,
-      select: "content_group_id,race_id:source_data->>race_id",
-      order: "id",
-    });
-    const groups = new Map();
-    // 最大2000行＋上限検査1行、最大5要求。上限超過は部分一覧を返さない。
-    for (let offset = 0; offset <= 2000; offset += 500) {
-      const limit = offset === 2000 ? 1 : 500;
-      const page = await db(
-        `sns_drafts?${query}&limit=${limit}&offset=${offset}`,
-      );
-      if (offset === 2000 && page.length)
-        throw new Error("今日の下書きが取得上限を超えました");
-      for (const d of page)
-        groups.set(d.content_group_id, {
-          id: d.content_group_id,
-          raceId: d.race_id,
-        });
-      if (page.length < limit) return [...groups.values()];
-    }
-    return [...groups.values()];
-  },
-  async mobileRace(id) {
-    return db("rpc/read_sns_mobile_race", {
-      method: "POST",
-      body: JSON.stringify({ p_group_id: id }),
-    });
-  },
-  async mobileApprove(
-    id,
-    approverId,
-    revision,
-    snapshot,
-    scheduledAt,
-    reviewSeconds,
-  ) {
-    return db("rpc/approve_sns_mobile_channel", {
-      method: "POST",
-      body: JSON.stringify({
-        p_draft_id: id,
-        p_approver_id: approverId,
-        p_revision: revision,
-        p_snapshot: snapshot,
-        p_scheduled_at: scheduledAt,
-        p_review_seconds: reviewSeconds,
       }),
     });
   },
@@ -227,6 +144,14 @@ export const xSendStore = {
       control: controls[0] || null,
       connected: false,
     };
+  },
+  /** 自動送信ページの「いまの状態」。チャネルごとのモード・試運転と、全体の停止（読み取りだけ） */
+  async sendControl() {
+    const [x] = await db("sns_x_send_control?id=eq.true&select=paused");
+    const channels = await db(
+      "sns_auto_send_control?select=channel,mode,dry_run&order=channel",
+    );
+    return { paused: Boolean(x?.paused), channels };
   },
   async stop() {
     await db("sns_x_send_control?id=eq.true", {

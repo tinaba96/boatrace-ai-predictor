@@ -18,13 +18,13 @@ const VENUE_RULES = {
     {
       id: 'E03-T001-S',
       betType: 'trio',
-      check: (pred, raceNo, conf, predSorted, has1) =>
+      check: (pred, raceNo, conf, predSorted) =>
         predSorted === '1-2-4' && raceNo >= 9 && conf >= 80
     },
     {
       id: 'E03-T001-M',
       betType: 'trio',
-      check: (pred, raceNo, conf, predSorted, has1) =>
+      check: (pred, raceNo, conf, predSorted) =>
         ['1-2-4', '1-2-3'].includes(predSorted) && raceNo >= 9 && conf >= 80
     },
     {
@@ -42,19 +42,19 @@ const VENUE_RULES = {
     {
       id: 'E03-P002',
       betType: 'place',
-      check: (pred, raceNo, conf, predSorted, has1) =>
+      check: (pred, raceNo) =>
         pred.top_pick === 1 && raceNo >= 9
     },
     {
       id: 'E03-W002',
       betType: 'win',
-      check: (pred, raceNo, conf, predSorted, has1) =>
+      check: (pred, raceNo) =>
         pred.top_pick === 2 && raceNo <= 4
     },
     {
       id: 'E03-W003',
       betType: 'win',
-      check: (pred, raceNo, conf, predSorted, has1) =>
+      check: (pred, raceNo, conf) =>
         pred.top_pick === 3 && pred.top_2nd === 1 && conf >= 70
     }
   ]
@@ -75,7 +75,7 @@ function getMatchingRulesForPrediction(prediction, venueCode, raceNo) {
       if (rule.check(prediction, raceNo, conf, predSorted, has1)) {
         matched.push({ ruleId: rule.id, betType: rule.betType });
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
   }
@@ -113,6 +113,88 @@ export function calculatePayout(prediction, result, betType) {
   }
 
   return { hit: null, payout: null };
+}
+
+/** race_id → race_results の行 */
+function buildResultsMap(results) {
+  const resultsMap = {};
+  results?.forEach(r => { resultsMap[r.race_id] = r; });
+  return resultsMap;
+}
+
+/** 既存の適用の鍵（rule_id:race_id）の集合 */
+function buildExistingSet(existingApps) {
+  return new Set(
+    (existingApps || []).map(a => `${a.rule_id}:${a.race_id}`)
+  );
+}
+
+/** ルールマッチングの結果から、新規に挿入する行と、既存を更新する行を作る */
+function collectApplications(predictions, resultsMap, existingSet) {
+  const newApplications = [];
+  const updateApplications = [];
+
+  for (const pred of predictions) {
+    const parts = pred.race_id.split('-');
+    const venueCode = parts[3];
+    const raceNo = parseInt(parts[4]);
+
+    const matchedRules = getMatchingRulesForPrediction(pred, venueCode, raceNo);
+
+    for (const match of matchedRules) {
+      const key = `${match.ruleId}:${pred.race_id}`;
+      const result = resultsMap[pred.race_id];
+      const { hit, payout } = calculatePayout(pred, result, match.betType);
+
+      if (existingSet.has(key)) {
+        // 既存レコードを更新（結果が確定した場合）
+        if (result && hit !== null) {
+          updateApplications.push({
+            rule_id: match.ruleId,
+            race_id: pred.race_id,
+            is_hit: hit,
+            payout: payout
+          });
+        }
+      } else {
+        // 新規レコード
+        newApplications.push({
+          rule_id: match.ruleId,
+          race_id: pred.race_id,
+          bet_amount: 100,
+          is_hit: hit,
+          payout: payout
+        });
+      }
+    }
+  }
+  return { newApplications, updateApplications };
+}
+
+/** ルールごとの件数・的中・払戻の集計 */
+function summarizeRuleStats(applications) {
+  const ruleStats = {};
+  for (const app of applications) {
+    if (!ruleStats[app.rule_id]) {
+      ruleStats[app.rule_id] = { total: 0, hits: 0, payout: 0 };
+    }
+    ruleStats[app.rule_id].total++;
+    if (app.is_hit) {
+      ruleStats[app.rule_id].hits++;
+      ruleStats[app.rule_id].payout += app.payout || 0;
+    }
+  }
+  return ruleStats;
+}
+
+/** ルール別サマリーの出力 */
+function printRuleSummary(ruleStats) {
+  console.log('\n--- ルール別サマリー ---');
+  for (const [ruleId, stats] of Object.entries(ruleStats)) {
+    const recovery = stats.total > 0 ? ((stats.payout / (stats.total * 100)) * 100).toFixed(1) : '-';
+    const hitRate = stats.total > 0 ? ((stats.hits / stats.total) * 100).toFixed(1) : '-';
+    console.log(`${ruleId}: ${stats.total}R | 的中${hitRate}% | 回収${recovery}%`);
+  }
 }
 
 async function trackRules(targetDate) {
@@ -155,8 +237,7 @@ async function trackRules(targetDate) {
     return;
   }
 
-  const resultsMap = {};
-  results?.forEach(r => { resultsMap[r.race_id] = r; });
+  const resultsMap = buildResultsMap(results);
 
   // 既存の適用を取得
   const { data: existingApps } = await supabase
@@ -164,48 +245,10 @@ async function trackRules(targetDate) {
     .select('rule_id, race_id')
     .in('race_id', raceIds);
 
-  const existingSet = new Set(
-    (existingApps || []).map(a => `${a.rule_id}:${a.race_id}`)
-  );
+  const existingSet = buildExistingSet(existingApps);
 
   // ルールマッチング
-  const newApplications = [];
-  const updateApplications = [];
-
-  for (const pred of predictions) {
-    const parts = pred.race_id.split('-');
-    const venueCode = parts[3];
-    const raceNo = parseInt(parts[4]);
-
-    const matchedRules = getMatchingRulesForPrediction(pred, venueCode, raceNo);
-
-    for (const match of matchedRules) {
-      const key = `${match.ruleId}:${pred.race_id}`;
-      const result = resultsMap[pred.race_id];
-      const { hit, payout } = calculatePayout(pred, result, match.betType);
-
-      if (existingSet.has(key)) {
-        // 既存レコードを更新（結果が確定した場合）
-        if (result && hit !== null) {
-          updateApplications.push({
-            rule_id: match.ruleId,
-            race_id: pred.race_id,
-            is_hit: hit,
-            payout: payout
-          });
-        }
-      } else {
-        // 新規レコード
-        newApplications.push({
-          rule_id: match.ruleId,
-          race_id: pred.race_id,
-          bet_amount: 100,
-          is_hit: hit,
-          payout: payout
-        });
-      }
-    }
-  }
+  const { newApplications, updateApplications } = collectApplications(predictions, resultsMap, existingSet);
 
   console.log(`新規適用: ${newApplications.length}件`);
   console.log(`更新対象: ${updateApplications.length}件`);
@@ -237,25 +280,7 @@ async function trackRules(targetDate) {
   }
 
   // サマリー出力
-  console.log('\n--- ルール別サマリー ---');
-
-  const ruleStats = {};
-  for (const app of [...newApplications, ...updateApplications]) {
-    if (!ruleStats[app.rule_id]) {
-      ruleStats[app.rule_id] = { total: 0, hits: 0, payout: 0 };
-    }
-    ruleStats[app.rule_id].total++;
-    if (app.is_hit) {
-      ruleStats[app.rule_id].hits++;
-      ruleStats[app.rule_id].payout += app.payout || 0;
-    }
-  }
-
-  for (const [ruleId, stats] of Object.entries(ruleStats)) {
-    const recovery = stats.total > 0 ? ((stats.payout / (stats.total * 100)) * 100).toFixed(1) : '-';
-    const hitRate = stats.total > 0 ? ((stats.hits / stats.total) * 100).toFixed(1) : '-';
-    console.log(`${ruleId}: ${stats.total}R | 的中${hitRate}% | 回収${recovery}%`);
-  }
+  printRuleSummary(summarizeRuleStats([...newApplications, ...updateApplications]));
 
   console.log('\n=== 完了 ===');
 }

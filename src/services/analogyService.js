@@ -130,9 +130,9 @@ const v16Cache = new Map();
 
 const V16_MAX_ENTRIES = 12;
 
-async function getV16(path) {
+async function getV16(path, fresh = false) {
   const hit = v16Cache.get(path);
-  if (hit && Date.now() - hit.at < V16_TTL_MS) return hit.body;
+  if (!fresh && hit && Date.now() - hit.at < V16_TTL_MS) return hit.body;
   v16Cache.delete(path);
   const res = await fetch(path);
   if (!res.ok)
@@ -175,6 +175,13 @@ export async function getRaceSt30(raceId) {
     .filter((r) => typeof r.st30 === "number" && Number.isFinite(r.st30));
 }
 
+/**
+ * 同じ条件の過去レース（層の新しい順最大2,000件、BOA-635「過去に発生した割合を見る」）。
+ * status は ok／not_saved／empty_layer／absent（ok 以外は rows なし。docs/design/past-rate-check/spec.md）
+ */
+export const getAnalogyLayer = (raceId) =>
+  getV16(`/api/analogy/layer/${encodeURIComponent(raceId)}`);
+
 /** タブ2（似ている順の上位・層・比べる相手） */
 export const getAnalogySimilar = (raceId, stage) =>
   getV16(
@@ -194,9 +201,16 @@ export const getAnalogyScenarioRaces = (raceId, scope, stage, boat = 1) =>
     `/api/analogy/scenario/${encodeURIComponent(raceId)}?${stageQuery(stage)}&races=1&scope=${encodeURIComponent(scope)}${boat > 1 ? `&boat=${boat}` : ""}`,
   );
 
-export const getAnalogyScenario = (raceId, scope, stage, boats = false) =>
+export const getAnalogyScenario = (
+  raceId,
+  scope,
+  stage,
+  boats = false,
+  fresh = false,
+) =>
   getV16(
     `/api/analogy/scenario/${encodeURIComponent(raceId)}?${stageQuery(stage)}${boats ? "&boats=1" : ""}${
       scope ? `&scope=${encodeURIComponent(scope)}` : ""
     }`,
+    fresh,
   );

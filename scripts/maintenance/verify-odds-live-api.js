@@ -10,10 +10,12 @@
  *   (c) クエリの検証: raceId の形式・JSTの当日のみ・page の列挙値・未知のパラメータ・GET以外 → 400/405（no-store）
  *   (d) handleLiveOddsRequest: 成功（s-maxage=30）・締切時オッズ（s-maxage=300）・未発売・HTTP非200・通信失敗・
  *       ブレーカー（retryAfterSec）→ 200+ok:false（s-maxage=10）。取得するURLが公式の該当ページ
- *   (e) 設定: api/odds/live.js の maxDuration=30・再試行なし・ブレーカーを DB ストアで共有、vite の READ_ONLY_API に odds
+ *   (e) 設定: api/odds/live.js の maxDuration=30・再試行なし・ブレーカーを DB ストアで共有、vite の READ_ONLY_API に odds。
+ *       race_odds に書かない（api/odds/live.js・scripts/lib/liveOdds.js を字句で読み、書き込みを探す。読むのは許す）
  */
 import fs from "node:fs";
 import * as cheerio from "cheerio";
+import * as espree from "espree";
 import {
   parseOddsUpdatedAt,
   isFinalOdds,
@@ -23,19 +25,12 @@ import {
   parseRangeOddsValue,
 } from "../lib/oddsParser.js";
 import { scrapeWinOdds, scrapePlaceOdds } from "../daily/scrape-odds.js";
-import {
-  validateLiveOddsQuery,
-  parseLiveOddsPage,
-  handleLiveOddsRequest,
-  liveOddsUrl,
-  CACHE_OK,
-  CACHE_OK_EARLY,
-  CACHE_FINAL,
-  CACHE_UPSTREAM_ERROR,
-  CACHE_NO_STORE,
-} from "../lib/liveOdds.js";
-import { BreakerOpenError } from "../lib/scrapeJobs/circuitBreaker.js";
-import { FetchError } from "../lib/scrapeJobs/politeFetch.js";
+import { validateLiveOddsQuery, parseLiveOddsPage, liveOddsUrl } from "../lib/liveOdds.js";
+
+
+import { runLiveOddsWiringScenes } from "./verifyData/odds-live-api-wiring-scenes.js";
+import { runOddsLiveApiScenes1, runOddsLiveApiScenes2 } from "./verifyData/odds-live-api-scenes-1.js";
+import { runOddsLiveApiScenes3, runOddsLiveApiScenes4 } from "./verifyData/odds-live-api-scenes-2.js";
 
 const printOut = console.log.bind(console);
 const printErr = console.error.bind(console);
@@ -53,6 +48,65 @@ function check(label, pass, detail = "") {
   }
 }
 const show = (v) => JSON.stringify(v);
+
+// race_odds を書く経路（Cron のオッズの保存・変わった行だけ書く共通の関数）
+const RACE_ODDS_WRITER_MODULE =
+  /scrapeJobs\/(oddsHandlers|finalOddsHandlers|predictionOddsHandlers)\.js|unchangedRows\.js/;
+const WRITE_METHODS = new Set(["insert", "upsert", "update", "delete"]);
+
+/**
+ * ソースの中の race_odds への書き込みの手がかりを拾う（(e) で使う）。字句（espree の tokenize）で読むので、
+ * コメント・文字列の中の語は数えない。拾うもの:
+ * - `.from("race_odds")` に続く呼び出しの連なり（文の終わりまで）の .insert/.upsert/.update/.delete
+ * - race_odds の文字列を `.from(...)` の引数以外で使う（変数に入れて渡す・upsertChangedRows に渡す等）
+ * - `.rpc(`（関数の中で何を書くかをソースから確かめられない）
+ * - race_odds を書くモジュールの import（名前を変えても出所で分かる）
+ * 読み（`.from("race_odds").select(...)`）と、Map 等の .delete は拾わない
+ * @param {string} src
+ * @returns {string[]} 見つかった手がかり（無ければ空）
+ */
+function raceOddsWrites(src) {
+  const toks = espree.tokenize(src, {
+    ecmaVersion: "latest",
+    sourceType: "module",
+  });
+  const val = (i) => toks[i]?.value;
+  const hits = [];
+  toks.forEach((t, i) => {
+    if (t.value === "." && val(i + 1) === "rpc" && val(i + 2) === "(")
+      hits.push(".rpc(");
+    if (t.type !== "String" && t.type !== "Template") return;
+    if (RACE_ODDS_WRITER_MODULE.test(t.value)) hits.push(`import ${t.value}`);
+    // 表の名前そのもの（引用符の中が race_odds だけ）を見る。文の中の語は数えない
+    if (t.value.slice(1, -1) !== "race_odds") return;
+    const asFromArg =
+      val(i - 3) === "." &&
+      val(i - 2) === "from" &&
+      val(i - 1) === "(" &&
+      val(i + 1) === ")";
+    if (!asFromArg) {
+      hits.push(`${t.value} を .from( の外で使う`);
+      return;
+    }
+    let depth = 0;
+    for (let j = i + 2; j < toks.length; j++) {
+      const v = toks[j].value;
+      if (v === "(" || v === "[" || v === "{") depth++;
+      else if (v === ")" || v === "]" || v === "}") {
+        if (depth === 0) break;
+        depth--;
+      } else if (depth === 0 && (v === ";" || v === ",")) break;
+      else if (
+        depth === 0 &&
+        v === "." &&
+        WRITE_METHODS.has(val(j + 1)) &&
+        val(j + 2) === "("
+      )
+        hits.push(`.from(${t.value}).${val(j + 1)}(`);
+    }
+  });
+  return hits;
+}
 
 const FIX = (name) =>
   fs.readFileSync(
@@ -248,208 +302,65 @@ const fetcher = (fn) => {
   f.calls = calls;
   return f;
 };
-{
-  const run = (query, politeFetch, method) =>
-    handleLiveOddsRequest({ query, method, politeFetch, now: () => NOW });
 
-  const f1 = fetcher(() => htmlResponse(T3_PREDEADLINE));
-  const r1 = await run({ raceId: TODAY_RACE, page: "3t" }, f1);
-  check(
-    "成功（締切51分前）: 200・s-maxage=30, stale-while-revalidate=120・本文の形（ok/raceId/page/fetchedAt/officialUpdatedAt/final/data）",
-    r1.status === 200 &&
-      r1.cacheControl === CACHE_OK_EARLY &&
-      show(Object.keys(r1.body)) ===
-        show([
-          "ok",
-          "raceId",
-          "page",
-          "fetchedAt",
-          "officialUpdatedAt",
-          "final",
-          "data",
-        ]) &&
-      r1.body.ok === true &&
-      r1.body.fetchedAt === NOW.toISOString() &&
-      r1.body.officialUpdatedAt === "08:14" &&
-      r1.body.final === false &&
-      Object.keys(r1.body.data.trifectaAll).length === 120,
-    show({ ...r1, body: { ...r1.body, data: "…" } }),
-  );
-  // BOA-573: 締切まで10分以内は stale-while-revalidate を60秒のまま（鮮度優先）。締切時刻が読めないときも60秒
-  {
-    const near = await handleLiveOddsRequest({
-      query: { raceId: TODAY_RACE, page: "3t" },
-      politeFetch: fetcher(() => htmlResponse(T3_PREDEADLINE)),
-      now: () => new Date("2026-09-29T09:01:00+09:00"), // 2R 締切 09:10 の9分前
-    });
-    check(
-      "締切まで10分以内（9分前）: stale-while-revalidate=60 のまま",
-      near.cacheControl === CACHE_OK,
-      near.cacheControl,
-    );
-    const edge = await handleLiveOddsRequest({
-      query: { raceId: TODAY_RACE, page: "3t" },
-      politeFetch: fetcher(() => htmlResponse(T3_PREDEADLINE)),
-      now: () => new Date("2026-09-29T08:57:00+09:00"), // 13分前
-    });
-    check(
-      "締切まで10分＋150秒超（13分前）: stale-while-revalidate=120",
-      edge.cacheControl === CACHE_OK_EARLY,
-      edge.cacheControl,
-    );
-    // 11分前: 120秒で返すと最大150秒残り締切10分前以降に食い込むため、60秒のまま（/code-review の指摘）
-    const eleven = await handleLiveOddsRequest({
-      query: { raceId: TODAY_RACE, page: "3t" },
-      politeFetch: fetcher(() => htmlResponse(T3_PREDEADLINE)),
-      now: () => new Date("2026-09-29T08:59:00+09:00"),
-    });
-    check(
-      "締切11分前: 締切10分前以降に食い込まないよう stale-while-revalidate=60",
-      eleven.cacheControl === CACHE_OK,
-      eleven.cacheControl,
-    );
-    const noDeadline = await handleLiveOddsRequest({
-      query: { raceId: TODAY_RACE, page: "3t" },
-      politeFetch: fetcher(() =>
-        htmlResponse(T3_PREDEADLINE.replace("締切予定時刻", "（見出しなし）")),
-      ),
-      now: () => NOW,
-    });
-    check(
-      "締切時刻が読めない: stale-while-revalidate=60（鮮度優先に倒す）",
-      noDeadline.cacheControl === CACHE_OK,
-      noDeadline.cacheControl,
-    );
-    const t3 = parseLiveOddsPage("3t", T3_PREDEADLINE);
-    check(
-      "締切予定時刻をレース番号の位置で読む（2R=09:10、12R=14:29）",
-      t3.deadlineTimes?.[1] === "09:10" && t3.deadlineTimes?.[11] === "14:29",
-      show(t3.deadlineTimes),
-    );
-  }
-  check(
-    "成功: 取得したURLは公式の odds3t の1ページだけ",
-    show(f1.calls) ===
-      show([
-        "https://www.boatrace.jp/owpc/pc/race/odds3t?rno=2&jcd=21&hd=20260929",
-      ]),
-  );
-
-  const r2 = await run(
-    { raceId: TODAY_RACE, page: "2tf" },
-    fetcher(() => htmlResponse(FINAL["2tf"])),
-  );
-  check(
-    "締切時オッズ: final=true・s-maxage=300",
-    r2.status === 200 &&
-      r2.body.final === true &&
-      r2.cacheControl === CACHE_FINAL,
-  );
-
-  const r3 = await run(
-    { raceId: TODAY_RACE, page: "tf" },
-    fetcher(() => htmlResponse(TF_UNPUBLISHED)),
-  );
-  check(
-    "未発売: 200・ok:false・reason=not_on_sale・s-maxage=10",
-    r3.status === 200 &&
-      r3.body.ok === false &&
-      r3.body.reason === "not_on_sale" &&
-      r3.cacheControl === CACHE_UPSTREAM_ERROR,
-  );
-
-  const r4 = await run(
-    { raceId: TODAY_RACE, page: "tf" },
-    fetcher(() => htmlResponse("busy", 503)),
-  );
-  check(
-    "公式が503: 200・ok:false・reason=upstream_http_503・retryAfterSec・s-maxage=10",
-    r4.status === 200 &&
-      r4.body.ok === false &&
-      r4.body.reason === "upstream_http_503" &&
-      r4.body.retryAfterSec > 0 &&
-      r4.cacheControl === CACHE_UPSTREAM_ERROR,
-  );
-
-  const r5 = await run(
-    { raceId: TODAY_RACE, page: "tf" },
-    fetcher(() => {
-      throw new FetchError("https://x", 1, new Error("timeout"));
-    }),
-  );
-  check(
-    "通信失敗・タイムアウト: reason=fetch_failed・s-maxage=10",
-    r5.status === 200 &&
-      r5.body.reason === "fetch_failed" &&
-      r5.cacheControl === CACHE_UPSTREAM_ERROR,
-  );
-
-  const f6 = fetcher(() => {
-    throw new BreakerOpenError("host:boatrace.jp", NOW.getTime() + 45_000);
-  });
-  const r6 = await run({ raceId: TODAY_RACE, page: "3t" }, f6);
-  check(
-    "ブレーカーが開いている: reason=breaker_open・retryAfterSec=45",
-    r6.status === 200 &&
-      r6.body.reason === "breaker_open" &&
-      r6.body.retryAfterSec === 45 &&
-      r6.cacheControl === CACHE_UPSTREAM_ERROR,
-    show(r6.body),
-  );
-
-  const f7 = fetcher(() => htmlResponse(T3_PREDEADLINE));
-  const r7 = await run({ raceId: "2026-09-28-21-02", page: "3t" }, f7);
-  check(
-    "前日のレース: 400・no-store・公式へ取りに行かない",
-    r7.status === 400 &&
-      r7.cacheControl === CACHE_NO_STORE &&
-      r7.body.ok === false &&
-      f7.calls.length === 0,
-  );
-  const r8 = await run(
-    { raceId: TODAY_RACE, page: "3t" },
-    fetcher(() => htmlResponse(T3_PREDEADLINE)),
-    "POST",
-  );
-  check(
-    "GET以外: 405・no-store",
-    r8.status === 405 && r8.cacheControl === CACHE_NO_STORE,
-  );
-
-  let threw = false;
-  try {
-    await run(
-      { raceId: TODAY_RACE, page: "3t" },
-      fetcher(() => {
-        throw new TypeError("バグ");
-      }),
-    );
-  } catch {
-    threw = true;
-  }
-  check("想定外の例外は握りつぶさず投げる（500）", threw);
-}
+// ---- 後半の場面（verifyData/odds-live-api-scenes-1.js） ----
+await runOddsLiveApiScenes1({ check, show, FINAL, T3_PREDEADLINE, TF_UNPUBLISHED, NOW, TODAY_RACE, htmlResponse, fetcher });
 
 // ---- (e) 設定 ----
+// api/odds/live.js の本文の字は読まず、読み込んで export と、手前の部品へ渡した引数・呼び出しの記録で見る（verifyData/odds-live-api-wiring-scenes.js）
+const live = await runLiveOddsWiringScenes({ check, show, htmlResponse, page: T3_PREDEADLINE, WRITE_METHODS });
 {
-  const api = fs.readFileSync(
-    new URL("../../api/odds/live.js", import.meta.url),
-    "utf8",
-  );
+  const { writes } = live;
   check(
-    "api/odds/live.js: maxDuration=30",
-    /export const config = \{\s*maxDuration: 30,?\s*\}/.test(api),
+    "api/odds/live.js・scripts/lib/liveOdds.js: race_odds に書かない（読むのは許す）",
+    writes.length === 0,
+    show(writes),
   );
-  check(
-    "api/odds/live.js: 再試行なし・12秒で打ち切り・ブレーカーは DB ストア（Cron と共有）",
-    /maxRetries:\s*0/.test(api) &&
-      /timeoutMs:\s*12000/.test(api) &&
-      /createSupabaseStore\(supabase\)\.breakerStore/.test(api),
-  );
-  check(
-    "api/odds/live.js: race_odds に書かない",
-    !/race_odds/.test(api.replace(/^\s*\*.*$/gm, "")),
-  );
+  // 再現: 読むだけのソースは通り（前の検査はここで落ちた）、書くソースは落ちる
+  for (const [label, src] of [
+    [
+      "select の連なり",
+      'const { data } = await supabase.from("race_odds").select("window_min, scraped_at").eq("race_id", id).order("window_min", { ascending: false }).limit(1);',
+    ],
+    [
+      "Promise.all の中の select",
+      'const [a, b] = await Promise.all([supabase.from("race_odds").select("*"), cache.delete(id)]);',
+    ],
+    ["Map の delete・hash の update", "cache.delete(id); hash.update(body);"],
+    [
+      "コメント・文字列の中の語",
+      '// supabase.from("race_odds").upsert(rows) はしない\n/*\n  .rpc( も使わない\n*/\nconst note = "race_odds に .insert( しない";',
+    ],
+  ]) {
+    const got = raceOddsWrites(src);
+    check(`検査の再現: 読むだけは通る（${label}）`, got.length === 0, show(got));
+  }
+  for (const [label, src] of [
+    ["upsert", 'await supabase.from("race_odds").upsert(rows);'],
+    ["insert", 'await supabase.from("race_odds").insert(row);'],
+    [
+      "改行をはさんだ update",
+      'await supabase\n  .from("race_odds")\n  .update({ odds })\n  .eq("race_id", id);',
+    ],
+    ["delete", 'await supabase.from("race_odds").delete().eq("race_id", id);'],
+    ["URL の後の upsert", 'await fetch("https://x").then(() => supabase.from("race_odds").upsert(rows));'],
+    ["変数に入れた表の名前", 'const T = "race_odds"; await supabase.from(T).upsert(rows);'],
+    ["upsertChangedRows に渡す", 'await save(supabase, "race_odds", rows);'],
+    ["rpc", 'await supabase.rpc("save_odds_window", { rows });'],
+    [
+      "名前を変えた import",
+      'import { createOddsCronHandler as h } from "../../scripts/lib/scrapeJobs/oddsHandlers.js";',
+    ],
+    [
+      "unchangedRows の import",
+      'import { upsertChangedRows as save } from "../../scripts/lib/unchangedRows.js";',
+    ],
+  ]) {
+    check(
+      `検査の再現: 書くソースは落ちる（${label}）`,
+      raceOddsWrites(src).length > 0,
+    );
+  }
   const vite = fs.readFileSync(
     new URL("../../vite.config.js", import.meta.url),
     "utf8",
@@ -460,9 +371,13 @@ const fetcher = (fn) => {
   );
 }
 
-printOut("");
+// ---- 後半の場面（verifyData/odds-live-api-scenes-1.js・odds-live-api-scenes-2.js） ----
+await runOddsLiveApiScenes2({ check, show, FINAL, T3_PREDEADLINE, TF_UNPUBLISHED, NOW, TODAY_RACE, htmlResponse, fetcher, live });
+await runOddsLiveApiScenes3({ printOut, check, show, TODAY_RACE });
 if (failures > 0) {
   printErr(`❌ ${failures}件の検証に失敗しました`);
   process.exit(1);
 }
-printOut("✅ すべての検証に成功しました");
+
+// ---- 後半の場面（verifyData/odds-live-api-scenes-2.js） ----
+runOddsLiveApiScenes4({ printOut, check, show, TODAY_RACE });

@@ -8,7 +8,22 @@
  * - source_revision は「照合した値」から決まる。承認の時（auto-plan）と送る直前（preflight の readCurrent）で同じ関数を使い、
  *   値が変わっていれば版が変わる（送る直前に source_changed で止まる）
  */
+import { internalApiHeaders } from "./internalApiHeaders.js";
 import { SITE_BASE_URL } from "./snsHubHelpers.js";
+import { createTodayDigestSource } from "./snsTodayDigest.js";
+import {
+  raceCalls,
+  raceCurrent,
+  readerFor,
+} from "./snsClaimCheckReaders.js";
+
+// 優勝戦・思考投稿の part と variant・思考投稿の kind・締切の ISO は、読み手（snsClaimCheckReaders.js）が使うのでそちらに置き、ここから再 export する
+export {
+  FINALS_PART_VARIANTS,
+  THINKING_PART_VARIANTS,
+  TODAY_THINKING_KIND,
+  deadlineIso,
+} from "./snsClaimCheckReaders.js";
 
 const TIMEOUT_MS = 15000;
 const RACE_ID = "\\d{4}-\\d{2}-\\d{2}-\\d{2}-\\d{2}";
@@ -83,7 +98,11 @@ export async function checkClaims({
       bodies.set(
         endpoint,
         fetchImpl(`${base}${endpoint}`, {
-          headers: { Accept: "application/json" },
+          // 合言葉（BOA-1110 段階1）。関門が enforce になると、無い要求は 403
+          headers: {
+            Accept: "application/json",
+            ...internalApiHeaders("sns-claim-check"),
+          },
           cache: "no-store",
           signal: AbortSignal.timeout(TIMEOUT_MS),
         }).then(async (response) => {
@@ -140,46 +159,36 @@ export async function checkClaims({
   };
 }
 
-/** races の締切（発走の時刻、JST）を ISO にする。承認（auto-plan）と送る直前で同じ文字列になるよう、ここだけで作る */
-export function deadlineIso(race) {
-  if (!race?.race_date || !race?.start_time) return null;
-  return new Date(`${race.race_date}T${race.start_time}+09:00`).toISOString();
-}
-
 /**
  * 送る直前の preflight（createDeadlinePreflight）に渡す readCurrent。
- * 返り値 {withdrawn, cancelled, deadline_at, source_revision}。素材 v1 でない下書き・照合の不合格は投げる（fail-closed）
- * @param {{db: (path: string) => Promise<any[]>, fetchImpl?: typeof fetch, base?: string}} deps db は PostgREST の読み取り
+ * 返り値 {withdrawn, cancelled, deadline_at, source_revision, public_check?}（public_check='none' は「数字で見たら」だけ）。素材 v1 でない下書き・照合の不合格は投げる（fail-closed）
+ * 下書きの種類（/today の投稿・全貌・優勝戦・1日1本の画像・思考投稿・節の機力・人気薄の1着）ごとの読み直しは snsClaimCheckReaders.js。どれでもなければ素材バンドル v1 の claims を読み直す
+ * @param {{db: (path: string) => Promise<any[]>, fetchImpl?: typeof fetch, base?: string, getDigest?: (date: string) => Promise<object>}} deps db は PostgREST の読み取り
  */
 export function createReadCurrent({
   db,
   fetchImpl = fetch,
   base = SITE_BASE_URL,
+  // 送る直前は使い回さずに読み直す（ttlMs: 0）
+  getDigest = createTodayDigestSource(),
 }) {
   return async (draftId) => {
     const [draft] = await db(
-      `sns_drafts?id=eq.${draftId}&select=bundle_import_id,sns_bundle_imports(schema_version,bundle)`,
+      `sns_drafts?id=eq.${draftId}&select=bundle_import_id,source_data,sns_bundle_imports(schema_version,bundle)`,
     );
+    const reader = readerFor(draft);
+    if (reader) return reader.read(draft, { db, draftId, getDigest });
     const imported = draft?.sns_bundle_imports;
     if (imported?.schema_version !== "ryujin-preview/1")
       throw new Error("source_check_unsupported");
     const raceId = imported.bundle?.race_id;
     const id = encodeURIComponent(raceId ?? "");
     const [[race], entries, exhibition, claims] = await Promise.all([
-      db(
-        `races?race_id=eq.${id}&select=race_date,start_time,cancellation_status`,
-      ),
-      db(`race_entries?race_id=eq.${id}&select=is_absent`),
-      db(`exhibition_data?race_id=eq.${id}&select=is_absent`),
+      ...raceCalls(db, id),
       checkClaims({ claims: imported.bundle.claims, raceId, fetchImpl, base }),
     ]);
     if (!race) throw new Error("race_not_found");
     if (!claims.ok) throw new Error("claim_mismatch");
-    return {
-      withdrawn: [...entries, ...exhibition].some((r) => r.is_absent === true),
-      cancelled: race.cancellation_status != null,
-      deadline_at: deadlineIso(race),
-      source_revision: claims.revision,
-    };
+    return raceCurrent(race, entries, exhibition, claims.revision);
   };
 }

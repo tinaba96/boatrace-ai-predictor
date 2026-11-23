@@ -92,38 +92,6 @@ export async function publishYoutube(draftId, approverId) {
   });
 }
 
-/**
- * 下書きに修正を指摘する（2026-09-04、旧「一部修正」「全部作り直し」を統合）。
- * saveAsInsight=trueの場合、scopeで反映範囲を選ぶ:
- * 'channel'（既定、この下書きのチャネルのみ）| 'all'（全チャネル共通）
- */
-export async function redoDraft(
-  draftId,
-  { approverId, reasonCodes, freeText, saveAsInsight, scope },
-) {
-  return request(`/drafts/${draftId}/redo`, {
-    method: "POST",
-    body: JSON.stringify({
-      approverId,
-      reasonCodes,
-      freeText,
-      saveAsInsight,
-      scope,
-    }),
-  });
-}
-
-/**
- * 制作仕様の変更要望をLinearに起票する（要件85、2026-09-04新設）。
- * この下書き自体のstatusは変更しない
- */
-export async function requestSpecChange(draftId, { approverId, message }) {
-  return request(`/drafts/${draftId}/request-spec-change`, {
-    method: "POST",
-    body: JSON.stringify({ approverId, message }),
-  });
-}
-
 /** 下書きを投稿済みにする */
 export async function markDraftPosted(draftId, postedAt) {
   return request(`/drafts/${draftId}/mark-posted`, {
@@ -137,17 +105,6 @@ export async function archiveDraft(draftId) {
   return request(`/drafts/${draftId}/archive`, {
     method: "POST",
     body: JSON.stringify({}),
-  });
-}
-
-/** TikTok等のエンゲージメント指標を手動入力する */
-export async function addDraftMetric(
-  draftId,
-  { metricName, metricValue, source = "manual" },
-) {
-  return request(`/drafts/${draftId}/metrics`, {
-    method: "POST",
-    body: JSON.stringify({ metricName, metricValue, source }),
   });
 }
 
@@ -177,108 +134,6 @@ export async function rejectInsight(insightId, reason) {
 /** insightを採用する（active化、次回生成から参照される） */
 export async function approveInsight(insightId) {
   return request(`/insights/${insightId}/approve`, { method: "POST" });
-}
-
-/** 「フォーマットカタログ」タブ用、型(sns_template_variants)の一覧を取得する */
-export async function getTemplateVariants() {
-  const { data } = await request("/template-variants");
-  return data || [];
-}
-
-/**
- * 週次ネタ提案Routine（sns-topic-proposer-weekly）を手動起動する。通常は
- * 週次cronのみで起動するため、承認済みストックが少ない・動作確認したい
- * 場面向け（2026-09-04追加）。ネタ登録のみでdraft生成は行わない。
- * `categoryKey`指定時は交互取り出しの自動選定より優先してその型のみ生成する
- * （2026-09-06追加、日次ネタ自動提案の型指定と同じ仕組み）
- */
-export async function triggerWeeklyProposer(categoryKey) {
-  return request("/trigger-weekly-proposer", {
-    method: "POST",
-    body: JSON.stringify({ categoryKey: categoryKey || undefined }),
-  });
-}
-
-/**
- * 日次・一般ネタ自動提案Routine（sns-topic-proposer-daily-auto）を手動起動する。
- * 通常は深夜〜早朝のcronのみで起動するため、承認済みストックが少ない・動作確認
- * したい場面向け（2026-09-04追加）。autoApprove固定のためネタは即座に
- * status='approved'で登録される（ネタ承認は経由しない）
- */
-export async function triggerDailyAutoProposer(categoryKey) {
-  return request("/trigger-daily-auto-proposer", {
-    method: "POST",
-    body: JSON.stringify({ categoryKey: categoryKey || undefined }),
-  });
-}
-
-/**
- * 「ネタ承認」タブ用、ネタ一覧を取得する（型情報・進捗マトリクス用のターゲット一覧を含む）
- * @param {string} [status] - 'proposed' | 'approved' | 'rejected' | 'all' | undefined(全件)
- */
-export async function getTopics(status) {
-  const query = status ? `?status=${encodeURIComponent(status)}` : "";
-  const { data } = await request(`/topics${query}`);
-  return data || [];
-}
-
-/** ネタを承認する */
-export async function approveTopic(topicId, approverId) {
-  return request(`/topics/${topicId}/approve`, {
-    method: "POST",
-    body: JSON.stringify({ approverId }),
-  });
-}
-
-/** ネタを却下する */
-export async function rejectTopic(topicId, approverId, reason, saveAsInsight) {
-  return request(`/topics/${topicId}/reject`, {
-    method: "POST",
-    body: JSON.stringify({ approverId, reason, saveAsInsight }),
-  });
-}
-
-/** チャネルラベル（sns_topic_targets）をpending⇔skippedで切り替える */
-export async function updateTopicTargetLabel(
-  topicId,
-  targetId,
-  status,
-  reason,
-) {
-  return request(`/topics/${topicId}/targets/${targetId}`, {
-    method: "PATCH",
-    body: JSON.stringify({ status, reason }),
-  });
-}
-
-/**
- * 「⚡今すぐ生成」ボタン。status='pending'のターゲットに対し、対象チャネルの
- * パイプラインRoutineを即時発火する。ポーリングでもいずれ拾われるが、
- * 起動タイミングを早めるショートカット（生成結果自体は変わらない）
- */
-export async function fireTopicTargetNow(topicId, targetId) {
-  return request(`/topics/${topicId}/targets/${targetId}/fire`, {
-    method: "POST",
-    body: JSON.stringify({}),
-  });
-}
-
-/** 「ネタ型設定」画面用、ネタの型（カテゴリ）一覧をチャネル設定つきで取得する */
-export async function getTopicCategories() {
-  const { data } = await request("/topic-categories");
-  return data || [];
-}
-
-/** 型×チャネルのON/OFFを切り替える */
-export async function updateTopicCategoryChannel(
-  categoryId,
-  platform,
-  enabled,
-) {
-  return request(`/topic-categories/${categoryId}/channels/${platform}`, {
-    method: "PATCH",
-    body: JSON.stringify({ enabled }),
-  });
 }
 
 /** 観測窓つき指標。旧手動指標から期間を推測しない。 */
@@ -311,30 +166,10 @@ export async function cancelXSend(draftId) {
   });
 }
 
+/** 待ち行列の行と、送信の状態（モード・試運転・停止。取得できなければ null） */
 export async function getDeadlineQueue() {
-  const { data } = await request("/deadline-queue");
-  return data || [];
-}
-
-export async function getMobileApprovalGroups() {
-  return request("/mobile-approval");
-}
-export async function getMobileApprovalRace(group) {
-  return request(`/mobile-approval?group=${encodeURIComponent(group)}`);
-}
-export async function approveMobileChannel(group, body) {
-  return request(`/mobile-approval?group=${encodeURIComponent(group)}`, {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
-}
-
-/** 指摘の採用/無視だけを記録。本文修正や承認は行わない。 */
-export function decideMobileFinding(group, body) {
-  return request(`/mobile-approval?group=${encodeURIComponent(group)}`, {
-    method: "POST",
-    body: JSON.stringify({ ...body, action: "edit-decision" }),
-  });
+  const { data, control } = await request("/deadline-queue");
+  return { rows: data || [], control: control ?? null };
 }
 
 /** SPAフォールバックのHTMLをCSVとして保存しない。 */

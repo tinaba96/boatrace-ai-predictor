@@ -4,6 +4,8 @@
  * データは calculate-accuracy.js（夜間バッチ）が毎日更新する
  */
 
+import { badRequest, queryError } from "../_lib/strictQuery.js";
+
 export const config = {
   runtime: "edge",
 };
@@ -16,13 +18,12 @@ export default async function handler(req) {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
     });
   }
+
+  // 画面（src/services/supabaseDataService.js）はクエリを付けない。付いた要求はキャッシュ外しなので拒む（api/_lib/strictQuery.js）
+  const invalid = queryError(new URL(req.url), {});
+  if (invalid) return badRequest(invalid);
 
   try {
     // accuracy_cache テーブルから単一行読み込み（重い get_accuracy_summary RPC を廃止）
@@ -51,7 +52,6 @@ export default async function handler(req) {
       status: 200,
       headers: {
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
         // 精度データは calculate-accuracy.js が日1回更新するため24時間キャッシュで十分
         "Cache-Control": "s-maxage=86400, stale-while-revalidate=3600",
       },
@@ -68,7 +68,6 @@ export default async function handler(req) {
         status: 500,
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
         },
       },
     );

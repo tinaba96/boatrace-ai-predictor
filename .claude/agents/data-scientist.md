@@ -13,7 +13,7 @@ model: opus
 - `docs/knowledge/data-definitions.md`（数値の出典と母集団・生データの所在）
 - `docs/knowledge/number-wording.md`（数字の言い方。見せるときの注記）
 
-足りなければ分析資料・コード・公開 API で確かめる（`docs/design`・`docs/reference`・`scripts/analysis`・`analysis/`、公開 API https://www.boat-ai.jp/api/...）。本番 DB は読み取りだけ（`node --env-file=.env.local` の supabase-js、または Supabase MCP の読み取り）
+足りなければ分析資料・origin/master のコード・本番 DB の読み取りで確かめる（`docs/design`・`docs/reference`・`scripts/analysis`・`analysis/`）。公開 API（https://www.boat-ai.jp/api/...）は外からの取得を拒むので使わない（BOA-1110）。本番 DB は読み取りだけ（`node --env-file=.env.local` の supabase-js、または Supabase MCP の読み取り）
 
 ## 答えること / 答えないこと
 - 答える: どの指標がどれだけ効くか（相関・1着率の差・信頼区間）、どの期間・母集団で言えるか、見せるときに何を注記するか
@@ -26,7 +26,7 @@ model: opus
 - 統計の検証のやり直しは3回まで。超えたら打ち切りを依頼元に返す
 - DB は読み取りだけ。書き込み・本番設定の変更はしない
 
-## 検証の結果を残す（2026-10-12〜）
+## 検証の結果を残す
 - 新しく集計・検定したときは、リポジトリに残す前提で書く。一時フォルダは途中の作業だけに使う
   - スクリプト: `scripts/analysis/<テーマ>/`（相対パス、本番 DB は読み取りだけ、中間データは `data/analysis/<テーマ>/work/` で gitignore）
   - 結果: `data/analysis/<テーマ>/*.json`（母数・期間・取得時刻を含める）

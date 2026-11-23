@@ -131,7 +131,7 @@
 | B1 | `race/pcexpect?hd&jcd&rno`。全レース（逐次） | `external_predictions`: source、race_date、venue_code、race_no、payload（focus_2t、focus_3t、confidence、entry_prediction_image）、scraped_at、race_start_at（upsert: source,race_date,venue_code,race_no） | 公式コンピュータ予想との比較 |
 | B2 | `race/pointrank?jcd&hd`。開催中の会場のみ（SG/G1等の記念競走にだけ表がある）、会場間1秒待機 | `racer_series_points`: venue_code、meet_start_date、racer_id、race_grade、player_name、grade、rank、score_rate、placements、total_points、penalty_points、remarks、scraped_at（upsert: venue_code,meet_start_date,racer_id） | 記念競走の今節得点率の表示（BOA-220/BOA-291） |
 | B3 | 会場公式サイトのモーター成績ページ（別ドメイン。22会場。戸田・平和島はデータなしで対象外。宮島はPDF）。会場間の待機なし | `venue_motor_stats`: venue_code、motor_number、scraped_date、meet_count、race_count、final_count、championship_count、first/second/third_place_count、win_rate、top2_rate、top3_rate、accident_rate、best_time、avg_exhibition_time、stats_period_start/end、source_template（upsert: venue_code,motor_number,scraped_date）。加えて`data/analysis/venue-motor-stats-health.json`（成否履歴）をmasterへコミット | モーター成績の表示（`MotorConditionChart.jsx`、`supabaseDataService.js`が読む）。構造変化の監視用に成否を記録 |
-| B4 | 会場公式サイトの`/modules/raceinfo/?page=index_racecourse`（別ドメイン。10会場）。当日の各レースを1ページずつ、同一会場は待機を入れて逐次 | `venue_entry_course_stats`: race_id、venue_code、waku、entry_course、racer_id、racer_name_raw、entry_rate、avg_st、place_rate_1〜6、stats_period_start/end、scraped_at（upsert: race_id,waku,entry_course）。加えて`data/analysis/venue-entry-course-stats-health.json`をmasterへコミット | 進入コース別の選手成績（BOA-293）。表示側（`src/`・`api/`）の読み手は、grepでは見つからなかった（未確認） |
+| B4 | 会場公式サイトの`/modules/raceinfo/?page=index_racecourse`（別ドメイン。9会場。若松は BOA-1165 で一時除外）。当日の各レースを1ページずつ、同一会場は待機を入れて逐次 | `venue_entry_course_stats`: race_id、venue_code、waku、entry_course、racer_id、racer_name_raw、entry_rate、avg_st、place_rate_1〜6、stats_period_start/end、scraped_at（upsert: race_id,waku,entry_course）。加えて`data/analysis/venue-entry-course-stats-health.json`をmasterへコミット | 進入コース別の選手成績（BOA-293）。表示側（`src/`・`api/`）の読み手は、grepでは見つからなかった（未確認） |
 | B5 | `site/news/racer/{YYYY}/{MM}/`（公式ニュースのレーサーデータカテゴリ。一覧ページのみ） | `racer_news`: racer_id、title、summary、source_url、source_name、published_at（insert）。`racer_profiles`を読んで選手を特定。特定できないものは`data/analysis/racer-news-pending-review/pending.json`に記録し、masterへコミット | 選手の節目記録のニュース掲載（ADR-0024） |
 | B6 | `data/racersearch/profile?toban`（`racer_profiles`に未登録の選手のみ）、`data/racersearch/season?toban`（全選手）。`race_entries`に登場した全racer_id（約1,627人）を、500ms間隔で逐次 | `racer_profiles`: racer_id、name、name_kana、birth_date、height_cm、weight_kg、blood_type、branch、hometown、registration_period、grade_at_scrape、ability_index、flying_count_period、false_start_count_period、period_label、official_win_rate_period、official_updated_at、scraped_at。加えて`data/analysis/racer-fortune-telling/profile-scrape-report.json`をmasterへコミット | 能力指数・フライング回数等の公式集計値、選手プロフィールの自動登録（BOA-321/322） |
 
@@ -437,7 +437,7 @@ Linearへの起票は行っていない。以下は、起票できる粒度で�
 | G12 | 監視の抜け: オッズ・結果・レース情報・買い目オッズ・朝の初期化・得点率・選手ニュース・期別成績に、件数・窓内取得・0件・未実行の検知が無い。取得ステップの`continue-on-error: true`で、失敗が成功に見える | 確認済み | 全て | 完了の定義C |
 | G13 | DB障害が、空の結果に化ける。A5は、`getRaceSchedule`がDBエラー時に空配列を返し、200で終わる。9/19 10:50 JSTのログで確認。9/16の障害時は、A8以降が「スケジュール未登録」で早期終了した | 確認済み | A5、全ジョブ | BOA-359（「失敗が空に化ける」問題の横展開）と同型 |
 
-## 8. 対象外のワークフロー（26ファイル）
+## 8. 対象外のワークフロー（23ファイル）
 
 取得系ではないため対象外。取得ジョブのタイミングに影響しうる「DBを読む・書くバッチ」は、名前を示した。
 
@@ -450,14 +450,11 @@ Linearへの起票は行っていない。以下は、起票できる粒度で�
 | `generate-poirot.yml`、`train-poirot.yml`、`train-sherlock.yml` | schedule | 予測モデルの生成・学習。外部取得なし |
 | `campaign-pipeline.yml` | schedule（30分ごと、21:45 JSTに日次のまとめ） | 企画型SNS投稿の対象レース検出・結果書き戻し（DBのみ） |
 | `content-ops-nightly-check.yml` | schedule | コンテンツ運用の夜間チェック |
-| `post-x-animation.yml` | 手動のみ（scheduleは無効化中） | X（旧Twitter）への投稿（外部への書き込み） |
 | `update-sitemap.yml` | schedule | サイトマップ・llms.txtの生成とSearch Consoleへの送信 |
-| `update-google-sheets.yml` | `workflow_run`（"Scrape Race Data"の完了後）、手動 | 参照する"Scrape Race Data"は、2026-04-09に統合・削除済み（[外部Cronのセットアップ](../../operation/external-cron-setup.md)）。現行のワークフロー名に該当が無く、自動起動は発火しない（手動のみ有効） |
 | `exhibition-gap-monitor.yml` | schedule（00:30 JST指定） | 展示の欠落率の監視（DBを読む）。完了の定義C（[§6.2](#62-監視cの有無)） |
 | `race-notices-drift-monitor.yml` | schedule（00:30 JST指定） | 特記事項の構造変化の監視（DBを読む）。完了の定義C |
 | `slack-notify-pr.yml` | PR | Slackへの通知 |
 | `e2e-smoke-test.yml`、`verify-cache-config.yml` | PR | CI |
-| `deploy.yml.disabled` | 無効化済み | 旧GitHub Pagesデプロイ |
 
 ## 9. 未確認の項目
 

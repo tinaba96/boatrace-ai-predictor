@@ -27,7 +27,9 @@
  *    zh-TW は漢字を使う言語なので対象外
  * 6. ko で使わないと決めた訳語が無いこと（BOA-713）。「준우승」（韓国語では2位の意味）・
  *    「상전」（韓国語の単語として通じない）・「이번 절」（今節。タブ名の「이번 시리즈」に揃える、BOA-720）。
+ *    期間の単位「절」も「시리즈」に揃える（BOA-731）。
  *    用語集 docs/reference/i18n-glossary.md の「準優勝戦・賞典除外（ko）」「今節（ko）」行
+ * 7. 平均ST（公式）の説明が、出走表の全国勝率との集計期間の違いを明記すること（BOA-1192）。
  *
  * 2026-09-25時点で1〜3とも違反ゼロ（4 は BOA-442 で61件を置き換えてから追加）。この状態を保つための検査であって、
  * 既存の違反を洗い出すためのものではない。
@@ -38,9 +40,10 @@
  *   機械では判定できない）
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { SUPPORTED_LANGUAGES } from "../../src/config/languages.js";
 
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -48,7 +51,24 @@ const repoRoot = path.resolve(
 );
 
 const BASE_LANG = "ja";
-const LANGS = ["ja", "en", "zh-TW", "ko"];
+// 対応言語は src/config/languages.js の SUPPORTED_LANGUAGES（唯一の情報源）から読む。
+// 画面（src/i18n.js）は翻訳ファイルの無い言語を dev でだけ throw し、本番の束では
+// console.error で ja に落とすだけなので、E2E を本番の束（vite preview）で流すと
+// 誰も止めなくなる（CI の分数の削減 段2、PR #1997 の審査）。ここで止める
+const LANGS = SUPPORTED_LANGUAGES.map(({ code }) => code);
+
+/**
+ * 対応言語のうち、翻訳ファイル src/locales/{code}/common.json が無いものを返す
+ * @param {string[]} codes
+ * @param {(file: string) => boolean} exists
+ */
+function missingLocaleFiles(codes, exists) {
+  return codes.filter((code) => !exists(localeFile(code)));
+}
+
+function localeFile(code) {
+  return path.join(repoRoot, "src/locales", code, "common.json");
+}
 
 /**
  * i18next の複数形サフィックス。言語ごとに必要な形が違う
@@ -59,11 +79,15 @@ const PLURAL_SUFFIX = /_(zero|one|two|few|many|other)$/;
 
 const PLACEHOLDER = /{{\s*([\w.]+)\s*}}/g;
 
-function flatten(obj, prefix = "", out = {}) {
+function flatten(obj, prefix = "", out = {}, includeArrays = false) {
   for (const [key, value] of Object.entries(obj)) {
     const full = prefix ? `${prefix}.${key}` : key;
-    if (value && typeof value === "object" && !Array.isArray(value)) {
-      flatten(value, full, out);
+    if (
+      value &&
+      typeof value === "object" &&
+      (includeArrays || !Array.isArray(value))
+    ) {
+      flatten(value, full, out, includeArrays);
     } else {
       out[full] = value;
     }
@@ -84,10 +108,35 @@ function sameSet(a, b) {
   return a.size === b.size && [...a].every((x) => b.has(x));
 }
 
+// 自己テスト: 翻訳ファイルの無い言語を見つけられること（固定の入力で）
+{
+  const fake = new Set([localeFile("ja"), localeFile("en")]);
+  const got = missingLocaleFiles(["ja", "en", "xx"], (f) => fake.has(f));
+  if (JSON.stringify(got) !== JSON.stringify(["xx"])) {
+    console.error(
+      `NG: missingLocaleFiles の自己テストが失敗（期待 ["xx"] / 実際 ${JSON.stringify(got)}）`,
+    );
+    process.exit(1);
+  }
+}
+
+if (!LANGS.includes(BASE_LANG)) {
+  console.error(
+    `NG: SUPPORTED_LANGUAGES（src/config/languages.js）に基準の言語 ${BASE_LANG} がありません`,
+  );
+  process.exit(1);
+}
+const missing = missingLocaleFiles(LANGS, existsSync);
+if (missing.length > 0) {
+  console.error(
+    `NG: 翻訳ファイルがありません: ${missing.map((c) => `src/locales/${c}/common.json`).join(", ")}（SUPPORTED_LANGUAGES にある言語。docs/operation/add-language.md）`,
+  );
+  process.exit(1);
+}
+
 const locales = {};
 for (const lang of LANGS) {
-  const file = path.join(repoRoot, "src/locales", lang, "common.json");
-  locales[lang] = flatten(JSON.parse(readFileSync(file, "utf8")));
+  locales[lang] = flatten(JSON.parse(readFileSync(localeFile(lang), "utf8")));
 }
 
 const failures = [];
@@ -207,11 +256,27 @@ const KO_RETIRED_TERMS = [
   // 「절」は韓国語で「節（期間）」の意味では一般的でなく、タブ名の「이번 시리즈」と別物に読める（BOA-720）
   { term: "이번 절", use: "이번 시리즈（今節）", row: "今節（ko）" },
   { term: "같은 절", use: "같은 시리즈（同じ節）", row: "今節（ko）" },
+  {
+    term: "절",
+    pattern: /(?<![가-힣])절(?![대반차경벽])/,
+    use: "시리즈",
+    row: "今節（ko）",
+  },
 ];
 checked += 1;
-for (const { term, use, row } of KO_RETIRED_TERMS) {
+for (const { term, pattern, use, row } of KO_RETIRED_TERMS) {
   const keys = Object.entries(locales.ko)
-    .filter(([, value]) => typeof value === "string" && value.includes(term))
+    // 検査6は配列内の説明文も検査する（tips.2.text 等）。
+    .flatMap(([key, value]) =>
+      Array.isArray(value)
+        ? Object.entries(flatten(value, key, {}, true))
+        : [[key, value]],
+    )
+    .filter(
+      ([, value]) =>
+        typeof value === "string" &&
+        (pattern ? pattern.test(value) : value.includes(term)),
+    )
     .map(([key]) => key);
   if (keys.length > 0) {
     failures.push(
@@ -220,12 +285,120 @@ for (const { term, use, row } of KO_RETIRED_TERMS) {
   }
 }
 
+// 7. レース確定後・中止のメタ情報（BOA-1185。接続は BOA-1200）
+const raceMetaKeys = [
+  "metaTitleResult",
+  "metaDescriptionResult",
+  "metaTitleCancelled",
+  "metaDescriptionCancelled",
+];
+const raceMetaPlaceholders = new Set(["venue", "race", "date"]);
+for (const lang of LANGS) {
+  for (const key of raceMetaKeys) {
+    checked += 1;
+    const fullKey = `raceDetailPage.${key}`;
+    const value = locales[lang][fullKey];
+    if (typeof value !== "string" || value.trim() === "") {
+      failures.push(`${lang}: ${fullKey} がありません、または空です`);
+      continue;
+    }
+    if (!sameSet(placeholdersOf(value), raceMetaPlaceholders)) {
+      failures.push(`${lang}: ${fullKey} の差し込みは venue・race・date が必要です`);
+    }
+    if (lang === BASE_LANG) {
+      const word = key.endsWith("Result") ? "結果" : "中止";
+      if (!value.includes(word)) {
+        failures.push(`${lang}: ${fullKey} に「${word}」がありません`);
+      }
+    }
+  }
+}
+
+// 8. 平均ST（公式）の集計期間は、出走表の全国勝率と別（BOA-1192）。
+// キー・変数の一致だけでは同じ誤訳を4言語に展開した回帰を検出できない。
+const OFFICIAL_ST_KEYS = [
+  "aiCopy.note.avgSt",
+  "termHints.avgSt",
+  "termHints.avgStOfficialPeriod",
+  "termHints.basicInfoOfficial",
+];
+const OFFICIAL_ST_WORDING = {
+  ja: {
+    retired: /勝率と同じ期/,
+    required: [
+      "公式の期別成績",
+      "全会場",
+      "出走表",
+      "全国勝率",
+      "集計の期間が違います",
+    ],
+  },
+  en: {
+    retired: /same term as the win rate/i,
+    required: [
+      "official term record",
+      "all venues",
+      "race card",
+      "national win rate",
+      "different calculation period",
+    ],
+  },
+  ko: {
+    retired: /승률과 같은 기/,
+    required: [
+      "공식 기별 성적",
+      "전체 경정장",
+      "출주표",
+      "전국 승률",
+      "집계 기간이 다릅니다",
+    ],
+  },
+  "zh-TW": {
+    retired: /與勝率同一期/,
+    required: [
+      "官方期別成績",
+      "所有場地",
+      "出賽表",
+      "全國勝率",
+      "統計期間不同",
+    ],
+  },
+};
+for (const [lang, { retired, required }] of Object.entries(OFFICIAL_ST_WORDING)) {
+  for (const key of OFFICIAL_ST_KEYS) {
+    checked += 1;
+    const value = locales[lang][key];
+    if (
+      typeof value !== "string" ||
+      retired.test(value) ||
+      required.some((part) => !value.includes(part))
+    ) {
+      failures.push(
+        `${lang}: ${key} は公式の期別成績・全会場と、出走表の全国勝率との集計期間の違いを説明してください（BOA-1192）`,
+      );
+    }
+  }
+}
+
+// 基本情報の期間説明は既存の E2E と同じ「期間 の成績」を保つ。
+// 平均STだけの期間と分かるようにし、全国勝率の集計期間へ広げない。
+checked += 1;
+if (
+  !locales.ja["termHints.basicInfoOfficial"]?.includes(
+    "平均STは {{from}}〜{{to}} の成績。公式の期別成績・全会場",
+  )
+) {
+  failures.push(
+    "ja: termHints.basicInfoOfficial は平均STの期間を「{{from}}〜{{to}} の成績」と明記してください（BOA-1192、basic-info-official-period.spec.js）",
+  );
+}
+
 if (failures.length > 0) {
-  console.error("NG: 4言語のロケールが揃っていません");
+  console.error(`NG: ${LANGS.length}言語のロケールが揃っていません`);
   for (const f of failures) console.error(`  - ${f}`);
   console.error("");
   console.error(
-    "  新しい文言は4言語すべてに同じキーで追加してください（.claude/CLAUDE.md「多言語化の3区分」）。",
+    "  新しい文言は4言語すべてに同じキーで追加してください（AGENTS.md「落とし穴」の i18n）。",
   );
   console.error(
     "  単位や語尾は文言側に書き込まず、値がNULLのときに `—%` のような表示にならないようにしてください。",
@@ -235,5 +408,5 @@ if (failures.length > 0) {
 
 const keyCount = baseKeys[BASE_LANG].size;
 console.log(
-  `OK: 4言語のロケールが揃っている（${keyCount}キー × ${LANGS.length}言語、検査${checked}項目）`,
+  `OK: ${LANGS.length}言語のロケールが揃っている（${keyCount}キー × ${LANGS.length}言語、検査${checked}項目）`,
 );

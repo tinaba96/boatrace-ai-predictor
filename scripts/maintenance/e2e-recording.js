@@ -16,7 +16,7 @@
  *   skips <results>     Playwright の JSON レポートから件数を数えて JSON で出す
  *   judge <results>     撮り直した録画を採用してよいか判定する（全件通過・skip が増えていない）
  *   gate                定期実行で撮り直しを始めてよいか（今日の採用済み・遅すぎる起動は撮らない）
- *   notify-dedupe       定期実行の Slack 通知を出すか（同じ日に別の定期実行が通知済みなら出さない）。
+ *   notify-dedupe       定期実行の Slack 通知を出すか（同じ日に別の実行が通知済みなら出さない。人の起動も数える）。
  *                       GITHUB_RUN_ID・GH_TOKEN（actions: read）が要る
  *
  * 環境変数:
@@ -24,134 +24,84 @@
  *   E2E_RECORDING_CACHE zip のキャッシュ置き場（既定: node_modules/.cache/boatai-e2e-recording）
  */
 
-import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
   readFileSync,
-  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { flattenTests, reportProblems } from "./check-e2e-skips.js";
+import {
+  flattenTests,
+  reportProblems,
+  skipReasonOf,
+} from "./check-e2e-skips.js";
+import { VIEWPORT_SKIP_PREFIX } from "../../e2e/viewport-skip.js";
+import {
+  ASSET_NAME,
+  CACHE_DIR,
+  ensureRecording,
+  POINTER_PATH,
+  RECORDINGS_DIR,
+  SOURCE_MARK,
+  readPointer,
+  repoRoot,
+  repoSlug,
+  sha256,
+} from "./e2e-recording-fetch.js";
 
-const repoRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../..",
-);
-export const POINTER_PATH = path.join(repoRoot, "e2e", "recording.json");
-const RECORDINGS_DIR = path.join(repoRoot, "e2e", "recordings");
-/** 展開済みの録画がどのポインタ（sha256）から来たかを書いておくファイル */
-const SOURCE_MARK = path.join(RECORDINGS_DIR, ".source-sha256");
-const ASSET_NAME = "e2e-recording.zip";
+export {
+  LOCAL_MARK,
+  POINTER_PATH,
+  RETRYABLE_STATUS,
+  RETRY_DELAYS_MS,
+  ensureRecording,
+  fetchWithRetry,
+  readPointer,
+} from "./e2e-recording-fetch.js";
+
 const TAG_PREFIX = "e2e-recording-";
-const CACHE_DIR =
-  process.env.E2E_RECORDING_CACHE ||
-  path.join(repoRoot, "node_modules", ".cache", "boatai-e2e-recording");
 
-const sha256 = (buffer) => createHash("sha256").update(buffer).digest("hex");
-
-export function readPointer() {
-  try {
-    return JSON.parse(readFileSync(POINTER_PATH, "utf8"));
-  } catch (error) {
-    throw new Error(
-      `${POINTER_PATH} を読めません（録画のポインタがありません）: ${error.message}`,
-    );
-  }
-}
-
-function repoSlug() {
-  if (process.env.E2E_RECORDING_REPO) return process.env.E2E_RECORDING_REPO;
-  const url = execFileSync("git", ["remote", "get-url", "origin"], {
-    cwd: repoRoot,
-    encoding: "utf8",
-  }).trim();
-  const m = url.match(/github\.com[:/](.+?\/.+?)(?:\.git)?$/);
-  if (!m)
-    throw new Error(`origin の URL から owner/repo を求められません: ${url}`);
-  return m[1];
-}
-
-/** 手元で撮った（まだ Release に上げていない）録画の目印。global-teardown が書く */
-export const LOCAL_MARK = "local";
+const hasViewportMark = (test) =>
+  test.status === "skipped" &&
+  skipReasonOf(test).startsWith(VIEWPORT_SKIP_PREFIX.trim());
 
 /**
- * ポインタの録画を e2e/recordings/ に用意する。既に同じものが展開済みなら何もしない。
- * 手元で撮った録画が展開されているときは、黙って上書きせずに止める（force で上書き）
+ * 画面幅だけで決まる skip の判定を作る（e2e/viewport-skip.js の印。どの日に撮っても同じ数になる）。
+ * 印は付けた側の申告なので、同じテスト（ファイル＋題）がどのプロジェクトでも走っていなければ
+ * 画面幅の skip とは扱わない（データ依存の条件に印を付けても、全幅で skip した日は数えに戻る）
  */
-export async function ensureRecording({ quiet = false, force = false } = {}) {
-  const pointer = readPointer();
-  const mark = existsSync(SOURCE_MARK)
-    ? readFileSync(SOURCE_MARK, "utf8").trim()
-    : null;
-  if (mark === pointer.sha256) return pointer;
-  if (mark === LOCAL_MARK && !force) {
-    throw new Error(
-      [
-        "e2e/recordings/ には手元で撮った録画があります（まだ Release に上げていない）。",
-        "ポインタの録画で上書きすると失われるため止めました。",
-        "  手元の録画で再生する:       E2E_RECORDING_SOURCE=local npm run test:e2e",
-        "  採用して Release に上げる:  node scripts/maintenance/e2e-recording.js publish --skipped=N --tests=N",
-        "  捨ててポインタの録画に戻す: node scripts/maintenance/e2e-recording.js fetch --force",
-      ].join("\n"),
-    );
-  }
-
-  mkdirSync(CACHE_DIR, { recursive: true });
-  const cached = path.join(CACHE_DIR, `${pointer.sha256}.zip`);
-  if (existsSync(cached) && sha256(readFileSync(cached)) !== pointer.sha256) {
-    // 壊れたキャッシュは消して取り直す（CI のキャッシュはキーが同じ間は上書きされないため、
-    // ここで失敗させると同じ壊れたファイルを毎回復元して落ち続ける）
-    if (!quiet)
-      console.warn(
-        `[e2e recording] キャッシュが壊れているので取り直します: ${cached}`,
-      );
-    rmSync(cached, { force: true });
-  }
-  if (!existsSync(cached)) {
-    const url = `https://github.com/${repoSlug()}/releases/download/${pointer.tag}/${pointer.asset ?? ASSET_NAME}`;
-    if (!quiet) console.log(`[e2e recording] 取得: ${url}`);
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(
-        `録画を取得できません（${response.status} ${response.statusText}）: ${url}`,
-      );
-    }
-    const buffer = Buffer.from(await response.arrayBuffer());
-    const actual = sha256(buffer);
-    if (actual !== pointer.sha256) {
-      throw new Error(
-        `録画の sha256 がポインタと一致しません（期待 ${pointer.sha256} / 実際 ${actual}）: ${url}`,
-      );
-    }
-    const tmp = `${cached}.${process.pid}.tmp`;
-    writeFileSync(tmp, buffer);
-    renameSync(tmp, cached);
-  }
-
-  rmSync(RECORDINGS_DIR, { recursive: true, force: true });
-  mkdirSync(RECORDINGS_DIR, { recursive: true });
-  execFileSync("unzip", ["-q", cached, "-d", RECORDINGS_DIR]);
-  writeFileSync(SOURCE_MARK, `${pointer.sha256}\n`);
-  if (!quiet) {
-    console.log(
-      `[e2e recording] ${pointer.tag}（録画時刻 ${pointer.recordedAt}）を展開しました`,
-    );
-  }
-  return pointer;
+function viewportSkipJudge(tests) {
+  const key = (t) => `${t.file}\u0000${t.title}`;
+  const ranSomewhere = new Set(
+    tests.filter((t) => t.status !== "skipped").map(key),
+  );
+  return (test) => hasViewportMark(test) && ranSomewhere.has(key(test));
 }
 
-/** Playwright の JSON レポートから、全件数・skip・失敗を数える（純関数） */
+/** 画面幅の skip を除いた skip（採用の条件で数えるもの） */
+const dataSkips = (tests) => {
+  const isViewport = viewportSkipJudge(tests);
+  return tests.filter((t) => t.status === "skipped" && !isViewport(t));
+};
+
+/**
+ * Playwright の JSON レポートから、全件数・skip・失敗を数える（純関数）。
+ * skipped は画面幅だけで決まる skip（viewportSkipped）を除いた数。採用の条件（skip が増えていない）と
+ * ポインタの skipped はこの数で比べる。画面幅の skip はテストを足すたびに増え、撮った日とは
+ * 関係が無いため（BOA-929。含めていた間、現行 0件 → 新 28件で撮り直しを毎回止めていた）
+ */
 export function countResults(report) {
   const tests = flattenTests(report);
   const by = (s) => tests.filter((t) => t.status === s).length;
+  const viewportSkipped = tests.filter(viewportSkipJudge(tests)).length;
   return {
     tests: tests.length,
-    skipped: by("skipped"),
+    skipped: by("skipped") - viewportSkipped,
+    viewportSkipped,
     // flaky（1回目に落ちて CI のリトライで通った）は失敗に数えない。録画に無い通信は
     // strict で abort されるので、録画の不足ならリトライでも落ちて unexpected になる。
     // 1回目だけの失敗は録画ではなく実行環境の負荷によるもの（2026-09-29 の手元検証で、
@@ -188,6 +138,8 @@ export function judgeAdoption(counts, current, problems = []) {
 
 /** 定期実行で録画を始めない時刻（JST の時）。これ以降は発走前のレースが夜間開催の数場だけになる */
 export const RECORD_CUTOFF_HOUR_JST = 19;
+/** これより前（JST）の起動では撮らない（定期実行は10時台から） */
+export const RECORD_START_HOUR_JST = 10;
 
 const jstDate = (d) =>
   new Date(new Date(d).getTime() + 9 * 60 * 60 * 1000).toISOString();
@@ -200,7 +152,7 @@ const jstDate = (d) =>
  * - 今日（JST）撮った録画が既に採用済みなら撮らない（その日の後の起動を空振りさせる）
  * - 遅れて夜に起動したら撮らない（発走前のレースが少なく、skip が増えて不採用になるだけ）
  */
-export function scheduleGate(now, pointer) {
+export function scheduleGate(now, pointer, todayRuns = null) {
   const today = jstDate(now).slice(0, 10);
   if (
     pointer?.recordedAt &&
@@ -223,7 +175,37 @@ export function scheduleGate(now, pointer) {
       ],
     };
   }
+  if (hour < RECORD_START_HOUR_JST) {
+    return {
+      run: false,
+      notify: false,
+      reasons: [
+        `起動が JST${hour}時台で早いため撮らなかった（${RECORD_START_HOUR_JST}時より前は撮らない）`,
+      ],
+    };
+  }
+  // 同じ日に record が時間切れ（cancelled）になったら、残りの起動では撮らない（1回91分がむだになる）。
+  // todayRuns が取れなかった（null）ときは今のまま撮る
+  const timedOut = (todayRuns ?? []).filter(
+    (r) => r.recordCancelled && jstDate(r.createdAt).slice(0, 10) === today,
+  );
+  if (timedOut.length > 0) {
+    return {
+      run: false,
+      notify: false,
+      reasons: [
+        `本日すでに時間切れ（${today}、実行 ${timedOut.map((r) => r.id).join(", ")} の record が cancelled）`,
+      ],
+    };
+  }
   return { run: true, notify: false, reasons: [] };
+}
+
+/** 1回の実行のジョブ一覧から、record ジョブが cancelled（時間切れ）で終わったか */
+export function recordCancelledInJobs(jobs) {
+  return (jobs ?? []).some(
+    (job) => job.name === "record" && job.conclusion === "cancelled",
+  );
 }
 
 /** e2e-rerecord.yml の Slack 通知ステップの名前の頭。通知済みかの判定に使う */
@@ -246,7 +228,9 @@ export function notifiedInJobs(jobs) {
  * 定期実行は1日4回起動し、採用されなければ次の起動で撮り直す。不採用の理由は撮影時の
  * 本番データで決まることが多く、同じ日に何度も同じ通知が出ると読まれなくなる。
  * 1日の最初の通知だけ出し、2回目以降は各実行の step summary に残す。
- * runs: このワークフローの定期実行 [{ id, createdAt, notified }]
+ * runs: このワークフローの実行 [{ id, createdAt, notified }]。定期実行は schedule と、Vercel Cron の
+ *   dispatch（inputs.gate=true、BOA-929）の2経路。runs の API は inputs を返さず gate の有無で絞れないので、
+ *   event で絞らず master の全件を見る（人が起こした dispatch の通知も「その日は通知済み」に数える。PR のブランチの run は除く）
  */
 export function notifyDedupe(now, currentRunId, runs) {
   const today = jstDate(now).slice(0, 10);
@@ -267,24 +251,31 @@ export function notifyDedupe(now, currentRunId, runs) {
   return { notify: true, reasons: [] };
 }
 
-/** notifyDedupe の入力を GitHub API から集める（Actions 上で使う。GH_TOKEN が要る） */
-function collectTodayRuns(now) {
+/** gh api の1回（Actions 上で使う。GH_TOKEN が要る） */
+const ghApi = (endpoint) =>
+  JSON.parse(execFileSync("gh", ["api", endpoint], { encoding: "utf8" }));
+
+/**
+ * notifyDedupe の入力を GitHub API から集める（Actions 上で使う。GH_TOKEN が要る）。
+ * gh は endpoint → 応答の JSON（既定は gh api。verify が偽を渡す）
+ */
+export function collectTodayRuns(now, { gh = ghApi } = {}) {
   const repo = process.env.GITHUB_REPOSITORY || repoSlug();
   const since = new Date(
     `${jstDate(now).slice(0, 10)}T00:00:00+09:00`,
   ).toISOString();
-  const gh = (endpoint) =>
-    JSON.parse(execFileSync("gh", ["api", endpoint], { encoding: "utf8" }));
   const { workflow_runs: runs = [] } = gh(
-    `repos/${repo}/actions/workflows/e2e-rerecord.yml/runs?event=schedule&per_page=30&created=${encodeURIComponent(`>=${since}`)}`,
+    `repos/${repo}/actions/workflows/e2e-rerecord.yml/runs?branch=master&per_page=30&created=${encodeURIComponent(`>=${since}`)}`,
   );
-  return runs.map((run) => ({
-    id: run.id,
-    createdAt: run.created_at,
-    notified: notifiedInJobs(
-      gh(`repos/${repo}/actions/runs/${run.id}/jobs`).jobs,
-    ),
-  }));
+  return runs.map((run) => {
+    const jobs = gh(`repos/${repo}/actions/runs/${run.id}/jobs`).jobs;
+    return {
+      id: run.id,
+      createdAt: run.created_at,
+      notified: notifiedInJobs(jobs),
+      recordCancelled: recordCancelledInJobs(jobs),
+    };
+  });
 }
 
 function tagFor(recordedAt) {
@@ -438,9 +429,17 @@ async function main() {
       );
       return;
     case "gate": {
+      const now = new Date();
+      let todayRuns = null;
+      try {
+        todayRuns = collectTodayRuns(now);
+      } catch {
+        // 取れないときは今のまま撮る
+      }
       const result = scheduleGate(
-        new Date(),
+        now,
         existsSync(POINTER_PATH) ? readPointer() : null,
+        todayRuns,
       );
       console.log(JSON.stringify(result));
       return;
@@ -473,6 +472,11 @@ async function main() {
         ...judgeAdoption(counts, current, problems),
         counts,
         current: current && { tag: current.tag, skipped: current.skipped },
+        // skip が増えて不採用になったとき、どのテストかを step summary・Slack から辿れるようにする
+        // 先頭20件だけ。総数は counts.skipped
+        skippedTests: dataSkips(flattenTests(report))
+          .slice(0, 20)
+          .map((t) => `${t.title} [${t.project}] ${skipReasonOf(t)}`),
       };
       console.log(JSON.stringify(result));
       process.exitCode = result.adopt ? 0 : 3;

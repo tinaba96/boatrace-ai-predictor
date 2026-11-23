@@ -1,6 +1,6 @@
 # ブランドキット
 
-龍神レーダー（boat-ai.jp）のnote/X/YouTube/TikTok/ブログ/静的ページ向けビジュアル制作で参照する単一ソース。トークン集ではなく、**承認済み実例のギャラリー**として運用する（詳細: [`docs/design/content-ops-flow/spec.md`](../design/content-ops-flow/spec.md) C1）。
+龍神レーダー（boat-ai.jp）のnote/X/YouTube/ブログ/静的ページ向けビジュアル制作で参照する単一ソース。トークン集ではなく、**承認済み実例のギャラリー**として運用する（詳細: [`docs/design/content-ops-flow/spec.md`](../design/content-ops-flow/spec.md) C1）。
 
 **新しい画像・動画を作る前に必ずこのファイルのギャラリーを確認すること。** ゼロから発想せず、既存の採用実例を出発点にする。承認を得たら、その場でこのファイルに実例を追記すること（後日まとめて更新しない）。
 
@@ -44,7 +44,7 @@
 
 **フレーム内の主要ビジュアル要素（棒グラフ・比較図・数値カード等）は、根拠のある意図的デザインでない限り、必ずflexの`justifyContent: "center"`等でフレーム中央（左右バランスが取れた位置）に配置する。** 要素サイズ・本数が可変でも中央からずれないよう、固定`left`/`right`のpx指定ではなく中央基準のflexレイアウトにする。チャネル・フォーマットを問わず適用する（X/TikTok/YouTube/note共通）。
 
-- **対象外（意図的デザインとして確立済みのもの）**: `sns-video-producer-prompt.md`ルール11の「案A」（会場攻略・データ一覧型のHookシーンで、巨大な順位数字を画面左端からはみ出させる配置）は対象外。これは「全要素を中央揃えで均等に並べる」初期案がTikTokプロフィールグリッドの縮小表示（横幅120px程度）で潰れて視認できないと複数回却下された末に、2026-08-24に複数回のレビューを経て意図的に採用されたデザイン判断であり、事故的な偏りではない。同様に`SceneHookDiagonal`（対角分割Before/After型）も設計として左右非対称にしている。**新しい非対称配置を「意図的デザイン」として追加する場合は、この節または該当パイプライン文書に採用理由・日付を明記してから使う**。理由の記載が無い非対称配置は、レビュー漏れの事故として中央寄せに直す
+- **対象外（意図的デザインとして確立済みのもの）**: `sns-video-producer-prompt.md`絶対厳守8の「案A」（会場攻略・データ一覧型のHookシーンで、巨大な順位数字を画面左端からはみ出させる配置）は対象外。これは「全要素を中央揃えで均等に並べる」初期案がTikTokプロフィールグリッドの縮小表示（横幅120px程度）で潰れて視認できないと複数回却下された末に、2026-08-24に複数回のレビューを経て意図的に採用されたデザイン判断であり、事故的な偏りではない。同様に`SceneHookDiagonal`（対角分割Before/After型）も設計として左右非対称にしている。**新しい非対称配置を「意図的デザイン」として追加する場合は、この節または該当パイプライン文書に採用理由・日付を明記してから使う**。理由の記載が無い非対称配置は、レビュー漏れの事故として中央寄せに直す
 - **同じ事故が繰り返されている実績（教訓）**: (1) 2026-08-31、`VenueRankingCM.jsx`の`SceneHook`で「左端はみ出しの非対称配置がバランス悪い・右側の余白が目立つ」という指摘を受け、主要な見出しグループ（順位数字＋会場名）を中央寄せに修正したが、この教訓は該当コンポーネントにしか反映されなかった。(2) 2026-09-05、X承認待ち動画（venue-featureパイプライン、2値の最高値vs最低値比較）で同じ「左に偏り右側が空白」が再発。原因は、venue-featureパイプライン（`docs/operation/sns-pipeline-x.md`）がmasterへコードをコミットしない疎結合Routineのため、既存の使い回しコンポーネント（`VenueRankingTemplate`）でカバーしていない新しい形状（2値だけの比較）が必要になるたびにその場限りのコードが書かれ、レビューも再利用もされていなかったこと
 - **恒久対策**: 2値比較（最高vs最低等）の可視化には`SceneHookCompareTwo`（`VenueRankingCM.jsx`）を新設し、中央寄せをコード側で固定した。新しい比較ビジュアルの形状が必要になった場合も、その場で書き捨てるのではなくこのファイルに再利用可能なコンポーネントとして追加し、該当パイプライン文書から参照する（`fitHeadline()`と同じ「書き捨てず共通化する」パターン）。加えて、コードの共通化だけでは全チャネル・全フォーマットを機械的にカバーしきれないため、`sns-video-producer-prompt.md`「セルフレビュー チェックリスト」（全チャネル・全フォーマットの生成Routineが毎回実行する）にも左右バランスの確認項目を追加した
 
@@ -79,7 +79,7 @@
 
 **実画面スクショの積極活用（2026-09-10追加）**: 龍神レーダーのShorts動画の目的は「こういうデータが見える」「可視化されていて見やすい」「買い目の参考になる」という**プロダクト自体のPR**である。抽象的なデータビジュアライゼーション（棒グラフ等の自作グラフィック）よりも、**実際の分析画面のスクリーンショットを積極的に使う方が、製品の使いやすさを直接訴求できる**。これは新機能ネタに限定されていた既存ルール（フローA-3「実画面スクリーンショットが撮れるネタはスクリーンショットをそのまま使う」）を、Shorts動画全般（特に②を埋める場面）に拡張する方針。具体的な組み込み方（どのシーンにどのタブのスクショを使うか等）は型ごとに個別検討し、この節に実例を追記していく。
 
-**2026-09-10監査結果（初回、26ファイル・全コンポジション対象）**: ほぼ全ファイルで「Hookシーンのみ基準を満たし、本編中盤のランキング/データシーンとCTAシーンは26〜54px程度のテキストのみで基準未達」という共通パターンが判明した。加えて`ToolCM.jsx`・`ToolShowcaseCM.jsx`・`YoungPersonaCM.jsx`はGOLDを一切使わずACCENT/GREENを主役色にしており色基準にも抵触。`AboutHeroCM.jsx`は全10シーンが基準未達（Captionコンポーネント共通の構造的要因）。`NoteExplainerCM.jsx`/`NoteExplainerLanguageSwitcherCM.jsx`/`RaceInsightYoutubeCM.jsx`（1920×1080横型）・`OnboardingFlowCM.jsx`（サイト埋め込み専用の可能性）はShorts棚の対象外の可能性が高く、本ルールをそのまま適用すべきか要確認として対象外にした。ファイル別の詳細な監査表・改善案は[`docs/reference/shorts-hook-strength-audit-2026-09-10.md`](./shorts-hook-strength-audit-2026-09-10.md)を参照。
+**2026-09-10監査結果（初回、26ファイル・全コンポジション対象）**: ほぼ全ファイルで「Hookシーンのみ基準を満たし、本編中盤のランキング/データシーンとCTAシーンは26〜54px程度のテキストのみで基準未達」という共通パターンが判明した。加えて`ToolCM.jsx`・`ToolShowcaseCM.jsx`・`YoungPersonaCM.jsx`はGOLDを一切使わずACCENT/GREENを主役色にしており色基準にも抵触。`AboutHeroCM.jsx`は全10シーンが基準未達（Captionコンポーネント共通の構造的要因）。`NoteExplainerCM.jsx`/`NoteExplainerLanguageSwitcherCM.jsx`/`RaceInsightYoutubeCM.jsx`（1920×1080横型）・`OnboardingFlowCM.jsx`（サイト埋め込み専用の可能性）はShorts棚の対象外の可能性が高く、本ルールをそのまま適用すべきか要確認として対象外にした。ファイル別の詳細な監査表・改善案は[`docs/archive/shorts-hook-strength-audit-2026-09-10.md`](../archive/shorts-hook-strength-audit-2026-09-10.md)を参照。
 
 - **恒久対策・実施済み**: `VenueRankingCM.jsx`の共通シーン（`SceneTop5`/`SceneWorst5`/`SceneVenueBars`/`SceneCTA`）を基準を満たすよう修正した。これら4関数は同ファイル内20コンポジションが共有しているため、1箇所の修正で20コンポジション全てに波及する（`fitHeadline()`と同じ「書き捨てず共通化して直す」パターン）
 - **未対応（バックログ）**: 上記以外の個別`*CM.jsx`（`AboutHeroCM`・`ToolCM`・`ToolShowcaseCM`・`YoungPersonaCM`等）は、既存投稿済み動画の遡及的な作り直しは行わず（BOA-232と同じ判断基準）、**新規制作・再利用時にこの節の基準で書き直す**運用とする
@@ -165,7 +165,7 @@
 視覚素材（画像・動画）のルールは上記各節を参照。本文・構成のルールは以下に一元化されている。着手前にこのファイル（ビジュアル）と合わせて必ず確認する:
 
 - **ブログ本文の構成・文字数・FAQ・note/Xセット生成ルール**: `.claude/CLAUDE.md`フローA-3「新機能リリース時のブログ記事ルール」
-- **ネタ駆動パイプラインでの自動生成時の執筆手順・品質自己レビュー**: チャネル別パイプライン各ドキュメント（[`docs/operation/sns-pipeline-blog.md`](../operation/sns-pipeline-blog.md)・[`sns-pipeline-note.md`](../operation/sns-pipeline-note.md)・[`sns-pipeline-x.md`](../operation/sns-pipeline-x.md)・[`sns-pipeline-tiktok.md`](../operation/sns-pipeline-tiktok.md)・[`sns-pipeline-youtube.md`](../operation/sns-pipeline-youtube.md)、2026-09-04時点。旧`content-multi-channel-pipeline-prompt.md`はsns-topic-gate体系への移行に伴い`docs/archive/`へ移動済み）
+- **ネタ駆動パイプラインでの自動生成時の執筆手順・品質自己レビュー**: チャネル別パイプライン各ドキュメント（[`docs/operation/sns-pipeline-blog.md`](../operation/sns-pipeline-blog.md)・[`sns-pipeline-note.md`](../operation/sns-pipeline-note.md)・[`sns-pipeline-x.md`](../operation/sns-pipeline-x.md)・[`sns-pipeline-youtube.md`](../operation/sns-pipeline-youtube.md)、2026-09-04時点。旧`content-multi-channel-pipeline-prompt.md`はsns-topic-gate体系への移行に伴い`docs/archive/`へ移動済み）
 - **公開前の品質チェック6項目**（数値整合性・現行仕様整合性・検索意図網羅性・用語表記・多言語一貫性・構造要件）: `.claude/CLAUDE.md`「ブログ記事の公開前品質チェック」
 - **noteは文章のみの下書きを作らない**: 画像かYouTube動画リンクを最低1枚/1本含める（`.claude/CLAUDE.md`フローA-3、2026-08-31〜）。動画CTAシーンは上記「note 埋め込み動画のCTAシーン」節のロゴ差し替え済みコンポーネントを使う
 - **note埋め込み動画のBGM**: X/TikTok用と同じ`soundtrack.wav`を使い回さない。詳細は`docs/operation/note-video-producer-prompt.md`参照

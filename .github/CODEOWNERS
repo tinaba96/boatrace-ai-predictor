@@ -1,0 +1,67 @@
+# 守る場所の持ち主（ゼロベース再設計 A2 の②、v3.3 で足した）。
+# ruleset の require_code_owner_review を ON にすると、ここに当たるパスを変える PR は持ち主（@rhapsody0919）の承認が要る。
+# v3.3（2026-11-06）で別ベンダーの LLM 審査（review.yml）を外したので、関門は CI 緑と、ここに当たる PR の持ち主の承認になる。
+#
+# 書式（GitHub の CODEOWNERS）:
+# - 1つのパスに複数の行が当たるときは、後の行が勝つ。いまは持ち主が1人なので順は効かない
+# - 先頭の / はリポジトリの根に固定する。/ が無い名前（例 package.json）は全ての階層に当たるので、根だけを守るときは / を付ける
+# - * は / をまたがない。** は階層をまたぐ。! の否定と [] の文字クラスは使えない
+
+# CI・配備の設定
+/.github/**                           @rhapsody0919
+/vercel.json                          @rhapsody0919
+/scripts/vercel-ignore-build.js       @rhapsody0919
+
+# 画面の入口（v3.3 の H5）
+/middleware.js                        @rhapsody0919
+
+# 依存
+/package.json                         @rhapsody0919
+/package-lock.json                    @rhapsody0919
+/.npmrc                               @rhapsody0919
+/sns-video-studio/remotion/package.json      @rhapsody0919
+/sns-video-studio/remotion/package-lock.json @rhapsody0919
+
+# SNS の自動送信の禁止表現の一覧（送る口の機械の検査が読む）
+/sns-video-studio/remotion/risk-rules.json   @rhapsody0919
+
+# 本番 DB の移行（db-apply.yml が当てる置き場）
+/docs/db-migration/**                 @rhapsody0919
+
+# 試験・lint の設定と、全 e2e の土台
+/playwright*.config.js                @rhapsody0919
+/eslint.config.js                     @rhapsody0919
+/e2e/fixtures.js                      @rhapsody0919
+
+# 本番 DB に書く物（移行・再集計の cron）
+/scripts/db/**                        @rhapsody0919
+/api/cron/racer-career-main.js        @rhapsody0919
+
+# 品質の関門の仕組みと道の判定（verify-registry.json・個別の verify-*.js・*-allowlist.json は maker-merge の機械の判定で通す。2026-11-12）
+/scripts/maintenance/run-verify-registry.js          @rhapsody0919
+/scripts/maintenance/verify-pr-shape.js              @rhapsody0919
+/scripts/maintenance/verify-pr-lane.js               @rhapsody0919
+/scripts/maintenance/pr-lane.js       @rhapsody0919
+/scripts/maintenance/prLaneClassify.js   @rhapsody0919
+/scripts/maintenance/prLaneHuman.js      @rhapsody0919
+/scripts/maintenance/prLaneLines.js      @rhapsody0919
+/config/pr-path-rules.json            @rhapsody0919
+
+# 試験の固定データの .gz（v3.3 の H5）
+# 構築の段（決定 build-phase-throughput.md の決定3、2026-11-12）で、既存の e2e の spec・verify の一覧と
+# scripts/lib/**・.claude/**・AGENTS.md・vite.config.js・index.html を外した。これらは maker-merge の機械の判定
+# （verify-pr-shape.js 等の CI）でマージする。人に残すのは鍵・セキュリティ設定・本番 DB の書き手・.github と判定の道具。
+# .gz は verify-pr-shape.js が先頭の印だけで通し、差分で中身を読めないので、既存の物の差し替えは持ち主が見る
+#   git ls-files -- '*.gz' | sed 's|^|/|; s|$| @rhapsody0919|'
+
+# --- 既存の試験の固定データ（.gz、10本） ---
+/e2e/analogy-outlook-fixture.json.gz @rhapsody0919
+/e2e/analogy-v16-fixture.json.gz @rhapsody0919
+/e2e/thinking-assist-fixture.json.gz @rhapsody0919
+/scripts/ml/analogy/testdata/treeshap-parity/model_win.json.gz @rhapsody0919
+/scripts/ml/analogy/testdata/treeshap-parity/model_win_racecard.json.gz @rhapsody0919
+/scripts/ml/analogy/testdata/treeshap-parity/parity_fixture.json.gz @rhapsody0919
+/sns-video-studio/remotion/scripts/full-picture/fixtures/2026-10-12-01-12.json.gz @rhapsody0919
+/sns-video-studio/remotion/scripts/full-picture/fixtures/2026-10-15-15-10.json.gz @rhapsody0919
+/sns-video-studio/remotion/scripts/full-picture/fixtures/2026-10-16-24-11.json.gz @rhapsody0919
+/sns-video-studio/remotion/scripts/full-picture/fixtures/2026-10-19-19-10.json.gz @rhapsody0919

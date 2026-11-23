@@ -28,6 +28,7 @@
             "mcp__claude-in-chrome__find",
             "mcp__claude-in-chrome__get_page_text",
             "Bash(gh run watch *)",
+            "Bash(node --env-file=.env.local scripts/db/ro-query.js *)",
             "mcp__aws-knowledge__aws___search_documentation",
             "mcp__aws-knowledge__aws___read_documentation",
             "mcp__34bf5277-1acd-4c0b-a358-72580d08586c__list_issues"
@@ -46,39 +47,6 @@
                     {
                         "type": "command",
                         "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start-branch-check.sh\""
-                    }
-                ]
-            },
-            {
-                "matcher": "compact",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/orchestrator-session.sh\"",
-                        "timeout": 10
-                    }
-                ]
-            }
-        ],
-        "UserPromptSubmit": [
-            {
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/orchestrator-session.sh\"",
-                        "timeout": 10
-                    }
-                ]
-            }
-        ],
-        "UserPromptExpansion": [
-            {
-                "matcher": "orchestrate",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/orchestrator-session.sh\"",
-                        "timeout": 10
                     }
                 ]
             }
@@ -129,37 +97,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "file=$(cat | jq -r '.tool_input.file_path' 2>/dev/null); if [[ \"$file\" == *.js ]] || [[ \"$file\" == *.jsx ]]; then npx prettier --write \"$file\" 2>/dev/null || true; fi"
-                    }
-                ]
-            },
-            {
-                "matcher": "Edit|Write",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/eslint-fix.sh\"",
-                        "statusMessage": "eslint --fix",
-                        "timeout": 30
-                    }
-                ]
-            },
-            {
-                "matcher": "Edit|Write",
-                "hooks": [
-                    {
-                        "type": "command",
                         "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/track-session-progress.sh\"",
-                        "timeout": 10
-                    }
-                ]
-            },
-            {
-                "matcher": "Skill",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/orchestrator-session.sh\"",
                         "timeout": 10
                     }
                 ]

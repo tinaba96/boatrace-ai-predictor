@@ -1,0 +1,175 @@
+# ADR-0097: PR を作る身元と承認する身元を分け、審査・マージ・軽い SQL の適用を自動にする
+
+- 状態: 提案中（2026-10-19 オーナー採用。実装は段取り A〜D'、切替はオーナー）
+- 設計の正本: hq の drafts/identity-separation-20261019.md（v5.1。§0・§0.1 が正）。オーナーの作業の手順は [docs/operation/identity-separation-owner-steps.md](../operation/identity-separation-owner-steps.md)
+- 関連: [ADR-0096](./0096-claude-ro-readonly-role.md)（claude_ro）、[docs/operation/db-apply.md](../operation/db-apply.md)（適用のワークフロー）
+
+## 背景
+
+- 今の Claude の `gh` はオーナーと同じ admin のアカウント（rhapsody0919）で、ruleset を bypass でき、db-apply の Environment の承認もできる。止めているのは龍神のフック（文字列の照合）と指示だけ（db-apply.md「Claude（AI）は起動・承認しない」）
+- オーナーが本番の SQL の実行と PR の承認を毎回していて、ボトルネックになっている（2026-10-19 オーナー「レビューの仕組みがあれば全部自動でよい」）
+- master-guard（ruleset）は承認1件・最後の push の後の承認ありだが、必須の check が無く、dismiss_stale も OFF、マージの方法は3つとも可
+
+## 決定
+
+### 身元
+
+| 身元 | 持つ権限 | すること |
+|---|---|---|
+| 作成の App `ryujin-maker` | Contents・Pull requests・Workflows の書き込み、Checks・Commit statuses・Actions の読み取り。Administration・Environments・Secrets は無し | AI の PR を全部これで作る。Claude と Codex はブランチの接頭辞（`claude/`・`codex/`）で見分ける |
+| 審査の App `ryujin-reviewer` | Pull requests の書き込み、Contents の読み取り（承認が数えられなければ書き込みに上げる） | 承認に数える唯一の AI の身元 |
+| ryujin-bot（既存） | Contents の書き込み。ruleset の bypass は always のまま | master への自動コミット（11本の workflow）。鍵は master だけの Environment にある |
+| オーナー | admin | 重い SQL の Environment の承認、ruleset、鍵 |
+
+- 切替の後、Claude の `gh` は作成の App の短命のトークン（hq の道具が Keychain の秘密鍵から作る）を使い、admin を持たない
+- CODEOWNERS は置かない。仕組みの変更（.github・.claude・AGENTS.md・vercel.json・package.json・DB の適用コード）も審査の App の承認だけで通る（オーナー判断）
+  - 2026-11-06 に置き換え（オーナーのゼロベース再設計 A2 ②・③）: `.github/CODEOWNERS` で守る場所の持ち主を rhapsody0919 にする。ruleset の `require_code_owner_review` を ON にするのはオーナーの操作。ON にすると、作成の App の PR（Codex・記事）が守る場所に触れたときはオーナーの承認が要る。今（上の切替の前）は Claude の PR は持ち主の名義で、作者は自分の PR を承認できないので admin の bypass だけでマージしており、止まらない（bypass を外すか、切替で Claude が作成の App の名義になると、守る場所に触れる Claude の PR もオーナーの承認待ちになる）。`[automated]` の直接 push も止まらない
+
+### 審査（`.github/workflows/review.yml`、段取り E）
+
+- `pull_request_target`（opened・synchronize・reopened）。master にある定義だけが動くので、PR が審査の定義を書き換えても、その PR の審査には効かない
+- 動かす条件: 作者の `user.id`（数値）が作成の App、head のリポジトリが同じ、`base.ref == 'master'`
+- PR の head を checkout しない・実行しない。`persist-credentials: false`、`npm ci`・cache を使わない。差分は API で取り、全部取れなければ落とす（fail closed）。symlink・submodule・LFS・バイナリ・`.gitattributes` の変更は機械で落とす
+- PR の本文・タイトル・コメントは審査の材料に入れない
+- 別ベンダーで審査する（`claude/` は OpenAI、`codex/` は Anthropic）。P0 が0件なら、審査した head SHA に APPROVE を付ける（承認の直前に head を取り直し、違えば付けない）。承認しないときは REQUEST_CHANGES を付け、審査の App の最新の状態でマージを止める
+- 本文の無い差分（バイナリ。NUL を1つ含む JS も git はバイナリと扱う。中身を変えない改名・複製）は、消したファイル以外は機械で落とす。そうした変更はオーナーが行う
+- LLM を呼ぶ job と、審査の App の鍵で承認する job を分ける。承認の job は判定の JSON だけを受け取る
+- 本番の状態（表の定義・行数・索引）を claude_ro で取る job は、PR を扱う job と分ける。表の名前は引数で渡し、件数と定義だけを返す（ADR-0096 の追記）
+- 鍵は Environment `pr-review`（master だけ）に置く。この Environment を使える workflow は review.yml だけ、という検査を verify に足す
+- 月の件数の上限を置き、超えたら承認せず止めて通知する
+
+### ruleset とマージ
+
+- 必須の check: `verify`・`e2e`・`ml-tests`（出元は GitHub Actions）。マージは squash だけ。dismiss_stale を ON
+- 必須の check は品質のためのもの。作成の App は PR の中で workflow を書き換えられるので、守りにはならない。守りは審査の App の承認だけ
+- auto-merge は切替のときに ON。admin の bypass は切替のときに外す
+- 追記（2026-10-24、オーナー決定、Orchestrate のセッション）: 上の1行は取りやめる。auto-merge は ON にせず、admin の bypass も外さない（身元の分離 v5 の手順8 の A・B をやらない）。理由: Codex の自動マージ（hq の `codex-pr.py --merge`）は GitHub の auto-merge を使わず、ryujin-maker の名義で `gh pr merge --squash --match-head-commit` の直接マージをする（`~/hq/scripts/codex-pr.py:1035-1036`、`docs/design/codex-direct-pr/design.md:208`）。ON にすると `--auto` を付けた PR が承認1件と必須の3つの check だけで入り、M2〜M7 を飛ばす道が増える（system-architect の審査）。Codex の自動マージを開ける条件は、design §10.1 の Q6・Q8（どちらも済み）と、ryujin-maker の名義の直接マージの実測（hq がテスト PR で行う）だけ
+- 追記（2026-11-06、オーナー決定、Orchestrate のセッション）: admin の bypass は外す（auto-merge は今も ON にしない）。AI のセッションがオーナーの gh（admin）で `--admin` のマージをしており、審査・CODEOWNERS を素通りできるため。先に Claude の push・PR の作成・マージを作成の App の名義にする。道具は龍神の `scripts/maintenance/ryujin-maker-token.js`（鍵は `~/.config/ryujin/ryujin-maker.pem`、hq の Keychain の鍵とは別の鍵）。Claude の枝は `claude/`（review.yml が OpenAI で審査する）。ryujin-bot の bypass は always のまま。Claude の素の gh はオーナー（admin）のままなので、オーナーの名義の承認・`--admin`・ruleset の書き込みは `.claude/hooks/guard-deploy-approval.sh` の文字の照合で止める（言い換えは塞ぎきれない。暫定で、v3 の「関門はサーバー側」と食い違う。B で、Claude のセッションの GH_TOKEN をオーナーの読み取りだけの fine-grained のトークンにし、書き込みを ryujin-maker だけにして塞ぐ）。前提は審査の月の上限と費用の上限を上げること（切替の後は1日約68件の見込みで、既定の300は数日で尽きる。新しい費用で、値はオーナーが決める）、CODEOWNERS（#2297）と require_code_owner_review の ON。手順は docs/operation/identity-separation-owner-steps.md の 9
+
+### 鍵の移し替え（段取り S）
+
+repo の secret（Environment の外）は、同じリポジトリのどのブランチの workflow からも読める。作成の App は Workflows を書けるので、ブランチを push するだけで本番の鍵を使える。
+そこで、定期実行が使う書き込みの鍵（`SUPABASE_SERVICE_KEY`・`SUPABASE_URL`・`SLACK_WEBHOOK_URL`・`VERCEL_DEPLOY_HOOK`・`LINEAR_*`・`GOOGLE_SERVICE_ACCOUNT_KEY`・`SEARCH_CONSOLE_SITE_URL`）を、master だけの Environment `prod-jobs` に移す。鍵を使う job に `environment: prod-jobs` を付け、repo の secret には anon（`VITE_SUPABASE_*`）だけを残す。切替の前に済ませる。
+
+### 本番 SQL の適用（段取り B・C・D）
+
+- 起動は push ではなく定期の突き合わせ（`scripts/db/db-reconcile.js`）。push の起動は concurrency の待ち枠1本で黙って取りこぼすため
+- 当てる対象は次を全部満たすファイルだけ。番号の順に1本ずつ当てる。通らない・止める・失敗したファイルがあれば、以後の番号は当てずに止まり、通知する（失敗・却下したファイルは次の起動でまた選ばれる。止める印は試運転の後、下の「印を外す前に要ること」で入れる）
+  1. 切り替えのコミット（workflow に固定する）より後に、マージされた PR で足された（A だけ。変更・改名は対象外）。squash だけなので `merge_commit_sha^1..merge_commit_sha` の差分で判定する
+  2. その PR が merged・base master で、ファイルの blob が、PR の head と **当てる時点の master HEAD** で同じ
+  3. その PR の head SHA に審査の App の APPROVE がある（ryujin-bot の直接 push で足されたものは対象外）
+  4. 台帳 APPLIED.md の行の「適用状況」が `未適用` で始まり、その行も同じ PR で足されている
+  5. 同じ番号の `NNN-runbook.md` が無い（あれば当てずに通知）
+- db-apply が実行中・承認待ちなら、突き合わせは何もせず終わる
+- PR のコメントにある判定の結果は信用しない（e2e-smoke-test は PR のコードを pull-requests: write で動かすので、見せかけのコメントを書ける）。当てる時点で判定し直す
+
+### 軽い・重いの判定（`classifyMigration`、`scripts/lib/dbApplySql.js`）
+
+許可のリスト方式。ファイルの全部の文が次の列挙に丸ごと当てはまるときだけ「軽い」（Environment `production-db-auto`、承認なし）。1文でも外れたら「重い」（`production-db`、オーナーの1タップ）。
+
+- 軽い: `CREATE TABLE`、`CREATE INDEX`（式の索引を除く）、`ADD COLUMN`（既定値なし・NOT NULL なし）、`COMMENT`、同じファイルで作った表への `ENABLE ROW LEVEL SECURITY`・SELECT だけの policy・`REVOKE`、`NOTIFY pgrst`
+- 重い（例。これに限らない）: `CREATE OR REPLACE FUNCTION`（BOA-363・431 の事故）、DO ブロック、DROP の全種類、`DISABLE TRIGGER`、RENAME、`TRUNCATE`・`DELETE`・`UPDATE`・`MERGE`・`ON CONFLICT DO UPDATE`、型の変更、`GRANT`・`ALTER DEFAULT PRIVILEGES`・`SECURITY DEFINER`・RLS の無効・書き込みの policy、`CREATE RULE`・`TRIGGER`・`EXTENSION`、`ALTER ROLE`・`SET ROLE`、最上位の `SELECT fn()`・`CALL`、`CREATE TABLE AS`・`MATERIALIZED VIEW`、関数を呼ぶ DEFAULT・CHECK、verify-migration-rls の除外マーカーを含むもの
+- 止める（当てずに通知）: 個人情報らしい列（email・phone・address・birth・氏名 等）を足すもの、判定できない文
+- 判定は鍵を持たない job で行う。既存の全 SQL を読ませてラベルの一覧を固定する検査を verify-db-apply に足す
+- 自動の経路では `lock_timeout` と `statement_timeout` を手で当てるときより短くし、超えたら失敗として止める（判定は行数を見られないため）
+
+### 削除の前の控え
+
+- データを消す文（DROP TABLE・TRUNCATE・DELETE・DROP COLUMN）は、同じファイル（＝同じトランザクション）の前の文で、API に出ないスキーマ `db_backup` に `CREATE TABLE db_backup._bak_<番号>_<表> AS TABLE <表>` と写してから消す。DELETE も表全体を写す（WHERE の一致を文で照合するのは壊れやすいため）。DROP COLUMN は主キーとその列を含む `AS SELECT … FROM <表>` でもよい。判定はこの形があることを検査し、無ければ止める
+- 秘密を含む表は `-- db-apply: no-backup <表> <理由>` で控えの要求を外す（外しても重いので、オーナーの1タップは残る）
+- DROP SCHEMA・TYPE・DOMAIN・EXTENSION の CASCADE と DROP OWNED は、どの表・列が消えるかを文から決められず、控えで守れないので止める
+- `db_backup` スキーマは最初の削除のマイグレーションで作る（CREATE SCHEMA は重い）
+- 大きい表（行数の上限を超える）は写さず止める（オーナーへ）。秘密を含む表は控えを作らない
+- 期限切れの控えは一覧にして通知し、まとめて1タップで消す（消すのも重い）
+- PITR は入れない（オーナー判断）。戻しは日次のバックアップ7日分と控え
+
+### 試運転
+
+D はまず1〜2週間、当てずに「当てるはずだった」を通知するだけで動かす。試運転の印を外す（D'）のは、切替（Claude の `gh` が admin でなくなる）の後。
+
+
+印を外す（D'）前に要ること（D の独立レビュー、2026-10-19）:
+- 「当てたか」の正本が台帳（APPLIED.md）だけなので、当てた後に台帳の記録（record）が失敗すると、次の起動が同じ SQL を当て直す。今は「当て直すおそれ」を毎回知らせるだけ。適用と同じトランザクションで DB の側に印（例 `db_apply.applied` に file・sha256）を入れ、当てる前にそれを見る形にする（新しい表なので重い、オーナーの1タップ）
+- 失敗・却下したファイルを止める印（同じ file・sha256 は自動で当て直さない）
+- 自動の経路を開催の無い時間帯だけに限るかの判断（lock は手での適用と同じ10秒で、その間は後ろの読み取りも待つ）
+## 却下した選択肢
+
+| 案 | 不適合 |
+|---|---|
+| CODEOWNERS で仕組みの変更をオーナー必須にする | 直近30日で該当223本（1日約7回）。オーナーが承認から外れる目的に合わない（オーナー判断） |
+| 審査を Mac の別ユーザーで動かす | 審査のコードを terukina の Claude が書き換えられ、terukina は admin グループで sudo で届く |
+| 拒否のリスト方式（危ない文を列挙して止める） | 列挙の漏れがそのまま自動の適用になる。今の解析は `$$` の中・ALTER TABLE の中の操作を読まない |
+| CREATE OR REPLACE FUNCTION を軽いにする | キーの消失の事故（BOA-363・431）。121〜166 のうち15本がこの形 |
+| ryujin-bot の bypass を pull_request モードにする | master に直接 push する11本の workflow が止まる |
+| PITR を入れて削除を軽いにする | 月約100ドル。戻しはプロジェクト全体の巻き戻しで、SNS の送信の状態も戻る |
+| db-apply を push で起動する | concurrency の待ち枠1本で、続けてマージされたものを黙って取りこぼす |
+
+## 残る弱み（オーナーが受け入れた）
+
+- 審査が指示の注入で騙されると、仕組みの変更（判定・審査の workflow を含む）が通る。その場合、重い SQL の1タップの関門も後から外せ、本番の鍵を持ち出されうる
+- 必須の check は守りにならない（上記）
+- 審査の相手はブランチの接頭辞で決まり、作成の App が選べる（作成の App は1つで、作り手を見分ける別の手段が無い）。「作った側と別のベンダー」は守りでなく既定
+- 外の設定に頼る: 「Allow GitHub Actions to create and approve pull requests」は OFF のまま（ON だと作成の App が足した workflow の github-actions[bot] が承認できる）。作成の App に Variables・Administration を付けない（付くと REVIEW_MAKER_BOT_ID 等を書き換えられる）。ruleset の承認は書き込み権限のある身元なら誰でも数えるので、書き込み権限を他の App・人に配らない
+- 別ベンダーの API の従量の課金
+
+## 影響
+
+- 自動で当たる SQL は、最近の33本で5〜7本の見込み。残りはオーナーの1タップ（スマホの GitHub の Environment の承認）。承認待ちが6時間を超えたら通知する
+- 新しいコードが新しい列に頼るときは、SQL を先の PR で入れる（Vercel はマージで即デプロイし、適用は定期の突き合わせを待つため）
+- 切替の後、オーナーが自分で書いた PR は審査が見ないので、ruleset を一時 Disabled にしてマージする
+- 切替の後、CI のやり直しは空のコミットで行う（作成の App に Actions: write を付けない）
+
+## 追記: 定期の job の見張り（2026-10-20）
+
+2026-10-20、Environment prod-jobs の SUPABASE の鍵の値の誤りで、定期の job 15本が Invalid API key で落ちた。失敗を知らせる手順が無く、オーナーの指摘まで誰も気づかなかった。再発防止に、見張りを龍神の Actions に置く（設計は hq の drafts/site-freshness-watch-20261020.md の v2。形はオーナーがこのセッションで承認）。
+
+- `.github/workflows/job-watch.yml`: Environment prod-jobs・ryujin-bot を使う workflow の完了（workflow_run）で起き、直近24時間の失敗を全部見回して規則で分類する（`scripts/lib/jobWatch.js`、LLM は使わない）。見張る workflow と許可の一覧の正本は `scripts/watch/job-watch.json`
+  - 鍵・設定の誤り（Invalid API key・401・403・secret 未設定）: rerun せず、GitHub Issue（ラベル job-watch-key）を1件開いて集める。Slack の webhook も prod-jobs の鍵も通らないので、鍵の誤りと独立に届く
+  - 一時的な失敗（Supabase・GitHub 等の 5xx・時間切れ・通信）: 許可の一覧の workflow だけ、1回目の失敗・同じ JST の日・後の run が無いときに1回 rerun する
+  - 外部の 403・429・503（ADR-0067、取得を止める決まり）・コード・その他・2回目の失敗: rerun せず Issue（job-watch-failure）に書く
+  - 許可の一覧: 冪等な日次・夜の集計の upsert 9本（オーナー判断）。送信・master への push（ryujin-bot）・db-apply・審査・10分ごとの job は入れない（verify-job-watch.js が検査する）
+- `.github/workflows/key-canary.yml`: 30分ごとに prod-jobs・ryujin-bot の中で読み取りを1回する。鍵が直ったかは secret の更新時刻ではなく、これの成功で判定する（更新時刻は GITHUB_TOKEN では読めず、誤った値を入れても新しくなる）。鍵の Issue より後にカナリアが成功したら、同じ日の失敗分を許可の一覧の範囲で1回ずつ rerun し、Issue を閉じる
+- `actions: write` は rerun の job だけに付ける。actions: write の GITHUB_TOKEN は rerun のほか workflow_dispatch の起動・workflow の無効化・run とログの削除もできるので、job を分け、当てる直前に run を確かめ直す。作成の App に Actions: write を付けなかった線を、master の定義の workflow の中に限って広げる
+- rerun は元の run の SHA・ref のまま動く（途中のマージは効かない）。日をまたいだ rerun はしない
+- 最初の1週間は試運転（job-watch.json の dryRun: true）で、rerun せず「rerun するはずだった」を Issue に書くだけ
+- 残る弱み: 見張り自身が止まったことは内側からは分からない。外側（hq の鮮度の見張り・data_health）が頼り
+
+### 見張りの起動を絞る（2026-10-27、docs/design/ci-minutes-reduction/design.md 4.2 D）
+
+7日（10/20〜10/27）で Job Watch は2,950回起き、そのうち中身が要るのは見張る run が成功以外（88回）とカナリアの成功（329回）だけだった。残りの約2,500回は同じ24時間の見回りを繰り返していた。
+
+- `scan` を起こすのは、見張る run が成功以外で終わったとき・カナリア（path `.github/workflows/key-canary.yml`）が成功したとき・予備の schedule（`17 * * * *`。このリポジトリの schedule は数時間おきにしか来ない実測があり、主の受け皿は Vercel Cron が30分ごとに起こすカナリアの成功）・手の起動だけ。見張る run の成功では skip（0分）。見回りは毎回直近24時間を全部見るので、成功の起動を省いても拾い漏れない
+- concurrency（`job-watch`、`cancel-in-progress: false`）は workflow の単位から `scan` の job へ移した。workflow の単位のままだと、scan が skip になる run も枠を取り、待っている scan を置き換えて何もせずに終わる（7日で258回の取り消し）。rerun の job には付けない（同じ group に入れると、待っている rerun が後の scan に置き換えられて消える）。skip になる起動（見張る run の成功）は `job-watch-skip-<run_id>` の自分だけの group に入れる（if が偽の job が group の待ちを置き換えるかは未確認のため、構造で避ける）
+- 鮮度の見方が変わる: Job Watch の run は見張る run の成功の起動でも作られ（scan が skip の run。結論は success か skipped）、「最後の run」は見張りが動いている印にならない。hq の `config/platform.json` の `actions_fresh`（`"Job Watch": {"any": 8}`。dashboard-collect.py の stale_workflows は createdAt だけを見て結論を見ない）は、結論が success の run を event を問わず見る形に変える（線は2〜3時間が目安、根拠なし。schedule だけで見るなら8時間以上。scan が skip の run の結論はマージ後に1件確かめてから渡す）（別プロジェクト。この変更のマージ前に hq へ知らせる）
+- `verify-job-watch.js` が、起動の条件（成功以外とカナリアの path）・毎時の schedule と置き場所・concurrency の置き場所を検査する
+
+### 時間切れ（cancelled）も拾う（2026-10-27、BOA-1162）
+
+見回りは結論が failure・timed_out の run だけを拾っていた。GitHub は timeout-minutes の時間切れの job を cancelled にする（run の結論も cancelled）ので、E2E Live（10/20〜10/26 の7回とも60分の時間切れ。ADR-0077 決定3 の追記）・Nightly DB Verify（10/25・10/26 の15分の時間切れ。check run の annotation で確かめた）の時間切れを一度も知らせていなかった。
+
+- 結論が cancelled の run も候補に入れ、時間切れのものだけを拾う。ログは時間切れも concurrency の置き換えも「The operation was canceled.」で同じで、時間切れの文言（The job has exceeded the maximum execution time）は check run の annotation にしか出ない。scan の token は checks を読めない（permissions は contents・actions・issues）ので、取り消された job がその job の上限（その run の SHA の YAML の timeout-minutes。書いていなければ360分）の分まで動いたかで見分ける（`cancelledByTimeout`）
+  - job が0件: 待ちの間に後の run に置き換えられた（7日の取り消しの大半）→ 拾わない
+  - 上限より短く取り消された: 動いている間の置き換え（cancel-in-progress: true）か人の取り消し → 拾わない
+  - 上限の分まで動いた後の置き換え・人の取り消しは時間切れに数える（知らせる側に倒す）。matrix の job は name の式の前の字か「key (値)」で YAML の job に当て、当たらなければその workflow の最も短い上限で判定する
+- 拾った run は Issue の行に「時間切れ（GitHub の上限で cancelled）」と書き、ログ（cancelled の job も読む）の分類は今までどおり。rerun の許可の一覧にあるものは一時的な失敗として1回 rerun の対象になる（rerun-failed-jobs が cancelled の job も流し直すかは未確認。今は試運転で rerun しない）
+- 置き換えられた cancelled の run は印を書かないので、見回りのたびに job の一覧を1回読む（24時間で数件〜十数件。job があるものだけ YAML も読む）
+
+## 追記: 自動の適用の仕上げ（2026-10-20）
+
+2026-10-20 の実測で、定期の起動（schedule）が #1674 の後に一度も来ず、審査も PR の作者が rhapsody0919 のため全部 skipped だった。起動を Vercel Cron からの dispatch に移す形・作成の App の名義への配線・D' の前に要る3点（DB の側の印・止め印・時間の窓）・順番と戻し方の設計は [docs/design/db-apply-automation-finish/plan.md](../design/db-apply-automation-finish/plan.md)。オーナーの判断の後に PR を分けて実装する。
+
+## 追記: ADR-0034 の置き換え（2026-10-20）
+
+記事の PR を管理画面の承認で PAT（Vercel の `GITHUB_MERGE_TOKEN`）を使ってマージする道（ADR-0034）は、書き込みの身元を増やすのでこの ADR の方針と合わない。BOA-908（オーナー yes 10/20 夕）で止め、記事の PR も他の PR と同じ道（CI・4つのレビュー・マージの承認、段階0 F）でマージする。経緯と止めたものは ADR-0034 の追記。
+
+## 追記: 持ち主の名義の PR も審査する（2026-11-06、ゼロベース再設計 A2 ⑥）
+
+Claude の PR は今も持ち主（rhapsody0919）の名義で `feat/`・`fix/` 等の接頭辞で作られる（上の「AI の PR を全部これで作る」は運用と食い違ったまま）。そのため審査の「動かす条件」（作者が作成の App）に当たらず、別ベンダーの審査が全部 skipped だった。次のとおり広げる。
+
+- 動かす条件: 作者の `user.id` が作成の App **か持ち主**（`github.repository_owner_id`）で、**起動した身元（`sender.id`）も同じ2つのどちらか**。sender を見るのは、write の collaborator が持ち主の PR に push した head に承認が付くと、`require_last_push_approval` を満たしてその人がマージできるため（その run は skipped、前の承認は dismiss_stale で消える）
+- 審査の相手: 持ち主の名義の PR は `codex/` なら Anthropic（Codex のパッチの取り込み）、それ以外は接頭辞を問わず OpenAI
+- 持ち主の名義の PR は、月の上限・審査の失敗では REQUEST_CHANGES でなく COMMENT にする（上限で持ち主の PR 全部が差し戻され、/merge-pr が止まるのを防ぐ）。機械の検査（symlink・LFS・差分の上限超え等）で止めたとき・P0 は REQUEST_CHANGES。COMMENT は審査の App の前の状態を変えないので、前の REQUEST_CHANGES は残る（止まる側）
+- 持ち主の PR に審査の App の承認が付くと、write の collaborator（2026-11-06 時点で tinaba96）も、その PR を自分で push せずにマージできる。今までは持ち主の PR に承認が付かず、この道は無かった。collaborator の権限はオーナーの判断
+- 月の上限は skipped を除いて数え、持ち主の名義の PR は別の変数 `REVIEW_OWNER_MONTHLY_LIMIT`（未設定なら300）
+- 持ち主の PR に審査の App の承認が付くと、作成の App のトークンでもマージが通る。codex-pr.py は自分の台帳の PR しかマージしないので今は害が無い。持ち主のマージは今までどおり admin の bypass
+

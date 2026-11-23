@@ -4,6 +4,8 @@
  * データは update-outcome-distribution.js（夜間バッチ）が毎日更新する
  */
 
+import { badRequest, queryError, rules } from "../_lib/strictQuery.js";
+
 export const config = {
   runtime: "edge",
 };
@@ -39,100 +41,106 @@ const VENUE_NAMES = {
   24: "大村",
 };
 
+// outcome_distribution テーブルから該当会場のデータを取得
+async function fetchOutcomeRows(parsedVenueCode) {
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/outcome_distribution?venue_code=eq.${parsedVenueCode}&order=first_boat,count_90days.desc`,
+    {
+      method: "GET",
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Supabase outcome_distribution error: ${response.status}`,
+    );
+  }
+
+  const rows = await response.json();
+  if (!rows || rows.length === 0) {
+    throw new Error(
+      "No outcome distribution data for this venue — run update-outcome-distribution.js first",
+    );
+  }
+  return rows;
+}
+
+// 1着別にグループ化（1-6）。total_races・last_updated は最初に total_races が真の行から取る
+function groupByFirstBoat(rows) {
+  const data = {};
+  let totalRaces = 0;
+  let lastUpdated = null;
+
+  for (const row of rows) {
+    const firstBoat = row.first_boat;
+    if (!data[firstBoat]) {
+      data[firstBoat] = [];
+    }
+
+    data[firstBoat].push({
+      second_boat: row.second_boat,
+      third_boat: row.third_boat,
+      count: row.count_90days,
+      probability: row.probability,
+      avg_payout: row.avg_payout,
+    });
+
+    if (!totalRaces) {
+      totalRaces = row.total_races;
+      lastUpdated = row.last_updated;
+    }
+  }
+  return { data, totalRaces, lastUpdated };
+}
+
+async function respondOutcomeDistribution(url) {
+  const parsedVenueCode = parseInt(url.searchParams.get("venue_code"), 10);
+  const rows = await fetchOutcomeRows(parsedVenueCode);
+  const { data, totalRaces, lastUpdated } = groupByFirstBoat(rows);
+
+  const venueName = VENUE_NAMES[String(parsedVenueCode).padStart(2, "0")];
+
+  const result = {
+    venue_code: parsedVenueCode,
+    venue_name: venueName,
+    total_races: totalRaces,
+    last_updated: lastUpdated,
+    data: data,
+  };
+
+  return new Response(JSON.stringify(result), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      // 出目分布データは update-outcome-distribution.js が日1回更新するため24時間キャッシュで十分
+      "Cache-Control": "s-maxage=86400, stale-while-revalidate=3600",
+    },
+  });
+}
+
 export default async function handler(req) {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
     });
   }
 
+  const url = new URL(req.url);
+  // 画面（getOutcomeDistribution）・全貌動画の材料（fetch-materials.mjs）は ?venue_code=1〜24 だけを送る。
+  // 他のキー・値はキャッシュ外しになるので、DB を読む前に拒む（api/_lib/strictQuery.js）
+  const invalid = queryError(
+    url,
+    { venue_code: rules.venueCode },
+    { required: ["venue_code"] },
+  );
+  if (invalid) return badRequest(invalid);
+
   try {
-    const url = new URL(req.url);
-    const venueCode = url.searchParams.get("venue_code");
-
-    if (!venueCode) {
-      throw new Error("venue_code query parameter is required");
-    }
-
-    const parsedVenueCode = parseInt(venueCode, 10);
-    if (isNaN(parsedVenueCode) || parsedVenueCode < 1 || parsedVenueCode > 24) {
-      throw new Error("venue_code must be a number between 1 and 24");
-    }
-
-    // outcome_distribution テーブルから該当会場のデータを取得
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/outcome_distribution?venue_code=eq.${parsedVenueCode}&order=first_boat,count_90days.desc`,
-      {
-        method: "GET",
-        headers: {
-          apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`,
-        },
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error(
-        `Supabase outcome_distribution error: ${response.status}`,
-      );
-    }
-
-    const rows = await response.json();
-    if (!rows || rows.length === 0) {
-      throw new Error(
-        "No outcome distribution data for this venue — run update-outcome-distribution.js first",
-      );
-    }
-
-    // 1着別にグループ化（1-6）
-    const data = {};
-    let totalRaces = 0;
-    let lastUpdated = null;
-
-    for (const row of rows) {
-      const firstBoat = row.first_boat;
-      if (!data[firstBoat]) {
-        data[firstBoat] = [];
-      }
-
-      data[firstBoat].push({
-        second_boat: row.second_boat,
-        third_boat: row.third_boat,
-        count: row.count_90days,
-        probability: row.probability,
-        avg_payout: row.avg_payout,
-      });
-
-      if (!totalRaces) {
-        totalRaces = row.total_races;
-        lastUpdated = row.last_updated;
-      }
-    }
-
-    const venueName = VENUE_NAMES[String(parsedVenueCode).padStart(2, "0")];
-
-    const result = {
-      venue_code: parsedVenueCode,
-      venue_name: venueName,
-      total_races: totalRaces,
-      last_updated: lastUpdated,
-      data: data,
-    };
-
-    return new Response(JSON.stringify(result), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        // 出目分布データは update-outcome-distribution.js が日1回更新するため24時間キャッシュで十分
-        "Cache-Control": "s-maxage=86400, stale-while-revalidate=3600",
-      },
-    });
+    return await respondOutcomeDistribution(url);
   } catch (error) {
     console.error("Outcome Distribution Edge function error:", error);
 
@@ -145,7 +153,6 @@ export default async function handler(req) {
         status: 500,
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
         },
       },
     );

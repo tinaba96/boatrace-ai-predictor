@@ -1,8 +1,15 @@
 import test, { after } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { PGlite } from "@electric-sql/pglite";
+
 import { actionFeedback } from "../../src/pages/admin/sns-hub/actionFeedback.js";
+import {
+  closeSharedDb,
+  fixture,
+  headSha,
+  id,
+} from "./verifyData/sns-existing-fixes-fixture.js";
+import { runSnsExistingFixesScenes1 } from "./verifyData/sns-existing-fixes-scenes.js";
 
 // 固定ダミー設定のみ。実envファイル/ネットワークは一切使用しない。
 for (const name of [
@@ -47,19 +54,13 @@ const approveSource = (
 const { default: approve } = await import(
   "data:text/javascript," + encodeURIComponent(approveSource)
 );
-const { default: redo } =
-  await import("../../api/admin/sns-hub/drafts/[id]/redo.js");
 const { default: preview } =
   await import("../../api/admin/sns-hub/drafts/[id]/blog-pr-preview.js");
 const { default: archiveDraft } =
   await import("../../api/admin/sns-hub/drafts/[id]/archive.js");
 const { default: markPosted } =
   await import("../../api/admin/sns-hub/drafts/[id]/mark-posted.js");
-const id = "00000000-0000-4000-8000-000000000001";
 const approverId = "00000000-0000-4000-8000-000000000002";
-const headSha = "a".repeat(40);
-const json = (data, status = 200) =>
-  new Response(JSON.stringify(data), { status });
 function request(action, body = {}, auth = true) {
   return new Request(
     `https://local.invalid/api/admin/sns-hub/drafts/${id}/${action}`,
@@ -77,153 +78,7 @@ function request(action, body = {}, auth = true) {
     },
   );
 }
-let sharedDb;
-after(async () => {
-  if (sharedDb) await sharedDb.close();
-});
-async function fixture(platform = "youtube", options = {}) {
-  const db = sharedDb || new PGlite();
-  if (!sharedDb) {
-    await db.exec(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
-    CREATE TABLE sns_drafts(id uuid PRIMARY KEY, platform text, status text, title text, caption_text text,
-      hashtags jsonb, video_storage_path text, cover_image_path text, source_data jsonb, pr_url text,
-      approver_id uuid, approved_at timestamptz, posted_at timestamptz, archived_at timestamptz, updated_at timestamptz,
-      revision_reason_codes jsonb, revision_reason_freetext text, format text, language text);
-  `);
-    await db.exec(
-      await readFile(
-        new URL(
-          "../../docs/db-migration/138_sns_external_operations.sql",
-          import.meta.url,
-        ),
-        "utf8",
-      ),
-    );
-    sharedDb = db;
-  }
-  await db.exec("TRUNCATE sns_drafts");
-  await db.query(
-    `INSERT INTO sns_drafts(id, platform, status, title, caption_text, video_storage_path, source_data, pr_url)
-    VALUES ($1,$2,'pending_review','テスト','本文','video.mp4','{}','https://github.com/rhapsody0919/boatrace-ai-predictor/pull/1')`,
-    [id, platform],
-  );
-  if (options.thumbnail)
-    await db.query("UPDATE sns_drafts SET cover_image_path='video.mp4'");
-  let uploads = 0,
-    merges = 0,
-    ready = 0;
-  let injected = false;
-  const oldFetch = globalThis.fetch;
-  globalThis.fetch = async (url, init = {}) => {
-    const u = new URL(url);
-    if (
-      u.hostname === "mock.invalid" &&
-      u.pathname.startsWith("/rest/v1/rpc/")
-    ) {
-      const name = u.pathname.split("/").at(-1);
-      if (options.failRpc === name && !injected) {
-        injected = true;
-        return json({}, 500);
-      }
-      const args = Object.values(JSON.parse(init.body));
-      const placeholders = args.map((_, i) => `$${i + 1}`).join(",");
-      try {
-        const result = await db.query(
-          `SELECT ${name}(${placeholders}) AS data`,
-          args,
-        );
-        if (options.loseClaimResponse && name === "sns_claim_external")
-          throw new Error("mock response lost");
-        return json(result.rows[0].data);
-      } catch (error) {
-        if (options.loseClaimResponse && name === "sns_claim_external")
-          throw error;
-        return json({ error: error.message }, 409);
-      }
-    }
-    if (u.hostname === "mock.invalid" && u.pathname === "/rest/v1/sns_drafts") {
-      if (init.method === "PATCH") {
-        const patch = JSON.parse(init.body);
-        const entries = Object.entries(patch);
-        const values = entries.map(([, value]) =>
-          typeof value === "object" && value !== null
-            ? JSON.stringify(value)
-            : value,
-        );
-        let condition = "";
-        const externalFilter = u.searchParams.get("or");
-        if (externalFilter) {
-          assert.equal(
-            externalFilter,
-            "(external_operation_state.is.null,external_operation_state.eq.done)",
-          );
-          condition +=
-            " AND (external_operation_state IS NULL OR external_operation_state='done')";
-        }
-        const status = u.searchParams.get("status");
-        if (status) condition += ` AND status='${status.slice(3)}'`;
-        const result = await db.query(
-          `UPDATE sns_drafts SET ${entries.map(([key], i) => `${key}=$${i + 1}`).join(",")}
-          WHERE id='${id}'${condition} RETURNING to_jsonb(sns_drafts) AS data`,
-          values,
-        );
-        return json(result.rows.map((row) => row.data));
-      }
-      const result = await db.query(
-        "SELECT to_jsonb(sns_drafts) AS data FROM sns_drafts WHERE id=$1",
-        [id],
-      );
-      return json(result.rows.map((row) => row.data));
-    }
-    if (u.hostname === "mock.invalid" && u.pathname.startsWith("/storage/"))
-      return json([{ path: "video.mp4", signedURL: "/video" }]);
-    if (u.hostname === "mock.invalid" && u.pathname.endsWith("/video"))
-      return new Response("video");
-    if (u.hostname === "oauth2.googleapis.com")
-      return json({ access_token: "mock" });
-    if (
-      u.hostname === "www.googleapis.com" &&
-      u.pathname.endsWith("/thumbnails/set")
-    ) {
-      if (options.thumbnailGate) await options.thumbnailGate();
-      return json({}, options.thumbnailSuccess ? 200 : 403);
-    }
-    if (u.hostname === "www.googleapis.com" && u.pathname.endsWith("/videos")) {
-      uploads++;
-      if (options.uploadTimeout) throw new Error("mock timeout");
-      return json({ id: "video-id" });
-    }
-    if (u.hostname === "api.github.com" && u.pathname.endsWith("/merge")) {
-      merges++;
-      assert.equal(JSON.parse(init.body).sha, headSha);
-      if (options.shaChangedAtMerge)
-        return json({ message: "Head changed" }, 409);
-      return json({ merged: true, sha: "b".repeat(40) });
-    }
-    if (u.hostname === "api.github.com" && u.pathname === "/graphql") {
-      ready++;
-      return json({ data: {} });
-    }
-    if (u.hostname === "api.github.com")
-      return json({
-        head: { sha: options.headSha || headSha },
-        state: "open",
-        draft: true,
-        node_id: "node",
-      });
-    throw new Error(`Unexpected network call: ${u.hostname}${u.pathname}`);
-  };
-  return {
-    db,
-    counts: () => ({ uploads, merges, ready }),
-    row: async () =>
-      (await db.query("SELECT to_jsonb(sns_drafts) AS data FROM sns_drafts"))
-        .rows[0].data,
-    close: async () => {
-      globalThis.fetch = oldFetch;
-    },
-  };
-}
+after(closeSharedDb);
 
 test("同時YouTube承認は1回だけアップロードする", async () => {
   const f = await fixture();
@@ -240,30 +95,29 @@ test("同時YouTube承認は1回だけアップロードする", async () => {
   }
 });
 
-test("通常承認とredoは条件付き更新で片方のみ成功する", async () => {
+// 作り直し（redo）の口は SH01 R2 で消した。同時の承認2回で条件付き更新を確かめる
+test("同時の通常承認は条件付き更新で片方のみ成功する", async () => {
   const f = await fixture();
   try {
     const results = await Promise.all([
       approve(request("approve")),
-      redo(request("redo", { freeText: "直す" })),
+      approve(request("approve")),
     ]);
     assert.equal(results.filter((r) => r.status === 200).length, 1);
-    assert.ok(
-      ["approved", "revision_requested"].includes((await f.row()).status),
-    );
+    assert.equal((await f.row()).status, "approved");
   } finally {
     await f.close();
   }
 });
 
-for (const platform of ["youtube", "blog"]) {
+// blog（merge-blog-pr）は 2026-10-20 に停止した（ADR-0097、BOA-908）。停止の検査は下の「停止した merge-blog-pr」
+for (const platform of ["youtube"]) {
   for (const failRpc of ["sns_record_external", "sns_finish_external"]) {
     test(`${platform}: 外部成功後${failRpc}失敗でも再送しない`, async () => {
       const f = await fixture(platform, { failRpc });
       try {
-        const handler = platform === "youtube" ? youtube : blog;
-        const action =
-          platform === "youtube" ? "publish-youtube" : "merge-blog-pr";
+        const handler = youtube;
+        const action = "publish-youtube";
         assert.equal((await handler(request(action, { headSha }))).status, 500);
         const row = await f.row();
         assert.equal(
@@ -277,10 +131,7 @@ for (const platform of ["youtube", "blog"]) {
           retry.status,
           failRpc === "sns_record_external" ? 409 : 200,
         );
-        assert.equal(
-          platform === "youtube" ? f.counts().uploads : f.counts().merges,
-          1,
-        );
+        assert.equal(f.counts().uploads, 1);
         if (retry.status === 200)
           assert.equal((await f.row()).status, "posted");
       } finally {
@@ -303,50 +154,47 @@ test("YouTube応答消失とclaim応答消失は再送しない", async () => {
   }
 });
 
-test("画面確認SHAの不一致はReady化前に拒否、GETは固定版を返す", async () => {
+test("ブログの PR のプレビュー（GET）は固定版を返す", async () => {
   const f = await fixture("blog", { headSha: "c".repeat(40) });
   try {
     const result = await preview(request("blog-pr-preview"));
     assert.equal(result.headers.get("cache-control"), "no-store");
     const body = await result.json();
     assert.ok(body.previewUrl.endsWith(body.headSha));
-    assert.equal(
-      (await blog(request("merge-blog-pr", { headSha }))).status,
-      409,
-    );
     assert.deepEqual(f.counts(), { uploads: 0, merges: 0, ready: 0 });
-    assert.equal((await blog(request("merge-blog-pr"))).status, 400);
   } finally {
     await f.close();
   }
 });
 
-test("PR取得後のSHA変更もmergeのsha条件で拒否し、再実行を停止", async () => {
-  const f = await fixture("blog", { shaChangedAtMerge: true });
+// 管理画面からの記事の PR のマージは停止した（ADR-0034 → ADR-0097、BOA-908）。
+// GITHUB_MERGE_TOKEN があっても読まず、GitHub（Ready 化・マージ）にも DB にも触れずに 410 を返す
+test("停止した merge-blog-pr は鍵があっても GitHub と DB に触れず 410", async () => {
+  const f = await fixture("blog");
   try {
+    const before = await f.row();
+    for (const body of [{ headSha }, {}]) {
+      const res = await blog(request("merge-blog-pr", body));
+      assert.equal(res.status, 410);
+      assert.match((await res.json()).error, /停止/);
+    }
+    assert.deepEqual(f.counts(), { uploads: 0, merges: 0, ready: 0 });
+    assert.deepEqual(await f.row(), before);
     assert.equal(
-      (await blog(request("merge-blog-pr", { headSha }))).status,
-      502,
+      (await blog(request("merge-blog-pr", { headSha }, false))).status,
+      401,
+      "未認証は停止の前に 401",
     );
-    assert.equal(
-      (await blog(request("merge-blog-pr", { headSha }))).status,
-      409,
-    );
-    assert.equal(f.counts().merges, 1);
   } finally {
     await f.close();
   }
 });
 
-test("claim中は承認・redo・DB直接更新・削除を拒否、RPCは公開ロールに不可", async () => {
+test("claim中は承認・DB直接更新・削除を拒否、RPCは公開ロールに不可", async () => {
   const f = await fixture("youtube", { uploadTimeout: true });
   try {
     await youtube(request("publish-youtube"));
     assert.notEqual((await approve(request("approve"))).status, 200);
-    assert.notEqual(
-      (await redo(request("redo", { freeText: "直す" }))).status,
-      200,
-    );
     await assert.rejects(f.db.query("UPDATE sns_drafts SET title='変更'"));
     await assert.rejects(f.db.query("DELETE FROM sns_drafts"));
     await assert.rejects(
@@ -380,25 +228,15 @@ test("承認済み下書きが外部操作中のmark-postedは409（500固定で
   }
 });
 
-test("redo起動失敗は応答に残り、通知はrisk/thumbnailも保持する", async () => {
-  const f = await fixture();
-  try {
-    const response = await redo(request("redo", { freeText: "直す" }));
-    assert.equal(response.status, 200);
-    const body = await response.json();
-    assert.equal(body.routine.fired, false);
-    const messages = actionFeedback({
-      ...body,
-      riskWarnings: [{ id: "risk", matchedPattern: "対象" }],
-      thumbnailWarning: "権限不足",
-    });
-    assert.equal(messages.length, 3);
-    assert.match(messages[0], /起動を確認できません/);
-    assert.equal(messages[2], "サムネイルを設定できませんでした。");
-    assert.ok(!messages[2].includes("権限不足"));
-  } finally {
-    await f.close();
-  }
+test("通知はrisk/thumbnailを保持し、サーバーの理由の文を出さない", () => {
+  const messages = actionFeedback({
+    riskWarnings: [{ id: "risk", matchedPattern: "対象" }],
+    thumbnailWarning: "権限不足",
+  });
+  assert.equal(messages.length, 2);
+  assert.match(messages[0], /リスク警告: 対象/);
+  assert.equal(messages[1], "サムネイルを設定できませんでした。");
+  assert.ok(!messages[1].includes("権限不足"));
 });
 
 test("未認証時は外部通信しない", async () => {
@@ -518,9 +356,12 @@ test("親画面の成功・例外通知は関数型更新で蓄積し、閉じ�
   const updates = [...source.matchAll(/setActionMessages\(([^;]+)\);/g)].map(
     (match) => match[1],
   );
-  assert.equal(updates.length, 3);
+  assert.equal(updates.length, 2);
   assert.ok(
-    updates.every((update) => update.startsWith("previous => [...previous,")),
+    // 整形（prettier）で `(previous) => [` と改行が入っても同じ関数型更新として扱う
+    updates.every((update) =>
+      /^\(?previous\)? => \[\s*\.\.\.previous,/.test(update),
+    ),
   );
   assert.match(source, /onClick=\{\(\) => setActionMessages\(\[\]\)\}/);
   // 実画面に接続された各updaterを順に実行し、Reactの連続更新を再現する。
@@ -538,9 +379,8 @@ test("親画面の成功・例外通知は関数型更新で蓄積し、閉じ�
   const err = { message: "内部エラー詳細" };
   for (const update of updates.slice(1))
     messages = new Function("err", `return (${update})`)(err)(messages);
-  assert.deepEqual(messages.slice(-2), [
+  assert.deepEqual(messages.slice(-1), [
     "操作に失敗しました。最新状態を確認してください。",
-    "マージに失敗しました。PRと最新状態を確認してください。",
   ]);
   assert.ok(
     !messages.some((message) => message.includes(err.message)),
@@ -549,58 +389,5 @@ test("親画面の成功・例外通知は関数型更新で蓄積し、閉じ�
   assert.equal(messages[0], "サムネイルを設定できませんでした。");
 });
 
-for (const thumbnailSuccess of [true, false]) {
-  test(`サムネ待機中にDB反映だけ再試行しても結果を保存する（成功=${thumbnailSuccess}）`, async () => {
-    let started, release;
-    const pending = new Promise((resolve) => {
-      release = resolve;
-    });
-    const waiting = new Promise((resolve) => {
-      started = resolve;
-    });
-    const f = await fixture("youtube", {
-      thumbnail: true,
-      thumbnailSuccess,
-      thumbnailGate: async () => {
-        started();
-        await pending;
-      },
-    });
-    let first;
-    try {
-      first = youtube(request("publish-youtube"));
-      await waiting;
-      assert.equal((await f.row()).external_operation_state, "external_done");
-      assert.equal((await youtube(request("publish-youtube"))).status, 200);
-      assert.equal((await f.row()).external_operation_state, "done");
-      release();
-      assert.equal((await first).status, 200);
-      const row = await f.row();
-      assert.equal(row.external_operation_state, "done");
-      assert.equal(
-        row.external_operation_result.thumbnailWarning,
-        thumbnailSuccess ? null : row.source_data.youtube_thumbnail_error,
-      );
-      if (!thumbnailSuccess)
-        assert.equal(row.source_data.youtube_thumbnail_error, "failed");
-      else assert.equal(row.source_data.youtube_thumbnail_error, undefined);
-      const retry = await (await youtube(request("publish-youtube"))).json();
-      assert.equal(
-        retry.thumbnailWarning ?? null,
-        row.external_operation_result.thumbnailWarning,
-      );
-      assert.equal(f.counts().uploads, 1);
-      await assert.rejects(
-        f.db.query("SELECT sns_update_external_warning($1,$2,$3)", [
-          id,
-          crypto.randomUUID(),
-          "別操作",
-        ]),
-      );
-    } finally {
-      release();
-      if (first) await first;
-      await f.close();
-    }
-  });
-}
+// ---- 後半の場面（verifyData/sns-existing-fixes-scenes.js） ----
+runSnsExistingFixesScenes1({ youtube, request });

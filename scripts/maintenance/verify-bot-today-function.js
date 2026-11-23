@@ -17,14 +17,12 @@
 process.env.TZ = "UTC";
 
 import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { createElement } from "react";
+import { renderJsx } from "../lib/renderJsx.js";
+import { runBotTodayFunctionScenes1 } from "./verifyData/bot-today-function-scenes.js";
 
-const repoRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../..",
-);
-const read = (rel) => readFileSync(path.join(repoRoot, rel), "utf8");
+const read = (rel) =>
+  readFileSync(new URL(`../../${rel}`, import.meta.url), "utf8");
 
 const failures = [];
 let checked = 0;
@@ -230,7 +228,8 @@ const links = (html) =>
       `/race/${raceRows[0].race_id}`,
       ...["nige", "makuri", "nigashi"].flatMap((s) =>
         FIXTURE.rows
-          .filter((r) => r.section === s)
+          // 逃がしは2号艇だけ（3号艇は人の画面の折りたたみの中。2026-10-15）
+          .filter((r) => r.section === s && (s !== "nigashi" || r.course === 2))
           .slice(0, 6)
           .map((r) => `/race/${r.race_id}`),
       ),
@@ -262,13 +261,17 @@ const links = (html) =>
   );
 }
 
-// 人の DigestCardGrid の初期表示の枚数と同じ（残りは「もっと見る」まで描かれない）
+// 人の DigestCardGrid の初期表示の枚数と同じ（残りは「もっと見る」まで描かれない）。
+// 本文の字は読まず、部品を previewCount を渡さずに描いて、初めに出る枚数を数える
+const cardOf = (n) => createElement("i", { key: n });
+const grid = await renderJsx(
+  new URL("../../src/components/digest/DigestCardGrid.jsx", import.meta.url),
+  { rows: [...Array(CARD_PREVIEW_COUNT + 3).keys()], children: cardOf },
+);
 check(
   "カードの枚数は人の DigestCardGrid の previewCount の既定値と同じ",
-  read("src/components/digest/DigestCardGrid.jsx").match(
-    /previewCount\s*=\s*(\d+)/,
-  )?.[1],
-  String(CARD_PREVIEW_COUNT),
+  grid.container.querySelectorAll(".digest-grid > i").length,
+  CARD_PREVIEW_COUNT,
 );
 
 // ---- 3. 選手の値 ----
@@ -302,156 +305,66 @@ check(
   );
 }
 
-// ---- 4. 失敗と未生成 ----
-{
-  const origError = console.error;
-  console.error = () => {};
-  try {
-    const broken = [
-      ["days が HTTP 500", stubRest(fresh(), { dayStatus: 500 })],
-      ["rows が HTTP 401", stubRest(fresh(), { rowsStatus: 401 })],
-      [
-        "JSON でない",
-        Object.assign(async () => jsonResponse("<html>"), { calls: [] }),
-      ],
-      [
-        "取得で例外",
-        Object.assign(
-          async () => {
-            throw new TypeError("fetch failed");
-          },
-          { calls: [] },
-        ),
-      ],
-      ["rows が配列でない", stubRest({ day: fresh().day, rows: { x: 1 } })],
-      [
-        "レースの行の会場コードが範囲外",
-        stubRest({
-          day: fresh().day,
-          rows: [
-            {
-              section: "nige",
-              rank: 1,
-              race_id: "2026-10-12-30-01",
-              venue_code: 30,
-              race_number: 1,
-            },
-          ],
-        }),
-      ],
-      ["days が2行", stubRest({ day: [{}, {}], rows: [] })],
-    ];
-    for (const [label, fetchImpl] of broken) {
-      const { res } = await call({ fetchImpl });
-      check(`${label}: 503`, res.statusCode, 503);
-      check(`${label}: no-store`, res.headers["cache-control"], "no-store");
-      check(
-        `${label}: 「まだ公開されていません」にしない`,
-        (res.body ?? "").includes("公開されていません"),
-        false,
-      );
-    }
-    const noEnv = await call({ env: {} });
-    check("環境変数が無い: 503", noEnv.res.statusCode, 503);
-  } finally {
-    console.error = origError;
-  }
-
-  const none = await call({ fetchImpl: stubRest({ day: [], rows: [] }) });
-  check("行が無い: 200", none.res.statusCode, 200);
-  check(
-    "行が無い: 「まだ公開されていません」",
-    bodyOf(none.res.body).includes(`<p>${NOT_GENERATED_TEXT}</p>`),
-    true,
-  );
-  check(
-    "行が無い: 日付だけ",
-    bodyOf(none.res.body).includes("<p>10月12日（月）</p>"),
-    true,
-  );
-  check(
-    "行が無い: セクション・用語は出さない（人も出さない）",
-    bodyOf(none.res.body).includes("<h2>"),
-    false,
-  );
-  const half = fresh();
-  half.day[0].generated_at = null;
-  const midway = await call({ fetchImpl: stubRest(half) });
-  check(
-    "generated_at が NULL（生成の途中）: 「まだ公開されていません」",
-    bodyOf(midway.res.body).includes(NOT_GENERATED_TEXT),
-    true,
-  );
-}
-
-// ---- 5. 日付・使い回し・メソッド ----
-{
-  let clock = NOW;
-  const now = () => clock;
-  const f = stubRest();
-  const getDigest = createDigestSource({ fetchImpl: f, now, env: ENV });
-  const h = createTodayBotHandler({ getDigest, now });
-  const hit = async () => {
-    const res = fakeRes();
-    await h({ method: "GET", url: "/today", headers: {} }, res);
-    return res.statusCode;
-  };
-  await hit();
-  clock = NOW + 59_000;
-  await hit();
-  check(
-    "使い回し: 60秒以内は1回（days・rows で2リクエスト）",
-    f.calls.length,
-    2,
-  );
-  clock = NOW + 61_000;
-  await hit();
-  check("使い回し: 61秒後に取り直す", f.calls.length, 4);
-  // JST の日付が変わったら別の日付で取り直す（15:00Z = 翌日 0:00 JST）
-  clock = Date.parse("2026-10-12T15:00:00Z");
-  await hit();
-  check(
-    "JST の日付が変わったら翌日を読む",
-    f.calls.at(-1).url.match(/digest_date=eq\.([\d-]+)/)?.[1],
-    "2026-10-13",
-  );
-  const post = await call({ method: "POST" });
-  check(
-    "POST: 405",
-    [post.res.statusCode, post.res.headers.allow],
-    [405, "GET, HEAD"],
-  );
-}
-
-// ---- 6. エスケープ・配置 ----
+// ---- 逃がしは2号艇だけ出す（2026-10-15。3号艇は人の画面の折りたたみの中、4〜6号艇は出さない） ----
 {
   const fx = fresh();
-  fx.rows[0].reason = `<script>alert("x")</script>&'"`;
+  const nigashi = fx.rows.filter((r) => r.section === "nigashi");
+  nigashi[0].course = 2;
+  nigashi[1].course = 2;
   const { res } = await call({ fetchImpl: stubRest(fx) });
+  const b = bodyOf(res.body);
+  const section = b.split(
+    `<h2>${MORNING_DIGEST_SECTION_BY_KEY.nigashi.title}</h2>`,
+  )[1].split("<h2>")[0];
   check(
-    "理由の文はエスケープする",
-    bodyOf(res.body).includes(
-      "&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;&amp;&#39;&quot;",
-    ),
+    "逃がしの件数は2号艇の行だけを数える",
+    section.includes("<span>2件</span>"),
     true,
   );
   check(
-    "生の <script> が無い（JSON-LD 以外）",
-    /<script(?! type="application\/ld\+json">)/i.test(res.body),
-    false,
+    "逃がしのリンクは2号艇の行だけ",
+    [...section.matchAll(/<a href="([^"]*)"/g)].map((m) => m[1]),
+    [`/race/${nigashi[0].race_id}`, `/race/${nigashi[1].race_id}`],
   );
-  const vercel = JSON.parse(read("vercel.json"));
-  check(
-    "vercel.json: api/bot-page/**/*.js は syd1",
-    vercel.functions?.["api/bot-page/**/*.js"]?.regions,
-    ["syd1"],
-  );
-  check(
-    "today.js は edge でない",
-    /runtime\s*:\s*["']edge["']/.test(read("api/bot-page/today.js")),
-    false,
-  );
+  check("select に course がある（逃がしを分けるため）", ROW_SELECT.includes("course"), true);
 }
+
+// ---- BOA-1004: 0件の文言は人の画面と同じ ----
+for (const noNigashiRows of [false, true]) {
+  const fx = fresh();
+  fx.rows = fx.rows.filter((r) => !["nige", "makuri"].includes(r.section));
+  if (noNigashiRows) {
+    fx.rows = fx.rows.filter((r) => r.section !== "nigashi");
+  } else {
+    for (const r of fx.rows.filter((r) => r.section === "nigashi")) {
+      r.course = 3;
+    }
+  }
+  const { res } = await call({ fetchImpl: stubRest(fx) });
+  check(`0件の応答（逃がし行なし: ${noNigashiRows}）`, res.statusCode, 200);
+  const b = bodyOf(res.body);
+  const defaultEmpty = "本日、条件に該当するレースはありません";
+  for (const key of ["nige", "makuri", "nigashi"]) {
+    const copy = MORNING_DIGEST_SECTION_BY_KEY[key];
+    const section = b.split(`<h2>${copy.title}</h2>`)[1].split("<h2>")[0];
+    const label = `${key}（逃がし行なし: ${noNigashiRows}）`;
+    check(`${label}: 0件`, /<span>(?:上位0件 \/ \d+件|0件)<\/span>/.test(section), true);
+    check(
+      `${label}: 人の画面と同じ0件の文言`,
+      section.includes(`<p>${copy.emptyMessage ?? defaultEmpty}</p>`),
+      true,
+    );
+    check(
+      `${label}: 既定の文言は逃げ・まくりだけ`,
+      section.includes(defaultEmpty),
+      key !== "nigashi",
+    );
+    check(`${label}: レースのリンクなし`, section.includes('<a href="'), false);
+  }
+}
+
+// ---- 後半の場面（verifyData/bot-today-function-scenes.js） ----
+await runBotTodayFunctionScenes1({ read, check, NOT_GENERATED_TEXT, createDigestSource, createTodayBotHandler, todayModule, fresh, NOW, ENV, jsonResponse, stubRest, fakeRes, call, bodyOf });
 
 if (failures.length > 0) {
   console.error(

@@ -6,6 +6,7 @@
 - 公開 API predictions の exhibitionData は展示タイムと展示ST だけ。チルト・調整重量・部品交換・プロペラ・体重・展示進入は DB の exhibition_data、一周・まわり足・直線は race_original_exhibition_values（kind 列）。今節の展示順位は race_entries（racer_id）と exhibition_data から作れる（2026-10-11、hq の data-scientist ノート）
 - 選手ごとの「同じ枠番での実際の進入コース」は racer_aggregated_stats.course_entry_tendency（直近1年、全国と会場別）。サイトの画面には出ていない。例: 岩永雅人(4630) 6号艇29走すべて6コース（2026-10-11、本番 DB の読み取り）
 - 本番 race_conditions の風速・波高は2025-12以降だけ。公式Kファイルの値と風速が同じなのは55.5%、5m以上の区分の一致は94.9%、波5cm以上の区分の一致は97.7%（2026-02〜09 の6日・888レース）。差の理由は未検証（2026-10-13、BOA-716、docs/reference/rough-water-trait-verification.md）
+- 準優・優勝戦で実進入1コースが1号艇でないのは 4,166R中30R。実進入版（race_results.actual_course_N・kb_archive_boats.course）と艇番版の非1着率の差はセルごとに最大1.5pt（件数100以上のセルでは1.1pt）。1号艇が展示タイムで他艇と同タイムなのは23%なので、順位の同タイムの扱い（method=min）を明記する（2026-10-25、docs/design/finals-thinking/analysis/ft01-wall-grid.md、data/analysis/ft01-wall-grid/wall-grid.json）
 
 ## モーター
 - 新しいモーターの最初の開催では、公式の出走表のモーター2連率・3連率は全艇0。2節目の初日から入り、節の途中は固定。全会場で同じ（2026-10-11、BOA-830、常滑 2026-10-06 入れ替えで確認）
@@ -18,6 +19,17 @@
 - 基本情報タブの「前期」（直前に終わった期）は5〜6月・11〜12月に公式の期と値が違う（2026-10-10、同 APPROVED.md）
 - レース内のスタートの並びとの順位相関: 公式 0.223、直近30走 0.247、このコース 0.269〜0.272（2026-10-10、評価 2026-07-01〜10-08、同 APPROVED.md「根拠」）
 
+## 期別成績（fan、racer_period_stats）
+- (Y,1) は公式の「Y年前期」（集計 (Y-1)/5/1〜10/31、級の適用 Y/1〜6）、(Y,2) は「Y年後期」（集計 (Y-1)/11/1〜Y/4/30、適用 Y/7〜12）。2026年・期2 は「2026年後期」（2026-10-28、official-data-spec、公式 download.html のリンク 2026年前期=fan2510・後期=fan2604、layout.html の「2014年2期」の例）
+- starts＝Σc{N}_entries＋nc_k1＋nc_l1。末尾1は選手責任で出走に数え、0は責任外で数えない。S0/S1/S2 の区別は公式に説明が無く未確認。コースは進入コースで、top2_rate は2連対率（%・小数1桁、主に切り捨て）。3連対率は DB に無く着回数から出す（2026-10-28、official-data-spec、本番 fan2604 の 1,643人、公式 layout.html）
+- racer_period_stats.grade はその期の成績で決まった級（次の行の grade_prev と 22,167/22,167 一致、適用は算出期間の終わりの2か月後から半年）。コース別の2連率は 2021年1期まで四捨五入、2021年2期から切り捨て。コース別の進入数の合計は 13% の行で starts と ±1〜5 違う。勝率は着回数からは再現できない（2026-10-28、data-scientist、data/analysis/racer-period-stats/period-stats-display-scope.json）
+- 公式の優出回数（racer_period_stats.finals）は、優勝戦の着が S0・K0・L0 の走も数え、NULL は数えない。勝率の出走（L0・K0・S0 は数えない）とは別の決まり。優勝戦は isFinalStage（v2）に「オオムラGP」「関ヶ原決戦」の2レースを足すと、kb の選手×期 20,916行で finals・wins とも全件一致（2026-11-02、official-data-spec、src/pure/racerCareerStats.js の isCareerFinalAppearance・isCareerFinalStage）
+- 公式に準優出の統計は無い（racer_period_stats・fan に準優出の回数の列が無い）。準優出を出すなら当サイトの集計と書く（2026-11-02、official-data-spec、docs/design/racer-period-stats/plan.md §3 の fan の形式）
+- c{N}_avg_st=0 は、そのコースの進入が全部 F・L で ST が無い印（14セル）。期をまたいで平均するときは重みから外し、重みは (進入 − F − L) にする。3連対率 (first_count+second_count+Σc_p3)/starts は公式の選手ページ（season）と一致し、公式の表示は小数2桁の切り捨て（73.276→73.27%）（2026-10-28、data-accuracy-verifier、PR #2051）
+- racer_series_points は 2026-09-16 以降の SG・G1 の7節（358行）だけ。今節の得点率は一般戦では出せない（2026-10-28、data-scientist、本番の読み取り）
+- QC の節の種別の原文は年で変わる（QC優勝戦・QC順位決定・賞女順位決定・賞金女王決定・シリーズ優勝）。本体の races.race_grade は QC シリーズのレースも G1 で入るので、QC と QC シリーズの格はレースごとに分ける（2026-10-31、本番の読み取り、docs/design/racer-period-stats/plan.md §14.4）
+- race_series の class_code が Lady・Rookie・Takumi・Venus の節は grade が NULL で、races.race_grade も 2026-02 より前は NULL。kb と 2026-02 以降の races の値から、Lady・Takumi は G3、Rookie・Venus は ippan に写せる（2026-10-31、system-architect、本番の読み取り）
+
 ## 率の桁
 - 2連率・3連率は公式と同じ小数2桁で持つ。朝の初期化（generate-predictions）が1桁に丸めていたのを直した。過去の118レースは取り直さない（2026-10-11、BOA-829、PR #1388、オーケストレーター判断）
 - 事故率は小数第2位で切り捨てて判定する。2025-2期に 40÷57=0.7018 の選手2人が B1 だった。ボートレース日和は四捨五入で出す（2026-10-11、src/utils/accidentRate.js、docs/design/racer-accident-rate/mock/APPROVED.md）
@@ -26,7 +38,7 @@
 - 公式の「N日目」は丸一日中止があると翌日に同じ日目を振り直し、最終日は total_days に飛ぶ。ページから読めた値が常に正で、start_date からの引き算は欠けた所を埋めるだけ（2026-09、memory boatrace_series_day_renumbering_on_cancellation、BOA-501 PR #911、scripts/lib/raceSeriesLookup.js）
 - 得点率は予選終了で確定。着順点 10/8/6/4/2/1、特別戦は 12/10/9/7/6/5。予選は「種別が予選の最後のレース」で切る（2026-09、memory boatrace_series_points_official_rules、公式ガイド guide-7、src/components/race/seriesPoints.js）
 - 必要得点 = ceil(ボーダー ×（今の走数＋残り走数）− 今の得点)。ボーダーは公式が出さないので自社推定（2026-09、src/components/race/seriesPoints.js）
-- フライングは即日帰郷ではない。途中帰郷は「節の最終日に出走が無い」で判定できる（2026-09、memory boatrace_series_points_official_rules）
+- フライングは即日帰郷ではない（2026-09、memory boatrace_series_points_official_rules）。途中帰郷の推定は「前の日まで走っていて、表示日に1走も組まれていない選手」で、予選中も外す。旧の「節の最終日に出走が無い」は廃止（2026-10、#1149・BOA-649、`withdrawnByAbsence`。判定は `src/services/meetExclusion.js`）
 - 賞典除外・途中帰郷は racer_series_points.remarks に公式の備考がそのまま入る。penalty_points=99 や placements の「妨」は途中帰郷でも出るので区別に使えない。収録は一部の開催だけで、無い節はこの経路で判定できない（2026-09-27〜28、memory boatrace_series_points_official_rules・project_data_foundation_orchestration_2026_09_19、マイグレーション064。収録の範囲は要確認）
 - 公式の得点率一覧（race/pointrank）は最終日に開いても予選終了の時点で止まる（2026-09-27、memory boatrace_series_points_official_rules）
 - 特別戦の配点の判定は race_stage の名前の部分一致（「ドリーム」「選抜」）なので、「桐生ＤＲ戦女子」等の表記ゆれを拾えない（2026-09-27、memory boatrace_series_points_official_rules、BOA-458。修正済みかは要確認）
@@ -45,3 +57,48 @@
 
 ## 選手占い
 - 四柱推命の日柱干支は (ユリウス日+49) mod 60 で、独立した2サイトの4日付で一致を確かめた。六星占術の12年周期の起点は情報源どうしが食い違い、運命星＋陰陽で代えた（2026-08-25、memory feedback_verify_domain_formulas_before_implementing、docs/adr/0021-rokusei-senjutsu-simplification.md）
+
+## 点検での見落としを防ぐ知見
+- 会場カードの枠番別割合と、風の画面の進入コース別割合は別指標として照合する。（2026-10-12、2026-10-12-task-39-venue-article.md）
+- 過去レースが現在の公開画面・公開APIで確認できなくても、当時のレースの不存在や掲載結果の虚偽とは断定せず、現在の公開手段では確認不能と記録する。（2026-10-13、2026-10-13-audit-20261013-01.md）
+- 売上全体の払戻配分の説明だけで券種別・期間・例外も検証済みとせず、平均配当を単一レースの確定払戻だけで反証しない。（2026-10-13、2026-10-13-audit-20261013-04.md）
+- 本人枠別進入APIの保存件数と生履歴から作る画面表示は対応確認まで同値とせず、API使用承認・台本との一致・同時点UI照合を別の証拠として扱う。（2026-10-13、2026-10-13-plan152328-ximage.md）
+- 未取得表示と括弧付き展示タイムが併存するときは当日の計測値と断定せず、括弧付き値の仕様が確認できるまで判定不能とする。（2026-10-13、2026-10-13-task-51-note-light-drafts.md）
+- 会場サイトの取得停止・行削除と公式0の自前補完は別経路として点検し、非表示フラグ・既存ドリルダウン・キャッシュ更新を個別に確認する。（2026-10-13、2026-10-13-plan-review-motorstop-20261013-06.md）
+- techprofile/returnrateのRPC対象IDはPOST本文p_race_idで確認し、RPC URLだけで対象レースの取得を判定しない。（2026-10-13、2026-10-13-task-70-check-codex-patches.md）
+- 連続出走日から得た期間と公式節日程を区別し、丸一日中止・出走表欠落で起点が切れる方式を節初日〜最終日の保証として使わない。（2026-10-13、2026-10-13-task-72-check-codex-patches.md）
+- 節初日計算の共通化は取得窓だけでなく開催日の基準（出走表か種別か）と種別空入力時のnull契約を確認する。（2026-10-13、2026-10-13-boa-856.md）
+- イン崩れ注意度（BOA-822）の保存値は朝の生成（05:0x）の時点の出走表で決まり、その後に出た欠場は反映されない（10-14〜16 の468件中4件。1号艇の後からの欠場は一覧・ホーム・SNS の判定に値が残る）。詳細は直前情報の is_absent でカードを隠す。出し直しで欠場の食い違いを見つけても、生成のバグと取り違えない（2026-10-16、data-accuracy-verifier、plan §1）
+- 完全レースの近似で rank6 が null のレースを除くと、失格・転覆で4〜6着が空のレースを誤って落とす（2026-10-15 は13件）。1〜3着と欠場で判定する（2026-10-16、data-accuracy-verifier）
+- 風速の区分は機能ごとに別定義: ソナー気象比較4区分・類似レース比較3区分・風向×風速の静的分析5区分・公開 JSON（向かい/追い風の強は4m/s 以上、横風は弱風へ合流）。他機能の区分を3/5m/s・左右の横風・波7cm 以上の主張へ転用しない（2026-10-14、2026-10-14-outside-conditions-verify.md・2026-10-14-ryujin-feature-catalog.md）
+- 風向は会場の offset で地理方位に対応する（K ファイルは16方位単位、画面の補正は度単位）。DB の方位名（東等）を地理方位と読まない。方位の一致と、風速1m 以下は全方位で弱風という優先判定を別に照合する。8方位の K ファイルは offset の偶奇で扇形の角度が変わる（weather-in-escape/results.md §3.1）（2026-10-13、2026-10-13-plan-review-20261013-29.md・2026-10-16-review-20261016-02.md）
+- 開催時間帯は本場開催と場外発売を分けて確認する。場外のナイター欄を本場の時間帯の根拠にせず、全節同一の断定は節別の例外を確認してから行う（2026-10-13、2026-10-13-venue-guide-fact-audit.md・2026-10-13-boa-875.md）
+- 朝の「逃がし」指標は、当日の枠と同番号の本人の過去の実コースで、同走時に1号艇が逃げた割合。2号艇の壁・差し能力・当日の進入確定とは別（2026-10-15、2026-10-15-morning-info-discussion.md）
+- 展示進入のコース列だけでスロー/ダッシュ区分の実測を確認したことにならない。4号艇の位置だけで全艇枠なりと判定しない（2026-10-15、2026-10-15-after-exhibition-discussion.md）
+- 保存台本の数値は、取得ファイルの一致だけでなく同じ固定 analysis SHA に対応する機械結果かを確認し、旧版の機械検査を現在版の実績に含めない。API 原値台帳のポインタ一致は、映像で正しい範囲・母数・意味として出た証明とは別（2026-10-16、2026-10-16-full-picture-split-design.md・2026-10-16-full-picture-generator.md）
+- 原本定義の期間に範囲の混同があるときは、原本を不変に保ち、表示定義の修正値・原文値・理由を別に記録する（2026-10-16、2026-10-16-split-generalize.md）
+- 中身の release 後に撮影を始めるときは、API・DOM の取得時点と画像取得時点を別に記し、値が変われば再照合する。元の原本に無かった当日結果を黙って足さない（2026-10-16、2026-10-16-split-live-omura.md）
+- 平均配当・万舟率の有効母数と確定レース数は別。保存画面の確定12R だけで payoutCount を12と埋めない（2026-10-17、2026-10-17-split-r13-r17.md）
+- 平均ST（直近30走）は前日までの30走を先に取り、窓の中のF・出遅れを平均から除く。除外後に有効30走を集め直さない。窓の走数と有効ST件数を分け、全体3走・このコース5走の最低件数と補完の有無を記録する（2026-10-21、BOA-980、scripts/ml/analogy/v16_history.py の rolling_st_asof、docs/design/avg-st-definition/mock/APPROVED.md）
+- 本番STの形を条件にした過去の1着率を、平均STの並びから判定した形の予測率へそのまま転用しない。入力の分布と母集団が変わるため、平均STの定義・丸め・履歴基準日を固定し、その条件に該当する群を別の時系列期間で検証する（2026-10-21、BOA-991、data-scientist、results.json.protocol）
+- 同率からの進出者を説明するときは、同じ開催の実施要綱・公式得点率一覧・次段階の出走表を照合し、上位着位数などの内訳と実際の進出者を示す。表示順位を選考順とみなさず、細則を確認できない場合は内訳と進出者が「一致した」という事実までにとどめる（2026-10-20、BOA-921、seo-human・fanの指摘、selection_rules・selected_from_tied_group）
+- 着順内訳と公式総得点を併記するときは、各走の着順・レース種別を出走表と照合して検算する。ドリーム戦などを含む成績へ一律の予選配点を当てない。少なくとも1人分を具体計算でつなぎ、種別未照合なら得点差の原因を断定しない（2026-10-20、BOA-921、seo-human・fanの指摘、src/components/race/seriesPoints.js の scoreTableFor）
+- 勝率の着順点と節の得点率の着順点は別表として扱う。勝率のグレード別加点を得点率へ流用せず、記事の表題にどちらの指標かを明記し、配点の出典も指標ごとに分ける（2026-10-20、BOA-921・BOA-922、docs/adr/0053-series-results-derivation-vs-scraping.md・src/components/race/seriesPoints.js の照合）
+- 得点率の配点を解説する前に、既存記事やコードの冒頭コメントだけでなく、配点定数とレース種別の判定分岐をセットで照合する。seriesPoints.jsは説明コメントと現行の定数・分岐が食い違う箇所があるため、実装との一致と一次資料での確認を分けて記録する（2026-10-20、BOA-921、src/components/race/seriesPoints.js の classifyStage・scoreTableFor）
+- 出走表の全国勝率・2連率の集計窓、級別審査の期間、公式平均STの適用期は別に確認する。半年という長さだけで同じ開始日・終了日を流用せず、公式の各欄の説明と平均STの確定定義を照合する（2026-10-21、BOA-972、BOAT RACE公式「本サイトについて」、docs/design/avg-st-definition/mock/APPROVED.md）
+- 水質・干満差の出典だけで、風や波の挙動まで裏付けたことにしない。会場記事では基本属性と水面挙動の一次資料を分け、地形から挙動への因果に根拠が無ければ断定を外す。本文だけでなく一覧メタの同じ説明も照合する（2026-10-22、BOA-907、seo-human、ボートレース津公式「水面特性」、全掲載箇所の点検はseo.md）
+- 公式の得点率一覧の減点の欄は、賞典除外で 99 だけでなく 109 も出る（大村 2026-10-18 節 5088、公式 pointrank のページで確認）。109 は「99＋減点10」とみられるが推測。「99 ちょうど」だけを印と見ると得点率が −13.00 になる（2026-10-25、BOA-1049・BOA-1053、src/components/race/seriesPoints.js の officialSeriesScore）
+- 公式は途中帰郷・賞典除外の行の得点率を「-」で出さない。(得点−減点)÷走数 は負になりうる（若松 2026-10-13 節 4188 「転５」: (2−5)/2）が、公式が負を出すか0で止めるかは未確認。得点率のある274行で得点−減点が0以下の行は0件（2026-10-25、BOA-1049、本番 racer_series_points 306行）
+- 公式の着順の文字列の「転」「エ」は走数に入る（得点率のある行で公式の値と一致: 若松 10/13 4762・4262、大村 10/18 4928）。「欠」を走数に入れるかは未照合（2026-10-25、BOA-1049、racer_series_points）
+- 艇番別と進入コース別の1着回数の差は、「その艇番が内のコースから勝った回数」ではない。他の艇番がそのコースで勝った分も含むため、内から勝った回数には勝者の艇番×進入コースの内訳が要る（2026-10-24、seo-human、six-boat-first-place-rate.md:38-40 の審査）。
+- placedRanks を使う1着集計で rank1 が返還艇なら、1着が無いレースとして母数からも除く。説明は「1着の艇が返還艇のレースは母数からも1着からも除く」とし、分子だけの除外に読ませない（2026-10-25、BOA-1108、raceOutcomeFilters.js・count-venue-course-wins.mjs）。
+- venue_course_technique_baseline は会場コード1〜24だけで全国行が無い。全国値は各会場の率×runs/100を回数へ戻して合計する。DBの ROUND(numeric,2) を浮動小数の Math.round で再現せず、整数で丸める（2026-10-26、PR #1927、verify-full-picture-scene2.js）。
+- 条件別成績は画面で別定義。基本情報の buildConditionRows は当地・波5cm以上・F有無、選手ページの aggregateRacerConditionStats は風5m以上・波5cm以上で5走未満を出さず、着欄の記号も母数に入る。風の条件を基本情報へ転用しない（2026-10-26、PR #1910、basicInfoStats.js・racerConditionStats.js）。
+- /today型bの級別全国1着率の基準は、各走の級で分けた全走の1着数÷走数。現在の級で過去走をまとめ直さず、選手×コース30走以上に限る縮約重み推定の母集団とも区別する。保存値の窓は2025-12-02〜2026-10-25（2026-10-27、本番の読み取り、data/analysis/today-course-win-prior.json の grade_baselines_all_runs）。
+- 公式の得点率一覧（race/pointrank）は過去のhdを指定してもその日の写しではなく節の最新表を返す。予選中の日別値は後から復元できないため、その日に保存した写しを使う（2026-11-02、official-data-spec、BOA-1210、docs/design/pointrank-history/plan.md §3、尼崎SGのhd=20261027・20261029の照合）。
+- 「SG/G1のpointrankは4日目以降しか出ない」を前提にしない。若松G1では1・2日目の晩に52名の表があり、徳山G1の旧調査は開催前の日付を1〜3日目と誤認していた（2026-11-02、official-data-spec、BOA-1210、GHA run 35760851117・35896849242、docs/design/pointrank-history/plan.md §3）。
+- pointrankの値の時点は「N日目MR終了時点」の注記で確認する。「当日の結果がリアルタイムで反映されます」という注記だけから反映遅延を秒・分で断定しない。確定から表に出るまでの時間は未照合（2026-11-02、official-data-spec、BOA-1210、docs/design/pointrank-history/plan.md §3）。
+- 当社集計の準優出は「準優勝戦に名前が載った回数」で、欠場も含め、選手×レースIDで1回とする。公式の準優出統計ではなく、当社で採用した定義として表示する（2026-11-02、BOA-1155のOrchestrate決定、src/pure/semifinalCount.js。今回のverifyは公式データとの再照合ではない）。
+- モーター履歴の部品・プロペラ交換の目安は、交換日を除く前後各3日分の展示タイム平均差が0.02秒以上かで付ける。着順の比較や交換の因果効果ではなく、記事では効き目が未分析であることと分けて説明する（2026-11-02、seo-human、src/services/supabaseDataService.jsのINTERPRETATION_WINDOW_DAYS・NEUTRAL_EXHIBITION_DIFF_SEC、stat-findings.md）。
+- 選手級別決定基準の欠場30点・20点の規定は、展示での違反（競技規程第7条第1項など）を除くと明記する。これだけから展示F・Lの「罰則は無い」とは結論しない。待機行動実施細則の違反は2点だが、細則の内容は未確認（2026-11-02、BOA-1203、選手級別決定基準第4条(4)、w596RG00000212）。
+- racer_course_technique_stats の「全期間」は 2025-12-02〜 の約11か月で、2コースの走数は中央値33（30走以上73%）、1コースは中央値31（30走以上54%）（2026-11-04、本番の読み取り、BOA-1280）

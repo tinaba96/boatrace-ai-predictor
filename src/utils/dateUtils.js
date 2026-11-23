@@ -3,16 +3,10 @@
  * JST（日本標準時）での日付処理を一元管理
  */
 
-const JST_OFFSET = 9 * 60; // UTC+9 in minutes
+import { WEEKDAYS } from "../constants/index.js";
+import { getJSTNow, getDaysAgoJST } from "../pure/jstDate.js";
 
-/**
- * 現在のJST日時を取得
- * @param {Date} [now] - 基準時刻（既定は現在時刻）
- * @returns {Date} JST日時のDateオブジェクト
- */
-export const getJSTNow = (now = new Date()) => {
-  return new Date(now.getTime() + JST_OFFSET * 60 * 1000);
-};
+export { getJSTNow, getDaysAgoJST };
 
 /**
  * 現在時刻をJSTのHH:MM文字列で取得
@@ -32,6 +26,17 @@ export const getTodayJST = () => {
 };
 
 /**
+ * 今日の日付をJSTで「2026年10月25日（日）」の形にする（成績の見出し、BOA-1094・BOA-1100）。
+ * 端末の getDate() 等で作ると、JST の朝は JST より西の端末で前日になるため、JST の暦日から作る。
+ * @param {Date} [now] - 基準時刻（既定は現在時刻）
+ * @returns {string}
+ */
+export const formatTodayHeadingJST = (now = new Date()) => {
+  const jst = getJSTNow(now);
+  return `${jst.getUTCFullYear()}年${jst.getUTCMonth() + 1}月${jst.getUTCDate()}日（${WEEKDAYS[jst.getUTCDay()]}）`;
+};
+
+/**
  * 昨日の日付をJSTで取得
  * @returns {string} YYYY-MM-DD形式
  */
@@ -39,18 +44,6 @@ export const getYesterdayJST = () => {
   const jstNow = getJSTNow();
   const yesterday = new Date(jstNow.getTime() - 24 * 60 * 60 * 1000);
   return yesterday.toISOString().split("T")[0];
-};
-
-/**
- * N日前の日付をJSTで取得
- * @param {number} days - 何日前か
- * @param {Date} [now] - 基準時刻（既定は現在時刻）
- * @returns {string} YYYY-MM-DD形式
- */
-export const getDaysAgoJST = (days, now = new Date()) => {
-  const jstNow = getJSTNow(now);
-  const target = new Date(jstNow.getTime() - days * 24 * 60 * 60 * 1000);
-  return target.toISOString().split("T")[0];
 };
 
 /**
@@ -105,26 +98,6 @@ export const parseDateInfo = (dateStr) => {
  */
 export const isToday = (dateStr) => {
   return dateStr === getTodayJST();
-};
-
-/**
- * 日付が昨日かどうかを判定
- * @param {string} dateStr - YYYY-MM-DD形式
- * @returns {boolean}
- */
-export const isYesterday = (dateStr) => {
-  return dateStr === getYesterdayJST();
-};
-
-/**
- * 日付文字列を日本語形式にフォーマット
- * @param {string} dateStr - YYYY-MM-DD形式
- * @returns {string} YYYY年M月D日形式
- */
-export const formatDateJP = (dateStr) => {
-  if (!dateStr) return "";
-  const [year, month, day] = dateStr.split("-").map(Number);
-  return `${year}年${month}月${day}日`;
 };
 
 /**

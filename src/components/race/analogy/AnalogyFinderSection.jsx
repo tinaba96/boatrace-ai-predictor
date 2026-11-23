@@ -1,45 +1,22 @@
-/**
- * 龍神ソナー（BOA-271 v16、承認版モック Version 16。screens S-1）。
- * レース詳細の独立したタブ「龍神ソナー」の中身（基本情報と AI予想の間。2026-10-08 に AI予想タブの下から移した。
- * 承認モック docs/design/analogy-finder/mock/APPROVED.md の「龍神ソナーの別タブ化」）。
- *
- * 上から副題、内部タブ（差がつく材料・類似レース・展開シナリオ。下に送っても固定）、着順と時点の箱、中身、
- * 一番下に「使っている項目」。画面の中の声は各内部タブの中身の終わり（折りたたみより上）に置く。
- * 節全体の状態（欠場・保存なし）は facts の応答の status で決める（画面は時刻で判定しない。plan「API」）。
- * facts・scenario は展示後の値（exhibition）も一緒に返すので stage=exhibition で1回だけ読み、時点の切り替えは
- * 画面で行う。類似レースは時点ごとに並びが違うので時点ごとに読む。タブ2・3は開いたときに初めて読む。
- * 選んだタブ・艇番・時点・着順は URL にも localStorage にも残さない（spec「やらないこと」）。
- * ただし投稿などから内部タブへ直接来られるよう、?sonar=facts|similar|scenario を開いたときに1回だけ読む
- * （読むだけで、押しても URL は書き換えない。2026-10-08 D3）。
- */
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
-import AnalogyControls, { AnalogyTabs } from "./AnalogyControls";
+import { SonarPanel, SonarShell, SonarBody } from "./AnalogyFinderPanels";
 import AnalogyFeedback from "./AnalogyFeedback";
-import ConditionFactsTab from "./ConditionFactsTab";
-import SimilarRacesTab from "./SimilarRacesTab";
-import ScenarioTab from "./ScenarioTab";
-import DataSources from "./DataSources";
 import {
   useAnalogyFacts,
   useAnalogyScenario,
   useAnalogySimilar,
 } from "../../../hooks/useAnalogyV16";
-import { venueLabel } from "../../../utils/analogyFormat";
 import { sonarExpired, sonarKeepFrom } from "../../../utils/analogyRetention";
 import { markAnalogySeen, trackEvent } from "../../../utils/analytics";
 import {
   RACE_SONAR_PARAM,
   RACE_FIRST_PARAM,
   parseFirstParam,
-  SONAR_TAB_IDS,
   parseSonarParam,
 } from "../../../utils/raceUrlState";
 import "./AnalogyV16.css";
-
-const TABS = SONAR_TAB_IDS;
-const SONAR_SECTION_ID = "ryujin-sonar";
 
 // レースごとに1回だけにするための記録。RaceTabs は選んでいないタブの中身を外して作り直すので、
 // コンポーネントの ref ではほかのタブから戻るたびに送り直してしまう（別タブにした 2026-10-08 から）
@@ -48,39 +25,23 @@ const visibleRaces = new Set();
 // ?sonar=・?first= を使い終えたリンク。ほかのタブから戻るたびに選び直さないため
 const linkUsedRaces = new Set();
 
-/** 展示前の時点の札（screens「状態」）。展示後はボタン2つにする */
-const STAGE_CHIP = {
-  before_exhibition: "chipBefore",
-  exhibition_reflecting: "chipReflecting",
-};
+const SCENARIO_RETRY_MAX = 3;
 
-function TabError({ onRetry }) {
-  const { t } = useTranslation();
-  return (
-    <div className="af-tab-error">
-      <p className="af-warn">{t("aiPredictionTab.analogy.states.error")}</p>
-      <button type="button" className="af-btn" onClick={onRetry}>
-        {t("aiPredictionTab.analogy.states.retry")}
-      </button>
-    </div>
-  );
-}
-
-export default function AnalogyFinderSection({ raceId }) {
-  const { t } = useTranslation();
-  const headingId = useId();
-  const tabsId = useId();
-  const [stageChoice, setStageChoice] = useState(null);
-  const [target, setTarget] = useState(1);
+/** ?sonar=・?first= と initialTab から、最初に開く内部タブと初期の1着艇を決める */
+function useSonarLink(raceId, initialTab) {
   const [searchParams] = useSearchParams();
   const firstParam = parseFirstParam(searchParams.get(RACE_FIRST_PARAM));
   // 別の軸から来たリンクは同じレースでも新しい初期値として読む
   const linkKey = `${raceId}:${firstParam ?? ""}`;
   // 1回目の描画で決める（使い終えた印は描画の後に付ける）
-  const [linkedTab] = useState(() =>
-    linkUsedRaces.has(linkKey)
-      ? null
-      : parseSonarParam(searchParams.get(RACE_SONAR_PARAM)),
+  // initialTab: 同じ画面の導線から開く副タブ（イン崩れ注意度のカードの「類似レース」、BOA-822）。URL の更新は
+  // タブの切り替えより遅れて届くので、?sonar= ではなく prop で受け取る
+  const [linkedTab] = useState(
+    () =>
+      parseSonarParam(initialTab) ??
+      (linkUsedRaces.has(linkKey)
+        ? null
+        : parseSonarParam(searchParams.get(RACE_SONAR_PARAM))),
   );
   useEffect(() => {
     if (linkedTab) linkUsedRaces.add(linkKey);
@@ -89,22 +50,88 @@ export default function AnalogyFinderSection({ raceId }) {
     linkedTab === "scenario" ? firstParam : null,
   );
   const consumeFirst = useCallback(() => setLinkedFirst(null), []);
-  const [tab, setTab] = useState(linkedTab ?? "facts");
-  const [opened, setOpened] = useState({
-    facts: true,
-    ...(linkedTab && { [linkedTab]: true }),
-  });
-  const [scenarioScope, setScenarioScope] = useState(null);
-  // 保存ファイルは2年分だけ残す（BOA-807）。それより前の日のレースは「準備中」ではなく「もう無い」と出す。
-  // 描画のたびに時刻を読まないよう、最初の描画で1回だけ決める
-  const [keepFrom] = useState(() => sonarKeepFrom(Date.now()));
+  return { linkedTab, linkedFirst, consumeFirst };
+}
 
-  const facts = useAnalogyFacts(raceId, "exhibition");
-  const status = facts.data?.status ?? null;
+/** 時点の選択と、展示後の段が届いたかの判定（facts の status から） */
+function useSonarStage(status) {
+  const [stageChoice, setStageChoice] = useState(null);
+  const beforeExhibition =
+    status === "before_exhibition" || status === "exhibition_reflecting";
+  // 展示前に見ていた数字は、展示後の段が届いても自動で切り替えない。
+  if (stageChoice === null && beforeExhibition) setStageChoice("racecard");
   const exhibitionReady = status === "exhibition_ready";
+  // 展示前に開いたページで、定期の読み直しが展示後の段を届けたか。取得済みのシナリオは
+  // 展示前の応答（exhibition: null）なので、そのときはキャッシュを使わず読み直す。
+  // 開いた時点で展示後なら false のまま（読み直さない）。
+  const [sawBeforeExhibition, setSawBeforeExhibition] = useState(false);
+  if (!sawBeforeExhibition && beforeExhibition) setSawBeforeExhibition(true);
+  const readyAfterOpen = sawBeforeExhibition && exhibitionReady;
   const stage = exhibitionReady ? (stageChoice ?? "exhibition") : "racecard";
+  return { setStageChoice, exhibitionReady, readyAfterOpen, stage };
+}
+
+/** 条件の変更を、data-af-control を付けた操作から拾う（節の要素に付けるリスナー） */
+function attachControlTracking(el, raceId, tab) {
+  const send = (target) => {
+    const group = target.closest?.("[data-af-control]");
+    if (!group || !el.contains(group)) return;
+    trackEvent("analogy_control_change", {
+      race_id: raceId,
+      analogy_tab: tab,
+      analogy_control: group.getAttribute("data-af-control"),
+    });
+  };
+  // React の onClick より先に走る（capture）ので、aria-pressed は押す前の値。
+  // 押し直しで選択を外す部品（data-af-toggle、ソナーの扇）は押し直しも数える
+  const pressed = (btn) => {
+    if (btn.disabled) return;
+    if (
+      btn.getAttribute("aria-pressed") === "true" &&
+      !btn.closest("[data-af-toggle]")
+    )
+      return;
+    send(btn);
+  };
+  const onClick = (e) => {
+    // data-af-tap は、button ではないが押せる部品（ソナーの図の外の艇番）
+    const btn = e.target.closest?.('button, [role="button"], [data-af-tap]');
+    if (btn) pressed(btn);
+  };
+  // button でない role="button"（ソナーの扇は SVG）は Enter・Space で click が出ないので、キーで拾う
+  const onKeyDown = (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const btn = e.target.closest?.('[role="button"]');
+    if (btn && btn.tagName !== "BUTTON") pressed(btn);
+  };
+  // スライダー・選択肢は値が決まったとき（ネイティブの change）だけ
+  const onChange = (e) => {
+    if (e.target.matches?.("input, select")) send(e.target);
+  };
+  // button でない操作（ソナーの点のタップ・長押し）は、部品が af-control のイベントで知らせる
+  const onCustom = (e) => {
+    if (typeof e.detail !== "string") return;
+    trackEvent("analogy_control_change", {
+      race_id: raceId,
+      analogy_tab: tab,
+      analogy_control: e.detail,
+    });
+  };
+  el.addEventListener("click", onClick, true);
+  el.addEventListener("change", onChange, true);
+  el.addEventListener("keydown", onKeyDown, true);
+  el.addEventListener("af-control", onCustom);
+  return () => {
+    el.removeEventListener("af-control", onCustom);
+    el.removeEventListener("keydown", onKeyDown, true);
+    el.removeEventListener("click", onClick, true);
+    el.removeEventListener("change", onChange, true);
+  };
+}
+
+/** 節の計測（表示・見えた・操作）と、内部タブの固定位置。節の要素の ref を返す */
+function useSonarMeasure(raceId, tab, stage, factsReady) {
   // 節の中身（facts）が出たら、レースごとに1回だけ「表示した」を送る（公開時の最小限の計測）
-  const factsReady = Boolean(facts.data?.today);
   useEffect(() => {
     if (!factsReady || viewedRaces.has(raceId)) return;
     viewedRaces.add(raceId);
@@ -139,60 +166,7 @@ export default function AnalogyFinderSection({ raceId }) {
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
-    const send = (target) => {
-      const group = target.closest?.("[data-af-control]");
-      if (!group || !el.contains(group)) return;
-      trackEvent("analogy_control_change", {
-        race_id: raceId,
-        analogy_tab: tab,
-        analogy_control: group.getAttribute("data-af-control"),
-      });
-    };
-    // React の onClick より先に走る（capture）ので、aria-pressed は押す前の値。
-    // 押し直しで選択を外す部品（data-af-toggle、ソナーの扇）は押し直しも数える
-    const pressed = (btn) => {
-      if (btn.disabled) return;
-      if (
-        btn.getAttribute("aria-pressed") === "true" &&
-        !btn.closest("[data-af-toggle]")
-      )
-        return;
-      send(btn);
-    };
-    const onClick = (e) => {
-      // data-af-tap は、button ではないが押せる部品（ソナーの図の外の艇番）
-      const btn = e.target.closest?.('button, [role="button"], [data-af-tap]');
-      if (btn) pressed(btn);
-    };
-    // button でない role="button"（ソナーの扇は SVG）は Enter・Space で click が出ないので、キーで拾う
-    const onKeyDown = (e) => {
-      if (e.key !== "Enter" && e.key !== " ") return;
-      const btn = e.target.closest?.('[role="button"]');
-      if (btn && btn.tagName !== "BUTTON") pressed(btn);
-    };
-    // スライダー・選択肢は値が決まったとき（ネイティブの change）だけ
-    const onChange = (e) => {
-      if (e.target.matches?.("input, select")) send(e.target);
-    };
-    // button でない操作（ソナーの点のタップ・長押し）は、部品が af-control のイベントで知らせる
-    const onCustom = (e) => {
-      if (typeof e.detail !== "string") return;
-      trackEvent("analogy_control_change", {
-        race_id: raceId,
-        analogy_tab: tab,
-        analogy_control: e.detail,
-      });
-    };
-    el.addEventListener("click", onClick, true);
-    el.addEventListener("change", onChange, true);
-    el.addEventListener("keydown", onKeyDown, true);
-    el.addEventListener("af-control", onCustom);
-    return () => {
-      el.removeEventListener("af-control", onCustom);
-      el.removeEventListener("keydown", onKeyDown, true);
-      el.removeEventListener("click", onClick, true);
-      el.removeEventListener("change", onChange, true);
-    };
+    return attachControlTracking(el, raceId, tab);
   }, [raceId, tab]);
   // 内部タブを下に送っても固定する位置。上に貼り付くヘッダー（.app-header）は縮むので高さを測り続ける
   useEffect(() => {
@@ -209,45 +183,101 @@ export default function AnalogyFinderSection({ raceId }) {
     ro.observe(header);
     return () => ro.disconnect();
   }, [factsReady]);
-  const similar = useAnalogySimilar(raceId, stage, Boolean(opened.similar));
+  return sectionRef;
+}
+
+/** シナリオの取得。展示の情報がまだ無い応答は、60秒ごとにあと SCENARIO_RETRY_MAX 回まで読み直す */
+function useScenarioWithRetry(raceId, scope, opened, readyAfterOpen) {
+  // 読み直したシナリオがまだ展示の情報を持たない（CDN が展示前の応答を最大90秒返す）とき
+  const [scenarioRetry, setScenarioRetry] = useState(0);
   const scenario = useAnalogyScenario(
     raceId,
-    scenarioScope,
+    scope,
     "exhibition",
     Boolean(opened.scenario),
     true, // 2〜6号艇の級をそろえた範囲も取る（③④。BOA-806）
+    readyAfterOpen ? 1 + scenarioRetry : 0,
   );
+  const scenarioLacksExhibition =
+    readyAfterOpen &&
+    scenario.status === "ready" &&
+    scenario.data?.exhibition == null &&
+    scenarioRetry < SCENARIO_RETRY_MAX;
+  useEffect(() => {
+    if (!scenarioLacksExhibition) return undefined;
+    const timer = setTimeout(() => setScenarioRetry((n) => n + 1), 60_000);
+    return () => clearTimeout(timer);
+  }, [scenarioLacksExhibition, scenarioRetry]);
+  return scenario;
+}
 
-  const [, , , venueCode, raceNumber] = String(raceId).split("-");
-  const heading = t("aiPredictionTab.analogy.heading", {
-    venue: venueLabel(Number(venueCode), t),
-    race: Number(raceNumber),
+/** 内部タブの選択と、開いたことのあるタブ（開いたときに初めて読む） */
+function useSonarTabs(raceId, linkedTab) {
+  const [tab, setTab] = useState(linkedTab ?? "facts");
+  const [opened, setOpened] = useState({
+    facts: true,
+    ...(linkedTab && { [linkedTab]: true }),
   });
-  const wrap = (body) => (
-    <section
-      className="af-v16"
-      id={SONAR_SECTION_ID}
-      aria-labelledby={headingId}
-      ref={sectionRef}
-    >
-      {/* 見出しはタブ名とページ上部のレース名で足りるので画面には出さない（承認モック v3）。読み上げ用に残す */}
-      <h2 id={headingId} className="af-sr-only">
-        {heading}
-      </h2>
-      <p className="af-v16-subtitle">{t("aiPredictionTab.analogy.subtitle")}</p>
-      {body}
-    </section>
+  const selectTab = (next) => {
+    setTab(next);
+    setOpened((o) => ({ ...o, [next]: true }));
+    // 公開時の最小限の計測（2026-10-08 ユーザー決定）。パラメータ名は GA4 の予約語（source・medium・campaign・
+    // content・id 等）を避ける（ga4_unassigned の件）
+    trackEvent("analogy_tab_select", { race_id: raceId, analogy_tab: next });
+  };
+  return { tab, opened, selectTab };
+}
+
+/** 節全体の状態は、タブごとの取得の失敗より優先する（screens「細部の約束」）。
+ *  2年より前の日は、snapshot の行が残っていても表示用のファイルが夜の掃除で消えているので、状態より先に日付で決める */
+function stateLineKey(raceId, keepFrom, status) {
+  if (sonarExpired(raceId, keepFrom)) return "expired";
+  if (status === "absent") return "absent";
+  if (status === "not_saved") return "notSaved";
+  return null;
+}
+
+export default function AnalogyFinderSection({
+  raceId,
+  players = null,
+  onOpenMeetForm = null,
+  initialTab = null,
+}) {
+  const { t } = useTranslation();
+  const headingId = useId();
+  const tabsId = useId();
+  const [target, setTarget] = useState(1);
+  const { linkedTab, linkedFirst, consumeFirst } = useSonarLink(
+    raceId,
+    initialTab,
+  );
+  const { tab, opened, selectTab } = useSonarTabs(raceId, linkedTab);
+  const [scenarioScope, setScenarioScope] = useState(null);
+  // 保存ファイルは2年分だけ残す（BOA-807）。それより前の日のレースは「準備中」ではなく「もう無い」と出す。
+  // 描画のたびに時刻を読まないよう、最初の描画で1回だけ決める
+  const [keepFrom] = useState(() => sonarKeepFrom(Date.now()));
+
+  const facts = useAnalogyFacts(raceId, "exhibition", true, true);
+  const status = facts.data?.status ?? null;
+  const { setStageChoice, exhibitionReady, readyAfterOpen, stage } =
+    useSonarStage(status);
+  const factsReady = Boolean(facts.data?.today);
+  const sectionRef = useSonarMeasure(raceId, tab, stage, factsReady);
+  const similar = useAnalogySimilar(raceId, stage, Boolean(opened.similar));
+  const scenario = useScenarioWithRetry(
+    raceId,
+    scenarioScope,
+    opened,
+    readyAfterOpen,
   );
 
-  // 節全体の状態は、タブごとの取得の失敗より優先する（screens「細部の約束」）。
-  // 2年より前の日は、snapshot の行が残っていても表示用のファイルが夜の掃除で消えているので、状態より先に日付で決める
-  const lineKey = sonarExpired(raceId, keepFrom)
-    ? "expired"
-    : status === "absent" || status === "not_saved"
-      ? status === "absent"
-        ? "absent"
-        : "notSaved"
-      : null;
+  const wrap = (body) => (
+    <SonarShell sectionRef={sectionRef} headingId={headingId} raceId={raceId}>
+      {body}
+    </SonarShell>
+  );
+
+  const lineKey = stateLineKey(raceId, keepFrom, status);
   if (lineKey)
     return wrap(
       <p className="af-v16-box af-v16-line">
@@ -261,102 +291,49 @@ export default function AnalogyFinderSection({ raceId }) {
       </p>,
     );
 
-  const selectTab = (next) => {
-    setTab(next);
-    setOpened((o) => ({ ...o, [next]: true }));
-    // 公開時の最小限の計測（2026-10-08 ユーザー決定）。パラメータ名は GA4 の予約語（source・medium・campaign・
-    // content・id 等）を避ける（ga4_unassigned の件）
-    trackEvent("analogy_tab_select", { race_id: raceId, analogy_tab: next });
-  };
   const tabId = (name) => `${tabsId}-${name}`;
   // 画面の中の声（反応の計測）。各内部タブの中身の終わり、「割合の出し方・注意」などの折りたたみより上に置く
   // （承認モック v3。一番下だと差がつく材料では約4,900px 先になり届かなかった）
   const feedback = factsReady ? (
     <AnalogyFeedback raceId={raceId} stage={stage} tab={tab} />
   ) : null;
-  let panel;
-  if (tab === "facts")
-    panel =
-      facts.status === "error" ? (
-        <TabError onRetry={facts.retry} />
-      ) : facts.data?.today ? (
-        <ConditionFactsTab
-          data={facts.data}
-          stage={stage}
-          target={target}
-          feedback={feedback}
-        />
-      ) : (
-        <p className="af-v16-line">
-          {t("aiPredictionTab.analogy.states.notSaved")}
-        </p>
-      );
-  else if (tab === "similar")
-    panel =
-      similar.status === "error" ? (
-        <TabError onRetry={similar.retry} />
-      ) : similar.data && similar.status !== "loading" ? (
-        <SimilarRacesTab
-          data={similar.data}
-          stage={stage}
-          target={target}
-          exhibition={facts.data?.exhibition ?? null}
-          feedback={feedback}
-        />
-      ) : (
-        <p className="af-v16-line">
-          {t("aiPredictionTab.analogy.states.loading")}
-        </p>
-      );
-  else
-    panel =
-      scenario.status === "error" ? (
-        <TabError onRetry={scenario.retry} />
-      ) : scenario.data && scenario.status !== "loading" ? (
-        <ScenarioTab
-          data={scenario.data}
-          stage={stage}
-          onScope={setScenarioScope}
-          today={facts.data?.today ?? null}
-          raceId={raceId}
-          feedback={feedback}
-          initialFirst={linkedFirst}
-          onInitialFirstUsed={consumeFirst}
-        />
-      ) : (
-        <p className="af-v16-line">
-          {t("aiPredictionTab.analogy.states.loading")}
-        </p>
-      );
+  const panel = (
+    <SonarPanel
+      tab={tab}
+      facts={facts}
+      similar={similar}
+      scenario={scenario}
+      stage={stage}
+      target={target}
+      feedback={feedback}
+      scenarioProps={{
+        stage,
+        onScope: setScenarioScope,
+        raceId,
+        players,
+        feedback,
+        initialFirst: linkedFirst,
+        onInitialFirstUsed: consumeFirst,
+        onOpenMeetForm,
+      }}
+    />
+  );
 
-  const anyPeriod = Object.values(facts.data?.facts ?? {})[0]?.period ?? null;
   return wrap(
-    <>
-      <div className="af-tabs-sticky">
-        <AnalogyTabs tabs={TABS} tab={tab} onTab={selectTab} tabId={tabId} />
-      </div>
-      <AnalogyControls
-        stage={stage}
-        exhibitionReady={exhibitionReady}
-        stageChipKey={STAGE_CHIP[status] ?? "chipBefore"}
-        onStage={setStageChoice}
-        target={target}
-        onTarget={setTarget}
-        showTarget={tab !== "scenario"}
-      />
-      <div
-        className="af-v16-box"
-        role="tabpanel"
-        id={`${tabId(tab)}-panel`}
-        aria-labelledby={tabId(tab)}
-      >
-        {panel}
-      </div>
-      <DataSources
-        stage={stage}
-        period={anyPeriod}
-        conditions={similar.data?.similar?.conditions ?? null}
-      />
-    </>,
+    <SonarBody
+      tab={tab}
+      onTab={selectTab}
+      tabId={tabId}
+      stage={stage}
+      status={status}
+      exhibitionReady={exhibitionReady}
+      onStage={setStageChoice}
+      target={target}
+      onTarget={setTarget}
+      facts={facts}
+      similar={similar}
+    >
+      {panel}
+    </SonarBody>,
   );
 }

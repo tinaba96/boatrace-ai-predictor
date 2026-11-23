@@ -60,13 +60,24 @@ export function exhibitionForms(stByCourse, hasLate = false) {
 }
 
 /**
+ * スリットの強さの段（1/100秒の整数）。1段目は龍神ソナーと同じ線、2段目は BOA-635 の「約半艇身」
+ * （docs/design/past-rate-check/spec.md「スリットの判定」）。横一線・内3艇そろうは段で変わらない
+ */
+export const SLIT_LEVELS = {
+  1: { dent: 5, kado: 3, out: 5 },
+  2: { dent: 8, kado: 5, out: 8 },
+};
+
+/**
  * コース順の ST（F は負）→ 7形の当否。1艇でも欠ければすべて false。形は重なりうる
  * @param {(number|null)[]} stByCourse
+ * @param {1|2} [level] 強さの段（既定は1段目＝龍神ソナーの線）
  * @returns {Record<string, boolean>}
  */
-export function slitForms(stByCourse) {
+export function slitForms(stByCourse, level = 1) {
   if (stByCourse.length !== 6 || stByCourse.some(isMissing))
     return Object.fromEntries(SLIT_FORMS.map((f) => [f, false]));
+  const { dent, kado, out } = SLIT_LEVELS[level];
   const c = stByCourse.map(stCent);
   const max = (a) => Math.max(...a);
   const min = (a) => Math.min(...a);
@@ -75,12 +86,12 @@ export function slitForms(stByCourse) {
   return {
     flat: max(c) - min(c) <= 6,
     wall: max(inner) - min(inner) <= 2,
-    // 凹み: 両隣より0.05秒以上遅い（2026-10-06 ユーザー決定、BOA-777。Python の v16_defs と同じ）
-    d2: c[1] - Math.max(c[0], c[2]) >= 5,
-    d3: c[2] - Math.max(c[1], c[3]) >= 5,
-    kado: min(inner) - c[3] >= 3,
-    d1: c[0] - c[1] >= 5,
-    dash: sum(inner) - sum(c.slice(3)) >= 15,
+    // 凹み: 両隣より dent 以上遅い（2026-10-06 ユーザー決定、BOA-777。Python の v16_defs と同じ）
+    d2: c[1] - Math.max(c[0], c[2]) >= dent,
+    d3: c[2] - Math.max(c[1], c[3]) >= dent,
+    kado: min(inner) - c[3] >= kado,
+    d1: c[0] - c[1] >= dent,
+    dash: sum(inner) - sum(c.slice(3)) >= 3 * out,
   };
 }
 
@@ -194,7 +205,11 @@ export function hintToday(id, avgStByCourse) {
     case "dash03":
       return pair(sumOf([3, 4, 5]), sumOf([0, 1, 2]), "fast");
     case "flat03":
-      return pair(slowest([0, 1, 2, 3, 4, 5]), fastest([0, 1, 2, 3, 4, 5]), "spread");
+      return pair(
+        slowest([0, 1, 2, 3, 4, 5]),
+        fastest([0, 1, 2, 3, 4, 5]),
+        "spread",
+      );
     default:
       return null;
   }
@@ -277,6 +292,29 @@ export function hintRows(scenarioHints, todayHits, version, interval) {
   });
 }
 
+const HINT_KIND_ORDER = { up: 0, unclear: 1, down: 2 };
+
+/**
+ * STEP2 のカード（形ごとに1枚、同じ形の条件はまとめる）と並び順（BOA-890、2026-10-17 オーナー決定 案A）。
+ * 「なりやすい」→「はっきりしない」→「むしろなりにくい」の順、同じ区分の中は当てはまったときの率の高い順。
+ * カードの区分は、形の中で一番「なりやすい」側の条件の区分。以前は条件の定義の順（HINTS）のままで、1号艇が6艇で
+ * 最速の日に「むしろなりにくい」イン凹み（in_fastest）が先頭に来ていた
+ * @param {ReturnType<typeof hintRows>} rows
+ * @returns {Array<{form: string, rows: object[]}>}
+ */
+export function hintCardGroups(rows) {
+  const kind = (rs) => Math.min(...rs.map((r) => HINT_KIND_ORDER[r.kind] ?? 1));
+  const ph = (rs) => Math.max(...rs.map((r) => r.ph ?? 0));
+  return rows
+    .reduce((gs, r) => {
+      const g = gs.find((x) => x.form === r.form);
+      if (g) g.rows.push(r);
+      else gs.push({ form: r.form, rows: [r] });
+      return gs;
+    }, [])
+    .sort((a, b) => kind(a.rows) - kind(b.rows) || ph(b.rows) - ph(a.rows));
+}
+
 /** ②の札: 形ごとに1つ（当てはまったときの率が一番高い "up" の条件。screens「細部の約束」） */
 export function hintBadgeByForm(rows) {
   const out = {};
@@ -327,13 +365,32 @@ export function clearDiff(a, b) {
   return Math.abs(p1 - p2) > 2 * se;
 }
 
-/** 形の絵の例（コース順の ST の差。承認版モックの SLIT_EX） */
+/**
+ * 形の絵の例（コース順の ST の差。承認版モックの SLIT_EX）。
+ * d3 は凹みの新定義（両隣より遅い、BOA-777）を満たすよう 0.05 → 0.06 にした
+ */
 export const SLIT_EXAMPLE = {
   flat: [0, 0.01, 0, 0.02, 0.01, 0.02],
   wall: [0.01, 0, 0.01, 0.05, 0.07, 0.06],
   d2: [0, 0.05, 0, 0.01, 0.02, 0.02],
-  d3: [0, 0.01, 0.05, 0, 0.02, 0.03],
+  d3: [0, 0.01, 0.06, 0, 0.02, 0.03],
   kado: [0.03, 0.04, 0.03, 0, 0.02, 0.03],
   d1: [0.05, 0, 0.01, 0.01, 0.02, 0.02],
   dash: [0.05, 0.06, 0.05, 0, 0.01, 0],
+};
+
+/**
+ * BOA-635 の形の絵の例（段ごと）。カド受け凹みは両隣（max）より遅い新定義（BOA-777）を満たす差にした
+ * （SLIT_EXAMPLE の d3 は 0.04秒差で新定義を満たさない）。2段目は差を2段目の線にした
+ */
+export const PAST_RATE_SLIT_EXAMPLE = {
+  1: { ...SLIT_EXAMPLE, d3: [0, 0.01, 0.06, 0, 0.02, 0.03] },
+  2: {
+    ...SLIT_EXAMPLE,
+    d2: [0, 0.08, 0, 0.01, 0.02, 0.02],
+    d3: [0, 0.01, 0.09, 0, 0.02, 0.03],
+    kado: [0.05, 0.06, 0.05, 0, 0.02, 0.03],
+    d1: [0.08, 0, 0.01, 0.01, 0.02, 0.02],
+    dash: [0.08, 0.09, 0.08, 0, 0.01, 0],
+  },
 };

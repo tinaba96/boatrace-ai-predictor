@@ -1,4 +1,7 @@
 {
+  "racerLink": {
+    "pageSuffix": "'s racer page (JA) ›"
+  },
   "nav": {
     "predictions": "🏁 Predictions",
     "hits": "✅ Hits",
@@ -94,50 +97,55 @@
   },
   "venueRaceList": {
     "title": "Race list",
-    "metaTitle": "Today's races at {{venue}} - AI data analysis | Ryujin Radar",
-    "metaDescription": "All of today's races at {{venue}} boat race stadium. Check deadlines and grades, then view AI data analysis for each race.",
+    "metaTitle": "{{venue}} Boat Race Predictions & Race Card Today - AI Data | Ryujin Radar",
+    "metaDescription": "Today's race card and AI predictions for every race at {{venue}} boat race stadium. Check deadlines, the turn prediction, and the last 12 months' 1st-place rate by starting course and winning techniques.",
     "backToVenues": "← Back to venues",
     "jumpToNextRace": "Go to R{{race}}",
     "nextDeadlineMarker": "{{venue}}: next deadline R{{race}} {{time}}",
     "allClosedMarker": "{{venue}}: all races today have closed",
+    "courseSectionLink": "See {{venue}}'s results by starting course (last 12 months) ↓",
     "todayTitle": "Today's races & AI predictions",
-    "metaTitleSeries": "Today's races at {{venue}} ({{series}}) - AI data analysis | Ryujin Radar",
-    "metaDescriptionSeries": "All of today's races at {{venue}} boat race stadium during {{series}}. Check deadlines and grades, then view AI data analysis for each race."
+    "metaTitleSeries": "{{venue}} Boat Race Predictions & Race Card ({{series}}) - AI Data | Ryujin Radar",
+    "metaDescriptionSeries": "Today's race card and AI predictions for every race at {{venue}} boat race stadium during {{series}}, plus the meet's score rate ranking."
   },
   "venueCharacteristics": {
-    "collapsedTeaser": "{{summary}} / Boat 1 win rate {{rate}}%",
-    "title": "This Venue's Tendencies (last 90 days)",
-    "note": "Same venue-level data our AI data analysis uses. See each boat's 1st-place rate and its most common winning technique.",
-    "nationalAverageTooltip": "National average: {{value}}%",
-    "techniqueHeader": "Top technique",
-    "footnote": "Based on the last {{count}} races (as of {{date}}). Reflects past tendencies only and does not guarantee today's results.",
-    "unknownDate": "unknown",
+    "note": "1st-place rates are shown by the starting course each boat actually took (not the lane number). Winning techniques are shares of all races.",
+    "footnote": "Based on {{count}} races from {{from}} to {{to}} (excluding cancelled and void races). National figures cover {{nationalCount}} races in the same period. Courses 4–6 have few wins, so venue rankings can change from year to year. Past figures only; they do not indicate future results.",
     "waterType": {
       "fresh": "Freshwater",
       "brackish": "Brackish water",
       "sea": "Seawater"
     },
-    "cluster": {
-      "in_strong": "Inside-lane favoring",
-      "out_strong": "Outside-lane favoring",
-      "balanced": "Balanced"
-    },
-    "fetchError": "Could not load this venue's water characteristics.",
+    "fetchError": "Couldn't load the last 90 days' data by lane.",
     "details": {
-      "summary": "More details (top-2 / top-3 rates, winning techniques)",
-      "placeRatesTitle": "Finish rates by boat number",
+      "summary": "More details (last 90 days by lane: top-2 and top-3 rates, winning techniques)",
+      "placeRatesTitle": "Top-2 / top-3 rates by lane (last 90 days)",
       "placeRatesNote": "Top-2 rate = finished 1st or 2nd; top-3 rate = finished in the top 3 ({{count}} races)",
-      "boat": "Boat",
-      "winRate": "Win",
+      "boat": "Lane",
       "top2Rate": "Top 2",
       "top3Rate": "Top 3",
-      "techniqueTitle": "How each boat won",
-      "techniqueNote": "Breakdown of winning techniques in races each boat number won. Counts in parentheses.",
+      "techniqueTitle": "Winning techniques by lane when winning (last 90 days)",
+      "techniqueNote": "Breakdown of winning techniques in races each lane won. Counts in parentheses.",
       "winCount_one": "{{count}} win",
       "winCount_other": "{{count}} wins",
-      "smallSampleNote": "Shares for boats with few wins can swing widely.",
+      "smallSampleNote": "Shares for lanes with few wins can swing widely.",
       "outcomeLink": "See this venue's most common results (Analysis tools)"
-    }
+    },
+    "courseLabel": "Course {{course}}",
+    "techniqueTitle": "Winning techniques (share of all races)",
+    "techniqueName": "Technique",
+    "techniqueVenue": "This venue",
+    "techniqueNational": "National",
+    "megumareNote": "Lucky win: {{count}} of {{races}} races (national: {{nationalCount}} of {{nationalRaces}} races). Too few to compare venues by share.",
+    "sectionTitle": "{{venue}}: results by starting course and features (last 12 months)",
+    "period": "{{from}}–{{to}} · {{races}} races (national: {{nationalRaces}} races)",
+    "courseColumn": "Starting course",
+    "winRateColumn": "1st-place rate",
+    "winsColumn": "1st places",
+    "waterTitle": "Water",
+    "waterText": "Water: {{water}}. Tidal range: {{tidal}} (BOAT RACE official venue data).",
+    "tidalYes": "yes",
+    "tidalNo": "none"
   },
   "raceDetailPage": {
     "assistSwitch": {
@@ -150,8 +158,12 @@
     "assistEntry": {
       "lead": "To check the factors in order"
     },
-    "metaTitle": "{{venue}} Race {{race}} AI data analysis ({{date}}) - Ryujin Radar",
-    "metaDescription": "Free race data table, AI data analysis and first-turn prediction for {{venue}} Race {{race}} on {{date}}.",
+    "metaTitle": "{{venue}} Race {{race}} Pre-race Info, Exhibition, AI data analysis ({{date}}) - Ryujin Radar",
+    "metaDescription": "Free, no sign-up: race data table, exhibition times, pre-race info, AI data analysis, first-turn prediction and inside-collapse index for {{venue}} Race {{race}} on {{date}}.",
+    "metaTitleResult": "{{venue}} Race {{race}} Results & Payouts ({{date}}) - Ryujin Radar",
+    "metaDescriptionResult": "Free race results, payouts, race data table and AI predictions for {{venue}} Race {{race}} on {{date}}.",
+    "metaTitleCancelled": "{{venue}} Race {{race}} Cancelled ({{date}}) - Ryujin Radar",
+    "metaDescriptionCancelled": "{{venue}} Race {{race}} on {{date}} has been cancelled. Check race cards and AI predictions for other races on the same day on Ryujin Radar.",
     "backToList": "← Back to race list",
     "notFound": "Race not found",
     "pastPredictionsBreadcrumb": "Past Predictions",
@@ -354,6 +366,12 @@
       "absent": "Boat {{boat}} scratched",
       "absentLabel": "Scratched",
       "scale": "1 boat length (≈0.13 s)"
+    },
+    "pastRate": {
+      "title": "Look back",
+      "entry": "Your prediction {{summary}}: {{main}}",
+      "decision": "Result {{combo}}: {{main}}",
+      "changed": "The past races under the same conditions have changed since you entered this"
     }
   },
   "raceHistoryTable": {
@@ -418,7 +436,8 @@
         "v4": "Turn prediction hit on Ryujin Radar 🎉\nThe AI prediction hit again!",
         "v5": "Turn prediction hit on Ryujin Radar 🎉\nReally happy with the hit rate!"
       }
-    }
+    },
+    "shareInCaution": "🏁 Ryujin Radar [{{date}}{{venue}} R{{raceNo}}]\n\nLane-1 upset caution level {{pct}}% ({{level}})\nShare of {{n}} past races nationwide with about the same win-rate gap in which Boat 1 failed to win\n{{disclaimer}}"
   },
   "home": {
     "introBannerText": "Ryujin Radar - Visualize boat racing. When in doubt, trust the data. | Data analyzed, including turn predictions and the Upset Index. Learn more →",
@@ -433,6 +452,12 @@
       "title": "Ryujin Radar's AI Boat Race Predictions",
       "lead": "Ryujin Radar is a data analysis site where AI predicts every race held at all 24 boat race venues in Japan, every day. It is completely free, with no sign-up required.",
       "method": "For every race we lay out each racer's win rate, average start timing and results by course, motor performance, and wind and wave data. You can also check, from actual past results, how races under matching conditions were decided.",
+      "operator": "Operator: {{name}} (developer of Ryujin Radar)",
+      "profileLink": "Operator profile (in Japanese) →",
+      "data": "Data: compiled by this site from the race cards and results published on the official BOAT RACE website",
+      "updated": "Data updated {{year}}-{{month}}-{{day}} {{hour}}:{{minute}} JST",
+      "results": "Results: a record of our predictions checked against actual race results",
+      "hitRacesNote": "(correct races only; all races, including misses, are on the results page)",
       "accuracyLink": "See the results page (by venue, in Japanese) →",
       "hitRacesLink": "See races where the forecast was correct (in Japanese) →",
       "checkTitle": "Once you open a race, check it with these",
@@ -500,7 +525,14 @@
     "disclaimer": "* This site provides AI-generated prediction information and does not guarantee results",
     "blogLastUpdated": "Blog last updated: {{date}}",
     "tbd": "TBD",
-    "jstNote": " JST"
+    "jstNote": " JST",
+    "upcomingDeadline": {
+      "title": "Races closing soon",
+      "deadline": "Deadline",
+      "more": "Show more ({{venues}})",
+      "moreWithOthers": "Show more ({{venues}} and others)",
+      "venueSeparator": ", "
+    }
   },
   "cookieConsent": {
     "textBeforeLink": "We use cookies to improve our service. For details, see our ",
@@ -508,6 +540,14 @@
     "textAfterLink": " (in Japanese).",
     "accept": "Accept",
     "reject": "Reject"
+  },
+  "contactPage": {
+    "formTitle": "Contact form"
+  },
+  "share": {
+    "x": "Share on X",
+    "facebook": "Share on Facebook",
+    "line": "Share on LINE"
   },
   "footer": {
     "blog": "Blog",
@@ -631,6 +671,26 @@
     "noPrevRace": "No previous race",
     "noNextRace": "No next race"
   },
+  "raceSummary": {
+    "title": "Six entrants"
+  },
+  "frontTaking": {
+    "badge": "Front-taker",
+    "badgeAria": "Front-taker (racer who often takes an inner course than their lane)"
+  },
+  "racerFrontTaking": {
+    "title": "Front-taking tendency",
+    "noRuns": "There are 0 runs from lanes 2–6 with a recorded entry course.",
+    "lead": "Of {{runs}} runs from lanes 2–6 with a recorded entry course, {{taken}} runs ({{rate}}%) entered a course inside their lane (front-taking).",
+    "course": "Course {{course}}: {{count}} runs",
+    "badgeOn": "The \"Front-taker\" badge is given to racers with at least {{minRuns}} runs and a front-taking rate of {{minRate}}% or more. It summarizes past runs and does not indicate the entry in the next race.",
+    "badgeOff": "The \"Front-taker\" badge is given to racers with at least {{minRuns}} runs and a front-taking rate of {{minRate}}% or more. This racer does not qualify for the badge."
+  },
+  "raceStrip": {
+    "label": "Races at {{venue}}",
+    "meetLink": "Score rate and advancement for this meet ›",
+    "meetFetchError": "Could not load the meet information"
+  },
   "raceStage": {
     "final": "Final",
     "semifinal": "Semifinal",
@@ -715,12 +775,13 @@
     "gridSubtitle": "Based on the course actually taken. Tap a cell to see the last 10 starts from that course",
     "gridCaveat": "Course means the lane actually taken at the start, not the boat number. Races without this data are excluded",
     "gridRows": {
-      "current": "This term",
+      "current": "All time",
       "last3m": "Last 3 months",
       "last1m": "Last month",
       "local": "This venue",
       "ippan": "General",
-      "sgg1": "SG/G1"
+      "sgg1": "SG/G1",
+      "recent3": "Last 3 terms"
     },
     "smallSampleTitle": "Small sample; treat as a rough guide",
     "gridTitleWithMetric": "Record by course: {{metric}}",
@@ -731,7 +792,7 @@
     "periodHeader": "Period / condition",
     "nHeader": "Races",
     "allCoursesFold": "Show the record for all six courses",
-    "periodCaveat": "\"This term\" is not the official term division: it covers every race in our data (since Dec 2025, up to the past two years), so the population differs from the win rate on the official site.",
+    "periodCaveat": "\"All time\" covers every race in our data (since Dec 2025, up to the past two years), not the official term (which resets on May 1 and Nov 1), so the population differs from the win rate on the official site.",
     "recentFinishesNoteScoped": "Runs from course {{course}} (the course actually entered) {{scope}}: last {{n}}",
     "recentScope": {
       "current": "since Dec 2025",
@@ -740,6 +801,45 @@
       "local": "at this venue",
       "ippan": "in General races",
       "sgg1": "in SG/G1 races"
+    },
+    "course1Loss": {
+      "title": "Boat 1 in starting course 1: Makuri (taken) / Sashi (taken)",
+      "sub": "Of the {{n}} races that today's boat 1 racer has run in starting course 1, races lost to Makuri or Sashi (our data {{from}} – {{to}})",
+      "subSmall": "Today's boat 1 racer has run {{n}} races in starting course 1 (our data {{from}} – {{to}}). Percentages are not shown for fewer than 30 races.",
+      "empty": "Today's boat 1 racer has no races in starting course 1 during this period (our data {{from}} – {{to}})",
+      "rowMakurare": "Makuri (taken)",
+      "rowSashi": "Sashi (taken)",
+      "value": "{{count}} of {{n}} races",
+      "valuePct": "({{pct}}%)",
+      "note1": "* The denominator is all races run in course 1 (not just races lost). Races where another racer took 1st place with Makuri-zashi, Nuki or Megumare are excluded from Makuri (taken) and Sashi (taken), but included in the denominator of N races.",
+      "note2": "* For how often the racer finishes 1st, see the 1st-place rate in \"Course records of the 6 racers themselves\" above. The table above covers the last 3 terms (official records), while this card uses our data {{from}} – {{to}}, so the periods differ. With this number of races, rates cannot be compared between racers of the same class.",
+      "fetchError": "Could not load Makuri (taken) / Sashi (taken) in starting course 1.",
+      "note2Local": "* For how often the racer finishes 1st, see the 1st-place rate in \"Course records of the 6 racers themselves\" above. \"This venue\" in the table above covers only this venue, while this card uses our data {{from}} – {{to}} at all venues, so the scopes differ. With this number of races, rates cannot be compared between racers of the same class."
+    },
+    "sixBoat": {
+      "title": "Course records of the 6 racers themselves",
+      "sub": "Each racer's own record in the expected starting course (assuming entry in boat-number order). Results are aggregated by actual starting course.",
+      "periodRecent3": "Last 3 terms",
+      "periodLocal": "This venue",
+      "periodRange": "{{from}} – {{to}}",
+      "colBoat": "Boat / Racer",
+      "colWin": "1st-place rate",
+      "colDiff": "Difference from the all-racer average for the same course",
+      "colDiffLocal": "Difference from this venue's average for the same course",
+      "colTop2": "Top-2",
+      "colTop3": "Top-3",
+      "colEntries": "Entries",
+      "diff": "{{value}}pt",
+      "avg": "Avg. {{value}}",
+      "smallSampleTitle": "Few entries mean rates are more prone to random variation",
+      "noteDiff": "Difference = gap from the all-racer 1st-place rate for the same course (no colors). The ST analysis in this tab compares against the average for the same class.",
+      "noteSample": "Boats with few entries (under 10 for course 1, 30 for courses 2–4, 42 for course 5, or 67 for course 6) are shown in gray with no difference, as rates are more prone to random variation. Rates are also hidden for fewer than 10 entries.",
+      "notePeriod": "Last 3 terms = the 3 latest published official term records (aggregated for May–October and November–April). These are the same values as the last 3 terms on the racer page. Tap a row to switch the table below to that racer.",
+      "fetchError": "Could not load course records for the last 3 terms.",
+      "skippedPeriod": "Terms with no starts excluded",
+      "periodLabel": "Period",
+      "noteLocal": "This venue = our data (since December 2025) at this venue, counted by the actual entry course. Difference = gap from this venue's 1st-place rate for the same course (no colors). Tap a row to switch the table below to that racer.",
+      "localFetchError": "Could not load this venue's results"
     }
   },
   "aiPredictionTab": {
@@ -1619,10 +1719,12 @@
         "hintVenue": "At {{venue}}",
         "hintVenueAll": "All racers at {{venue}} (by course)",
         "hintExh": "Today's exhibition",
+        "hintStTrend": "ST trend (racer page, JA)",
+        "hintStTrendLink": "Boat {{boat}} racer's ST trend (racer page, Japanese)",
         "runs": "{{n}} runs",
         "hintVenueFoot": "The average ST at {{venue}} is for reference (up to the last 30 races). ",
         "hintFewVenue": "Boat {{boats}} has few runs at this venue, so values can swing. ",
-        "hintExhPost": "Exhibition ST is for reference; its link to the race ST is weak (per-boat correlation 0.08, vs. 0.28 for avg. ST). F.09 = crossed the start line 0.09s early in the exhibition (no penalty in the exhibition).",
+        "hintExhPost": "Exhibition ST is for reference; its link to the race ST is weak (how closely it tracks the race ST, from 0 to 1, higher = stronger: 0.08 for exhibition ST vs. 0.28 for avg. ST). F.09 = crossed the start line 0.09s early in the exhibition (an exhibition F is separate from a false start in the race and does not cost the racer eligibility to race).",
         "hintExhPre": "Exhibition ST is available after the exhibition.",
         "hintConds": "Conditions today's line-up matches ({{src}} avg. ST)",
         "hints": {
@@ -1894,7 +1996,8 @@
           "raceNo": "R{{n}}",
           "techPay": "{{tech}} · ¥{{yen}}",
           "bandLink": "See the races in this band ›"
-        }
+        },
+        "meetFormLink": "Series form of attacking boat {{b}} →"
       },
       "barLabel": "Boat {{boat}} {{p}} {{n}}",
       "feedback": {
@@ -1921,7 +2024,149 @@
       }
     },
     "sonarLink": "Similar races and race scenarios are in the Ryujin Sonar tab",
-    "sonarLinkGo": "Open"
+    "sonarLinkGo": "Open",
+    "pastRate": {
+      "title": "Your prediction",
+      "typesLabel": "Prediction type",
+      "types": {
+        "order": "Finishing order",
+        "boat1": "Boat 1",
+        "tenkai": "Race flow",
+        "slit": "Slit",
+        "entry": "Entry",
+        "payout": "Payout band"
+      },
+      "boat": "Boat {{n}}",
+      "submit": "See how often this happened in the past",
+      "order": {
+        "rows": {
+          "1": "1st",
+          "2": "2nd",
+          "3": "3rd"
+        },
+        "nagashi": "Nagashi (multiple boats for 2nd and 3rd)",
+        "clear": "Reset",
+        "points": "{{combo}} ({{points}} combos)"
+      },
+      "boat1": {
+        "win": "Boat 1 finishes 1st",
+        "top3": "Boat 1 holds on (top 3)",
+        "out": "Boat 1 drops out (4th or lower)"
+      },
+      "tenkai": {
+        "start": "Key boat",
+        "note": "The result also shows which boats came 2nd at that time (suji)."
+      },
+      "entry": {
+        "boatLabel": "This boat",
+        "within3": "Enters course 3 or inside",
+        "within4": "Enters course 4 or inside",
+        "waku": "Stays wakunari"
+      },
+      "payout": {
+        "low": "Solid (trifecta under ¥1,000)",
+        "mid": "Mid-range (¥1,000 to under ¥10,000)",
+        "high": "Big payout (¥10,000+)"
+      },
+      "slit": {
+        "lede": "Choose a slit shape (up to 2 can be combined). The pictures show the boats from the side, scaled to actual boat lengths",
+        "rateSource": "National frequency is based on {{races}} races from {{from}} to {{to}} (excluding races with a false start, late start, or scratch)",
+        "rate": "National {{p}}%",
+        "forms": {
+          "flat": "Level line",
+          "wall": "Inside 3 level (wall)",
+          "d2": "Course 2 dent",
+          "d3": "Dent beside the kado (course 3)",
+          "kado": "Kado strike (course 4)",
+          "d1": "Inside dent (course 1 late)",
+          "dash": "Dash boats ahead (outer 3)"
+        },
+        "formsShort": {
+          "flat": "Level line",
+          "wall": "Inside 3 level",
+          "d2": "Course 2 dent",
+          "d3": "Dent beside the kado",
+          "kado": "Kado strike",
+          "d1": "Inside dent",
+          "dash": "Dash boats ahead"
+        },
+        "incompatible": "These shapes can't happen together",
+        "levelTitle": "Size of the gap",
+        "levels": {
+          "1": {
+            "main": "About 1/3 boat length",
+            "sub": "0.05 s gap",
+            "summary": "1/3 boat length or more"
+          },
+          "2": {
+            "main": "About half a boat length",
+            "sub": "0.08 s gap",
+            "summary": "Half a boat length or more"
+          }
+        },
+        "kadoNote": "Kado strike: about 1/4 boat length (0.03 s) / about 1/3 boat length (0.05 s)",
+        "boatLengthNote": "1 boat length ≈ 0.13 s (official hull length 289.5 cm ÷ about 80 km/h). Boats are still accelerating near the slit, so an actual boat length takes slightly longer than this",
+        "custom": "Build your own (boat by boat)",
+        "backToForms": "Back to choosing a shape",
+        "customNote": "Each tap on a course button cycles \"Any → Ahead → Dented\". Ahead or dented means 0.05 s or more from the six-boat average",
+        "courseState": "Course {{course}}: {{state}}",
+        "states": {
+          "0": "Any",
+          "1": "Ahead",
+          "-1": "Dented"
+        },
+        "customSummary": "Course {{course}}: {{state}}",
+        "summarySep": " + ",
+        "customSep": ", "
+      },
+      "summary": {
+        "order": "Trifecta {{combo}} ({{points}} combos)",
+        "boat1": {
+          "win": "Boat 1 finishes 1st",
+          "top3": "Boat 1 holds on in the top 3",
+          "out": "Boat 1 drops to 4th or lower"
+        },
+        "tenkai": "{{technique}} by Boat {{boat}}",
+        "slitLevel": "{{forms}} ({{level}})",
+        "entry": {
+          "within3": "Boat {{boat}} enters course 3 or inside",
+          "within4": "Boat {{boat}} enters course 4 or inside",
+          "waku": "Boat {{boat}} stays wakunari"
+        },
+        "payout": {
+          "low": "Trifecta is solid (under ¥1,000)",
+          "mid": "Trifecta is mid-range (¥1,000 to under ¥10,000)",
+          "high": "Trifecta is a big payout (¥10,000+)"
+        }
+      },
+      "main": "{{prefix}}{{n}} races: happened {{count}} times ({{pct}}%)",
+      "prefixAll": "Past ",
+      "prefixNewest": "Same conditions, latest ",
+      "labels": {
+        "standard": "Common",
+        "rare": "Rare"
+      },
+      "empty": "No past races under the same conditions can be judged for this type",
+      "excluded": {
+        "technique": "Excludes races with an unknown winning move ({{count}})",
+        "st": "Excludes races without start timings for all boats ({{count}})",
+        "course": "Excludes races with an unknown entry ({{count}})",
+        "payout": "Excludes races with no payout ({{count}})"
+      },
+      "breakdownOrder": "Breakdown: {{items}}",
+      "breakdownOrderMore": "Breakdown: {{items}}, and others",
+      "breakdownTenkai": "Boats that came 2nd: {{items}}",
+      "breakdownItem": "{{key}} ×{{count}}",
+      "breakdownBoat": "Boat {{boat}} ×{{count}}",
+      "listSep": ", ",
+      "note": "Compared with: {{layer}} (nationwide, {{period}})",
+      "noteTruncated": "Compared with: the latest {{n}} of {{layer}} (nationwide, {{period}})",
+      "lines": {
+        "both": "Common: {{standard}}% or more; Rare: under {{rare}}%",
+        "standard": "Common: {{standard}}% or more",
+        "rare": "Rare: under {{rare}}%"
+      }
+    }
   },
   "beforeInfo": {
     "subtitle": "Same-day information updated as the race approaches. Some items aren't finalized until 30/15/10 minutes before the start",
@@ -1961,6 +2206,7 @@
     "secondsUnit": "s",
     "detailTableTitle": "Exhibition details",
     "bestLegend": "A gold frame marks the best value among the six boats (all ties are marked; the series rows compare the latest race). ⚠ means few samples (under 6); if the best value has ⚠, no boat is marked.",
+    "bestLegendNoMeet": "A gold frame marks the best value among the six boats (all ties are marked). ⚠ means few samples (under 6); if the best value has ⚠, no boat is marked.",
     "turnTimeVenueNote": "At this venue, turn speed is the venue's own measurement and runs at a different level from other venues (around 11–12 s). Compare it only within the same race.",
     "detailTableNote": "Exhibition-fastest win rate and entry course from this lane cover races since Dec 2025 (both up to 2 years); this-meet exhibition trend covers races since this motor was assigned",
     "preExhibitionNote": "Weight and adjustment weight are pre-exhibition values. Tilt is published after the exhibition run",
@@ -2001,7 +2247,30 @@
     "avgAbbrev": "Avg",
     "exhibitionFastestMark": "Fastest",
     "exhibitionChartNote": "A longer bar means a faster trial (gap to the slowest boat). The number is the actual exhibition time in seconds.",
-    "originalExhibitionItemSeparator": ", "
+    "originalExhibitionItemSeparator": ", ",
+    "meetFormTitle": "Series form trend and finishes",
+    "meetFormMetricExhibition": "Exhibition time",
+    "meetFormMetricLap": "Full lap",
+    "meetFormMetricTurn": "Turn speed",
+    "meetFormMetricStraight": "Straight",
+    "meetFormBoatLabel": "Select boat {{boat}}",
+    "meetFormChartLabel": "{{metric}} over this series (boat {{boat}} highlighted)",
+    "meetFormRunN": "Run {{n}}",
+    "meetFormDay": "{{day}}",
+    "meetFormRace": "R{{no}}",
+    "meetFormNoValue": "n/a",
+    "meetFormRow_day": "Day",
+    "meetFormRow_race": "Race",
+    "meetFormRow_frame": "Boat",
+    "meetFormRow_course": "Course",
+    "meetFormRow_finish": "Finish",
+    "meetFormRowValue_exhibition": "Exh.",
+    "meetFormRowValue_lap": "Lap",
+    "meetFormRowValue_turn": "Turn",
+    "meetFormRowValue_straight": "Straight",
+    "meetFormNote": "Higher is faster. The number in each point is the actual finish (gold = 1st). Runs where the entry course differed from the boat number are colored. Runs without exhibition data skip the point and are joined by a dotted line. Each boat ran different races (the x-axis counts each boat's runs from the first).",
+    "meetFormNoteAvg": " The dashed line is the venue average for that day.",
+    "meetFormFinishFailed": "Could not load finishes"
   },
   "pitReport": {
     "title": "Pit Report (racer comments)",
@@ -2200,7 +2469,10 @@
     "finishAbsentNote": "\"Abs\" in the finishes is a race the racer missed; it is not counted in the score rate.",
     "postPrelimFlying": "F after qual.",
     "postPrelimFlyingTitle": "Flying start (F) in a race after qualifying ended. The official ranking also keeps the qualifying rank as it is",
-    "postPrelimFlyingNote": "\"F after qual.\" under a rank marks a racer who had a flying start after qualifying ended. The official ranking also keeps the qualifying rank as it is, so they are counted among the ranked racers above."
+    "postPrelimFlyingNote": "\"F after qual.\" under a rank marks a racer who had a flying start after qualifying ended. The official ranking also keeps the qualifying rank as it is, so they are counted among the ranked racers above.",
+    "trendStAvg": "Avg. {{avg}}, rank {{rank}} ({{n}} starts)",
+    "trendStAvgTooFew": "Hidden: {{n}} starts",
+    "trendStAvgNote": "Avg. ST this meet (excluding false starts) and ranking from fastest among the 6 boats. Hidden for fewer than 3 starts. The effect of this meet's Avg. ST is unverified; for reference only."
   },
   "basicInfo": {
     "note": "Compare each racer's record under different conditions. Tap a bar to open the details (last 10 races, best venues and a by-condition breakdown)",
@@ -2388,7 +2660,10 @@
     "motorResetNote": "New motors",
     "motorUnusedNote": "New motor, no record",
     "motorBadgeUp": "Motor ↑",
-    "motorBadgeDown": "Motor ↓"
+    "motorBadgeDown": "Motor ↓",
+    "rowExpectedCourseWinRate": "Expected-course 1st-place rate",
+    "expectedCourseWinRateNote": "The expected-course 1st-place rate is aggregated by actual starting course over the last 3 terms",
+    "noteExpectedCourse": "Win rate, local win rate, and top-2 rate are from the official race card. Avg. ST and motor top-2 rate cover the periods in their row labels. The expected-course 1st-place rate covers actual starting courses over the last 3 terms. Other analysis data is aggregated over the past 90 days (180 days for return rate). Highlights mark the best value in this race. For reference only; results are not guaranteed"
   },
   "venueTendency": {
     "title": "Venue tendency by lane",
@@ -2433,10 +2708,12 @@
     "turnPredictionColThird": "Likely 3rd",
     "turnPredictionDistributionLabel": "Overall move tendency",
     "promptVolatilityTrifecta": "The above is entry data for a race flagged as high \"upset risk\" (Boat 1 may be less likely than usual to hold the lead), plus a first-mark move forecast (win probability by winning move, with likely 2nd/3rd place boats). Using this forecast data, judge which boat is actually most likely to finish 1st and by which move, and suggest 3 combinations to target for a Trifecta bet, with your reasoning. If Boat 1's lead-off probability is still high, include it as a candidate rather than ruling it out.",
+    "promptInCautionTrifecta": "The above is race-card data for a race in the “upset-prone” tier of the Lane-1 upset caution level (in past races nationwide with about the same win-rate gap, Boat 1 failed to win 55% of the time or more). Using the race-card data, reason about how the race could unfold if a boat other than Boat 1 wins, and suggest three trifecta combinations to target. Boat 1 can still win, so keep it in the candidates if the data supports it.",
     "previewToggleLabel": "Show the full text that will be copied",
     "promptSelectorTurn": "Race flow",
     "promptSelectorDataOnly": "Data only",
     "promptTurn": "The above is boat race entry data and a first-mark move forecast. Taking the water conditions into account (do not guess any marked \"Not available yet\"), tell me how the first turn mark is likely to play out and which boats to watch, along with your reasoning.",
+    "promptTurnInCaution": "The above is boat race entry data. Taking the water conditions into account (do not guess any marked \"Not available yet\"), tell me how the first turn mark is likely to play out and which boats to watch, along with your reasoning.",
     "promptDataOnly": "The above is boat race entry data. I will ask my question next.",
     "unpublished": "Not available yet",
     "gradeIppan": "General",
@@ -2454,7 +2731,7 @@
       "winRate": "F1/F2 = false starts this term on the race card; \"(this meet)\" means at least one was from this meet up to yesterday (excluded from this meet's semifinal and final). L1 = late starts this term",
       "motor": "Top-2 rate of this motor over the past 90 days (only since the current motor set was introduced), calculated by this site. Differs from the meet-start rate on the official race card",
       "form": "Current national win rate minus the national win rate about 90 days ago. ↑ up, ↓ down",
-      "avgSt": "The average start timing on the official race card (seconds; the official term record for the same term as the win rate, 2 decimals). Smaller means a faster start",
+      "avgSt": "The average start timing on the official race card (seconds; official term record, all venues; 2 decimals). \"Racer form (national win rate)\" is the race card value and uses a different calculation period. Smaller means a faster start",
       "avgSt30": "Average start timing over the last 30 races up to the previous day (seconds; excludes flying and late starts; same value as Ryujin Sonar and Thinking Assist). Smaller means a faster start",
       "st": "Average gap between exhibition ST and race ST over the past 90 days (seconds). The smaller the number after ±, the more the racer starts as in the exhibition",
       "exSt": "Start timing in today's start exhibition. F.01 etc. means a flying start in the exhibition, L means a late start (official notation)",
@@ -2464,11 +2741,13 @@
       "courseRate": "1st-place rate in races from the same boat number over the last year (wins/starts)",
       "technique": "The racer's most common winning move (wins over the past 90 days in parentheses), counted regardless of boat number",
       "returnRate": "The racer's actual win-bet figure from this boat number over the past 180 days. Reference only, not a guarantee of any result",
-      "dash": "\"—\": no data, or not available yet"
+      "dash": "\"—\": no data, or not available yet",
+      "expectedCourseWinRate": "1st-place rate when entering the expected course (boat-number order) over the last 3 terms (1st-place finishes / entries)"
     },
     "sourceLine": "Source: Ryujin Radar {{url}}",
     "followUpHeading": "Example questions after pasting",
     "followUp1": "From the water conditions and the move forecast, how will the first turn mark play out?",
+    "followUp1InCaution": "From the water conditions and the entry data, how will the first turn mark play out?",
     "followUp2": "Which boat stands out to you here, and why?",
     "followUp3": "Which boat is likely to be at a disadvantage at the first turn mark, and why?",
     "turnPredictionCandidateNote": "Likely 2nd / Likely 3rd = the boat most likely to finish 2nd / 3rd when that move happens (probability in parentheses). The same boat can appear in both",
@@ -2494,7 +2773,8 @@
       "prevResult": "Last (series)",
       "courseRate": "Lane",
       "returnRate": "Return",
-      "technique": "Style"
+      "technique": "Style",
+      "expectedCourseWinRate": "Expected 1st"
     }
   },
   "raceList": {
@@ -2542,7 +2822,15 @@
       "description": "Based on race results from the past 90 days, this shows which winning techniques (Nige, Sashi, Makuri, etc.) first-place boats use at each venue, broken down by lane.",
       "summary": "Winning technique breakdown over the past 90 days",
       "note": "💡 The share is the breakdown within races won by that lane.",
-      "empty": "No winning technique data found"
+      "empty": "No winning technique data found",
+      "base": "Past 90 days, {{total}} races (excluding cancelled, void and races without a winning technique)",
+      "headline": "At {{venue}} over the past 90 days, Boat 1 won {{wins}} of {{total}} races ({{pct}}%). Of those {{wins}} wins, {{nige}} were by Nige",
+      "boatWins": "Wins: {{count}}",
+      "rateNote": "Boats 2–6 win few races, so venue rankings can shift from period to period",
+      "breakdownTitle": "Winning technique when the boat won (breakdown within that boat's wins)",
+      "smallNote": "For boats with fewer than 30 wins, the bars show counts instead of percentages",
+      "tableToggle": "Show the count table ({{rows}} rows)",
+      "countLabel": "{{count}}×"
     },
     "lt": {
       "title": "💔 Losing Technique Analysis",
@@ -2710,7 +2998,13 @@
       "freshPriorRuns": "From starts up to the previous series ({{n}} starts)",
       "freshFirstMeetBanner": "{{venue}} switched to new motors on {{month}}/{{day}}. Official top-2 rates start from the next series. Until then, Ryujin Radar shows numbers worked out from the motors' starts at this venue",
       "officialModeSourceNoteFresh": "※ For past races, \"Top-2 rate\", \"Top-3 rate\" and \"Trial\" are the BOAT RACE official website values as of the race card. For motors whose official value is 0, the \"Top-2 rate\" and \"Top-3 rate\", and the \"Power index\", are worked out by Ryujin Radar from the motor's starts at this venue before this race.",
-      "freshRate2Header": "Top-2 (series start)"
+      "freshRate2Header": "Top-2 (series start)",
+      "partsCountHeader": "Parts changes this meet",
+      "partsCountBadge": "Changes {{n}}",
+      "partsCountNote": "Changes N = the number of recorded parts changes (excluding the propeller) from the first day of this meet through this race's exhibition. Tap to see the part names. More or fewer changes do not indicate better or worse performance (effects unverified).",
+      "usageFinal": "Finals appearance",
+      "usageChampion": "Championship",
+      "usageGradeNote": "The meet's race grade and marks showing whether the motor appeared in the final (finals appearance) or won it (championship)."
     },
     "motorRanking": {
       "title": "🏁 Motor Ranking",
@@ -2836,7 +3130,8 @@
       "raceWideHeader": "Whole race",
       "empty": "No venue × grade stats are available for this venue yet",
       "note": "※ Cells with fewer than {{minRaceCount}} races show \"-\". SG/G2 are held at only a few venues, so many cells will show \"-\" for those grades."
-    }
+    },
+    "todayOpen": " (racing today)"
   },
   "analysisPage": {
     "meta": {
@@ -2844,7 +3139,7 @@
       "description": "15 analysis tools — outcome distribution, winning technique, motor condition, racer form, exhibition vs actual ST gap, top start by lane, losing technique, outcome distribution after a Nige win, fastest exhibition time to win conversion, racer exhibition time trend, racer winning technique profile, today's hot & cold racers, racer x boat number ROI, advanced race data, and race card data — let you check tendencies by venue and race. Use them as evidence to back up the AI's predictions."
     },
     "h1": "📊 Analysis Tools",
-    "subtitle": "Reference data for picking or excluding boats, drawn from tendencies in outcome distribution, winning technique, motor condition, racer form, exhibition vs actual ST gap, top start by lane, losing technique, outcome distribution after a Nige win, fastest exhibition time to win conversion, racer exhibition time trend, racer winning technique profile, today's hot & cold racers, racer x boat number ROI, advanced race data, and race card data",
+    "subtitle": "Venue, motor, racer and start trends across 20 data views",
     "breadcrumbHome": "Home",
     "itemListName": "Analysis Tools",
     "itemListDescription": "15 analysis features to check tendencies by venue and race",
@@ -2869,7 +3164,8 @@
       "venueranking": "🏟️ Venue Ranking",
       "venuegrade": "📊 Venue × Grade",
       "volatility": "🌪️ Upset Index Track Record",
-      "weather": "🌬️ Wind & Course 1"
+      "weather": "🌬️ Wind & Course 1",
+      "volatilityInCaution": "🌪️ Lane-1 upset caution results"
     },
     "features": {
       "outcome": {
@@ -2980,12 +3276,12 @@
         "dataView": "Based on race results from the past 90 days, this statistically analyzes which winning technique the 1st-place boat (by lane) used at each venue.",
         "tips": [
           {
-            "strong": "Lanes with a high Nige rate",
-            "text": " = venues/waters where an inside escape tends to succeed"
+            "strong": "Reading the bars",
+            "text": " = each bar is the breakdown within the races that lane won. The bars cannot compare how often lanes win; compare the total counts in the table"
           },
           {
-            "strong": "Lanes with a high Makuri/Makuri-zashi rate",
-            "text": " = outer lanes tend to win, an upset-prone tendency"
+            "strong": "Boats 2–6",
+            "text": " = they win few races, so the breakdown can shift from period to period; read it together with the counts"
           },
           {
             "text": "Each venue has different characteristics, so the tendency changes significantly depending on the venue you select"
@@ -3323,7 +3619,15 @@
     "dataViewHeading": "📈 What the Data Shows",
     "tipsHeading": "💡 How to Use This",
     "articleHeading": "📖 Related Article",
-    "noticeHeading": "⚠️ Notes"
+    "noticeHeading": "⚠️ Notes",
+    "groups": {
+      "venue": "Venue trends",
+      "motor": "Motors",
+      "racer": "Racers",
+      "start": "Start & exhibition",
+      "race": "Races & results"
+    },
+    "groupsLabel": "Analysis type"
   },
   "flyingBadge": {
     "title": "{{n}} false start(s) this term, as printed on the race card. Resets when the term changes (May 1 / Nov 1)",
@@ -3430,8 +3734,8 @@
     "localWinRate": "The racer's win rate at this venue. A guide to whether this is one of their strong venues",
     "motor": "The share of races this motor finished 1st or 2nd. A higher figure suggests a motor in good condition",
     "form": "The difference between the racer's recent win rate and their usual win rate, showing whether they are trending up or down",
-    "avgSt": "The average start timing on the official race card (official term record, same term as the win rate). Smaller means faster starts",
-    "avgStOfficialPeriod": "The average start timing on the official race card (record from {{from}} to {{to}}, the official term record for the same term as the win rate). Smaller means faster starts",
+    "avgSt": "The average start timing on the official race card (official term record, all venues). \"Racer form (national win rate)\" is the race card value and uses a different calculation period. Smaller means faster starts",
+    "avgStOfficialPeriod": "The average start timing on the official race card (record from {{from}} to {{to}}, official term record, all venues). \"Racer form (national win rate)\" is the race card value and uses a different calculation period. Smaller means faster starts",
     "avgSt30": "Average start timing over the last 30 races up to the previous day (excludes flying and late starts). Same value as Ryujin Sonar and Thinking Assist. Smaller means faster starts",
     "st": "How little the racer's start timing varies. Smaller means consistently steady starts",
     "exSt": "Start timing in the pre-race exhibition run",
@@ -3476,7 +3780,8 @@
     "stLate": "The share of starts 0.1 seconds or more behind the fastest starter in that race. Because this tends to rise on outer courses, the gap from the average for the same course and class is shown too. Flying starts are excluded. This is our own aggregation and will not match similarly named stats on other sites",
     "flyingCount": "Class is the value on this race's program. F is the number of flying starts this term (gold = 1, red = 2) and resets to 0 on May 1 and November 1. A \"this meet\" tag means the racer had a flying start between the first day of this meet and yesterday: they still run the rest of the meet but cannot enter this meet's semifinal or final (excluded from prizes; today's F is not counted). L is the number of late starts, which is different from \"Slow\" below. Consistent and Slow exclude races with a flying start",
     "nigeSimulation": "Using only races where the course 1 boat won by Nige (Escape), the share of each course that finished 2nd. This is aggregated from this venue's actual results, not a prediction",
-    "basicInfoOfficial": "\"Official\" shows the win rate, top-2 rate, top-3 rate and Avg ST from the official race card (record from {{from}} to {{to}}, the official term record for the same term as the win rate). It cannot be filtered by grade, so choosing a grade switches to \"Current term\""
+    "basicInfoOfficial": "\"Official\" shows the win rate, top-2 rate, top-3 rate and Avg ST from the official race card. Avg ST is the official term record, all venues from {{from}} to {{to}}. \"Racer form (national win rate)\" is the race card value and uses a different calculation period. It cannot be filtered by grade, so choosing a grade switches to \"Current term\"",
+    "expectedCourseWinRate": "This racer's 1st-place rate when entering the expected course (boat-number order) over the last 3 terms. It is the same value as in the 6-boat table in the Lane Stats tab"
   },
   "weatherInEscape": {
     "loading": "Loading…",
@@ -3613,5 +3918,151 @@
       "dnf": "did not finish"
     },
     "rankingSubOfficialAsOfToday": "Qualifying score rate (as of the end of day {{day}}, from the official score-rate list; today's results included) · {{count}} racers"
+  },
+  "inCaution": {
+    "title": "Lane-1 upset caution level",
+    "level": {
+      "high": "Upset-prone",
+      "mid": "Medium",
+      "low": "Stable"
+    },
+    "lead": "Boat 1 failed to win in",
+    "base": "All races {{p}}%",
+    "edgeLow": "← Stable (under {{p}}%)",
+    "edgeHigh": "Upset-prone ({{p}}% or more) →",
+    "bandRange": "{{from}} to {{to}}",
+    "bandBelow": "under {{v}}",
+    "bandAbove": "{{v}} or more",
+    "range": "Races where the gap between Boat 1 and the highest win rate among the other boats was about the same as today ({{band}}). {{n}} races nationwide ({{from}}–{{through}})",
+    "reasonHeading": "Today's win-rate gap (national win rate)",
+    "reasonBoat1": "Boat 1",
+    "reasonTop": "Highest among the others: Boat {{boat}}",
+    "reasonDiff": "Gap",
+    "otherMaterial": "For other factors (exhibition, motor, etc.), see “Key differences” in Ryujin Sonar",
+    "disclaimer": "This is a share of past results and does not guarantee today's outcome.",
+    "sonarButton": "See it with similar races?",
+    "sonarGo": "Ryujin Sonar",
+    "assistButton": "Think from the axis",
+    "assistGo": "Thinking Assist",
+    "accuracyLink": "See results by tier",
+    "empty": "No Lane-1 upset caution level for this race",
+    "result": "Result: Boat 1 finished {{rank}}",
+    "resultWinner": " (winner: Boat {{boat}})",
+    "noteJunyu": "The count is past semifinals only; the dotted line is the share for all races. In semifinals and finals, the share changes little with the win-rate gap",
+    "noteYusho": "The count is past finals only; the dotted line is the share for all races. In semifinals and finals, the share changes little with the win-rate gap",
+    "noteAbsent": "Scratch ({{boats}} boats racing)",
+    "noteLowSample": "Few races ({{n}})",
+    "home": {
+      "title": "Today's Lane-1 upset caution level",
+      "highTitle": "Highest share of Boat 1 failing to win (upset-prone)",
+      "lowTitle": "Lowest (stable)",
+      "highEmptyOpen": "No upcoming races are upset-prone (55% or more).",
+      "lowEmptyOpen": "No upcoming races are stable (under 35%).",
+      "highEmptyClosed": "No races were upset-prone (55% or more) today.",
+      "lowEmptyClosed": "No races were stable (under 35%) today.",
+      "accuracyLink": "See results by tier →"
+    },
+    "listNote": "The share (%) is how often Boat 1 failed to win in past races nationwide (April 2019 to the previous day) where the gap between Boat 1's national win rate and the highest among the other boats (the win-rate gap) was about the same. Semifinals and finals use past semifinals only and past finals only."
+  },
+  "accuracy": {
+    "inCaution": {
+      "title": "Lane-1 upset caution level: results by tier",
+      "lead": "For each tier, the share of races in which Boat 1 actually failed to win. You can check whether the share rises with the tier.",
+      "tabPost": "After launch ({{from}}–)",
+      "tabPostNone": "After launch",
+      "tabPre": "Pre-launch verification ({{from}}–{{to}})",
+      "tabPreNone": "Pre-launch verification",
+      "postNone": "Results after launch appear from the day after launch.",
+      "notePre": "Pre-launch verification: the same method (built only from races up to the previous day) applied to races before launch. {{n}} races",
+      "notePost": "After launch: races from {{from}} to {{through}}, comparing the tier shown that morning with the result. {{n}} races",
+      "barsTitle": "Share of Boat 1 failing to win, by tier",
+      "levelHigh": "{{level}} (caution level {{p}}% or more)",
+      "levelMid": "{{level}} (caution level {{lo}}–{{hi}}%)",
+      "levelLow": "{{level}} (caution level under {{p}}%)",
+      "count": "{{rate}}% of {{n}} races ({{share}}% of all races) · margin {{lo}}–{{hi}}%",
+      "countFew": "{{n}} races (too few to show a share)",
+      "legend": "Light band under each bar = that tier's caution-level range. If the bar ends inside the band, the result matches the tier. Dotted line = all races",
+      "fewNote": "{{days}} days since launch. A share is shown once a tier reaches 30 races.",
+      "aboutTitle": "What the caution level is",
+      "about1": "The gap between Boat 1's national win rate and the highest national win rate among Boats 2–6 is split into 0.5-wide bands, and the level is the share of past races nationwide in the same band (April 1, 2019 to the previous day) in which Boat 1 failed to win. Semifinals and finals use their own past races.",
+      "about2": "The margin assumes each race is independent. Races cluster by day and venue, so the real margin is a little wider.",
+      "loading": "Loading results…",
+      "error": "Could not load the results. Please try again later.",
+      "empty": "No results yet. They appear after the nightly update.",
+      "where": "The caution level appears in the AI Prediction tab of each race, on the badges in each venue's race list, and in \"Today's Lane-1 upset caution level\" on the home page.",
+      "sparseNote": "{{n}} races with too few past races in their win-rate-gap band got no caution level; they are counted in all races but in no tier."
+    }
+  },
+  "venueSummary": {
+    "label": "Venue summary (last 12 months)",
+    "course1Higher": "{{venue}}, last 12 months to {{to}} ({{races}} races): the 1st-place rate from starting course 1 was {{rate}}%, higher than the national {{nationalRate}}% ({{nationalRaces}} races)",
+    "course1Lower": "{{venue}}, last 12 months to {{to}} ({{races}} races): the 1st-place rate from starting course 1 was {{rate}}%, lower than the national {{nationalRate}}% ({{nationalRaces}} races)",
+    "course1Unclear": "{{venue}}, last 12 months to {{to}} ({{races}} races): the 1st-place rate from starting course 1 was {{rate}}%. The difference from the national {{nationalRate}}% ({{nationalRaces}} races) is not clear",
+    "techniques": "Share of all races: the top 3 winning techniques other than Nige (Escape) are {{list}}",
+    "techniqueItem": "{{name}} {{rate}}% (national {{nationalRate}}%)",
+    "techniquesHigher": "More often than nationally: {{names}}",
+    "techniquesLower": "Less often than nationally: {{names}}",
+    "techniquesWithCompare": "{{line}}. {{compare}}",
+    "compareSeparator": ". ",
+    "techniquesRest": "The others show no clear difference from the national figure",
+    "techniquesNone": "No technique differs clearly from the national figure",
+    "namesSeparator": " and "
+  },
+  "venueMeetBanner": {
+    "inProgress": "in progress",
+    "link": "See the meet score rate ranking and who advanced",
+    "fetchError": "Couldn't load the link to the current meet page."
+  },
+  "favorites": {
+    "star": {
+      "add": "Add to favorites",
+      "added": "In favorites",
+      "ariaAdd": "Add {{name}} to favorites",
+      "ariaRemove": "Remove {{name}} from favorites"
+    },
+    "toast": {
+      "addedRacer": "Added to favorites. Races show on the home page.",
+      "addedVenue": "Added to favorites. The meet shows on the home page.",
+      "removed": "Removed from favorites.",
+      "racerLimit": "You can save up to {{max}} favorite racers. Remove another racer to add one.",
+      "saveFailed": "Favorites cannot be saved in this browser.",
+      "close": "Close"
+    },
+    "section": {
+      "title": "Favorite racers' races",
+      "lead": "{{running}} of your {{racers}} favorite racers are racing today in {{races}} races (by deadline). Stats are by boat number across all venues since December 2025",
+      "deadline": "Deadline",
+      "meet": "This meet",
+      "meetFirstDay": "First day (no results)",
+      "statLine": "{{name}} in Boat {{boat}}: Starts {{n}}, Top-2 rate {{rate}}%",
+      "statLineSmall": "{{name}} in Boat {{boat}}: Starts {{n}} (rate hidden with fewer than 30 starts)",
+      "statFailed": "Couldn't load stats",
+      "linkRacer": "Racer page",
+      "linkSonar": "Ryujin Sonar",
+      "linkAssist": "Thinking Assist",
+      "note": "Stats match “Results by boat number (site totals since December 2025, all venues)” on the racer page. Results for this meet run from oldest to newest; gold borders mark 1st and 2nd place. Favorites are saved in this device's browser and are lost if you clear its data.",
+      "showMore_one": "Show {{count}} more",
+      "showMore_other": "Show {{count}} more",
+      "pastRuns_one": "{{count}} past deadline",
+      "pastRuns_other": "{{count}} past deadlines"
+    },
+    "venues": {
+      "title": "Favorite venues",
+      "open": "Racing today, next: {{race}}R, deadline {{time}}",
+      "finished": "Today's races have finished",
+      "closed": "No races today",
+      "badge": "Favorite"
+    },
+    "fallback": {
+      "noFavorites": "You have no favorite racers yet. Here are today's SG / G1 meets.",
+      "noFavoritesPlain": "You have no favorite racers yet.",
+      "howTo": "Tap ☆ on a race card, racer page or venue page to list your favorite racers' races here by deadline (up to {{max}} racers, saved on this device).",
+      "gradeLine": "Day {{day}}, 12R deadline {{time}}",
+      "venuePage": "Venue page",
+      "noRuns_one": "Your {{count}} favorite racer is not racing today.",
+      "noRuns_other": "None of your {{count}} favorite racers are racing today.",
+      "venueCount_one": "{{count}} venue racing today. View venue list",
+      "venueCount_other": "{{count}} venues racing today. View venue list"
+    }
   }
 }

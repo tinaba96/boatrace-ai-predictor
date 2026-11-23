@@ -25,7 +25,11 @@ import {
   summarizePredictionOddsDiff,
 } from "../predictionOddsDerive.js";
 import { createSupabaseStore } from "./store.js";
-import { isAuthorized, runScrapeJob } from "./cronWrapper.js";
+import {
+  createCronFetchContext,
+  isAuthorized,
+  runScrapeJob,
+} from "./cronWrapper.js";
 import { createOddsSlotHandler } from "./oddsHandlers.js";
 import { SCRAPE_JOBS } from "./registry.js";
 
@@ -203,6 +207,22 @@ export async function deriveAndUpsertPredictionOdds({
   return { updated: written > 0, count: written, stats };
 }
 
+/** ジョブ状態の行から導出の mode を決める（live・shadow 以外は off） */
+function derivationModeOf(row) {
+  return row.mode === "live" || row.mode === "shadow" ? row.mode : "off";
+}
+
+/** recordSuccess に渡す値（shadow の要約があるときだけ report を付ける） */
+function successRecordOf(now, result) {
+  return {
+    now,
+    rowsWritten: result.count,
+    ...(result.shadowDigest !== undefined
+      ? { report: { shadowDigest: result.shadowDigest } }
+      : {}),
+  };
+}
+
 /**
  * ジョブ状態（job='prediction_odds'）を読み、モードに応じて導出を実行し、成否を記録する。
  * 失敗はここで吸収し（例外を投げない）、呼び出し元（odds.js のハンドラー）が A3 自体の成否と混同しないようにする。
@@ -241,22 +261,16 @@ export async function runPredictionOddsDerivation({
     }
     return { skipped: "mode_off", mode: "off" };
   }
-  const mode =
-    state.row.mode === "live" || state.row.mode === "shadow"
-      ? state.row.mode
-      : "off";
+  const mode = derivationModeOf(state.row);
   if (mode === "off") return { skipped: "mode_off", mode };
 
   const previousFailures = state.row?.consecutive_failures ?? 0;
   try {
     const result = await derive({ raceIds, client, mode, now });
-    await store.recordSuccess(PREDICTION_ODDS_JOB, {
-      now: now(),
-      rowsWritten: result.count,
-      ...(result.shadowDigest !== undefined
-        ? { report: { shadowDigest: result.shadowDigest } }
-        : {}),
-    });
+    await store.recordSuccess(
+      PREDICTION_ODDS_JOB,
+      successRecordOf(now(), result),
+    );
     return { mode, ...result };
   } catch (error) {
     console.error(`❌ ${PREDICTION_ODDS_JOB}: 導出エラー: ${error.message}`);
@@ -289,6 +303,9 @@ export function createOddsCronHandlerWithPredictionOdds({
   getClient = async () => (await import("../supabaseClient.js")).supabase,
   derivePredictionOdds = runPredictionOddsDerivation,
   now = () => new Date(),
+  // テスト用の差し替え口（既定は本番のストアとオッズのスロットのハンドラー）
+  createStore = createSupabaseStore,
+  createSlotHandler = createOddsSlotHandler,
 } = {}) {
   return async function handler(req, res) {
     if (!isAuthorized(req.headers.authorization, process.env.CRON_SECRET)) {
@@ -303,17 +320,28 @@ export function createOddsCronHandlerWithPredictionOdds({
       });
     }
     const changed = new Set();
-    const { status, body } = await runScrapeJob({
-      job: "odds",
-      definition: SCRAPE_JOBS.odds,
-      store: createSupabaseStore(client),
-      handleSlot: createOddsSlotHandler({
-        onChanged: (raceId) => changed.add(raceId),
-      }),
-      modeGated: true,
-      client,
-      query: req.query ?? {},
-    });
+    const store = createStore(client);
+    // 取得の数を数える（共通の口と同じ道具。BOA-1145 P3、185 の審査 P1-1）
+    const fetching = createCronFetchContext({ client, store });
+    let result;
+    try {
+      result = await runScrapeJob({
+        job: "odds",
+        definition: SCRAPE_JOBS.odds,
+        store,
+        handleSlot: createSlotHandler({
+          onChanged: (raceId) => changed.add(raceId),
+        }),
+        modeGated: true,
+        client,
+        query: req.query ?? {},
+        breaker: fetching.breaker,
+        politeFetch: fetching.politeFetch,
+      });
+    } finally {
+      await fetching.finish();
+    }
+    const { status, body } = result;
     if (changed.size === 0) {
       return res.status(status).json(body);
     }

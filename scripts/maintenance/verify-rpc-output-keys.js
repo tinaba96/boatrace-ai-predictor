@@ -1,6 +1,6 @@
 /**
- * verify-rpc-output-keys.js - 本番RPC（get_predictions_by_date / _light / get_today_races）の
- * 出力に、フロントが参照するキーが含まれているかを検証する（BOA-363の再発防止）。
+ * verify-rpc-output-keys.js - 本番RPC（get_predictions_by_date / _light / get_today_races、
+ * 199 の get_course_win_rate_baseline）の出力に、フロントが参照するキーが含まれているかを検証する（BOA-363の再発防止）。
  *
  * 背景: RPCは `CREATE OR REPLACE FUNCTION` で関数全体を再定義するため、古い定義を土台に
  * 新しいマイグレーションを書くと、それ以前に足したフィールドが無言で消える
@@ -31,121 +31,10 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { supabase } from "../lib/supabaseClient.js";
-
-// get_predictions_by_date / _light のレース要素が持つべきキー
-const PREDICTION_RACE_KEYS = [
-  "raceId",
-  "venueCode",
-  "raceNumber",
-  "startTime",
-  "raceGrade",
-  "raceTitle",
-  "seriesDay", // 038
-  "isFinalDay", // 038
-  "raceStage", // 062
-  "weather", // 066
-  "cancellationStatus", // 048（BOA-363で回帰）
-];
-
-// get_predictions_by_date / _light の入れ子要素が持つべきキー。同じ回帰が入れ子のフィールド
-// （037のracerId、051のresultの着順・払戻等）にも起こりうるため、レース直下と同様に検査する。
-// 値が null の入れ子（結果未確定のresult、中止レースのentries等）は検査対象から外れる
-const PREDICTION_NESTED_CHECKS = [
-  {
-    path: "entries",
-    keys: [
-      "number",
-      "name",
-      "racerId", // 037
-      "grade",
-      "age",
-      "winRate",
-      "localWinRate",
-      "global2Rate",
-      "motorNumber",
-      "motor2Rate",
-      "boatNumber",
-      "boat2Rate",
-      "aiScoreStandard",
-      "aiScoreSafeBet",
-      "aiScoreUpsetFocus",
-    ],
-  },
-  {
-    // 066（気象6項目）と070（観測時刻 observedAt）。weather が null のレース（気象未取得）は対象外。
-    // 値が null でもキーは出力される（観測時刻不明の行は observedAt: null）
-    path: "weather",
-    keys: [
-      "weather",
-      "windDirection",
-      "windSpeed",
-      "waveHeight",
-      "temperature",
-      "waterTemperature",
-      "observedAt", // 070（BOA-358。069の列 race_conditions.weather_observed_at）
-    ],
-  },
-  {
-    path: "exhibitionData", // 008
-    keys: ["boatNumber", "exhibitionTime", "startTiming"],
-  },
-  {
-    path: "predictionOdds", // 011・019
-    keys: [
-      "trifectaPredStandard",
-      "trifectaOddsStandard",
-      "trioPredStandard",
-      "trioOddsStandard",
-      "trifectaPredSafeBet",
-      "trifectaOddsSafeBet",
-      "trioPredSafeBet",
-      "trioOddsSafeBet",
-      "trifectaPredUpsetFocus",
-      "trifectaOddsUpsetFocus",
-      "trioPredUpsetFocus",
-      "trioOddsUpsetFocus",
-    ],
-  },
-  {
-    path: "result", // 051（全着順・払戻・人気）
-    keys: [
-      "finished",
-      "isCancelled",
-      "isNoRace",
-      "rank1",
-      "rank2",
-      "rank3",
-      "rank4",
-      "rank5",
-      "rank6",
-      "raceTime1",
-      "raceTime2",
-      "raceTime3",
-      "raceTime4",
-      "raceTime5",
-      "raceTime6",
-      "winningTechnique",
-      "payoutWin",
-      "payoutPlace1",
-      "payoutPlace2",
-      "payoutTrifecta",
-      "payoutTrio",
-      "payoutExacta",
-      "payoutQuinella",
-      "payoutWide1",
-      "payoutWide2",
-      "payoutWide3",
-      "popularityTrifecta",
-      "popularityTrio",
-      "popularityExacta",
-      "popularityQuinella",
-      "popularityWide1",
-      "popularityWide2",
-      "popularityWide3",
-      // 109（BOA-543）のキーは下の MIGRATION_109_RESULT_KEYS（適用状況で扱いを変える）
-    ],
-  },
-];
+import {
+  PREDICTION_NESTED_CHECKS,
+  PREDICTION_RACE_KEYS,
+} from "./verifyData/rpc-output-keys-prediction-keys.js";
 
 // 109（BOA-543）: result のレースの成立状態・返還艇・備考・払戻明細。値が null（未判定・明細なし）でも
 // キーは出る。コードは 109 の適用前にマージしてよい設計（未適用の間は画面が従来どおり）なので、
@@ -302,12 +191,170 @@ function reportGroup(label, items, expectedKeys) {
   return true;
 }
 
-async function main() {
-  if (!supabase) {
-    throw new Error(
-      "Supabaseの接続情報がありません（.env.local の SUPABASE_URL / SUPABASE_SERVICE_KEY を確認）",
+// 199（BOA-1290）: get_course_win_rate_baseline(p_race_date, p_venue_code) の jsonb の形。
+// フロントの getCourseWinRateBaseline と、それを前提にする BOA-1292 の口が読むキー
+const BASELINE_TOP_KEYS = ["terms", "national", "venue"];
+const BASELINE_TERM_KEYS = ["calc_from", "calc_to"];
+const BASELINE_VENUE_KEYS = ["venueCode", "from", "to", "byCourse"];
+const BASELINE_CELL_KEYS = ["wins", "entries", "winRate"];
+const BASELINE_COURSES = ["1", "2", "3", "4", "5", "6"];
+
+/**
+ * 199 の get_course_win_rate_baseline を検証日・その日の最初の会場で呼び、キーを確かめる。失敗したかを返す。
+ * 台帳で 199 が「適用済み」になるまでは、関数が無い・キーの欠落を WARN にとどめる
+ * @param {string} date
+ */
+async function checkCourseWinRateBaseline(date) {
+  const applied = isMigrationApplied(199);
+  const { data: raceRows, error: raceError } = await supabase
+    .from("races")
+    .select("venue_code")
+    .eq("race_date", date)
+    .order("venue_code")
+    .limit(1);
+  if (raceError)
+    throw new Error(`races の会場の取得に失敗: ${raceError.message}`);
+  const venueCode = raceRows?.[0]?.venue_code ?? null;
+  const { data, error } = await supabase.rpc("get_course_win_rate_baseline", {
+    p_race_date: date,
+    p_venue_code: venueCode,
+  });
+  console.log(
+    `get_course_win_rate_baseline（${date}・会場 ${venueCode ?? "なし"}）`,
+  );
+  if (error) {
+    if (!applied) {
+      console.log(
+        `  [WARN] 199 は台帳で未適用のため、呼び出しの失敗は失敗にしない: ${error.message}`,
+      );
+      return false;
+    }
+    console.log(`  [FAIL] 呼び出しに失敗: ${error.message}`);
+    return true;
+  }
+  return reportBaselineKeys(data, venueCode, applied);
+}
+
+/** 199 の jsonb のキーの検査（最上位・terms・national・venue）。失敗したかを返す */
+function reportBaselineKeys(data, venueCode, applied) {
+  const report = (label, items, keys) =>
+    applied
+      ? reportGroup(label, items, keys)
+      : reportMigrationKeys(label, items, keys, 199);
+  let failed = report("最上位", [data], BASELINE_TOP_KEYS);
+  const terms = Array.isArray(data?.terms) ? data.terms : [];
+  if (terms.length !== 3) {
+    console.log(
+      `  [${applied ? "FAIL" : "WARN"}] terms が3つでない（${terms.length}）。racer_period_stats の期を確かめる`,
+    );
+    if (applied) failed = true;
+  } else {
+    failed = report("terms", terms, BASELINE_TERM_KEYS) || failed;
+  }
+  const national = BASELINE_COURSES.map((c) => data?.national?.[c]);
+  failed =
+    report("national（6コース）", national, BASELINE_CELL_KEYS) || failed;
+  if (venueCode === null) {
+    console.log("  [SKIP] venue: 検証日にレースが無く会場が無い");
+  } else {
+    failed = report("venue", [data?.venue], BASELINE_VENUE_KEYS) || failed;
+    const byCourse = BASELINE_COURSES.map((c) => data?.venue?.byCourse?.[c]);
+    failed =
+      report("venue.byCourse（6コース）", byCourse, BASELINE_CELL_KEYS) ||
+      failed;
+  }
+  return failed;
+}
+
+/** 入れ子の1か所（result・weather 等）の検査。weather が空なら未検証を返す */
+function checkNestedOne(races, { path, keys }, migration109Applied) {
+  const items = collectNested(races, path);
+  if (items.length === 0) {
+    if (path === "weather") {
+      console.log(`  [WARN] ${path}: 全レースで空のため未検証`);
+      return { failed: false, weatherUnverified: true };
+    }
+    console.log(`  [SKIP] ${path}: 全レースで空（検査対象なし）`);
+    return { failed: false, weatherUnverified: false };
+  }
+  const expected =
+    path === "result" && migration109Applied
+      ? [...keys, ...MIGRATION_109_RESULT_KEYS]
+      : keys;
+  const failed = reportGroup(path, items, expected);
+  if (path === "result" && !migration109Applied) {
+    const missing109 = findMissingKeys(items, MIGRATION_109_RESULT_KEYS);
+    console.log(
+      missing109.length === 0
+        ? "  [WARN] result: 109 の4キーは出ているが、台帳（APPLIED.md）の109が「適用済み」になっていない。台帳を更新する"
+        : `  [WARN] result: 109 は台帳で未適用のため、4キー（${MIGRATION_109_RESULT_KEYS.join("・")}）の欠落は失敗にしない`,
     );
   }
+  return { failed, weatherUnverified: false };
+}
+
+/** 予測の RPC 1本（get_predictions_by_date 系）の検査 */
+async function checkPredictionRpc(rpc, date, migration109Applied) {
+  const data = await callRpc(rpc, { target_date: date });
+  if (!Array.isArray(data?.races)) {
+    throw new Error(`RPC ${rpc} の出力に races 配列がありません`);
+  }
+  console.log(`${rpc}（${data.races.length}レース）`);
+  if (data.races.length === 0) {
+    // 検証日にレースが無い（未来日・誤った日付等）と、何も検証できていない
+    console.log(`  [FAIL] 検証日のレースが0件のため検証できません`);
+    return { failed: true, weatherUnverified: false };
+  }
+  let failed = reportGroup("レース", data.races, PREDICTION_RACE_KEYS);
+  failed =
+    reportMigrationKeys(
+      "レース（157）",
+      data.races,
+      MIGRATION_157_IN_CAUTION_KEYS,
+      157,
+    ) || failed;
+  let weatherUnverified = false;
+  for (const check of PREDICTION_NESTED_CHECKS) {
+    const r = checkNestedOne(data.races, check, migration109Applied);
+    failed = r.failed || failed;
+    if (r.weatherUnverified) weatherUnverified = true;
+  }
+  return { failed, weatherUnverified };
+}
+
+/** get_today_races の検査（本日分。0件なら未検証） */
+function checkTodayRaces(todayRaces, migration110Applied) {
+  let failed = false;
+  failed =
+    reportGroup(
+      "レース",
+      todayRaces,
+      migration110Applied
+        ? [...TODAY_RACE_KEYS, ...MIGRATION_110_TODAY_RACE_KEYS]
+        : TODAY_RACE_KEYS,
+    ) || failed;
+  failed =
+    reportMigrationKeys(
+      "レース（157）",
+      todayRaces,
+      MIGRATION_157_IN_CAUTION_KEYS,
+      157,
+    ) || failed;
+  if (!migration110Applied) {
+    const missing110 = findMissingKeys(
+      todayRaces,
+      MIGRATION_110_TODAY_RACE_KEYS,
+    );
+    console.log(
+      missing110.length === 0
+        ? "  [WARN] レース: 110 の result は出ているが、台帳（APPLIED.md）の110が「適用済み」になっていない。台帳を更新する"
+        : "  [WARN] レース: 110 は台帳で未適用のため、result の欠落は失敗にしない",
+    );
+  }
+  return failed;
+}
+
+async function resolveDate() {
   const explicitDate = parseDateArg(process.argv.slice(2));
   const { date, hasCancellation } = explicitDate
     ? { date: explicitDate, hasCancellation: null }
@@ -315,6 +362,16 @@ async function main() {
   console.log(
     `検証日: ${date}${hasCancellation === false ? "（中止レースが無いため直近の開催日）" : ""}`,
   );
+  return date;
+}
+
+async function main() {
+  if (!supabase) {
+    throw new Error(
+      "Supabaseの接続情報がありません（.env.local の SUPABASE_URL / SUPABASE_SERVICE_KEY を確認）",
+    );
+  }
+  const date = await resolveDate();
 
   let failed = false;
   const migration109Applied = isMigrationApplied(109);
@@ -326,50 +383,9 @@ async function main() {
     "get_predictions_by_date",
     "get_predictions_by_date_light",
   ]) {
-    const data = await callRpc(rpc, { target_date: date });
-    if (!Array.isArray(data?.races)) {
-      throw new Error(`RPC ${rpc} の出力に races 配列がありません`);
-    }
-    console.log(`${rpc}（${data.races.length}レース）`);
-    if (data.races.length === 0) {
-      // 検証日にレースが無い（未来日・誤った日付等）と、何も検証できていない
-      console.log(`  [FAIL] 検証日のレースが0件のため検証できません`);
-      failed = true;
-      continue;
-    }
-    failed = reportGroup("レース", data.races, PREDICTION_RACE_KEYS) || failed;
-    failed =
-      reportMigrationKeys(
-        "レース（157）",
-        data.races,
-        MIGRATION_157_IN_CAUTION_KEYS,
-        157,
-      ) || failed;
-    for (const { path, keys } of PREDICTION_NESTED_CHECKS) {
-      const items = collectNested(data.races, path);
-      if (items.length === 0) {
-        if (path === "weather") {
-          console.log(`  [WARN] ${path}: 全レースで空のため未検証`);
-          weatherUnverified = true;
-        } else {
-          console.log(`  [SKIP] ${path}: 全レースで空（検査対象なし）`);
-        }
-        continue;
-      }
-      const expected =
-        path === "result" && migration109Applied
-          ? [...keys, ...MIGRATION_109_RESULT_KEYS]
-          : keys;
-      failed = reportGroup(path, items, expected) || failed;
-      if (path === "result" && !migration109Applied) {
-        const missing109 = findMissingKeys(items, MIGRATION_109_RESULT_KEYS);
-        console.log(
-          missing109.length === 0
-            ? "  [WARN] result: 109 の4キーは出ているが、台帳（APPLIED.md）の109が「適用済み」になっていない。台帳を更新する"
-            : `  [WARN] result: 109 は台帳で未適用のため、4キー（${MIGRATION_109_RESULT_KEYS.join("・")}）の欠落は失敗にしない`,
-        );
-      }
-    }
+    const r = await checkPredictionRpc(rpc, date, migration109Applied);
+    failed = r.failed || failed;
+    if (r.weatherUnverified) weatherUnverified = true;
   }
 
   // get_today_races は引数なしで「今日(JST)」のレースだけを返す。開催が無い日は検証できない
@@ -380,33 +396,10 @@ async function main() {
   if (todayUnverified) {
     console.log("  [WARN] 本日のレースが0件のため未検証");
   } else {
-    failed =
-      reportGroup(
-        "レース",
-        todayRaces,
-        migration110Applied
-          ? [...TODAY_RACE_KEYS, ...MIGRATION_110_TODAY_RACE_KEYS]
-          : TODAY_RACE_KEYS,
-      ) || failed;
-    failed =
-      reportMigrationKeys(
-        "レース（157）",
-        todayRaces,
-        MIGRATION_157_IN_CAUTION_KEYS,
-        157,
-      ) || failed;
-    if (!migration110Applied) {
-      const missing110 = findMissingKeys(
-        todayRaces,
-        MIGRATION_110_TODAY_RACE_KEYS,
-      );
-      console.log(
-        missing110.length === 0
-          ? "  [WARN] レース: 110 の result は出ているが、台帳（APPLIED.md）の110が「適用済み」になっていない。台帳を更新する"
-          : "  [WARN] レース: 110 は台帳で未適用のため、result の欠落は失敗にしない",
-      );
-    }
+    failed = checkTodayRaces(todayRaces, migration110Applied) || failed;
   }
+
+  failed = (await checkCourseWinRateBaseline(date)) || failed;
 
   if (failed) {
     console.error(

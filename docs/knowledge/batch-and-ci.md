@@ -3,9 +3,13 @@
 バッチ・Cron・API のキャッシュ・Vercel の運用と、CI・E2E で踏みやすい落とし穴。本番 DB の書き込みは [db-operations.md](db-operations.md)。検証の置き場所の決まりは AGENTS.md「検証・テスト」。主に system-architect と実装者が読む。書き方は [README.md](README.md)。
 
 ## 定時実行・バッチ
+- 本番のデプロイは ADR-0106 の切り替えの後（`vercel.json` の `git.deploymentEnabled.master` が false。それまではマージごとに出る）、1日3回の定時にまとめて出す（scripts/lib/releaseDispatch.js）。「本番に出たか」は枝の先ではなく出ている版の sha（Vercel の関数の中なら VERCEL_GIT_COMMIT_SHA、外からは GitHub の deployment の environment `Production`）で見る。ビルドの失敗・Instant Rollback で両者がずれる。vercel.json の crons の変更も次の定時から効く（2026-11-06、system-architect）
+- 実測 PT 2026-11-03〜05: master への push は約59本/日（人・Claude の PR 22・Codex の PR 14・機械生成の文書 16・台帳・録画・sitemap 4・hq の記事と data 3）で、本番のビルドは READY が約55本/日。費用 $13.8/日のうち Build CPU $8.5・Function Storage $1.9・Deployment Storage $1.7（2026-11-06、Vercel MCP list_deployments・list_billing_charges）
 - 定時のジョブは、定時の実行の成功を見てから完了とする。手動で作った分の時刻が偶然条件を満たし、定時では一度も成功しないまま完了扱いになった例がある（2026-09-25、memory morning_data_digest_2026_09_25、BOA-402）
 - GitHub Actions の定時実行は実測で2.5〜4.5時間遅れることが多い。時刻が大事な取得・集計は Vercel Cron に置く（2026-09-25、memory morning_data_digest_2026_09_25、ADR-0066）
 - scrape_job_state の mode が off でも、kind が monitor のジョブ（scrape-monitor・scrape-cleanup）は5分ごとに動く。last_report は10分ごとに上書きされるので過去の判断の証拠に使えない（2026-09-28、memory project_data_foundation_orchestration_2026_09_19、PR #874）
+- オリジナル展示（boatcast_oriten）は1レース1スロット（期限は発走20分前）で、未公開の間は発走6分前まで2分おき、その後1分前・7分後の最大10回。10/18〜10/24 の races では1分あたり最大6件・1日約700〜980回の取得（旧の発走8分前の1回は約130〜200回）。締切8分前に DB にある割合は旧1.2%、新は公開が10分前以前の91%（2026-10-25、registry.js・oritenRows.js の decideNotPublished、race_original_exhibition.source_last_modified の実測）
+- 窓型ジョブの offset を変えると、races-init（朝）が作った旧 offset のスロットと新しい offset のスロットが同じレースに並ぶ。オリジナル展示は createOritenStore の ensureSlots が既存スロットのあるレースを飛ばす（2026-10-25、oritenJob.js）
 - Routine を起動する Vercel の環境変数（*_FIRE_URL・*_FIRE_TOKEN）が未設定でも、fireRoutine は {fired:false, reason:"not_configured"} を返して黙って飛ばす。送られていないのにエラーにならない（2026-09-24、memory claude_account_migration_runbook、api/_lib/snsHubHelpers.js）
 
 ## API のキャッシュ
@@ -22,8 +26,151 @@
 - 画面で setError(e.message) と書くと BOA-668 の検査で落ちる（errorMessageOf を使う）（2026-10-08、memory feedback_codex_patch_intake_checklist）
 - master には整形していないファイルがあるので、既存ファイル全体に prettier --write をかけると差分が膨らむ。新しいファイルと自分の書いた範囲だけにする（2026-10-03、memory feedback_reset_soft_onto_moved_master、PR #1208）
 - verify-*.js で「実タイマーで観測した間隔が N ms 以上」を assert すると CI の負荷で落ちる。仮想の時計（verify-boatcast-job.js の createVirtualClock）で判定する。変異のファイルを ?t=Date.now() で読み分けると ESM キャッシュで前の変異が返るので、通し番号のファイル名にする（2026-10-02、memory technical_ci_flake_real_timer_gap_assertions、BOA-648）
+- 後続の修正 PR の点検は、先行指摘の ID と対象差分を明記し、静的に解消・継続・実行未判定を分ける。修正 PR の存在だけで修正成功や承認の運用適用を認定しない（2026-10-13、2026-10-13-plan-1623.md・2026-10-13-plan-1829.md）
+- 点検の依頼を選ぶときは、PR 番号だけでなく変更対象の機能名と既存の点検成果物も照合し、同じ点検を再度積まない（2026-10-13、2026-10-13-plan-2033.md）
+- 後続 PR で部品が接続されても、実行環境での受入（Chromium 起動・未ログイン表示等）や別の関門は別に追う。以前の「未接続」を現状へ転記せず、接続の commit と残る関門を記録する（2026-10-13、2026-10-13-plan-2137.md・2026-10-13-plan-2234.md）
+- 同じ依頼の再点検でも、知見の索引・話題数・写しの一致は再確認する。古い一致申告を現在の資料の証拠にしない（2026-10-13、2026-10-13-plan-review-20261013-15.md）
+- パッチ点検の合格は、フォルダ名・自由文ではなく patch hash・base・tree に結び付け、同名の改訂版は再点検する（提案、未導入）（2026-10-16、2026-10-16-codex-direct-pr-design.md）
+- 新しい verify の登録（verify-registry.json）が要る変更は、台帳変更を禁じる経路だけでは完結しない（2026-10-16、2026-10-16-codex-direct-pr-design.md）
+- パッチの未登録指摘は、取り込み後の台帳→集約ランナー→通常 workflow まで追う。3-way 取り込みで blob が元パッチと違っても、親差分と先行変更の保持を確認してから判定する（2026-10-14、2026-10-14-plan-review-20261014-08.md）
+- 並行パッチの統合後に片方のテストが見つからないときは、親 SHA にも無かったかで未取り込みと統合時の削除を区別する（2026-10-15、2026-10-15-plan-review-20261015-12.md）
+- PR ゲートの E2E（e2e-smoke-test）は HAR 再生・3台分割。直接 PR の前段の機械 E2E は CI の代替にならない（2026-10-17、2026-10-17-codex-direct-pr-design-v2.md）
+- テスト名・assert・mock の合格を実際の範囲より広く読まない。通知失敗の検査名は reject 通知の実行を保証せず、MP4 シグネチャだけを書く ffmpeg の注入 mock は実動画の寸法・尺・音を保証しない（2026-10-13、2026-10-13-plan-review-20261013-09.md・2026-10-13-plan-review-20261013-15.md）
+- 録画ポインタの tests/skipped は録画時点の件数で、新規 PR の収集・成功を証明しない。ローカル public/data への fetch も録画対象 API とは別（2026-10-15、2026-10-15-plan-review-20261015-01.md）
+- e2e-rerecord.yml の run が success でも録画は採用されていないことがある。採用の有無は judge の step summary（adopt）と e2e/recording.json の tag で見る。replay の step は tee で終了コードを隠すので、テストが落ちても緑になる（2026-10-25、BOA-929、run 40073298307）
+- E2E の素通し（録画に無い通信）の種類が run ごとに揺れるのは、in() の並びでなく、テストの途中の遷移・テストの終わりで続きの要求（fetchAllPages の2ページ目 offset=1000、選手の窓・モーターの指数の読み）が切られるかが速さで変わるため。preview で増えた9種類のうち7種類は2ページ目で、1ページ目は録画に1000行で入っていた。撮りの終わりに静かな時間を待っても遷移で切れる分は入らない（2026-10-27、#1997 の素通しの artifact と録画 e2e-recording-20261026-1607 の突き合わせ・手元の部分録画、ADR-0077 決定8）
+- 撮り直しの strict 再生でだけ落ちるテストは、録画の日時に依存しているか、fetchRecorded の応答を route.fulfill({ response }) で渡している（Playwright は APIResponse でない response を無視して空の200を返す。PR ゲートでは素通しで本物の APIResponse になり通る）（2026-10-25、BOA-929）
+- 版 hash の順序非依存は ID の一意性まで確認する。値変化の検証は、同一入力集合で値だけを変えて行う（claims 集合を減らす assert は値変化の検証ではない）（2026-10-13、2026-10-13-plan-review-20261013-32.md）
+- generate-ai-snapshots.js は Chromium が起動できなくても例外を捕捉して build を続ける。npm run build の exit 0 とブラウザ生成の成功は別。Vite の成功と後続のブラウザ・スナップショットの成功も分ける（2026-10-13、2026-10-13-boa-873.md・2026-10-13-boa-875.md）
+- build で使う Chromium 起動ヘルパーを API で共用しても、build の実績や mock CI は API の Node 版・bin 収録・関数サイズ/メモリを証明しない。lock の engine 条件と実配備を別に確認する（2026-10-13、2026-10-13-plan-review-20261013-33.md）
+- runtime 属性の存在検査と、Node 上で handler(Request) を直接呼ぶ検査の通過は、Vercel で同じ呼出し規約になる証拠にならない（2026-10-13、2026-10-13-plan-review-20261013-11.md）
+- レイアウト E2E は固定幅の実行配線と境界直前の測定を分ける（1024px の切替に対し 375/768/1024/1440/1920 では 1023px 直前を測らない）。spec 内の viewport 上書きで実幅が変わるので、CI の実行枠数と独立した画面幅の数も分ける（2026-10-15、2026-10-15-plan-review-20261015-05.md・2026-10-16-review-20261016-01.md）
+- テスト置換では、期待値の更新と、旧ループから境界幅が消えていないかを別に確認する（2026-10-16、2026-10-16-review-20261016-05.md）
+- レイアウト再現用 DOM の置換と測定に別々の await を挟むと、間の再描画で条件が変わる。同期の1回の evaluate で置換・測定する（2026-10-13、2026-10-13-plan-review-20261013-19.md）
+- 棒のレイアウト検査は外枠 track と内側 fill を区別する。内側 fill の width transition だけを根拠に外枠測定へ待機を足さない。時計の Date 固定はタイマー・アニメーションの停止ではない（2026-10-13、2026-10-13-plan-review-20261013-19.md）
+- 全領域共通のセレクターで検査すると、比較表や着順に全艇があるだけで条件付き領域の欠落を見逃す。固定 UI の検査は各領域の存在と検査到達を明示する（2026-10-14、2026-10-14-plan-review-20261014-07.md）
+- 保存期限を持つ UI の受入は、録画時計・保存時刻・レース締切を一緒に固定する。30日超の Entry を注入して表示を期待すると、仕様どおりの期限削除でテストが落ちる（2026-10-13、2026-10-13-plan-review-20261013-16.md）
+- URL を切り替えて複数要素を撮影する変更は、一覧入口の inspect 成功と各撮影先の最終 URL・対象 ID の一致を分ける。要求行のラベルを図へ挿入しても、誤遷移先の内容は検出できない（2026-10-16、2026-10-16-review-20261016-07.md）
+- 取得間隔は各 headless コンテキスト内だけでは、並行コンテキストの合算を保証しない。公開撮影はコンテキストの起動も順次にし、初回で必要な応答・領域画像を保存する（2026-10-13、2026-10-13-venue-20261013-05-edogawa.md）
+- 日本語の欠字検査で別文字列の黒画素総数を比べると、文字数が違えば同じ欠字箱の反復でも差が出る。同じ文字数・同じ配置の対照と字形の比較を分け、実画像の受入とは区別する（2026-10-16、2026-10-16-review-20261016-04.md）
+- 共通の生成器のコードを復帰・変更する前に、同じ出力先を使う実行中プロセスとログを確認する（2026-10-16、2026-10-16-generator-structure-conflict.md）
+- 実行開始時だけでなく、場面開始前と符号化前にも負荷を確認する（2026-10-16、2026-10-16-generator-structure-progress.md）
+- 水質 verify の成功をブログ本文の照合結果に読み替えない。verify-venue-water-profiles.js は表示定数・3言語の会場ガイド等を検査し、場別ブログ本文と JSON メタは読まない（2026-10-13、2026-10-13-plan-review-20261013-17.md）
+- 会場の警告抽出を直しても、監視が保存済みの last_report.alerts を読むなら、新しい報告が保存されるまで旧警告が残る。health からの再計算と保存 alerts の更新を分ける（2026-10-13、2026-10-13-plan-review-20261013-20.md）
+- 会場モーター成績の health は取得を止めた会場のキーを保持する。通知側は現在の取得対象一覧で絞って判定し、固定の除外一覧との一致を仮定しない（2026-10-13、2026-10-13-boa-876.md）
+- 変更履歴の監視では追加行だけで新機能と判断せず、版・記事日・削除行・前後の全文を照合する。取得日を公開日とみなさず、過去版の追記・移動・リンク修正を分け、切断された差分は網羅未確認とする（2026-10-24、tech-trends、codex-changelog・anthropic-api-release-notes の差分照合）。
+- lint の再現件数が指定土台でも違うときは、インストール済みプラグインと lockfile の版を照合する。対象の誤検知・既存の別ルールの違反・全体の新規違反を分けて記録する（2026-10-24、BOA-1017、react-hooks 7.1.1 と lockfile の7.0.1の比較）。
+- CLI の直接実行判定をファイル名の endsWith だけで行うと、verify-harville.js のように同じ末尾を持つ検証からの import でも自己試験が動く。直接実行と import を区別して確認する（2026-10-24、BOA-1032、scripts/lib/harville.js・verify-harville.js）。
+- git numstat のパスは日本語・制御文字がC形式の引用と8進バイト列になる。拡張子判定前に復元し、追跡パスとの照合には NUL 区切りの ls-tree を使う（2026-10-24、BOA-1037、scripts/analysis/rank-fix-hotspots.js）。
+- 丸めを含む関数では、定数を変えても全入力の出力が同じ場合がある。変異試験は実際に出力が変わる入力があるか確認し、同値の変異と検出不足を分ける（2026-10-25、BOA-1060、verify-venue-parameters.js の weight 40→41・50の比較）。
+- softmax の最大値減算の試験は、温度で割ったスコア差が指数のあふれる大きさになる入力を使う。絶対値が大きい1000・1001だけでは最小値減算への変異を見逃し、0・1000なら検出できる（2026-10-25、BOA-1076、verify-unified-model-softmax.js）。
+- 欄名からキーへの写像を検証するときは、欠損記号だけでなく非null値も入力する。欠損→nullだけでは、誤ったキーで読んだ undefined もnullになり、写像の破損を見逃す（2026-10-25、BOA-1077、verify-racer-season-stats-parse.js）。
+- 実データが clamp の範囲内だけなら、全件照合でも上限・下限の破損を検出できない。両側の範囲外入力を別に試し、表へ仮入力を足す場合は try/finally で復元する（2026-10-25、BOA-1078、verify-venue-parameters.js）。
+- verify の失敗後も後続試験が動くことを確かめるには、独立した2入力を同時に壊し、FAIL 2件・後続への到達・終了コード1を確認する（2026-10-25、BOA-1079、verify-cover-image-strategy.js）。
+- 件数の閾値は、直接値を返す分岐と補完平均に含める分岐を別々に試す。全コースに直接値がある入力だけでは補完側の境界変更を見逃すため、直接値の無いコースも用意する（2026-10-25、BOA-1080、verify-technique-placement-tables.js）。
+- 率から成功数への丸めを検証する試験は、丸め前後で Wilson 下限が抽出閾値をまたぐ入力を使う。56%・8走では下限が25.71%から整数4成功の21.52%へ変わる（2026-10-25、BOA-1084、verify-digest-metrics.js）。
+- Platt の検証は、対称入力・陽性率半分での予測合計だけに頼らない。反復不足を検出するには非対称入力を使い、切片と正則化つき傾きのスコアも確認する（2026-10-25、BOA-1090、verify-parametric-calibration.js）。
+- politeFetch の同時取得上限を変えるときは、ページの実測所要時間から slotSecEstimate・leaseSec・claimLimit も計算し直す。同時数だけ下げるとリース内に処理が収まらなくなる（2026-10-26、system-architect、BOA-1145・scrapeJobs/registry.js）。
+- 朝の races_init・scrape-to-json は beforeinfo を取得しない。展示前で値が無く、その取得失敗が races 作成まで止めていたため、朝の出走表作成と直前情報取得を分ける（2026-10-26、BOA-1145、PR #1945）。
+- 記事の関門は TRACKED_DIRS 配下だけを ls-tree で読み、base の内容を作る。記事ディレクトリ外のファイルを比較対象に足す場合は、この取得範囲にも追加する（2026-10-26、PR #1942、scripts/content/check-content-pr.js）。
+- 全貌の材料取得で、選手ごとの読みと約3,000行の全会場表を並列にすると30秒の時間切れが発生した。全会場表は選手の読みの後へ分ける（2026-10-26、PR #1927、fetch-materials.mjs の boatTendency）。
+- 試験追加だけの変更は、同じ変異を追加前後へ当て、旧試験は成功・追加後は失敗・復元後は成功を確認する。通常の変更前試験が緑でも、既存の見逃しと追加試験の検出を区別できる（2026-10-26、BOA-1117、verify-racer-condition-stats.js）。
+- import.meta.url 基準で本体ソースを読むverifyの変異検証は、import先に加え readFileSync の基準URLも元の配置へそろえる。隔離コピーのENOENTによる停止は変異検出の証拠にしない（2026-10-26、BOA-1120、変異検証報告）。
+- 動的ルートの組を生クエリから除いて正規表記を比べる場合は、除外前に空の組を拒否する。?raceId=<同値>& を先に除いてjoinすると空文字になり、クエリなしと誤認する（2026-10-26、BOA-1125、analogyV16.js・verify-analogy-query.js）。
+- 順位の間接試験とは別に、NaNなどの欠損を除く関数を直接試す。Mapの中身は entries を配列にして比較し、欠損が残っても順位だけは同じになるケースを検出する（2026-10-26、BOA-1127、verify-venue-motor-ranking.js）。
+- 気象ありの判定は全項目入りfixtureだけで済ませず、全nullから1項目だけ設定する入力を使う。各項目の欠落と、数値0をfalse扱いする回帰を直接検出する（2026-10-26、BOA-1131、verify-weather-parsing.js）。
+- JSON.stringify で配列を比較すると undefined・NaN・Infinity はnullになる。これらをnullへ正規化する処理の欠落は検出できないため、正規化の試験は値の型も保つ比較で分ける（2026-10-26、BOA-1134、resultDigest.js・verify-scrape-result-job.js）。
+- 組の件数や一致件数だけの試験では、組内の並べ替え削除を検出できない。順序が契約に含まれる関数は、返す組の配列そのものも比較する（2026-10-26、BOA-1136、verify-past-rate-count.js の orderCombos 変異）。
+- pcexpect の claimLimit は verify-scrape-jobs.js だけでなく verify-morning-init-jobs.js の(j)も検証する。上限変更時は両方の契約を照合する（2026-10-26、BOA-1146、PR #1950 差し戻し）。
+- scrape_slots の最終outcomeと累積attemptsだけでは、試行ごとの確認ページ数やpartialの内訳を復元できない。固定ページ数の近似では、最終outcomeで過去試行まで除く影響も注記する（2026-10-26、BOA-1148の回答1、fetchCounts.js）。
+- 「DBに書かない」という検査でも、assertがテーブル名の文字列禁止なら読み取り追加も拒否する。既存期待値を変更できない依頼では、試作前にassert本体と必要な変更の整合を確認する（2026-10-26、BOA-1149、verify-odds-live-api.js:450-453）。
+- 前検の取得を省略する判定は画面の6日参照窓に合わせる。同じ節の最新保存日が6日前なら省略でき、7日前なら再取得する。前の節や未来の保存行は使わない（2026-10-26、BOA-1150の質問回答、verify-motor-pretest.js）。
+- 1つの生成スクリプトが複数の文書を書く場合は、GENERATED_DOCS に生成物ごとに登録し、regenerate はスクリプトごとに1回だけ実行する（2026-10-27、PR #2026、scripts/maintenance/generated-docs.js）。
+- regenerate-generated-docs.yml は npm ci --ignore-scripts 後に生成する。npm依存を使う生成スクリプトも登録できるが、postinstallなどの実行を前提にしない（2026-10-27、PR #2024、.github/workflows/regenerate-generated-docs.yml）。
+- 公開APIのクエリは strictQuery.js で許可名を明示する。verify-cache-config.js は各ファイルの最初の Cache-Control を読むため、400のno-store応答は共通関数に置き、通常応答のキャッシュ検査と分ける（2026-10-27、PR #2004）。
+- Googleのcommon crawlersのIP表は /static/crawling/ipranges/common-crawlers.json。旧 /static/search/apis/ipranges/googlebot.json は301で転送され、Google-InspectionToolもcommon crawlersに含まれる（2026-10-27、BOA-1110段階0、PR #2002、Google公式一覧とcurlの確認）。
+- GHAは起動ごとに新しいプロセスなので、DBガードの「初回読取失敗は止めない」が毎回適用されうる。非常停止は長寿命プロセス内のキャッシュ前提にせず、GHAの起動単位でも失敗時の扱いを確認する（2026-10-27、PR #1982、scripts/lib/ghaSkipGate.js）。
+- entry_course_stats・venue_motor_stats は registry の hosts が空で、host:boatrace.jp の非常停止の対象外。全取得を止める確認ではホスト登録の無いジョブも別に点検する（2026-10-27、PR #1982、scrapeJobs/registry.js）。
+- 朝の一覧生成は完全性チェックを通った回だけ集計RPCを呼ぶ。3つの起動枠があっても重い集計を毎日3回行うわけではない（2026-10-27、system-architect、generate-morning-digest.js・PR #1977）。
+- ホストの半開をカナリアへ固定するときは、403・429・503以外の応答でも状態を確定させる。期限を過去のまま残すと半開で詰まるため、それ以外の応答は閉じる（2026-10-27、system-architectの再現、PR #1965）。
+- 例外の子クラスを足すときは、呼び出し側の error.name の完全一致も点検する。子のnameは親と違うため、親も含めて扱う箇所は instanceof で判定する（2026-10-27、PR #1963、FetchStoppedError・BreakerOpenError）。
+- Storage掃除の完了控えは日付だけでなく種類・保持日数も持たせる。全対象の削除後だけ保存し、一覧・削除・控え保存の各失敗から翌晩に再試行できることを確認する（2026-10-26、BOA-977、verify-analogy-v16-api.js）。
+- racer_profiles の MIN_SAMPLE_FOR_ZERO_GUARD=10 は1チャンクの0件検知用で、完了サイクルの season_fail_rate 通知の母数下限ではない。別の母集団の通知へ流用しない（2026-10-27、BOA-1152、scripts/lib/racerProfilesJob.js）。
+- snsGa4.js から src/config/languages.js をimportすると、翻訳ブログのファイル読み込みもcron起動時に連鎖する。記事ディレクトリを収録しない配備ではENOENTになるため、サーバー用GA4フィルタの依存を分ける（2026-10-27、BOA-1154、PR #1966差し戻し・verify-sns-daily-runner.js）。
+- 廃止を複数PRに分ける場合は参照ファイル一覧を固定し、減る向きだけ許す検査を置く。verify-legacy-prediction-readers.js は列名を見るため、model_id の値やJSONキーの読み手は別に点検する（2026-10-28、PR #2044）。
+- ファイル数上限のある依頼は、実装前に翻訳・試験・verify台帳登録まで含めて必要ファイル数を見積もる。4言語の文言に新規verifyと登録を足すと6ファイルになる（2026-10-28、BOA-1192、run-verify-registry.js）。
+- PGliteの時刻固定はJSのDateだけでなくSQLの now() もassertする。BOA-1211の使用版ではDB作成前の mock.timers.enable({apis:['Date'],now}) がSQLにも効き、created_at の順を試す箇所は時計を進める必要があった（2026-10-31、verify-sns-send-runner.js・verify-sns-metrics-runner.js）。
 
 ## E2E
 - dev サーバーと e2e は本番と別の経路を通る。EDGE_API_BASE="" で /api/predictions/{date} が index.html を返し、Supabase 直のフォールバックになる。本番は Edge API→RPC。両者の差（BOA-304 の weather、BOA-254 の cancellationStatus）は e2e で検知できない（2026-09-19、memory technical_e2e_depends_on_live_supabase_flakiness_2026_09_19。録画の導入後の扱いは要確認）
 - e2e が無関係な多数のページで落ちたら、①worktree に .env.local が無い（build は無くても通る）②Supabase の障害（REST だけ止まることがある）③マシンの負荷、の順に疑う。再実行で落ちる顔ぶれが変われば揺らぎ、同じなら環境かコード（2026-09-24、memory technical_e2e_false_failures_supabase_incident_and_load）
 - 「本日のレース」を前提にしたテストは、日付が変わってから朝の morning-init までの間に落ちる。まず当日の races があるか確かめる（2026-09-20、memory project_data_foundation_orchestration_2026_09_19）
+- 撮影前の時計で即時送信の候補を確定せず、撮影・保存中に迎える候補締切と、合成した投稿全体の失効時刻を別に検証する。（2026-10-19、2026-10-19-review-20261019-03.md）
+- 実行ごとに予定を動的にする変更では、初回insertだけでなく再生成した既存itemのveto_untilと再承認jobのscheduled_atも同じ時刻へ更新されるか確認する。（2026-10-19、2026-10-19-review-20261019-03.md）
+- 番号順に先頭1件を処理する選定では、後続全件の外部事実取得を先行させると後続の取得失敗で先頭の結果も失われる。先頭の選定と必要事実の取得の順を点検する。（2026-10-19、2026-10-19-review-20261019-14.md）
+- 新しい本番の鍵を Actions に置くときは、repo の secret ではなく master だけの Environment（prod-jobs）に置き、job-watch.json に載せる（載せないと verify-job-watch.js が落ちる）。key-canary にも読み取りを1回足す（こちらは verify では検査しない）（2026-10-20、system-architect、ADR-0097:48-49,128）
+- master への自動コミットは、サイトの出力に関わるファイル（public/・src・api・ルートの data/* 等）を変えるなら1回ごとに本番デプロイが走る。docs/・data/analysis/ 等だけなら ignoreCommand でビルドしない（#1690、scripts/lib/vercelIgnoreBuild.js）。日次のデータの置き場所にするなら費用として数える（2026-10-20、system-architect、ADR-0032 の追記「選手ページ（BOA-848）」の「ビルド時間」。BOA-908 で更新）
+- Vercel の本番ビルドの所要は 10/10 以前の約1.9分から、10/13 以降は6〜7分に延びた（選手約320件などのスナップショット）。選手を作らない Preview も1本の費用が約7倍になったので、Elastic のビルドマシンが大きい機種に上がったと見る。1本あたり本番 約$0.79・Preview 約$0.26（2026-10-20、system-architect、`vercel ls --prod` 600件・請求 API・racerSnapshotPlan.js:22、BOA-908）
+- Vercel の ignoreCommand の除外に `*.md` を全体で書くと、public/blog/*.md だけのブログ修正（1週に6本）が本番に出ない。除外はディレクトリと名前で書く。build は scripts/maintenance/run-heavy.sh を通るので除外しない（2026-10-20、system-architect、package.json の build、BOA-908、scripts/lib/vercelIgnoreBuild.js）
+- update-sitemap は master への push と Deploy Hook の両方で、同じ内容の本番ビルドを2回走らせていた（10/17 の 7e42db1 で2本）。Deploy Hook のビルドは GitHub の Deployments に載らない（2026-10-20、system-architect、update-sitemap.yml、BOA-908）
+- ビルドマシンを下げたときは、ビルドの成否ではなくスナップショットを作れた件数で確かめる。generate-ai-snapshots.js は失敗を受け止めて exit 0 にしうる。並列4は固定値（2026-10-20、system-architect、generate-ai-snapshots.js:49,51、BOA-908）
+- 2026-10-20 時点の審査の関門は、本文の無い差分を削除以外すべて落とす。画像を足す PR は、ADR-0097 の追記なしでは承認されない（2026-10-20、system-architect の content-publish の審査、scripts/lib/reviewPr.js:57-60・ADR-0097:34）
+- ブログの古い道（finalize-blog-draft.js の自動マージ、merge-blog-pr.js の GITHUB_MERGE_TOKEN の PAT、ADR-0034）は書き込みの身元を増やす道で、ADR-0097:109 と矛盾し、切替の後は失敗する。#1701 で止める（対応中、2026-10-20、system-architect の content-publish の審査、BOA-908 ⑤）
+- AI 審査の承認は P0 だけで決まり、P1 が残っていても APPROVE になる。段階0 A の「P0・P1 が0件」は、オーケストレーターがマージするときにしか効いていない（2026-10-20、system-architect の開発の社員化 v2 の審査、scripts/lib/reviewPr.js:254-270・.claude/skills/orchestrate/SKILL.md:69）
+- review.yml の gate は、パス・PR の大きさ・テストの弱めを見ない。見るのは symlink・submodule・LFS・バイナリ・.gitattributes・299ファイル・20万字・月の上限だけ（2026-10-20、system-architect の開発の社員化 v2 の審査、scripts/lib/reviewPr.js:8-67・scripts/review/gate.js）
+- 審査の月の上限（既定300）は作成の App の run の数で、push のたびに1回数える。全レーンと全社員で共有なので、1日7本の PR の流れでは上限に当たりうる（2026-10-20、system-architect の開発の社員化 v2 の審査、scripts/lib/reviewPr.js:277-284・ADR-0097:96）
+- 例外の線を機械で効かせる置き場は、master から読まれる龍神の config に限る。pull_request_target は master の定義で動くので、PR がこのファイルを書き換えても、その PR の審査には効かない（2026-10-20、system-architect の開発の社員化 v2 の審査、.github/workflows/review.yml:12・54-56）
+- codex/* には Preview が無い。それ以外の接頭辞の Preview は本番の管理者キーを持つ。画面の作業を社員に回すと、段階0 B（mock-diff-checker・ファン評価）を満たす手段が無い（2026-10-20、system-architect の開発の社員化 v2 の審査、vercel.json:5-6・AGENTS.md:25・SKILL.md:115）
+- verify-registry.json の entries は script の名前の順に置き、新しい項目は名前の位置に挿す。順は `run-verify-registry.js` の突き合わせ（verify:ci）で落ち、`--sort` で並べ直せる。同じ隙間への追加は今後も衝突しうる（10/06〜10/20 の同じ日のコミットの組で6.3%、末尾に足す運用では100%。verify-sns-*・verify-bot-* の束に偏る）（2026-10-20、BOA-938、system-architect が master の台帳の履歴から数えた）
+- 台帳の衝突を「両方残す」で直すと、別の項目の guards が付いた項目ができうる（checkRegistry は名前と tier・guards の対応を見ない）。master の台帳を丸ごと取り、自分の項目だけ足して `--sort`・`--check`、`git diff origin/master` が足した塊だけか確かめる（2026-10-20、BOA-938、system-architect が #1708 の merge-tree で再現）
+- Linear の起票はすべて scripts/lib/linearIssueGate.js の assertCanCreateIssue を通す。未アーカイブ（issues を includeArchived なし・チームで絞らず数えた数、hq の count_unarchived と同じ）が閾値以上（2026-10-21 から230件。hq は200で警告・240で社員の起票を止める）、または数えられないときは起票せず Slack に件数と閾値を送る。新しい起票の経路は verify-linear-issue-gate.js が CI で検知する（2026-10-20、hq 台帳 PL48・docs/operation/linear-cli.md）
+- 社員へ渡された仕事は、進めたものをhandled_tickets、道・承認待ちで進められないものを理由つきblockedへ記録する。両方に入れない票は再配布・相談の対象になり、別件の失敗時に失敗数へ含まれうる（2026-10-20、head-marketing、hq platform/run_employee.py の done_tickets・block_tickets）
+- 社員間の週使用量・1周あたりtokenを比べる前に、task-runs各行のtokens_cachedの有無と使用量の定義を確認する。現行の予算比較量はtokens_in−tokens_cached＋tokens_outで、cacheを含む旧行と混ぜない。欠落したcache量を0と決めず、合算値と各周の値を突き合わせる（2026-10-20、ops-efficiency、hq platform/run_employee.py の予算比較量の定義）
+- 起票・PR・受け手の同時上限などで制作後に拒否が続く場合、制作・審査の前に実行可能性を判定できるかを先に点検する。後段の拒否回数だけでなく、拒否までに使った制作・審査のtokenも改善対象にする（2026-10-20、ops-efficiency、ledger/task-runs.jsonl の上限拒否点検）
+- 社員の難易度はtoken予算の消化率だけで下げない。同種の仕事で使用量と審査P0を比べ、節約量が小さい場合や品質が悪化する場合は見送る。変更先のmax_turnsを超える実績がないかも確認する（2026-10-21、ops-efficiency、ledger/task-runs.jsonl・company/models.json の難易度別点検）
+- 材料待ちのLLM定時処理は、入力ファイルの存在・鮮度だけでなく、その仕事で使える値の行があることを起動条件にする。空の表が更新されただけで起動すると、材料なしの周でもtokenを消費する（2026-10-21、ops-efficiency、ledger/task-runs.jsonl・company/roster/x.json）
+- モデル廃止や既定変更の影響は、製品名だけでなく認証方式と実効モデルを照合する。設定がnull・明示指定なしでもCLI既定や継承が効くため、起動引数と別プロセスへの受け渡しまで追い、設定を確認できない経路は非該当と断定せず未確認に残す（2026-10-20、tech-trends、hq platform/run_employee.py・platform/spool.py、変更履歴との照合）
+- Codex用cloneに.env*があれば停止する規則は、例外の明記が無い限り追跡済みの.env.exampleにも当たる。配布前にテンプレートを含むファイル名を確認し、cloneの条件とテンプレートの扱いを明示する。内容を読んで安全と推測する例外は作らない（2026-10-21、BOA-779、指定SHAのAGENTS.md「作業場所と認証」、Codex報告2026-10-21-boa-779.md）
+- ファイル走査中の削除競合は、隔離した木でstat・readdir・readの直前に同期的な削除を注入すると、実時間の並行実行に頼らず再現できる。共通部品だけでなく実際のverifyもその木で動かし、通常ファイルの違反検出が残ることを確認する（2026-10-21、BOA-969、Codex報告2026-10-21-boa-969.md、検証用パッチのscripts/maintenance/verify-source-file-walk.js）
+- 時間帯を制限する取得処理は、リクエスト間隔の待機後・fetch直前に取得窓を判定する。待機で窓をまたぐ状況を注入し、次の取得が止まることに加え、取得済み計画の全配列が保持されることも検証する（2026-10-23、BOA-779、Codex報告2026-10-23-boa-779.md、scripts/maintenance/verify-disqualified-finish-marks.js）
+- ESLint 9 の noInlineConfig は、無効にした設定コメントを1つずつ ruleId=null・severity 1 の「'<コメント全文>' has no effect because you have 'noInlineConfig'…」で返す。関門に触れるコメントだけを落とすときはこの文を解析し、文言の変化は自己テストで捕まえる（2026-10-24 実測、ESLint 9.39.1、PR #1819、scripts/maintenance/verify-no-undef.js）
+- 許可リストを (規則, ファイル) の件数だけで持つと、同じファイルの中で1件直って1件増える入れ替わりを通す。no-undef のように名前で区別できる規則は名前までキーに入れる（2026-10-24、PR #1819 の system-architect・/code-review）
+- ESLint の設定コメントの説明の区切りは `\s-{2,}\s`（`--` に限らない）。自前で解析するときは `---` も区切りに扱う（2026-10-24 実測、PR #1819）
+- ruleFilter だけの lint の関門は、ファイル内の eslint-disable・`/* global */` で消せる。検査側の ESLint にだけ noInlineConfig を付けると、`npm run lint` とエディタを変えずに塞げる（2026-10-24、PR #1819）
+- ESLint 9 の ruleFilter は、外した規則の報告だけでなく実行も止める。何も報告せず変数に「使った」印を付ける補助ルール（eslint.config.js の local/jsx-uses-vars）は、no-unused-vars を関門に足すときに一緒に残さないと `<motion.div>` でだけ使う motion の誤検知が戻る（2026-10-24 実測、ESLint 9.39.1、BOA-1017 の system-architect）
+- ESM の import の行き先は URL として解決される。`%2e%2e` は `..`、`\` は `/`、`?`・`#` 以降は問い合わせになる（`./b?.js` は `b` を読む）。行き先をパスの文字列で判定する検査は、使える文字を英数字・`_`・`-`・`.`・`/` に限って塞ぐ（2026-10-24 実測、Node の `new URL`、scripts/maintenance/verify-pure-imports.js）
+- import の行き先とグローバルだけを見張る関門は、組み込みの書き換え（`JSON.stringify=`・`Date.prototype.toJSON=`・`Object.defineProperty(Object.prototype, …)`）を通す。import された物は同じ処理の中の supabase-js の直し方まで変え、DB に書く値を誤らせるので、`no-extend-native`・`no-global-assign` と「組み込みが根の書き換えの禁止」を足す（2026-10-24 実測、PR #1842 の system-architect、scripts/maintenance/verify-pure-imports.js）
+- JSDoc の型の import は、改行と行頭の ` * ` をはさんでも tsc が読む。コメントを正規表現で見るときは各行の先頭の `*` を取り除いてから照合し、取り出せない `import(` は不合格にする（2026-10-24 実測、PR #1842 の system-architect）
+- pure の根へ移すときの旧の置き場は `export * from` だけでよい。名前が落ちるのは default export があるときだけなので、移す前に `grep "export default"` で0件を確かめる（2026-10-24、PR #1843 の system-architect。seriesPoints・raceStageConfig・meetExclusion は0件）
+- ファイルを移したら、そのパスを名指しする CI の条件と、旧のパスの文字列を書き換える変異の試験を探して移した先へ向け直す。今は `quality-gates.yml` の ml-tests（raceStageConfig）と `verify-frontend-pure-functions.js` の変異が該当し、`post-merge-checks.yml` の paths（`src/**`）と verify-no-undef（`src`）は src/pure を含む（2026-10-24、PR #1843 の grep）
+- E2E Re-record の7日で唯一の採用（run 40279649935）は、その日4回目の完走で、前の3回は再生で1・1・2件失敗の不採用。揺れでは撮り直しに意味があり、「同じ日に2回で打ち切り」は採用を消す（2026-10-27、system-architect、judge のログ、docs/design/ci-minutes-reduction/design.md）
+- job-watch.yml の concurrency は workflow の単位なので、scan が skip になる run も枠を取り、待っている scan を置き換える（7日で258回取り消し）。scan を条件で絞るなら concurrency を job へ移す（2026-10-27、system-architect、job-watch.yml:66-70）
+- guard-pr-merge の judgeE2eScope は、集約 e2e が SUCCESS のときしか e2e-shard を見ない。e2e の失敗は ask で返るので、古い失敗が残る窓では文言が誤る。「full で e2e-shard の成功が無い」は e2e の状態によらず deny にする（2026-10-27、system-architect、guard-pr-merge.js:442）
+- hq の codex-pr.json:178 は e2e-shard (1/3)〜(3/3) を完全一致で期待し、codex-pr.py:478-480 は名前が無いと M2 を満たさない。#1791 で5組になってから食い違っている。組の数を変えるたびに hq 側も変える（2026-10-27、system-architect、grep）
+- Actions の課金の集計で `attempts/{run_attempt}/jobs` だけを取ると、rerun の前の attempt の分が抜ける（7日の E2E で12 run、約1,000分）（2026-10-27、system-architect）
+- E2E の組は時間の95%以上がテストの実行で、checkout・npm ci・Playwright の install は合わせて約40秒。キャッシュの効き目は小さい（2026-10-27 実測、run 39377214420 の step の時刻）
+- 非公開のリポジトリの ubuntu-latest は 2 vCPU・8GB（公開は 4 vCPU・16GB）。CPU が律速の E2E は非公開で遅くなる（2026-10-27、GitHub の公式の runner の仕様）
+- ubuntu-latest は 2026-11 に ubuntu-26.04 へ移り、Playwright 1.59.1 の `playwright install --with-deps chromium` が「Playwright does not support chromium on ubuntu26.04-x64」で落ちる。Chromium を入れるジョブ（e2e-smoke-test の e2e-shard・e2e-light、e2e-live、e2e-rerecord の record・replay、post-merge-checks、bot-html-parity）を一時 ubuntu-24.04 に固定した（#2084）。26.04 の対応は Playwright 1.61 から（公式 release notes）。Playwright を 1.64.1（Chromium 156）に上げて7ジョブとも ubuntu-latest に戻した（2026-11-02。1.59 の失敗は run 41365586023・41365899809、#2084。26.04 の上で `playwright install --with-deps chromium` が通ったのは #2102 の run 41377856927）
+- Playwright を上げると、Vercel と SNS の画像（api/_lib/snsHeadless.js）では Chromium は変わらず、それを動かす playwright-core だけが変わる。Vercel 上は playwright-core が @sparticuz/chromium（package.json の版。2026-11 時点の最新は 153）を起動するので、playwright-core が同梱の版より新しい Chromium を前提にしても古い 153 を動かすことになる。上げたら CI の verify-sns-japanese-font（Linux で起動して日本語を撮る）と Vercel の build の AI スナップショットの両方で確かめる（1.64.1 × 153 は両方緑、#2102）。Remotion は自前の Chrome Headless Shell を使い、playwright と無関係。f01 の撮影（f01-capture.mjs）は playwright の Chromium で、1.59.1（Chromium 147）と 1.64.1（Chromium 156）で macOS の撮った14枚が画素まで同じ・最小の字の大きさも同じだった（2026-11-02 実測、2026-10-30-15-09）
+- Playwright 1.64 の routeFromHAR は、HAR の content._file が HAR のある場所の外（絶対パスを含む）を指すと「HAR entry _file escapes base directory」で応答を返さない。E2E の再生は HAR のコピーを test-results 配下に置いて _file を絶対パスにしていたため、全ての録画の応答が失敗し、データ待ちのテストが落ちた（shard 1・5 で計十数件。1.59.1 では同じテストが通る）。コピーは api.har と同じ場所に置き、_file は相対パスのまま渡す（2026-11-02、#2102、verify-e2e-replay-har-path.js）
+- E2E_LIVE=1 の fetchRecorded は本番応答を待つため、アサーション成功後にページが閉じると route.fetch が終了エラーになる。ページ終了による失敗だけを区別し、通信やassertの失敗を一括で無視しない（2026-10-27、BOA-1163、PR #2016）。
+- E2Eの **/rest/v1/race_odds* は race_odds_final にも一致する。発売中と締切時オッズで応答が違う試験は、routeの対象を区別する（2026-10-27、BOA-990①、PR #2027）。
+- E2E Smoke の経過が25分を超える回の主因は組の実行でなく待ち（ジョブの作成から開始まで、90% 17.9分・最大 67.6分）。Codex の PR がまとめて開く時刻に、同時に走れるジョブの上限で並ぶ。組の実行が中央 16.8分を占め、checkout〜npm ci は約0.3分なので、キャッシュより組の実行を縮める方が分も待ちも効く（2026-11-03、10/27〜11/03 の298 run の実測、docs/design/ci-minutes-reduction/design.md 11.1）。
+- e2e の範囲（0件）を import の閉包で守るときは、JS の相対 import だけでは足りない。CSS の @import と url()、vite が root から解く `/` 始まりの指定、Node 側で cwd や ROOT から組み立てるパス、ワークフローが node で呼ぶ scripts も根・辿る先に入れる（2026-11-03、system-architect の審査、#2171 の verify-e2e-scope.js）。
+- 撮影用など本番に出さない頁は、main.jsx の `import.meta.env.VITE_SNS_CAPTURE === "1"` の分岐の中で動的 import する。旗の無い本番の vite build では分岐と chunk が消える（Vite 7、dist の grep で0件を確認）。AppRouter に Route を足さないので、本番で開くと `path="*"` で `/` に戻り、sitemap・TRANSLATED_PATHS・content-index の対象外（2026-11-04、system-architect の審査、f01-stable-capture）
+- 子のプロセス（vite dev 等）を立てる撮影のスクリプトは、ブラウザの起動も try/finally の中に置き、process.on("exit") でも子を止める。並べて作る日は node_modules/.vite を取り合うので cacheDir を回ごとに分け、lazy で読む頁は optimizeDeps.entries に足す（最初の頁の後に依存が見つかると頁が読み直される）（2026-11-04、f01-capture.mjs）
+- 取得予算・通知閾値を見積もるときは、平常日のレース数を固定前提にせず、開催数に応じた必要量と最大開催日も確認する。固定の絶対上限と、レース数に応じた必要量を分けて設計する（2026-10-26、system-architect、docs/design/scraping-load-budget/spec.md §2.1・§4.2）。
+- 後から取り直せない日別データで、表の注記が前日や当日の最終レースより前なら、取得成功でも対象日の完了にしない。incomplete:trueで補足起動の再取得を残し、skippedによる成功で閉じない（2026-11-02、system-architect、BOA-1210、scripts/lib/scrapeJobs/cronWrapper.js・docs/design/pointrank-history/plan.md）。
+- 同じ仕事の再依頼では、書き直す前にtask-runs.jsonlのresult・ticket_errors・reviewを確認する。審査の異常終了など本文外の失敗なら、本文を無条件に作り直さず、根拠と版を再確認して再提出する（2026-11-03、seo-human、BOA-1257、審査exit 1・max_turnsによる再依頼）。
+- CSS衝突検査は :where()・:is() 等の括弧内を除くため、`:where(...) .back-link` も先頭クラスを back-link と判定する。CSSを移したら、残る無スコープ規則との衝突と許可リストの files を再照合する（2026-11-03、BOA-1010、scripts/maintenance/verify-css-class-collisions.js の比較関数による補助検証）。
+- `git grep` の pathspec `'src/**/*.css'` は src 直下の App.css を含まない。CSS全体の禁止色を確認するときは src 全体も走査し、直下のファイルを検査から落とさない（2026-11-03、BOA-1014、修正前の App.css が未検出・ContentHub.css のみ検出した実測）。
+- サイトマップの読取検査は実関数をvmに隔離し、Supabase未設定・正常な空応答・error応答を別々に試す。error応答は空結果にせず、読み取り名付きの例外でrejectされることを確認する（2026-11-03、BOA-1232、scripts/maintenance/verify-sitemap-coverage.js）。
+- run-heavy.shはローカルで先頭コマンドがnpxなら、Playwright以外にも未指定の `--workers=1` を追加する。`npx vite build` を直接渡すとViteが拒否するため、Vite部分だけの確認は `bash -c 'npx vite build'` を渡す（2026-11-03、BOA-1238のtask-308代替ビルド実測・BOA-1268、scripts/maintenance/run-heavy.sh）。
+- 2026-11-04 E2E の失敗40件（10/31〜11/4、直近300 run）の72.5%は 11/2 の ubuntu-latest→26.04 切替（Playwright が Chromium を入れられない）の1事象。コード起因11件のうち9件は期待値の追随漏れ、本物の不具合は1件。#2170 の後は組が約7分・全体が約10分。対策として Chromium を入れるジョブを ubuntu-24.04 に固定（版上げは意図して行う）。根拠: gh run view --log-failed の全件確認（Orchestrate のサブエージェント）
+- base 側の判定スクリプトを `git show HEAD^1:<file>` で取り出す流儀は、そのスクリプトが node 標準しか import しないときだけ使える。相対 import があるなら `git archive` で同じ配置に取り出し、辿る木は `--root` で渡す（2026-11-05、system-architect、ADR-0105、.github/workflows/sns-makers.yml）。
+- 必須にする check を差分で飛ばすときは、job の `if:` でなく集約の job を SUCCESS で終える。guard の judgeOneCheck は SUCCESS 以外を止め、Codex の merge-check M2 は skipped を不合格にする（2026-11-05、system-architect、ADR-0105、scripts/maintenance/guard-pr-merge.js）。
+- Remotion 4.0.512 が試した Chromium は chrome-headless-shell 149.0.7790.0、Playwright 1.64.1 の headless shell は 156。CI は `npx remotion browser ensure`（置き場所は cwd の node_modules/.remotion）で hq と同じ版にし、Playwright は `install-deps` で OS の部品だけに使う（2026-11-05、ADR-0105、@remotion/renderer/dist/browser/get-chrome-download-url.js）。
+- root に `@remotion/*` は無く、remotion の依存は `sns-video-studio/remotion/node_modules` だけにある。`scripts/maintenance/` からは `createRequire(sns-video-studio/remotion/package.json)` で読み、Node API の Chromium は cwd を remotion にして CLI と同じ置き場所を使う（2026-11-05、ADR-0105、scripts/maintenance/verify-sns-makers.js）。
+- 相対 import を辿る検査は JSON と `new URL("<相対>", import.meta.url)` も葉として数える。全貌の文は scene2-data.mjs が src/locales/ja/common.json を new URL で読む（2026-11-05、system-architect、ADR-0105、scripts/lib/relativeImportGraph.js）。
+- 2026-11-06、ゼロベース再設計 v3.3（オーナー決定 D2）で review.yml（AI 審査・承認の App）と scripts/review/・scripts/lib/reviewPr.js を外した。上の 2026-10-20 の審査の関門・月の上限の4行は過去の記録。差分の形の検査（symlink・submodule・LFS・バイナリ・.gitattributes・299ファイル・20万字）は verify-pr-shape.js（scripts/lib/prShape.js）に移り、必須の check の verify で落ちる。gate と違い、先頭の印が拡張子と合う png・jpg・gif・webp・wav・mp4・woff2・ttf・gz の追加と変更は通す（verify は必須なので、同じ線だとモックとブログの画像が入らない）。空のファイルの追加・中身を変えない実行権の変更も通し、消したファイルの本文は上限に数えない。LFS は行の頭のポインタだけを落とす（gate は本文のどこかに URL があれば落とし、この検査の試験を変える PR まで止まった）
+- 2026-11-06、claude/** の Preview を止めた（#2304）ので、Quality Gates の verify の job の最後で PR ごとに `npm run build`（VERCEL_ENV=preview、記事・選手のスナップショットは作らない）を回す（.github/workflows/quality-gates.yml）

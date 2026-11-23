@@ -26,226 +26,6 @@ export const shareUrlFor = (pathWithSearch) =>
   `${SITE_ORIGIN}${pathWithSearch}`;
 
 /**
- * AI予想をXでシェア
- * @param {Object} race - レースデータ
- * @param {string} model - 使用したモデル (standard/safeBet/upsetFocus)
- */
-export const shareRacePredictionToX = (race, model = "standard") => {
-  const venue = race.venue || "不明";
-  const raceNo = race.raceNo || "?";
-  const topPick = race.prediction?.topPick || "?";
-  const top3 = race.prediction?.top3?.join("-") || "?-?-?";
-
-  const modelName = MODEL_NAMES[model] || "スタンダード";
-
-  // 日付をフォーマット (YYYY-MM-DD -> MM/DD)
-  let dateStr = "";
-  if (race.date) {
-    const parts = race.date.split("-");
-    if (parts.length === 3) {
-      dateStr = `${parts[1]}/${parts[2]} `;
-    }
-  }
-
-  // 5種類のメッセージバリエーション
-  const messages = [
-    `🏁 龍神レーダー予想【${dateStr}${venue}${raceNo}R】
-
-モデル: ${modelName}
-本命: ${topPick}号艇
-推奨: ${top3}
-
-展開予測から分析した結果、この並びが来そう！
-データ的にも期待できるかも👀
-
-#ボートレース #AI予想 #龍神レーダー`,
-
-    `🏁 龍神レーダー予想【${dateStr}${venue}${raceNo}R】
-
-モデル: ${modelName}
-本命: ${topPick}号艇
-推奨: ${top3}
-
-1マーク展開予測とモーター性能を分析した結果、
-この組み合わせに注目してます📊
-
-#ボートレース #AI予想 #龍神レーダー`,
-
-    `🏁 龍神レーダー予想【${dateStr}${venue}${raceNo}R】
-
-モデル: ${modelName}
-本命: ${topPick}号艇
-推奨: ${top3}
-
-無料でここまで精度の高い予想が見られるのは嬉しい✨
-今日も当たりますように！
-
-#ボートレース #AI予想 #龍神レーダー`,
-
-    `🏁 龍神レーダー予想【${dateStr}${venue}${raceNo}R】
-
-モデル: ${modelName}
-本命: ${topPick}号艇
-推奨: ${top3}
-
-展開予測から見て、この予想は信頼できそう！
-皆さんはどう思いますか？🤔
-
-#ボートレース #AI予想 #龍神レーダー`,
-
-    `🏁 龍神レーダー予想【${dateStr}${venue}${raceNo}R】
-
-モデル: ${modelName}
-本命: ${topPick}号艇
-推奨: ${top3}
-
-最近的中率が上がってきてて嬉しい😊
-AIの予想、参考にしてみてください！
-
-#ボートレース #AI予想 #龍神レーダー`,
-  ];
-
-  // ランダムにメッセージを選択
-  const randomIndex = Math.floor(Math.random() * messages.length);
-  const text = messages[randomIndex];
-
-  const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent("https://www.boat-ai.jp/")}`;
-  window.open(tweetUrl, "_blank", "width=600,height=400");
-};
-
-/**
- * 的中結果をXでシェア
- * @param {Object} race - レースデータ（結果含む）
- * @param {string} model - 使用したモデル (standard/safeBet/upsetFocus)
- */
-export const shareHitRaceToX = (race, model = "standard") => {
-  const venue = race.venue || "不明";
-  const raceNo = race.raceNo || "?";
-  const prediction = race.prediction?.top3?.join("-") || "?-?-?";
-  const result = race.result?.join("-") || "?-?-?";
-  const payout = race.totalPayout || 0;
-  const hitTypes = race.hitTypes || [];
-
-  const modelName = MODEL_NAMES[model] || "スタンダード";
-
-  // 的中券種を文字列化
-  let hitTypesStr = "";
-  if (hitTypes.length > 0) {
-    const hitTypeNames = hitTypes.map((h) => h.type);
-    hitTypesStr = hitTypeNames.join("・");
-  }
-
-  // 日付をフォーマット (YYYY-MM-DD -> MM/DD)
-  let dateStr = "";
-  if (race.date) {
-    const parts = race.date.split("-");
-    if (parts.length === 3) {
-      dateStr = `${parts[1]}/${parts[2]} `;
-    }
-  }
-
-  // 5種類のメッセージバリエーション
-  const messages = [
-    `🎯 的中！【${dateStr}${venue}${raceNo}R】
-
-モデル: ${modelName}
-予想: ${prediction}
-結果: ${result}
-的中: ${hitTypesStr} ✅
-配当: ${payout.toLocaleString()}円
-
-龍神レーダーで予想的中🎉
-AIの精度に驚いてます！
-
-#ボートレース #的中 #龍神レーダー`,
-
-    `🎯 的中！【${dateStr}${venue}${raceNo}R】
-
-モデル: ${modelName}
-予想: ${prediction}
-結果: ${result}
-的中: ${hitTypesStr} ✅
-配当: ${payout.toLocaleString()}円
-
-龍神レーダーで予想的中🎉
-無料でこの精度はすごい！
-
-#ボートレース #的中 #龍神レーダー`,
-
-    `🎯 的中！【${dateStr}${venue}${raceNo}R】
-
-モデル: ${modelName}
-予想: ${prediction}
-結果: ${result}
-的中: ${hitTypesStr} ✅
-配当: ${payout.toLocaleString()}円
-
-龍神レーダーで予想的中🎉
-データ分析の力を実感！
-
-#ボートレース #的中 #龍神レーダー`,
-
-    `🎯 的中！【${dateStr}${venue}${raceNo}R】
-
-モデル: ${modelName}
-予想: ${prediction}
-結果: ${result}
-的中: ${hitTypesStr} ✅
-配当: ${payout.toLocaleString()}円
-
-龍神レーダーで予想的中🎉
-今日もAI予想が当たった！
-
-#ボートレース #的中 #龍神レーダー`,
-
-    `🎯 的中！【${dateStr}${venue}${raceNo}R】
-
-モデル: ${modelName}
-予想: ${prediction}
-結果: ${result}
-的中: ${hitTypesStr} ✅
-配当: ${payout.toLocaleString()}円
-
-龍神レーダーで予想的中🎉
-的中率の高さに満足してます！
-
-#ボートレース #的中 #龍神レーダー`,
-  ];
-
-  // ランダムにメッセージを選択
-  const randomIndex = Math.floor(Math.random() * messages.length);
-  const text = messages[randomIndex];
-
-  const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent("https://www.boat-ai.jp/")}`;
-  window.open(tweetUrl, "_blank", "width=600,height=400");
-};
-
-/**
- * 統計データをXでシェア
- * @param {Object} stats - 統計データ
- */
-export const shareDailyStatsToX = (stats) => {
-  const date = stats.date || new Date().toISOString().split("T")[0];
-  const tanWins = stats.tanWins || 0;
-  const fukuWins = stats.fukuWins || 0;
-  const total = stats.total || 1;
-  const tanRate = ((tanWins / total) * 100).toFixed(1);
-  const fukuRate = ((fukuWins / total) * 100).toFixed(1);
-
-  const text = `📊 本日の実績【${date}】
-
-✅ 単勝: ${tanWins}/${total}（${tanRate}%）
-✅ 複勝: ${fukuWins}/${total}（${fukuRate}%）
-
-龍神レーダーのAI予想で的中率UP📈
-
-#ボートレース #AI予想`;
-
-  const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent("https://www.boat-ai.jp/")}`;
-  window.open(tweetUrl, "_blank", "width=600,height=400");
-};
-
-/**
  * AI予想のシェアテキストを生成（react-share用）
  *
  * 中止のレース（race.isCancelled。判定は呼び出し側で isRaceCancelled）と、
@@ -257,20 +37,41 @@ export const shareDailyStatsToX = (stats) => {
  * @param {string} model
  * @param {(key: string, options?: object) => string} t - i18next の t
  */
+/** 共有文の見出し（日付・会場・R）。予想・注意度・中止の文面で同じ形 */
+const shareLabel = (race) => {
+  const parts = race.date ? race.date.split("-") : [];
+  return {
+    date: parts.length === 3 ? `${parts[1]}/${parts[2]} ` : "",
+    venue: race.venue || "不明",
+    raceNo: race.raceNo || "?",
+  };
+};
+
+/**
+ * 発走前の共有文のイン崩れ注意度の版（BOA-822、機能フラグの側。2026-10-17 オーナー決定の案A）。
+ * 画面（AI予想タブ）に展開予測・本命・推奨が出ないので、注意度の割合と段だけを書く。当たりを約束する言葉は書かない
+ * @param {{venue?: string, raceNo?: number|string, date?: string, isCancelled?: boolean, inCaution?: {pct?: number, level?: string, n?: number}|null}} race
+ * @param {(key: string, options?: object) => string} t
+ */
+export const generateInCautionShareText = (race, t) => {
+  const label = shareLabel(race);
+  if (race.isCancelled) return t("panel.shareCancelled", label);
+  const ic = race.inCaution;
+  if (typeof ic?.pct !== "number" || !["low", "mid", "high"].includes(ic.level))
+    return t("panel.shareNoPrediction", label);
+  return t("panel.shareInCaution", {
+    ...label,
+    pct: ic.pct,
+    level: t(`inCaution.level.${ic.level}`),
+    // 件数（spec「件数を添える」）と免責（カードと同じ文。段の言葉は免責の併記が前提、#1610 wording-editor P1）
+    n: Number.isFinite(ic.n) ? ic.n.toLocaleString() : "—",
+    disclaimer: t("inCaution.disclaimer"),
+  });
+};
+
 export const generatePredictionShareText = (race, model = "standard", t) => {
-  const venue = race.venue || "不明";
-  const raceNo = race.raceNo || "?";
-
-  let dateStr = "";
-  if (race.date) {
-    const parts = race.date.split("-");
-    if (parts.length === 3) {
-      dateStr = `${parts[1]}/${parts[2]} `;
-    }
-  }
-
   // 見出し（日付・会場・R）は予想の文面と同じ形で残す
-  const label = { date: dateStr, venue, raceNo };
+  const label = shareLabel(race);
   if (race.isCancelled) return t("panel.shareCancelled", label);
   if (race.prediction?.topPick == null) {
     return t("panel.shareNoPrediction", label);

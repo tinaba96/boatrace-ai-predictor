@@ -21,11 +21,7 @@
  *   一方 wilson.js は分数（0〜1）を扱うので、境界で変換する。
  */
 
-import {
-  wilsonLowerBound,
-  wilsonLowerBoundFromRate,
-  isSmallSample,
-} from "./wilson.js";
+import { wilsonLowerBound, isSmallSample } from "./wilson.js";
 
 /**
  * 各指標の抽出閾値（パーセント）。小標本フラグの比較対象でもある。
@@ -45,15 +41,10 @@ export const EXTRACTION_THRESHOLDS = {
 };
 
 /**
- * 各指標の全国ベースレート（パーセント、2026-09-24 本番実測）。
- * 表示の文脈（「全国平均は◯%」）に使う。**小標本フラグの判定には使わない**
- * （まくりで逆に働くため。wilson.js のコメント参照）。
+ * 逃がしで一覧に出すコース（＝当日の2号艇。過去の2コースの実績）。3号艇は人の画面の折りたたみの中だけに出し、
+ * 4〜6号艇は保存しない（2026-10-15 オーナー承認）。生成・画面・ボット向けがここを読む
  */
-export const NATIONAL_BASE_RATES = {
-  nige: 52.98, // 1コース進入走のうち逃げ決着（n=43,643）
-  nigashi: 52.98, // 定義上、逃げ率と同値（各レースに各コースが1艇ずつ存在するため）
-  makuriByCourse: { 2: 3.76, 3: 5.08, 4: 4.92, 5: 1.25, 6: 0.62 },
-};
+export const NIGASHI_LIST_COURSE = 2;
 
 /** 抽出の最低母数（地力窓） */
 export const MIN_RUNS = 10;
@@ -132,23 +123,38 @@ export function computeZScore({ rate, expected, n }) {
   return round2(rate / 100 / se - p / se);
 }
 
+/** 「イン有利」方向の指標（イン崩れ指数が低いほど当日条件と一致する） */
+export const IN_FAVORABLE_METRICS = new Set(["nige"]);
+
+/**
+ * 注目レースの点に使わない指標。逃がし（nigashi）は抽出に当たったレースの1号艇の1着が
+ * 外れたレースと同じだったため（56.0% 対 56.0%、級×勝率でそろえて +0.6pt［-2.5, +3.7］。
+ * data/analysis/nigashi-makurare/today-nigashi-hit.json、PR #2243）、方向一致度を持たせない
+ * （2026-11-04 オーナー決定）。「逃がしやすい選手」の一覧そのものは残す。
+ */
+export const NOT_FEATURED_METRICS = new Set(["nigashi"]);
+
 /**
  * 「今日の注目レース」の方向一致度。
  *
- * 逃げは「イン有利」方向なのでイン崩れ指数が低いほど一致、まくり・逃がしは
+ * 逃げは「イン有利」方向なのでイン崩れ指数が低いほど一致、まくりは
  * 「イン不利」方向なので高いほど一致する。
+ *
+ * 逃がし（nigashi）は方向一致度を持たない（null）。以前は逃げと同じ「イン有利」側に入れていたが、
+ * 抽出の当たりと1号艇の1着に差が無かったため外した（2026-11-04、NOT_FEATURED_METRICS 参照）。
  *
  * @param {"nige"|"makuri"|"nigashi"} metric
  * @param {number} volatilityPercentile イン崩れ指数（**0〜100**。情報源の
  *   predictions.feature_contributions.volatilityPercentile は0〜1なので、
  *   呼び出し側が×100してから渡す）
- * @returns {number|null} 0〜1。volatilityPercentile が無ければ null（候補から外す）
+ * @returns {number|null} 0〜1。volatilityPercentile が無い、または逃がしのときは null（候補から外す）
  */
 export function computeConsistency(metric, volatilityPercentile) {
+  if (NOT_FEATURED_METRICS.has(metric)) return null;
   if (!Number.isFinite(volatilityPercentile)) return null;
   assertPercent(volatilityPercentile, "volatilityPercentile");
   const v = volatilityPercentile / 100;
-  return metric === "nige" ? 1 - v : v;
+  return IN_FAVORABLE_METRICS.has(metric) ? 1 - v : v;
 }
 
 /**
@@ -195,12 +201,6 @@ export function clearsThresholdWithConfidence(metric, rate, n) {
   // 率を整数の成功数に丸め戻さない。n=8・率70% を round(5.6)=6 にすると
   // p̂ が 0.75 にずれて下限が0.409（正しくは0.366）になる
   return !isSmallSample((rate / 100) * n, n, threshold / 100);
-}
-
-/** Wilson下限をパーセントで返す（表示用） */
-export function wilsonLowerPercent(rate, n) {
-  const lower = wilsonLowerBoundFromRate(rate / 100, n);
-  return lower === null ? null : round1(lower * 100);
 }
 
 /** 成功数の整数が手元にある場合のWilson下限（パーセント）。バッチ側はこちらを使う */

@@ -12,13 +12,16 @@ import { fileURLToPath } from "node:url";
 import {
   deletesBranch,
   extractMergeTargets,
-  findWorktreePath,
   hasOrderConstraints,
-  judgeChecks,
+  judgeE2eScope,
   judgeUnresolved,
-  judgeWorktree,
+  REQUIRED_CHECK_NAMES,
+  rulesetEnforcesChecks,
 } from "./guard-pr-merge.js";
 import { PRECIOUS_PATHS } from "../lib/preciousPaths.js";
+import { classifyE2eScope } from "./e2e-scope.js";
+import { green, runGuardPrMergeScenes1, runGuardPrMergeScenes2 } from "./verifyData/guard-pr-merge-scenes-1.js";
+import { runGuardPrMergeScenes3, runGuardPrMergeScenes4 } from "./verifyData/guard-pr-merge-scenes-2.js";
 
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -166,6 +169,96 @@ check(
   num("918"),
 );
 
+// --- --auto（自動マージの予約。2026-10-18、ruleset「master-checks」の導入に合わせて追加） ---
+check("--auto を読む", first("gh pr merge 1621 --auto --squash"), {
+  ...num("1621"),
+  auto: true,
+});
+check("--auto が番号より前", first("gh pr merge --auto 1621"), {
+  ...num("1621"),
+  auto: true,
+});
+check(
+  "--disable-auto もその場ではマージしない",
+  first("gh pr merge 1621 --disable-auto"),
+  { ...num("1621"), auto: true },
+);
+check(
+  "--auto の付かない形には auto を付けない",
+  first("gh pr merge 1621 --squash"),
+  num("1621"),
+);
+check(
+  "引用符の本文に書いた --auto は読まない",
+  first('gh pr merge 1621 -b "use --auto later" --squash'),
+  num("1621"),
+);
+check(
+  "-b の値としての --auto は読まない",
+  first("gh pr merge 1621 -b --auto"),
+  num("1621"),
+);
+check(
+  "--auto でも変数の番号は確定できない（変数の禁止は --auto でも効く）",
+  first("gh pr merge $n --auto"),
+  { ...UNRESOLVED, auto: true },
+);
+check(
+  "1つ目だけ --auto",
+  extractMergeTargets("gh pr merge 1 --auto && gh pr merge 2 --squash"),
+  [{ ...num("1"), auto: true }, num("2")],
+);
+
+// --auto でチェックを GitHub に任せてよいのは、ruleset が必須チェックを全部持っているときだけ
+const statusRule = (...contexts) => ({
+  type: "required_status_checks",
+  parameters: {
+    required_status_checks: contexts.map((context) => ({
+      context,
+      integration_id: 15368,
+    })),
+    strict_required_status_checks_policy: false,
+  },
+});
+check("必須チェックの集合は ruleset と同じ3つ", REQUIRED_CHECK_NAMES, [
+  "verify",
+  "ml-tests",
+  "e2e",
+]);
+check(
+  "ruleset が3つとも持てば GitHub に任せる",
+  rulesetEnforcesChecks([
+    { type: "deletion" },
+    statusRule("verify", "e2e", "ml-tests"),
+  ]),
+  true,
+);
+check(
+  "2つの ruleset に分かれていても合わせて見る",
+  rulesetEnforcesChecks([statusRule("verify"), statusRule("e2e", "ml-tests")]),
+  true,
+);
+// 2026-10-18 時点の master の実物（必須チェックの無い ruleset）。--auto でもローカルで検査する
+check(
+  "必須チェックの無い ruleset なら任せない（導入前の運用を壊さない）",
+  rulesetEnforcesChecks([
+    { type: "deletion" },
+    { type: "non_fast_forward" },
+    {
+      type: "pull_request",
+      parameters: { required_approving_review_count: 1 },
+    },
+  ]),
+  false,
+);
+check(
+  "ml-tests が欠けた ruleset なら任せない",
+  rulesetEnforcesChecks([statusRule("verify", "e2e")]),
+  false,
+);
+check("ruleset を読めなければ任せない", rulesetEnforcesChecks(null), false);
+check("壊れた要素があっても落ちない", rulesetEnforcesChecks([null, {}]), false);
+
 // --- 番号を確定できなかったときの判定 ---
 const constrained = { rules: [{ pr: 918, after: [917] }] };
 check("順序の制約あり", hasOrderConstraints(constrained), true);
@@ -216,118 +309,91 @@ check(
   false,
 );
 
-// --- worktree の探索 ---
-const porcelain = [
-  "worktree /repo",
-  "HEAD abc",
-  "branch refs/heads/master",
-  "",
-  "worktree /repo/.claude/worktrees/feat-a",
-  "HEAD def",
-  "branch refs/heads/feature/a",
-  "",
-  "worktree /repo/.claude/worktrees/detached",
-  "HEAD 999",
-  "detached",
-].join("\n");
-check(
-  "該当あり",
-  findWorktreePath(porcelain, "feature/a"),
-  "/repo/.claude/worktrees/feat-a",
-);
-check("master", findWorktreePath(porcelain, "master"), "/repo");
-check("該当なし", findWorktreePath(porcelain, "feature/none"), null);
-check(
-  "detachedを誤って拾わない",
-  findWorktreePath(porcelain, "detached"),
-  null,
-);
+// ---- 後半の場面（verifyData/guard-pr-merge-scenes-1.js） ----
+runGuardPrMergeScenes1({ check });
 
-// --- チェック結果の判定（止まる側も必ず確かめる） ---
-const green = [
-  { name: "verify", state: "SUCCESS" },
-  { name: "e2e", state: "SUCCESS" },
+// --- e2e を軽い組・0件で済ませた PR（BOA-929） ---
+const shardsSkipped = [
+  ...green,
+  { name: "e2e-scope", state: "SUCCESS" },
+  {
+    name: "e2e-shard (${{ matrix.shard }}/${{ strategy.job-total }})",
+    state: "SKIPPED",
+  },
+  { name: "e2e-light", state: "SUCCESS" },
 ];
-check("全部緑なら止めない", judgeChecks("1", green), null);
-check(
-  "verifyが落ちていれば止める",
-  judgeChecks("1", [{ name: "verify", state: "FAILURE" }])?.decision,
-  "deny",
-);
-check(
-  "verifyが実行中なら待たせる",
-  judgeChecks("1", [{ name: "verify", state: "IN_PROGRESS" }])?.decision,
-  "ask",
-);
-check(
-  "verifyの結果がまだ無ければ待たせる",
-  judgeChecks("1", [{ name: "e2e", state: "SUCCESS" }])?.decision,
-  "ask",
-);
-check(
-  "verifyがSKIPPEDなら止める",
-  judgeChecks("1", [{ name: "verify", state: "SKIPPED" }])?.decision,
-  "deny",
-);
-check(
-  "e2eだけ赤なら確認を挟む（止めはしない）",
-  judgeChecks("1", [
-    { name: "verify", state: "SUCCESS" },
-    { name: "e2e", state: "FAILURE" },
-  ])?.decision,
-  "ask",
-);
-// 実際のPR #843 が e2e=IN_PROGRESS で、当時はPENDINGしか除外していなかったため
-// 「e2eが赤い」扱いで確認を求めてしまった（2026-09-25、実データで発覚）。
-// その修正では「RUNNING_STATESは何もしない（素通し）」にしたが、BOA-769 D（2026-10-12〜）で
-// 「待たせる（ask）」に変える。実行中に素通しすると、手元の全件実行をやめた運用では
-// 走り終わる前にマージできてしまうため（verifyのRUNNING判定と揃える）
-check(
-  "e2eが実行中なら待たせる(PENDING)",
-  judgeChecks("1", [
-    { name: "verify", state: "SUCCESS" },
-    { name: "e2e", state: "PENDING" },
-  ])?.decision,
-  "ask",
-);
-check(
-  "e2eが実行中なら待たせる(IN_PROGRESS)",
-  judgeChecks("1", [
-    { name: "verify", state: "SUCCESS" },
-    { name: "e2e", state: "IN_PROGRESS" },
-  ])?.decision,
-  "ask",
-);
-check(
-  "e2eが実行中なら待たせる(QUEUED)",
-  judgeChecks("1", [
-    { name: "verify", state: "SUCCESS" },
-    { name: "e2e", state: "QUEUED" },
-  ])?.decision,
-  "ask",
-);
-check("配列でなければ判断しない", judgeChecks("1", null), null);
-check(
-  "止める理由にPR番号が入る",
-  judgeChecks("42", [{ name: "verify", state: "FAILURE" }]).reason.includes(
-    "#42",
-  ),
-  true,
-);
 
-// --- worktree の中身による判定 ---
-check("空なら止めない", judgeWorktree("/w", [], 0), null);
-check(
-  "取り直しの効かないデータがあれば止める",
-  judgeWorktree("/w", ["data/kb-archive"], 0)?.decision,
-  "deny",
-);
-check("未コミットがあれば止める", judgeWorktree("/w", [], 3)?.decision, "deny");
-check(
-  "止める理由にworktreeのパスが入る",
-  judgeWorktree("/w/x", ["data/ml"], 0).reason.includes("/w/x"),
-  true,
-);
+// ---- 後半の場面（verifyData/guard-pr-merge-scenes-1.js・guard-pr-merge-scenes-2.js） ----
+runGuardPrMergeScenes2({ check, shardsSkipped });
+runGuardPrMergeScenes3({ check });
+// 一覧の改ざん: PR の側で allowedPathPatterns に src を足して軽い組で通しても、
+// master の一覧で判定し直すと全部流すべき差分になり、止まる
+{
+  const masterConfig = JSON.parse(
+    readFileSync(
+      path.join(repoRoot, "scripts/content/content-pr-gate.json"),
+      "utf8",
+    ),
+  );
+  const diff = [
+    "scripts/content/content-pr-gate.json",
+    "src/App.jsx",
+    "public/blog/a.md",
+  ];
+  const masterScope = classifyE2eScope(diff, masterConfig).scope;
+  check("改ざんした一覧の PR は master の一覧では全部", masterScope, "full");
+  check(
+    "改ざんした一覧で軽い組に逃げた PR を止める",
+    judgeE2eScope("1", masterScope, shardsSkipped)?.decision,
+    "deny",
+  );
+}
+// 記事の PR に免除の一覧から外すだけの設定の変更が混ざる（オーナー決定 2026-10-26）。
+// 削除だけと確かめた PR は軽い組のままで、shard が skip でも止めない。確かめられなければ全部に倒れて止める
+{
+  const masterConfig = JSON.parse(
+    readFileSync(
+      path.join(repoRoot, "scripts/content/content-pr-gate.json"),
+      "utf8",
+    ),
+  );
+  const diff = [
+    "public/blog/a.md",
+    "docs/content-manifests/a.json",
+    "scripts/content/content-pr-gate.json",
+  ];
+  const removalScope = classifyE2eScope(diff, masterConfig, {
+    gateConfigRemovalOnly: true,
+  }).scope;
+  check("一覧から外すだけの記事の PR は軽い組", removalScope, "light");
+  check(
+    "一覧から外すだけの記事の PR は shard が skip でも止めない",
+    judgeE2eScope("1", removalScope, shardsSkipped),
+    null,
+  );
+  check(
+    "確かめられなかった理由を止める理由に足す",
+    judgeE2eScope(
+      "1",
+      "full",
+      shardsSkipped,
+      "確かめられませんでした",
+    )?.reason.endsWith(" 確かめられませんでした"),
+    true,
+  );
+  check(
+    "削除だけと確かめられない記事の PR は軽い組で済ませたら止める",
+    judgeE2eScope(
+      "1",
+      classifyE2eScope(diff, masterConfig).scope,
+      shardsSkipped,
+    )?.decision,
+    "deny",
+  );
+}
+
+// ---- 後半の場面（verifyData/guard-pr-merge-scenes-2.js） ----
+runGuardPrMergeScenes4({ check });
 
 // --- 保護対象パスが .gitignore と一致しているか ---
 // PRECIOUS_PATHS にあるのに .gitignore に無いと、gitに入ってしまい定義の前提が崩れる。

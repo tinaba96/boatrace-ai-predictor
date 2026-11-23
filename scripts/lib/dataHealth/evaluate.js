@@ -14,6 +14,14 @@ import {
   DEFAULT_MIN_DENOMINATOR,
   DEFAULT_THRESHOLD,
 } from "./checks.js";
+import { rowStats, sum } from "./evaluateParts.js";
+
+// 通知文・鮮度の判定は evaluateParts.js へ分けた（行数の関所のため）。ここから従来どおり公開する
+export {
+  evaluateFreshnessCheck,
+  formatBreach,
+  formatObserved,
+} from "./evaluateParts.js";
 
 /** 同じ未達が続くとき、この日数ごとに再通知する（悪化したときは、日数によらず通知する） */
 export const REMIND_DAYS = 7;
@@ -21,11 +29,6 @@ export const REMIND_DAYS = 7;
 export const ALERT_VALID_HOURS = 4;
 /** この件数以上の項目が同時に未達なら、共通原因（障害・順延・取得の停止）の要約を先頭に付ける */
 export const COMMON_CAUSE_MIN_BREACHES = 4;
-
-const sum = (rows, col) =>
-  rows.reduce((acc, r) => acc + Number(r[col] ?? 0), 0);
-const pct = (v) => `${(v * 100).toFixed(1)}%`;
-const shortDate = (d) => d.slice(5);
 
 /** JSTの日付（YYYY-MM-DD）の曜日（0=日〜6=土） */
 export function weekdayOf(dateStr) {
@@ -51,7 +54,7 @@ export function periodFor(targetDate, days) {
  * @typedef {Object} CheckResult
  * @property {string} id
  * @property {string} label
- * @property {"ok"|"breach"|"not_applicable"|"not_introduced"|"insufficient"|"no_target"} status
+ * @property {"ok"|"breach"|"not_applicable"|"not_introduced"|"insufficient"|"no_target"|"error"} status
  * @property {"alert"|"info"} severity
  * @property {number|null} [rate]
  * @property {number} [numerator]
@@ -63,7 +66,77 @@ export function periodFor(targetDate, days) {
  * @property {{key: string, rate: number, missing: number}|null} [worst]
  * @property {Array<{key: string, rate: number, missing: number}>} [belowRows]
  * @property {string} [detail]
+ * @property {Array<string>} [staleItems] 鮮度の項目で、締めまでに更新されていなかった項目のキー
  */
+
+/** requiresTable のテーブルが空なら「未導入」の結果、そうでなければ null */
+function notIntroducedResult(check, tableRows, base) {
+  if (!check.requiresTable) return null;
+  if (!tableRows || tableRows[check.requiresTable] !== true) {
+    return {
+      ...base,
+      status: "not_introduced",
+      detail: `${check.requiresTable} が空（取り込み前）のため、未導入として評価しない`,
+    };
+  }
+  return null;
+}
+
+/** 日付の列で見る項目の対象期間。対象が無ければ not_applicable の結果を early に持つ */
+function scopeByDate(check, rows, base, { end, days }) {
+  const to = addDaysToDateString(end, -(check.lagDays ?? 0));
+  let from = addDaysToDateString(end, -(days - 1));
+  if (check.since && check.since > from) from = check.since;
+  if (from > to) {
+    return {
+      early: {
+        ...base,
+        status: "not_applicable",
+        detail: check.since
+          ? `取得開始前（${check.since}以降が対象。評価の終端 ${to}）`
+          : `評価の対象期間がありません（${from}〜${to}）`,
+      },
+    };
+  }
+  return {
+    scoped: rows.filter((r) => String(r.d) >= from && String(r.d) <= to),
+    from,
+    to,
+  };
+}
+
+/**
+ * 評価の対象の行と期間。日付の列（d）は期間で絞り、それ以外（月別）は行をそのまま使う。
+ * @returns {{early: object}|{scoped: Array<Record<string, unknown>>, from: string, to: string}}
+ */
+function scopeRows(check, rows, base, { end, days, keyColumn }) {
+  if (keyColumn === "d") return scopeByDate(check, rows, base, { end, days });
+  return {
+    scoped: rows,
+    from: rows.length ? String(rows[0][keyColumn]) : "",
+    to: rows.length ? String(rows[rows.length - 1][keyColumn]) : "",
+  };
+}
+
+/** 集計した結果（common）から、perRow・母数の下限・閾値の順に状態を決める */
+function decideCountStatus(check, common, belowRows, minDenominator) {
+  if (check.aggregate === "perRow") {
+    return {
+      ...common,
+      status: belowRows.length > 0 ? "breach" : "ok",
+      belowRows,
+    };
+  }
+  const { denominator, rate, threshold } = common;
+  if (denominator < minDenominator) {
+    return {
+      ...common,
+      status: "insufficient",
+      detail: `期待件数が${denominator}件で、母数の下限（${minDenominator}件）未満のため判定しない`,
+    };
+  }
+  return { ...common, status: rate < threshold ? "breach" : "ok" };
+}
 
 /**
  * 登録表の項目を、関数の結果（日別の行）から判定する。
@@ -84,38 +157,12 @@ export function evaluateCountCheck(check, rows, { end, tableRows = null }) {
   const days = check.days ?? DEFAULT_DAYS;
   const keyColumn = check.keyColumn ?? "d";
 
-  if (check.requiresTable) {
-    if (!tableRows || tableRows[check.requiresTable] !== true) {
-      return {
-        ...base,
-        status: "not_introduced",
-        detail: `${check.requiresTable} が空（取り込み前）のため、未導入として評価しない`,
-      };
-    }
-  }
+  const notIntroduced = notIntroducedResult(check, tableRows, base);
+  if (notIntroduced) return notIntroduced;
 
-  let scoped;
-  let from;
-  let to;
-  if (keyColumn === "d") {
-    to = addDaysToDateString(end, -(check.lagDays ?? 0));
-    from = addDaysToDateString(end, -(days - 1));
-    if (check.since && check.since > from) from = check.since;
-    if (from > to) {
-      return {
-        ...base,
-        status: "not_applicable",
-        detail: check.since
-          ? `取得開始前（${check.since}以降が対象。評価の終端 ${to}）`
-          : `評価の対象期間がありません（${from}〜${to}）`,
-      };
-    }
-    scoped = rows.filter((r) => String(r.d) >= from && String(r.d) <= to);
-  } else {
-    scoped = rows;
-    from = scoped.length ? String(scoped[0][keyColumn]) : "";
-    to = scoped.length ? String(scoped[scoped.length - 1][keyColumn]) : "";
-  }
+  const scope = scopeRows(check, rows, base, { end, days, keyColumn });
+  if (scope.early) return scope.early;
+  const { scoped, from, to } = scope;
 
   const numerator = sum(scoped, check.numerator);
   const denominator = sum(scoped, check.denominator);
@@ -131,22 +178,7 @@ export function evaluateCountCheck(check, rows, { end, tableRows = null }) {
     };
   }
 
-  const rowRate = (r) => {
-    const d = Number(r[check.denominator]);
-    return d === 0 ? null : Number(r[check.numerator]) / d;
-  };
-  const perRow = scoped
-    .map((r) => ({
-      key: String(r[keyColumn]),
-      rate: rowRate(r),
-      missing: Number(r[check.denominator]) - Number(r[check.numerator]),
-    }))
-    .filter((r) => r.rate !== null);
-  const worst = perRow.reduce(
-    (min, cur) => (min === null || cur.rate < min.rate ? cur : min),
-    null,
-  );
-  const belowRows = perRow.filter((r) => r.rate < threshold);
+  const { worst, belowRows } = rowStats(scoped, check, keyColumn, threshold);
   const rate = numerator / denominator;
   const common = {
     ...base,
@@ -159,22 +191,7 @@ export function evaluateCountCheck(check, rows, { end, tableRows = null }) {
     to,
     worst,
   };
-
-  if (check.aggregate === "perRow") {
-    return {
-      ...common,
-      status: belowRows.length > 0 ? "breach" : "ok",
-      belowRows,
-    };
-  }
-  if (denominator < minDenominator) {
-    return {
-      ...common,
-      status: "insufficient",
-      detail: `期待件数が${denominator}件で、母数の下限（${minDenominator}件）未満のため判定しない`,
-    };
-  }
-  return { ...common, status: rate < threshold ? "breach" : "ok" };
+  return decideCountStatus(check, common, belowRows, minDenominator);
 }
 
 /**
@@ -200,28 +217,56 @@ export function evaluateEmptyTables(policies, tableRows) {
   });
 }
 
-/** 未達の項目の通知文（絵文字なし） */
-export function formatBreach(result) {
-  if (result.belowRows) {
-    const rows = result.belowRows
-      .slice(0, 6)
-      .map((r) => `${r.key} ${pct(r.rate)}（欠${r.missing}件）`)
-      .join("、");
-    return `${result.label}: 閾値${pct(result.threshold)}未満の月 ${rows}`;
-  }
-  const worst = result.worst;
-  const worstText =
-    worst && worst.rate < result.threshold
-      ? `。最も低い日 ${shortDate(worst.key)} ${pct(worst.rate)}（欠${worst.missing}件）`
-      : "";
-  return `${result.label}: 充足率 ${pct(result.rate)}（${result.numerator}/${result.denominator}、欠${result.missing}件、閾値${pct(result.threshold)}、${shortDate(result.from)}〜${shortDate(result.to)}）${worstText}`;
-}
-
 const daysBetween = (fromDate, toDate) =>
   Math.round(
     (Date.parse(`${toDate}T00:00:00Z`) - Date.parse(`${fromDate}T00:00:00Z`)) /
       86400000,
   );
+
+/** 前日に出した通知が、scrape-monitor の通知済みの記録に無いか（前日の分だけ確認する） */
+function isUndelivered(prev, targetDate, deliveredKeys) {
+  return (
+    prev !== undefined &&
+    prev.alertKey !== undefined &&
+    deliveredKeys instanceof Set &&
+    daysBetween(prev.lastAt, targetDate) === 1 &&
+    !deliveredKeys.has(prev.alertKey)
+  );
+}
+
+const reasonOf = (prev, worsened, undelivered) => {
+  if (prev === undefined) return "";
+  if (worsened) return "（悪化）";
+  if (undelivered) return "（前回の通知が届いていないため再通知）";
+  return "（継続中）";
+};
+
+/**
+ * 1つの未達を通知するか。通知するなら理由の文（初回は ""）、しないなら null。
+ * @param {{key: string, missing: number, everyDay?: boolean}} b
+ */
+function alertReason(b, prev, { targetDate, deliveredKeys }) {
+  const worsened = prev !== undefined && b.missing > prev.missing;
+  const remind =
+    prev !== undefined && daysBetween(prev.lastAt, targetDate) >= REMIND_DAYS;
+  const undelivered = isUndelivered(prev, targetDate, deliveredKeys);
+  // 毎日通知する未達（鮮度）: 前回の通知が別の対象日なら、欠損数が同じでも通知する
+  const nextDay =
+    b.everyDay === true && prev !== undefined && prev.lastAt !== targetDate;
+  if (prev === undefined || worsened || remind || undelivered || nextDay) {
+    return reasonOf(prev, worsened, undelivered);
+  }
+  return null;
+}
+
+/** 今回「未達でない」と確認できた項目の状態を消し、それ以外（実行していない・できなかった）は残す */
+function carryOverState(previous, okKeys) {
+  const emitted = {};
+  for (const [key, state] of Object.entries(previous ?? {})) {
+    if (!okKeys.has(key)) emitted[key] = state;
+  }
+  return emitted;
+}
 
 /**
  * 通知する項目を決める（状態機械）。同じ未達を、毎日通知しない。
@@ -234,12 +279,13 @@ const daysBetween = (fromDate, toDate) =>
  *   - 未達で、前日に出した通知が、scrape-monitor の通知済みの記録（deliveredKeys）に無い → 通知（未配信の再通知。
  *     scrape-monitor の停止・Slack送信の失敗で、通知の有効期限（ALERT_VALID_HOURS）内に届かなかった場合に、
  *     REMIND_DAYS 日黙り込まないため。記録を読めない（deliveredKeys が null）ときは判定しない）
+ *   - 未達で、毎日通知する未達（everyDay。鮮度）で、最後の通知が別の対象日 → 通知（鮮度の未達は日ごとに別の事故）
  *   - 未達で上のいずれでもない → 通知しない（欠損数の観測値だけ更新する）
  *   - 未達でない（回復・対象外・未導入）→ 状態を消す（再発したら、初回として通知する）
  *   - 実行できなかった項目（errorKeys）→ 状態を変えない
  *
  * @param {Object} input
- * @param {Array<{key: string, text: string, missing: number}>} input.breaches 今回の未達（通知の候補）
+ * @param {Array<{key: string, text: string, missing: number, everyDay?: boolean}>} input.breaches 今回の未達（通知の候補）
  * @param {Set<string>} input.okKeys 今回、未達でないと確認できた項目のkey
  * @param {Record<string, {firstAt: string, lastAt: string, missing: number, alertKey?: string}>} input.previous
  * @param {string} input.targetDate
@@ -258,34 +304,12 @@ export function reconcileAlerts({
   const until = new Date(
     now.getTime() + ALERT_VALID_HOURS * 3600 * 1000,
   ).toISOString();
-  const emitted = {};
-  for (const [key, state] of Object.entries(previous ?? {})) {
-    // 今回の実行で「未達でない」と確認できた項目は、状態を消す。それ以外（今回実行していない・実行できなかった）は残す
-    if (!okKeys.has(key)) emitted[key] = state;
-  }
+  const emitted = carryOverState(previous, okKeys);
   const alerts = [];
   for (const b of breaches) {
     const prev = previous?.[b.key];
-    const worsened = prev !== undefined && b.missing > prev.missing;
-    const remind =
-      prev !== undefined && daysBetween(prev.lastAt, targetDate) >= REMIND_DAYS;
-    // 前日に出した通知が、scrape-monitor に届いていない（通知済みの記録に無い）。前日の分だけ確認する
-    // （通知済みの記録の保持は72時間で、それより古い通知は、届いていても記録から消える）
-    const undelivered =
-      prev !== undefined &&
-      prev.alertKey !== undefined &&
-      deliveredKeys instanceof Set &&
-      daysBetween(prev.lastAt, targetDate) === 1 &&
-      !deliveredKeys.has(prev.alertKey);
-    if (prev === undefined || worsened || remind || undelivered) {
-      const reason =
-        prev === undefined
-          ? ""
-          : worsened
-            ? "（悪化）"
-            : undelivered
-              ? "（前回の通知が届いていないため再通知）"
-              : "（継続中）";
+    const reason = alertReason(b, prev, { targetDate, deliveredKeys });
+    if (reason !== null) {
       const alertKey = `dh:${b.key}:${targetDate}`;
       alerts.push({ key: alertKey, text: `${b.text}${reason}`, until });
       emitted[b.key] = {

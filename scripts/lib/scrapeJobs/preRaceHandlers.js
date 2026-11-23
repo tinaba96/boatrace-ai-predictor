@@ -7,10 +7,11 @@
  *                                 （発走の10分後〜36分後。BOA-382）、体重だけのスロット（発走60分前〜34分前。BOA-500）を
  *                                 1件ずつ処理する
  *   createRefreshingCronHandler   api/cron/race-info.js   スロットの処理後に、変更を書いたレースの予測を再計算する（案1）
- *   createExhibitionCronHandler   api/cron/exhibition.js  mode（off・shadow・live）で、従来の経路とスロットの経路を切り替える
+ *   createExhibitionCronHandler   api/cron/exhibition.js  mode（off・shadow・live）で、スロットの経路を動かすかを決める
  *
- * 取得・解析・書き込みの本体は、既存の scripts/daily/update-race-info.js・scrape-exhibition-data.js の
- * runForRaces を再利用する（二重実装しない。GitHub Actions・CLIの入口 run と、解析・行の組み立て・書き込みを共有する）。
+ * 取得・解析・書き込みの本体は、scripts/lib/raceInfoRunForRaces.js・exhibitionRunForRaces.js の runForRaces
+ * （入口 scripts/daily/update-race-info.js・scrape-exhibition-data.js から移した物。入口は再 export する）を再利用する
+ * （二重実装しない。GitHub Actions・CLIの入口 run と、解析・行の組み立て・書き込みを共有する）。
  * shadow のとき、データテーブルへは一切書かない（runForRaces が mode で守る）。
  *
  * D2（beforeinfo の重複取得）の解消: レース情報は出走表（racelist）だけを取り、直前情報（beforeinfo）は展示が、
@@ -19,11 +20,8 @@
  * 依存（runForRaces 等）は引数で差し替えられる（scripts/maintenance/verify-scrape-pre-race-job.js が、DB・取得先なしで検証する）。
  */
 import { waitUntil } from "@vercel/functions";
-import { runForRaces as runRaceInfoForRaces } from "../../daily/update-race-info.js";
-import {
-  run as runExhibitionLegacy,
-  runForRaces as runExhibitionForRaces,
-} from "../../daily/scrape-exhibition-data.js";
+import { runForRaces as runRaceInfoForRaces } from "../raceInfoRunForRaces.js";
+import { runForRaces as runExhibitionForRaces } from "../exhibitionRunForRaces.js";
 import { getRaceSchedule } from "../raceSchedule.js";
 import { loadSeriesDayByVenue } from "../raceSeriesLookup.js";
 import { refreshAfterChange } from "../predictionRefresh.js";
@@ -31,11 +29,11 @@ import {
   SCRAPE_JOBS,
   isCatchupOffset,
   isWeightOnlyOffset,
+  nextPollTime,
 } from "./registry.js";
 import { isAuthorized, runScrapeJob } from "./cronWrapper.js";
 import { computeRetryAt, isFinalOutcome } from "./outcomes.js";
 import { createSupabaseStore } from "./store.js";
-import { toJstDateString } from "./time.js";
 
 const RACE_ID_RE = /^(\d{4}-\d{2}-\d{2})-(\d{2})-(\d{2})$/;
 
@@ -107,6 +105,7 @@ export function createSeriesDayLoader({
  *   窓の外の補完（発走の後のスロット）の判定と再試行の間隔。展示だけが持つ（BOA-382）
  * @param {{isWeightOnly: (offsetMin: number) => boolean, retrySec: number}} [options.weightOnly]
  *   体重だけの窓（発走60分前のスロット）の判定と再試行の間隔。展示だけが持つ（BOA-500）
+ * @param {number[]} [options.pollMinBefore] 通常の窓で取りに行く時刻（締切の何分前か。狭義の降順）。展示だけが持つ（BOA-1145）
  * @param {ReturnType<typeof createSeriesDayLoader>} [options.loadSeriesDays]
  *   レース情報だけが持つ（展示は race_conditions.series_day を書かない）
  */
@@ -117,6 +116,7 @@ function slotHandler({
   onChanged,
   catchup,
   weightOnly,
+  pollMinBefore,
 }) {
   const scheduleFor = loadSchedule ?? createScheduleLoader();
   return async function handleSlot(slot, ctx) {
@@ -126,6 +126,32 @@ function slotHandler({
       !isCatchup && (weightOnly?.isWeightOnly(slot.offset_min) ?? false);
     // 補完・体重だけの窓は、気象を書かず、予測の再計算の対象にせず、再試行の間隔を窓ごとに変える
     const special = isCatchup ? catchup : isWeightOnly ? weightOnly : null;
+    // 通常の窓の取りに行く時刻の予定（展示の pollMinBefore。BOA-1145）。締切（races.start_time）は、気象の観測時刻の
+    // 解決にも使うスケジュールから引く（同じ起動の中で1回だけ読む）。レースがスケジュールに無ければ、従来の retrySec
+    let poll = null;
+    if (!special && pollMinBefore) {
+      const entry = (await scheduleFor(ctx, race.date)).find(
+        (r) => r.race_id === slot.race_id,
+      );
+      if (entry?.start_time) {
+        const deadline = new Date(entry.start_time);
+        poll = {
+          deadline,
+          ...nextPollTime(pollMinBefore, {
+            deadline,
+            now: ctx.now?.() ?? new Date(),
+          }),
+        };
+        if (!poll.due) {
+          // 最初の予定より前: 取得せずに戻す（試行回数は数えない）
+          return {
+            outcome: "not_due",
+            retryAt: poll.retryAt,
+            releaseAttempt: true,
+          };
+        }
+      }
+    }
     const [result] = await run(
       [
         {
@@ -173,6 +199,11 @@ function slotHandler({
     }
     // 変更を書いた（live のみ。shadow は書かない）レースは、予測の再計算の対象として集める
     if (changed && ctx.mode === "live") onChanged?.(race.date, slot.race_id);
+    // 未完了なら、次の予定の時刻に取りに行く。最後の予定の後は、窓の終わりまで取りに行かない（締切の時刻に戻し、
+    // 窓の終わりで期限切れにする。+10 の補完が拾う）。ブレーカーの retryAt は、そのまま使う
+    if (poll && !isFinalOutcome(slotResult.outcome) && !slotResult.retryAt) {
+      slotResult.retryAt = poll.nextAt ?? poll.deadline;
+    }
     return slotResult;
   };
 }
@@ -223,6 +254,10 @@ export function createRaceInfoSlotHandler({
  *   既定はレジストリの exhibition の catchupOffsets・catchupRetrySec（テスト用の差し替え）
  * @param {{isWeightOnly: (offsetMin: number) => boolean, retrySec: number}} [options.weightOnly]
  *   既定はレジストリの exhibition の weightOnlyOffsets・weightOnlyRetrySec（テスト用の差し替え）
+ * @param {number[]|undefined} [options.pollMinBefore]
+ *   既定はレジストリの exhibition の pollMinBefore（通常の窓の -33 を、締切の20・16・13・10・8分前にだけ取る。BOA-1145）。
+ *   最初の予定より前に claim したら、取得せずに outcome "not_due"（試行回数を戻す）で最初の予定まで戻す。
+ *   undefined なら従来どおり retrySec（120秒）おき
  */
 export function createExhibitionSlotHandler({
   run = runExhibitionForRaces,
@@ -238,13 +273,21 @@ export function createExhibitionSlotHandler({
       isWeightOnlyOffset(SCRAPE_JOBS.exhibition, offsetMin),
     retrySec: SCRAPE_JOBS.exhibition.weightOnlyRetrySec,
   },
+  pollMinBefore = SCRAPE_JOBS.exhibition.pollMinBefore,
 } = {}) {
-  return slotHandler({ run, loadSchedule, onChanged, catchup, weightOnly });
+  return slotHandler({
+    run,
+    loadSchedule,
+    onChanged,
+    catchup,
+    weightOnly,
+    pollMinBefore,
+  });
 }
 
 /** mainRefresh を、必要なときだけ読み込む（無効なときは、従来と完全に同じ動作にする） */
 const defaultRefresh = async (args) =>
-  (await import("../../daily/generate-predictions.js")).mainRefresh(args);
+  (await import("../predictionRun.js")).mainRefresh(args);
 
 /**
  * スロットの処理（runScrapeJob）の後に、変更を書いたレースの予測を再計算する（案1。plan.md §5）。
@@ -331,71 +374,10 @@ export async function runSlotsWithRefresh({
 }
 
 // ---------------------------------------------------------------------------
-// 展示: mode（off・shadow・live）による、従来の経路とスロットの経路の切り替え
+// 展示: mode（off・shadow・live）による、スロットの経路の切り替え
 // ---------------------------------------------------------------------------
-
-/**
- * 従来の経路（cron-job.org 起点。waitUntil でバックグラウンド処理。予定表・ジョブ状態を使わない）。
- * 本番の展示は、2026-09-16からこの経路で動いている（scrape_job_state に exhibition の行は無い）。
- * REFRESH_ON_VERCEL=true のとき、展示・気象を書いたレースの予測を再計算する（案1）。
- *
- * @returns {Promise<{status: number, body: Record<string, unknown>}>}
- */
-export async function runLegacyExhibition({
-  date,
-  client,
-  // DB障害を「対象なし」（200）にしない。500 にして cron-job.org の失敗通知に乗せる（BOA-352）
-  getSchedule = (d) => getRaceSchedule(d, { client, throwOnError: true }),
-  run = runExhibitionLegacy,
-  refresh = defaultRefresh,
-  defer = waitUntil,
-  env = process.env,
-}) {
-  try {
-    const schedule = await getSchedule(date);
-    if (schedule.length === 0) {
-      return {
-        status: 200,
-        body: {
-          success: true,
-          accepted: false,
-          message: "no schedule for today",
-          date,
-        },
-      };
-    }
-    // cron-job.orgへは即座に応答を返し、実際のスクレイピング・書き込みはバックグラウンドで継続する
-    defer(
-      run(schedule, date)
-        .then((result) =>
-          refreshAfterChange({
-            result,
-            date,
-            refresh: async (args) => refresh(args),
-            env,
-          }),
-        )
-        .catch((error) => {
-          console.error(
-            "❌ 展示データ取得エラー（バックグラウンド処理）:",
-            error,
-          );
-        }),
-    );
-    return {
-      status: 202,
-      body: {
-        success: true,
-        accepted: true,
-        date,
-        message: "processing in background",
-      },
-    };
-  } catch (error) {
-    console.error("❌ スケジュール取得エラー（Vercel Function）:", error);
-    return { status: 500, body: { success: false, error: error.message } };
-  }
-}
+// 従来の経路（cron-job.org 起点の runLegacyExhibition。ブレーカー・politeFetch を通らない素の fetch で beforeinfo を叩く）は
+// 消した（scraping-load-budget spec §0・§8 の P0）。mode=off は「どこからも取らない」。
 
 /** Vercel Cron 自身からの起動か（User-Agent が vercel-cron/1.0。cron-job.org からの起動と区別する） */
 export function isVercelCronRequest(req) {
@@ -406,8 +388,7 @@ export function isVercelCronRequest(req) {
 
 /**
  * 展示のジョブ状態（scrape_job_state.mode の job='exhibition'）を読む。行が無い・テーブルが未適用・読み取りに失敗
- * したときは "off"（従来の経路）にする。従来の展示は、この行を使わずに動いていたため、状態が読めないことで、
- * 展示が止まってはならない（フェイルセーフ）。
+ * したときは "off"（取らない）にする。状態を確かめられないときに、守りを通らずに取りに行かない（P0）。
  */
 export async function readExhibitionMode(store) {
   try {
@@ -418,7 +399,7 @@ export async function readExhibitionMode(store) {
     return { mode: "off", known: true };
   } catch (error) {
     console.error(
-      `⚠️ 展示: ジョブ状態を読めないため、従来の経路で動きます: ${error.message}`,
+      `⚠️ 展示: ジョブ状態を読めないため、取得しません（mode=off 扱い）: ${error.message}`,
     );
     return { mode: "off", known: false };
   }
@@ -427,25 +408,21 @@ export async function readExhibitionMode(store) {
 /**
  * api/cron/exhibition.js のハンドラー。
  *
- *   mode      従来の経路（cron-job.org 起点）   スロットの経路
- *   off       動く                              動かない
- *   shadow    動く                              取得・解析のみ（データへは書かない。予定表に result_digest）
- *   live      動かない                          動く（展示データ・気象を書く。案1の再計算も）
+ *   mode      スロットの経路
+ *   off       動かない（どこからも取らない。cron-job.org・Vercel Cron のどちらの起動でも 200 で何もしない）
+ *   shadow    取得・解析のみ（データへは書かない。予定表に result_digest）
+ *   live      動く（展示データ・気象を書く。案1の再計算も）
  *   （行なし・テーブル未適用・読み取り失敗は off）
  *
- * Vercel Cron（vercel.json）からの起動は、live・shadow ではスロットの経路を動かす（処理の完了後に 200/500）。cron-job.org の
- * 起動も同じ経路に入る（リースと取得済みのスキップで無害）が、cron-job.org のタイムアウト（30秒）に、スロットの処理
- * （約60〜70秒）が掛からないよう、こちらはバックグラウンド（waitUntil）で処理して 202 を即座に返す。off のときは、従来の経路が
- * cron-job.org から動いているため、Vercel Cron の起動は何もしない（従来の経路を二重に動かして、取得先への負荷を増やさない）。
+ * 取得はすべて共通ラッパ（politeFetch・DB のブレーカー）を通る。cron-job.org の起動は、タイムアウト（30秒）に
+ * スロットの処理（約60〜70秒）が掛からないよう、バックグラウンド（waitUntil）で処理して 202 を即座に返す。
  * 切り替え・切り戻しは scrape_job_state.mode の更新のみ（再デプロイ不要）。verification-runbook.md Q。
  */
 export function createExhibitionCronHandler({
   getClient = async () => (await import("../supabaseClient.js")).supabase,
   refresh = defaultRefresh,
-  legacy = runLegacyExhibition,
   runSlots = runSlotsWithRefresh,
   defer = waitUntil,
-  now = () => new Date(),
   env = process.env,
 } = {}) {
   return async function handler(req, res) {
@@ -466,25 +443,15 @@ export function createExhibitionCronHandler({
     const fromVercelCron = isVercelCronRequest(req);
 
     if (mode === "off") {
-      if (fromVercelCron) {
-        return res.status(200).json({
-          success: true,
-          job: "exhibition",
-          mode,
-          skipped: "legacy_path_is_triggered_by_external_cron",
-        });
-      }
-      const date = toJstDateString(now());
-      const { status, body } = await legacy({ date, client, refresh, env });
-      return res.status(status).json({ ...body, mode, modeKnown: known });
+      return res.status(200).json({
+        success: true,
+        job: "exhibition",
+        mode,
+        modeKnown: known,
+        skipped: "mode_off",
+      });
     }
 
-    // shadow: 従来の経路が、引き続きデータを書く（cron-job.org からの起動のとき）。スロットの経路は、取得・解析のみ
-    let legacyResult = null;
-    if (mode === "shadow" && !fromVercelCron) {
-      const date = toJstDateString(now());
-      legacyResult = await legacy({ date, client, refresh, env });
-    }
     const runSlotsNow = () =>
       runSlots({
         job: "exhibition",
@@ -495,9 +462,6 @@ export function createExhibitionCronHandler({
         query: req.query ?? {},
         env,
       });
-    const legacyBody = legacyResult
-      ? { legacy: { status: legacyResult.status, ...legacyResult.body } }
-      : {};
     if (!fromVercelCron) {
       // 外部cron（cron-job.org）の起動は、スロットの処理を待たない（タイムアウト30秒。結果は予定表・関数ログで確認する）
       defer(
@@ -514,10 +478,9 @@ export function createExhibitionCronHandler({
         mode,
         accepted: true,
         message: "processing in background",
-        ...legacyBody,
       });
     }
     const { status, body } = await runSlotsNow();
-    return res.status(status).json({ ...body, ...legacyBody });
+    return res.status(status).json(body);
   };
 }

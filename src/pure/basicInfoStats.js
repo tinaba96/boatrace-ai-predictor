@@ -1,0 +1,665 @@
+/**
+ * basicInfoStats - 「基本情報」タブ（BOA-306）のクライアント側集計ユーティリティ
+ *
+ * supabaseDataService.getRacerScopedRaceStats(racerId) で取得した1選手分の
+ * 生データ（race_id単位のフラット配列、過去2年分）を、会場（当地/全国）×
+ * グレード（全レース/一般戦/SG・G1）×期間で絞り込み、勝率・2連対率・3連対率を
+ * 計算する。対象は常に1選手のみのライブ集計（BOA-303が問題視する全選手×
+ * 全会場の横断集計とは規模が異なる）。
+ *
+ * グレードのバケット分け: races.race_gradeは'SG'/'G1'/'G2'/'G3'/'ippan'。
+ * モックの3択（全レース/一般戦/SG・G1）に合わせ、G2/G3は「全レース」選択時のみ
+ * 含め、「一般戦」「SG・G1」のどちらの個別フィルタにも含めない
+ * （日和のグレード区分に対応する自社データが無いため、判断が割れやすいG2/G3を
+ * あいまいに寄せるより、明確な2区分＋全体の3択に留める判断）。
+ *
+ * 「初日」「最終日」は2026-09-15時点で「race_conditions.series_day /
+ * is_final_day は実データ全件null」として一度削除したが、**この前提は現在
+ * 成り立たない**。BOA-226（update-race-info.jsのscrapeSeriesDay()、racelist
+ * ページの日程タブ由来）のバックフィルが効いて、2026-09-24の実測で
+ * **35,992 / 36,353行＝99.01%が埋まっている**（2026-02-03以降）。
+ * さらにrace_series（月間スケジュール）との全件照合で、3,014 venue-day の
+ * 初日・最終日がどちらも100%一致（不一致0件）。
+ * したがってphase a FR-2の「条件別」タブ（buildConditionRows）では、
+ * race_seriesを引かずにこの2列で初日・最終日を判定する（追加クエリ0本）。
+ *
+ * 期間「今期」は自社データに公式の期区分（前期/後期）の境界を持たないため
+ * （racer_profiles.period_labelは2026-09-15時点で未取得、BOA-321参照）、
+ * グレード=全レース時は呼び出し側がrace_entriesの公式集計済み値
+ * （win_rate/local_win_rate等）をそのまま使う（このモジュールを経由しない）。
+ * グレード条件を組み合わせた「今期」は公式の期区分を再現できないため、
+ * 便宜上「取得できる全期間（過去2年）」を対象とする
+ */
+import { isPlaceHit, isShowHit } from "./hitJudge.js";
+import { parseRaceId } from "./raceId.js";
+import { getDaysAgoJST } from "./jstDate.js";
+import { finishPositionOf } from "./finishPosition.js";
+
+export const METRICS = ["winRate", "top2Rate", "top3Rate", "avgSt"];
+export const SCOPES = ["local", "national"];
+export const GRADES = ["all", "ippan", "sgg1"];
+// 画面のチップ（BOA-775）。official: 公式の出走表と同じ値（当サイトの走からは出さない）、
+// term: 本当の今期（5/1・11/1 以降）。"current"（全期間）は画面のチップには出さず、条件別の表など内部で使う
+export const PERIODS = ["official", "term", "last3m", "last1m"];
+
+// 小標本フラグの閾値（BOA-306本文の「n<6等の小標本」表記に合わせる）
+export const SMALL_SAMPLE_THRESHOLD = 6;
+
+function gradeBucket(raceGrade) {
+  if (raceGrade === "ippan") return "ippan";
+  if (raceGrade === "SG" || raceGrade === "G1") return "sgg1";
+  return "other";
+}
+
+function matchesGrade(record, grade) {
+  if (grade === "all") return true;
+  return gradeBucket(record.raceGrade) === grade;
+}
+
+// 境界は JST の日付で切る（BOA-469）。以前はローカル時刻で setDate したあと
+// toISOString()（UTC）で日付を取り出しており、JST 0〜9時は境界が1日古くなって
+// 31日前・91日前の走が混ざっていた
+/**
+ * 今期（公式の成績の期間）の初日（純関数、BOA-775）。5/1〜10/31 と 11/1〜4/30 で区切る。
+ * @param {string} date `YYYY-MM-DD`
+ * @returns {string|null}
+ */
+export function currentTermStart(date) {
+  const [y, m] = (date ?? "").split("-").map(Number);
+  if (!y || !m) return null;
+  if (m >= 11) return `${y}-11-01`;
+  if (m >= 5) return `${y}-05-01`;
+  return `${y - 1}-11-01`;
+}
+
+function matchesPeriod(record, period, now) {
+  // term は本当の今期（5/1・11/1 以降）。以前のチップ「今期」は "current"（全期間、2025-12 以降）で、
+  // 名前と中身が食い違っていた（BOA-775）。"current" は条件別の表など内部の全期間の集計のために残す
+  if (period === "current") return true;
+  if (period === "term")
+    return record.date >= currentTermStart(getDaysAgoJST(0, now));
+  if (period === "last3m" || period === "last1m") {
+    const days = period === "last3m" ? 90 : 30;
+    const cutoffStr = getDaysAgoJST(days, now);
+    return record.date >= cutoffStr;
+  }
+  return true;
+}
+
+/**
+ * 表示中のレースより前の走だけに絞る（純関数、BOA-603）。
+ *
+ * `getRacerScopedRaceStats` は選手の**今までの全走**を返す（キャッシュも選手単位）。
+ * そのまま使うと、過去のレースを開いたときに**そのレース自身と後日の走**が集計に
+ * 入り、結果を知った状態の数字（例: 津 2026-09-26 5R の1号艇の「直近1ヶ月」に
+ * 9/26 5R の3着と 9/28 の1着）を出してしまう。race_id は `YYYY-MM-DD-VV-RR` の
+ * 固定長なので、文字列の比較でレース単位に切れる。
+ *
+ * 取得前（undefined）・取得失敗（null）はそのまま返す。呼び出し側がそれぞれ
+ * 「読み込み中」「取得できませんでした」を出し分けているため。
+ *
+ * @param {Array<Object>|null|undefined} records
+ * @param {string|null} raceId 表示中のレース。無ければ絞らない
+ * @returns {Array<Object>|null|undefined}
+ */
+export function recordsBeforeRace(records, raceId) {
+  if (!Array.isArray(records) || !raceId) return records;
+  return records.filter(
+    (r) => typeof r.raceId === "string" && r.raceId < raceId,
+  );
+}
+
+/**
+ * 会場・グレード・期間でrecordsを絞り込む
+ * @param {Array} records - getRacerScopedRaceStatsの戻り値
+ * @param {Object} filters
+ * @param {number|null} filters.venueCode - 現在レースの会場コード（当地判定用）
+ * @param {'local'|'national'} filters.scope
+ * @param {'all'|'ippan'|'sgg1'} filters.grade
+ * @param {'current'|'last3m'|'last1m'} filters.period
+ * @param {Date} [filters.now] - 期間の境界を決める現在時刻（検証用。既定は new Date()）
+ */
+export function filterRecords(
+  records,
+  { venueCode, scope, grade, period, now = new Date() },
+) {
+  return (records ?? []).filter((r) => {
+    if (scope === "local" && r.venueCode !== venueCode) return false;
+    if (!matchesGrade(r, grade)) return false;
+    if (!matchesPeriod(r, period, now)) return false;
+    return true;
+  });
+}
+
+/**
+ * 絞り込み済みrecordsから勝率・2連対率・3連対率・平均STとサンプル数を計算する。
+ * 各レースでの艇番（枠番）はレースごとに変わりうるため、外部から固定の艇番を
+ * 渡すのではなく、各レコード自身のboatNumber（そのレースでの実際の枠番）を
+ * 使って判定する（getRacerVenueStatsと同じ考え方）。
+ * 平均STはstartTimingが取得できているレコードのみを対象に計算する
+ * （フライング・未計測は既にgetRacerScopedRaceStats側でnull化済み）ため、
+ * サンプル数nと平均ST算出対象のn（avgStN）は一致しない場合がある
+ * @param {Array} records - filterRecordsの戻り値（当該選手のレコードのみ）
+ */
+export function computeRates(records) {
+  const n = records.length;
+  if (n === 0) {
+    return {
+      n: 0,
+      winRate: null,
+      top2Rate: null,
+      top3Rate: null,
+      avgSt: null,
+      avgStN: 0,
+    };
+  }
+  let wins = 0;
+  let top2 = 0;
+  let top3 = 0;
+  let stSum = 0;
+  let stCount = 0;
+  records.forEach((r) => {
+    if (r.rank1 === r.boatNumber) wins += 1;
+    if (isPlaceHit(r.boatNumber, r.rank1, r.rank2)) top2 += 1;
+    if (isShowHit(r.boatNumber, r.rank1, r.rank2, r.rank3)) top3 += 1;
+    if (r.startTiming !== null && r.startTiming !== undefined) {
+      stSum += r.startTiming;
+      stCount += 1;
+    }
+  });
+  return {
+    n,
+    winRate: (wins / n) * 100,
+    top2Rate: (top2 / n) * 100,
+    top3Rate: (top3 / n) * 100,
+    avgSt: stCount > 0 ? stSum / stCount : null,
+    avgStN: stCount,
+  };
+}
+
+// finishPositionOf は src/pure/finishPosition.js に移した（開発効率の計画 段3。
+// src/pure/seriesPoints.js が使うため）。呼び出し側を変えないよう、ここから再 export する
+export { finishPositionOf };
+
+/**
+ * 直近n走の個別結果を返す（新しい方が配列の末尾）。
+ *
+ * **節単位のグルーピングには戻さない。** 当初は「節」単位でグルーピングした
+ * 勝率推移を計画していたが、当時は節境界のデータ（series_day/is_final_day）が
+ * 実データで常にnullだったため断念し、個別レースの着順をそのまま並べる方式にした
+ * （上記モジュールコメント参照）。
+ *
+ * **2026-09-28追記（BOA-457）**: `series_day` は 2026-02-01 以降
+ * 36,607/36,629行（99.94%）で埋まっており、この前提はもう成り立たない
+ * （残る22行はすべて当日＝スクレイプ前のレース）。節単位の推移に作り直すこと自体は
+ * 可能になった。
+ *
+ * それでも戻さないのは**役割分担が決まったから**で、データ制約が理由ではない。
+ * 2026-09-26のユーザーフィードバックで、今節タブ（FR-3、`buildMeetResults`）が
+ * 「節の区切り」を担い、こちらの直近n走は「節をまたぐ流れ」を見る、と切り分けが
+ * 確定した（`RaceBasicInfoTab.jsx` の RECENT_RACES_COUNT を5→10に増やしたのも
+ * 同じ判断による）。節単位にすると今節タブと役割が重複する。
+ *
+ * recordsは日付昇順であることを前提とする（getRacerScopedRaceStatsの戻り値順）
+ *
+ * 2026-09-16（BOA-333/159共通化）: 戻り値の形をRaceHistoryTable.jsx
+ * （共有テーブルコンポーネント、getRacerRaceHistory()由来のmatchedRacesと
+ * 同じフィールド名）に合わせた。raceNoはraceId（YYYY-MM-DD-VV-RR）から導出する
+ * （racesテーブルへの追加問い合わせ不要）。boatNumberは、レビュー指摘により
+ * RaceHistoryTable側の列見出し「枠番」・もう一方の利用元（RacerPerformanceStats.jsx、
+ * BOA-159）と一貫させるため、当該レースでの生の艇番（r.boatNumber）をそのまま渡す
+ * （実進入コースのcourseWithFallbackは使わない。使うと同じ行内で「表示コース」と
+ * 「着順判定に使う艇番」が食い違う内部矛盾が生じるため）。
+ *
+ * 2026-09-16追記（レビュー指摘#3）: raceTitle/raceStage/winningTechnique/
+ * payoutWinが常に「-」表示になっていた問題を修正。getRacerScopedRaceStats側で
+ * race_conditions（race_title/race_stage）とrace_results（winning_technique/
+ * payout_win）も取得するよう拡張し（BOA-159のgetRacerRaceHistory()と同じ
+ * テーブル）、ここではそれをそのまま透過するだけにした。getRacerScopedRaceStats
+ * 側で既に`?? null`によりnull正規化済み（undefinedにはならない）のため、
+ * ここでの`?? null`は付けていない
+ */
+export function getRecentRaces(records, count = 5) {
+  return (records ?? []).slice(-count).map((r) => ({
+    raceId: r.raceId,
+    date: r.date,
+    venueCode: r.venueCode,
+    raceNo: parseRaceId(r.raceId)?.raceNo ?? null,
+    raceTitle: r.raceTitle,
+    raceGrade: r.raceGrade ?? null,
+    raceStage: r.raceStage,
+    boatNumber: r.boatNumber,
+    // 実際に進入したコース。今節タブ（FR-3）が「進入」列で使う。
+    // 2025-12-04より前のレースと当日のレースはnull（BOA-257）
+    // 当日の走は Kファイルがまだ無いので、本番STの進入（entryCourse）を先に見る（BOA-623）
+    entryCourse: r.entryCourse ?? r.actualCourse ?? null,
+    // 展示タイムと、その走の同レース内での展示順位。今節タブ（FR-3）が
+    // 「展示」列で使う。**推移の判定文（上向き/下向き）は出さない**——
+    // 初日と直近の2点だけを比べると、間の走を捨てて実態と逆の結論になる
+    // （2026-09-27の実測: 宮田龍馬は 6.86→6.89→6.77→6.78→6.88→6.81→
+    // 6.76→6.87 と動いており、最初と最後だけ見ると「下向き」だが
+    // 今節ベスト級は間にある）
+    exhibitionTime:
+      typeof r.exhibitionTime === "number" ? r.exhibitionTime : null,
+    exhibitionRank:
+      typeof r.exhibitionRank === "number" ? r.exhibitionRank : null,
+    // F・出遅れは平均から外した ST を表示用の欄から出す（BOA-583・BOA-1052）
+    startTiming:
+      r.startTiming ??
+      (r.isFlying ? (r.flyingStartTiming ?? null) : (r.lateStartTiming ?? null)),
+    isFlying: r.isFlying === true,
+    // そのレースの6艇の中でのST順位（Fを除く。BOA-623 の直近10走で ST に添える）
+    startTimingRank: r.stRank ?? null,
+    // 欠場の走（BOA-504）。着順が無いので、表示側が「着外」でなく「欠場」と出す
+    absent: r.absent === true,
+    // 着順が付かない走の公式の記号（落・転・妨など、BOA-537）。フライングは、着欄の記号が
+    // 未取得の走（2026-09前半以前）でも「着外(順位不明)」と出さず「F」にする（BOA-589）
+    finishMark: r.finishMark ?? (r.isFlying === true ? "F" : null),
+    // 4〜6着はBOA-238以降のみ保存されているため、rank4〜6が未バックフィルの
+    // 過去レースではnullになる（"unknown"として表示側が「着外」等に読み替える）
+    finishRank: finishPositionOf(r),
+    winningTechnique: r.winningTechnique,
+    payoutWin: r.payoutWin,
+  }));
+}
+
+/**
+ * 会場別に、指定した指標（勝率/2連対率/3連対率/平均ST）でランキングする
+ * （BOA-306フィードバック#3: 「得意会場」は選択中の指標に連動させる）。
+ * n>=5の会場のみ対象（getRacerVenueStatsと同じ閾値）。グレード・期間による
+ * 絞り込みは行わず、全期間（過去2年）×全グレードでの会場別集計に固定する
+ * （会場ランキングまでフィルタを連動させると母数が細分化されすぎて
+ * ほとんどの会場がn<5で対象外になるため）。avgSt採用時は値が小さいほど
+ * 良好なため昇順、それ以外は降順でソートする
+ * @param {Array} records - getRacerScopedRaceStatsの戻り値（フィルタ前の生データ）
+ * @param {'winRate'|'top2Rate'|'top3Rate'|'avgSt'} metric
+ */
+export function computeVenueRanking(records, metric) {
+  const byVenue = new Map();
+  (records ?? []).forEach((r) => {
+    if (!byVenue.has(r.venueCode)) byVenue.set(r.venueCode, []);
+    byVenue.get(r.venueCode).push(r);
+  });
+
+  const rows = [...byVenue.entries()]
+    .map(([venueCode, venueRecords]) => ({
+      venueCode,
+      ...computeRates(venueRecords),
+    }))
+    .filter((row) => (metric === "avgSt" ? row.avgStN >= 5 : row.n >= 5));
+
+  const valueOf = (row) => (metric === "avgSt" ? row.avgSt : row[metric]);
+  rows.sort((a, b) => {
+    const av = valueOf(a);
+    const bv = valueOf(b);
+    if (av === null) return 1;
+    if (bv === null) return -1;
+    return metric === "avgSt" ? av - bv : bv - av;
+  });
+  return rows;
+}
+
+/**
+ * この枠からの進入コース分布（BOA-485、直前情報タブ「この枠からの進入」）。
+ *
+ * 旧「平均進入順」（computeAvgEntryCourse）は全枠のレースを混ぜて平均していたため、
+ * 1号艇でも「3.16」のような値になり、この枠から何コースに入るかが読めなかった
+ * （ユーザー指摘、2026-09-28）。今回と同じ枠番で出走したレースだけに絞り、
+ * 本番の進入コース（actualCourse、race_results.actual_course_N）の分布を返す。
+ *
+ * - 対象は beforeRaceId より前のレースだけ（過去レースを開いたときに、
+ *   そのレース自身や後のレースの進入を混ぜない）
+ * - actualCourse が null（2025-12-03より前・欠場）は分母から除く
+ * - 前づけ = 枠番より内のコースに入った、外へ = 枠番より外
+ *
+ * @param {Array} records - getRacerScopedRaceStatsの戻り値
+ * @param {number} frame - 今回の枠番（艇番）
+ * @param {string|null} beforeRaceId - 表示中のレースID
+ * @returns {{n:number, counts:number[], wakuRate:number|null,
+ *   inwardRate:number|null, outwardRate:number|null}}
+ *   counts[i] はコース i+1 に入った回数
+ */
+export function computeFrameEntryDistribution(records, frame, beforeRaceId) {
+  const courses = (records ?? [])
+    .filter((r) => r.boatNumber === frame)
+    .filter((r) => !beforeRaceId || r.raceId < beforeRaceId)
+    .map((r) => r.actualCourse)
+    .filter((c) => Number.isInteger(c) && c >= 1 && c <= 6);
+  const counts = [1, 2, 3, 4, 5, 6].map(
+    (course) => courses.filter((c) => c === course).length,
+  );
+  const n = courses.length;
+  if (n === 0)
+    return { n, counts, wakuRate: null, inwardRate: null, outwardRate: null };
+  const rate = (count) => (count / n) * 100;
+  return {
+    n,
+    counts,
+    wakuRate: rate(courses.filter((c) => c === frame).length),
+    inwardRate: rate(courses.filter((c) => c < frame).length),
+    outwardRate: rate(courses.filter((c) => c > frame).length),
+  };
+}
+
+/**
+ * 展示タイムが単独最速だった時に限定した1着率/2連対率/3連対率を計算する
+ * （BOA-304、直前情報タブ「展示タイム1位勝率」）。
+ * isFastestExhibition===trueのレコードのみに絞り込んだ上で、既存の
+ * computeRates（勝率/2連対率/3連対率の定義そのもの）をそのまま再利用する
+ * （日和の「展示タイム1位勝率」と同じ定義=「展示1位だった時の」1着率等の
+ * 母集団だけを変え、率の計算式自体は基本情報タブと重複させない）
+ * @param {Array} records - getRacerScopedRaceStatsの戻り値
+ */
+export function computeExhibitionTopRates(records) {
+  const fastestRecords = (records ?? []).filter(
+    (r) => r.isFastestExhibition === true,
+  );
+  return computeRates(fastestRecords);
+}
+
+/**
+ * 「条件別」タブ（phase a FR-2）の行。行＝条件、列＝値とn。選んだ1選手のみ。
+ *
+ * screens.md §3.2 の決定どおり、基本情報タブはグリッド化せず、既存のバー展開の
+ * 3つ目のタブとしてこの1次元テーブルを足す。
+ *
+ * ## F持ち時 / F無し時（2026-09-25にユーザー判断で追加）
+ *
+ * 当初は「過去の `f_count` 充足率が低く母数が残らない」として出さない方針だったが、
+ * **充足率が低くても出す**ことにした（過去分のバックフィルは BOA-365 / BOA-353配下で
+ * 別途進む見込み）。実測（本日の出走選手12人、`f_count` が取れている走は16〜35走）では
+ * 4人が n=8〜22 で成立し、8人は n=0 で「—」になる。
+ *
+ * **2行を対にする**。screens.md §3.7 が「F持ち時の平均ST vs 通常時」と対比で
+ * 設計しているとおり、単独では「全国」と比べることになるが、全国は母集団
+ * （`f_count` が取れていない走も含む全走）が違うため比較が成立しない。
+ * 同じ「F数が取れている走」の中で F>0 と F=0 を並べて初めて読める。
+ *
+ * ## 出さない条件
+ *
+ * - **ナイター**: 開催時間帯を取得していない（`race_series.kind` はシリーズ種別で
+ *   時間帯を含まない。screens.md §3.2 で実測済み）。「—」の行を並べず行ごと出さない
+ */
+export const CONDITION_ROWS = [
+  { key: "national", kind: "filter", scope: "national", grade: "all" },
+  { key: "local", kind: "filter", scope: "local", grade: "all" },
+  { key: "ippan", kind: "filter", scope: "national", grade: "ippan" },
+  { key: "sgg1", kind: "filter", scope: "national", grade: "sgg1" },
+  { key: "firstDay", kind: "seriesDay" },
+  { key: "finalDay", kind: "isFinalDay" },
+  { key: "wave5", kind: "wave" },
+  { key: "fHolding", kind: "fCount", holding: true },
+  { key: "fClean", kind: "fCount", holding: false },
+];
+
+/**
+ * 「荒れ」とみなす波高の下限（cm）。
+ *
+ * screens.md は「波5cm超」と書いていたが、実測で `> 5` は全レースの4.0%しかなく、
+ * 選手あたりの母数が3〜9走（SMALL_SAMPLE_THRESHOLD=6を下回る選手が出る）になる。
+ * `>= 5` なら11.4%で母数8〜33走。**既存の予想モデル `scripts/lib/turnPrediction.js`
+ * が `waveHeight >= 5` を「荒れ」の閾値に使っている**ため、プロジェクト内の
+ * 既存慣習に合わせる（screens.mdのモックの n=52 は `>= 3cm`＝41.0%相当で、
+ * ラベルと数値が食い違っていた）。
+ */
+export const ROUGH_WAVE_CM = 5;
+
+/**
+ * 「波5cm以上」の行から除く会場（BOA-584）。江戸川（03）は波高を5cm刻みで記録し、
+ * 最小値が5cmのため、静水面の走も含めて全走が「5cm以上」になる
+ * （2026-09-30 実測: 5cm 1,074件・10cm 121件・15cm 56件・20cm 28件）。
+ * 全国合算の行に混ぜると、江戸川を多く走る選手ほど「荒れ」の走が水増しされる
+ */
+export const WAVE_EXCLUDED_VENUE_CODES = new Set([3]);
+
+// 条件別タブが使う派生フィールドが「未取得」か（取得失敗でundefinedのまま）。
+// 欠測（null）とは区別する。区別しないと、取得に失敗しただけなのに
+// 「初日 n=0」のような誤った値を出してしまう（.claude/rules/frontend-data-fetch.md）
+function isUnavailable(records, field) {
+  const rows = records ?? [];
+  if (rows.length === 0) return false;
+  return rows.every((r) => r[field] === undefined);
+}
+
+// 平均STはフライング・未計測の走を除いた avgStN が母数（computeRatesの
+// コメント参照）。他の指標の n と混ぜると、上のバーが n=158 で出している
+// 同じ値をこの表が n=171 と書くことになる（会場ランキング側は既に出し分け済み）
+function conditionSampleOf(rates, metric) {
+  return metric === "avgSt" ? rates.avgStN : rates.n;
+}
+
+// 母数が取れなかった行（呼び出し側は描画しない）
+function unavailableConditionRow(row) {
+  return {
+    key: row.key,
+    value: null,
+    n: 0,
+    unavailable: true,
+    baseN: null,
+  };
+}
+
+function filterConditionRow(row, all, venueCode, metric) {
+  const rates = computeRates(
+    filterRecords(all, {
+      venueCode,
+      scope: row.scope,
+      grade: row.grade,
+      period: "current",
+    }),
+  );
+  return {
+    key: row.key,
+    value: conditionSampleOf(rates, metric) > 0 ? rates[metric] : null,
+    n: conditionSampleOf(rates, metric),
+    unavailable: false,
+    baseN: null,
+  };
+}
+
+// 初日・最終日。**他行と母数が違う**点に注意（2026-09-28実測）。
+// 走数の中央値は初日24走・最終日25走に対し、他行（全国）は176走。
+// 差の主因は**初日が節の1日だけ**であること（節の長さは実測で4〜6日が大半・
+// 中央6日なので、初日はその1/6前後にあたる）。加えて期間の差もある:
+// `race_conditions` は2025-12が12行・2026-01が0行（BOA-498）なので、この2行は
+// 実質2026-02以降しか母数に入らない。同じ2026-02以降だけで比べると比率17.8%
+// （全走数の中央135走に対し初日24走）で、期間差の寄与は0.76倍ぶん。
+// 値そのものは読める母数がある（SMALL_SAMPLE_THRESHOLD=6 を割るのは初日0.6%・
+// 最終日0.4%）。「全国176走」と「初日24走」を同じ表に並べるので、波・F行と
+// 同じく baseN（日目を判定できた走数）を返し、画面が「他行と比べない」と
+// 読ませる（BOA-499）
+function seriesDayConditionRow(row, all, metric) {
+  const field = row.kind === "seriesDay" ? "seriesDay" : "isFinalDay";
+  if (isUnavailable(all, field)) return unavailableConditionRow(row);
+  // 日目を判定できた走（race_conditions の値がある走）だけが母数
+  const known = all.filter((r) =>
+    field === "seriesDay"
+      ? typeof r.seriesDay === "number"
+      : typeof r.isFinalDay === "boolean",
+  );
+  const hit = known.filter((r) =>
+    field === "seriesDay" ? r.seriesDay === 1 : r.isFinalDay === true,
+  );
+  const rates = computeRates(hit);
+  return {
+    key: row.key,
+    value: conditionSampleOf(rates, metric) > 0 ? rates[metric] : null,
+    n: conditionSampleOf(rates, metric),
+    unavailable: false,
+    baseN: known.length,
+  };
+}
+
+function fCountConditionRow(row, all, metric) {
+  // F数が取れている走だけを母集団にする。取れていない走（null）は
+  // 「F0だった」とは限らないので、F無し時に混ぜてはいけない
+  const known = all.filter((r) => typeof r.fCount === "number");
+  const hit = known.filter((r) =>
+    row.holding ? r.fCount > 0 : r.fCount === 0,
+  );
+  const rates = computeRates(hit);
+  return {
+    key: row.key,
+    value: conditionSampleOf(rates, metric) > 0 ? rates[metric] : null,
+    n: conditionSampleOf(rates, metric),
+    unavailable: false,
+    baseN: known.length,
+    // Fの2行だけは平均STも返す。Fを持っている選手を見る目的は
+    // 「スタートを踏めなくなるか」で、勝率ではそれが読めない
+    // （screens.md §3.7 の元の設計も「F持ち時の平均ST vs 通常時」）。
+    // 実例: 勝率だけだと F持ち時27.3% vs F無し時11.1% となり
+    // 「Fを持っている方が走る」という逆のメッセージになる
+    avgSt: rates.avgSt,
+    avgStN: rates.avgStN,
+  };
+}
+
+// 波高。母数が他行と違う（波高が取れていない走がある）ので baseN を返す
+function waveConditionRow(row, all, metric) {
+  if (isUnavailable(all, "waveHeight")) return unavailableConditionRow(row);
+  const measured = all.filter(
+    (r) => typeof r.waveHeight === "number" && Number.isFinite(r.waveHeight),
+  );
+  // 5cm刻みで記録する会場の走は、母数からも外す（WAVE_EXCLUDED_VENUE_CODES）
+  const known = measured.filter(
+    (r) => !WAVE_EXCLUDED_VENUE_CODES.has(Number(r.venueCode)),
+  );
+  const rough = known.filter((r) => r.waveHeight >= ROUGH_WAVE_CM);
+  const rates = computeRates(rough);
+  return {
+    key: row.key,
+    value: conditionSampleOf(rates, metric) > 0 ? rates[metric] : null,
+    n: conditionSampleOf(rates, metric),
+    unavailable: false,
+    baseN: known.length,
+    // 除いた走の数。1以上なら画面がその旨を注記する
+    excludedN: measured.length - known.length,
+  };
+}
+
+/**
+ * 条件別タブの各行を組み立てる（純関数）。
+ *
+ * **値は全行とも自社集計**にする。既定状態（勝率・全レース・今期）では
+ * バー側が公式値（`race_entries.win_rate`、点）を出すため、同じ「全国」という
+ * ラベルで別の数字が同一画面に並ぶ。呼び出し側は既存の
+ * `basicInfo.winRateSwitchCaveat` と同趣旨の注記を出すこと。
+ *
+ * 期間は全行「今期」（＝取得できる全期間）で固定する。期間の切り替えは
+ * 既存のチップが担っており、この表は「条件の比較」に役割を絞る。
+ *
+ * @param {Array<Object>} records `getRacerScopedRaceStats` の戻り値
+ * @param {{venueCode: number|null, metric: string}} options
+ * @returns {Array<{key: string, value: number|null, n: number, unavailable: boolean, baseN: number|null}>}
+ *   `unavailable` が true の行は呼び出し側で描画しない。
+ *   `n` は metric が `avgSt` のときだけ ST を計測できた走数（avgStN）になる。
+ *   F持ち時・F無し時の2行だけ `avgSt` / `avgStN` も返す（画面は指標が勝率等でも
+ *   STを併記する。Fを持った選手の見どころはスタートの踏み方のため）。
+ *   `baseN` は初日・最終日・波・F持ち時・F無し時の行だけ非null（その条件を判定できた走数。
+ *   他行と母数が違うことを示すので、画面はこれを添えて「他行と比べない」と読ませる）
+ */
+export function buildConditionRows(records, { venueCode, metric }) {
+  const all = Array.isArray(records) ? records : [];
+
+  return CONDITION_ROWS.map((row) => {
+    if (row.kind === "filter") {
+      return filterConditionRow(row, all, venueCode, metric);
+    }
+    if (row.kind === "seriesDay" || row.kind === "isFinalDay") {
+      return seriesDayConditionRow(row, all, metric);
+    }
+    if (row.kind === "fCount") return fCountConditionRow(row, all, metric);
+    return waveConditionRow(row, all, metric);
+  });
+}
+
+/**
+ * 今節の「変化」を出す（phase a FR-3 Phase A、純関数）。
+ *
+ * 日別の生データ（`buildMeetResults`）だけでは「で、今日はどうなのか」が読めない。
+ * ファンが今節を見る理由は主に「スタートを詰めてきたか」「機力が上向きか」の2つで、
+ * どちらも**単独の数値ではなく変化**を見ている。ST考察（FR-1）が同コース・同級別の
+ * 平均との差を出しているのと同じ発想で、ここでは**その選手自身の通常値との差**を出す。
+ *
+ * - **ST**: 今節の平均ST vs 今節を除く全期間の平均ST。負なら踏んでいる
+ * - **展示**: 今節の最初の展示タイム vs 直近の展示タイム。負なら上向き（速くなった）
+ *
+ * 追加クエリは0本（`getRacerScopedRaceStats` が既に持っている値だけを使う）。
+ *
+ * @param {Array<Object>} meet `buildMeetResults` の戻り値（日付昇順）
+ * @param {Array<Object>} allRecords 同じ選手の全走（通常値の母数）
+ * @returns {{st: {meetAvg: number|null, meetN: number, baseAvg: number|null,
+ *   baseN: number, diff: number|null}, exhibition: {first: number|null,
+ *   last: number|null, diff: number|null, n: number}}}
+ */
+export function buildMeetTrend(meet, allRecords) {
+  const meetRows = Array.isArray(meet) ? meet : [];
+  const all = Array.isArray(allRecords) ? allRecords : [];
+  const meetIds = new Set(meetRows.map((r) => r.raceId));
+  // 通常値からは今節を除く。含めると「今節が通常値を押し上げて差が縮む」ため
+  const baseRows = all.filter((r) => !meetIds.has(r.raceId));
+
+  const meetRates = computeRates(meetRows);
+  const baseRates = computeRates(baseRows);
+  // **画面に出す桁で差を取る**。生値で引くと「0.13 と 0.15 なのに −0.01」のように
+  // 表示と差が噛み合わない（0.1325 − 0.1475 = −0.015 → 四捨五入で −0.01）
+  const round2 = (v) => (v === null ? null : Math.round(v * 100) / 100);
+  const meetSt = round2(meetRates.avgSt);
+  const baseSt = round2(baseRates.avgSt);
+  const stDiff =
+    meetSt !== null && baseSt !== null ? round2(meetSt - baseSt) : null;
+
+  // 展示は**順位**で見る。絶対値の推移は水面の影響を拾ってしまう
+  // （桐生の会場平均は2026-09-20〜25で6.763〜6.865と日によって0.10秒動く。
+  //  実際、閾値±0.03では水面が重い日に6艇中5艇へ「下向き」が出た）
+  const exhibitionRows = meetRows.filter(
+    (r) => typeof r.exhibitionRank === "number",
+  );
+  const exhibitions = exhibitionRows.map((r) => r.exhibitionRank);
+  const times = exhibitionRows.map((r) =>
+    typeof r.exhibitionTime === "number" ? r.exhibitionTime : null,
+  );
+  const first = exhibitions.length > 0 ? exhibitions[0] : null;
+  const last =
+    exhibitions.length > 0 ? exhibitions[exhibitions.length - 1] : null;
+
+  return {
+    st: {
+      meetAvg: meetSt,
+      meetN: meetRates.avgStN,
+      baseAvg: baseSt,
+      baseN: baseRates.avgStN,
+      diff: stDiff,
+    },
+    exhibition: {
+      // 展示順位（1が最速）。時計も併記できるよう生値を持たせる
+      first,
+      last,
+      firstTime: times.length > 0 ? times[0] : null,
+      lastTime: times.length > 0 ? times[times.length - 1] : null,
+      // 1走しか無ければ「推移」ではないので差は出さない。
+      // 順位は小さいほど良いので、負なら上向き（速くなった）で符号の向きは
+      // STと揃う
+      diff: exhibitions.length >= 2 ? last - first : null,
+      n: exhibitions.length,
+    },
+  };
+}
+
+export {
+  PERIOD_DIFF_WITHHELD_MONTHS,
+  periodDiffShownFrom,
+  periodDiff,
+  RECENT_PERIOD_COUNT,
+  periodsEndedBefore,
+  officialPeriodOf,
+  pickPeriodStats,
+  buildMeetResults,
+  lastStartTiming,
+  MEET_ST_DIFF_THRESHOLD,
+  MEET_ST_COLOR_THRESHOLD,
+  MEET_ST_COLOR_MIN_RUNS,
+  meetStVerdictTone,
+  MEET_EXHIBITION_DIFF_THRESHOLD,
+  groupRunsByMeet,
+} from "./basicInfoStatsPeriodMeet.js";

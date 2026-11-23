@@ -6,7 +6,8 @@
 - 新しい画面・機能は spec の段階で「何を測るか（問い・イベント・パラメータ・GA4 に登録するディメンション）」を書く。思考アシストは spec に計測が無く公開後に足したので、足す前の期間は測れていない（2026-10-11、PR #1381）
 - イベントの定義は機能ごとの events.md に置く（docs/design/analogy-reaction-measurement/events.md、docs/design/thinking-assist/events.md）
 - 同じイベントで入口を分けたいときはパラメータで分ける。例 assist_view_switch の assist_entry = top / tab_row / copy_toast（BOA-832、docs/design/thinking-assist/events.md）
-- GA4 のカスタムイベントのパラメータに source・medium・campaign・term・content・id を使わない。source だけ送ると流入元が上書きされ Unassigned になる（2026-09 に 71→259 件、PR #656 で link_source に改名、memory ga4_unassigned_source_param_collision_2026_09_15）
+- GA4 のカスタムイベントのパラメータに source・medium・campaign・term・content・id を使わない。source だけ送ると流入元が上書きされ Unassigned になる（2026-09 に Unassigned が増えた、PR #656 で link_source に改名、memory ga4_unassigned_source_param_collision_2026_09_15）
+- 上の予約名と utm_* は src/utils/analytics.js の trackEvent が落として送らない。verify-ga4-traffic-source-params.js が入口・src の引数・内部リンクの utm_ を CI で見る（2026-10-22、BOA-996）
 
 ## GA4 への登録
 - イベントのパラメータは GA4 にカスタムディメンションとして登録しないと、レポートにも Data API にも出ない（docs/design/analogy-reaction-measurement/ga4-custom-dimensions.md）
@@ -27,14 +28,47 @@
 - レース詳細の中の動きを前後で比べる基準は 10/11 以降しか使えない（tab_id 登録 10/8、ソナー別タブ化 10/9 09:17、思考アシスト公開 10/11）（2026-10-12、同 measurement.md）
 - 9/28 以前の / の PV にはレース詳細が混ざっている。ページ別の比較は 9/29 以降（2026-10-12、BOA-531、同 measurement.md）
 - 置き場所を比べる機能は、イベントを共通にしてパラメータで置き場所を区別すると、後で動かしても前後がつながる（2026-10-12、同 measurement.md）
+- sessionSource の data_race_table・outcome_pattern_preview・volatility_display・venue_tendency_panel（medium は (not set)、チャネルは Unassigned）は、PR #656（2026-09-15）より前に汚れた人の、後の直接の訪問。GA4 は直接の訪問に前回の直接でない流入元を引き継ぐ。9/17〜10/22 の該当者は全員の初回訪問が 9/14 以前、改名後に初めて来た人には出ない。検索・SNS の流入は上書きされない（そちらが来れば流入元はそれになる）。読み替えは「Direct に足す」。引き継ぎの期間の目安は GA4 既定の90日（このプロパティの設定は未確認）で、12月中旬に消える見込み（2026-10-22、GA4 Data API の sessionSource×newVsReturning・firstSessionDate、BOA-996）
 - GA4 の PV は 9/29（page_view の修正）と 10/1（内部トラフィックの除外）で切れる。注記は scripts/lib/ga4MeasurementBreaks.js が出す（2026-10-01、memory seo_keyword_strategy_2026_09_29）
-- PV の絶対値は AdSense の PV とも突き合わせる（2026-09-29 の GA4 日本語 PV 29,270 に対し、同時期の AdSense の PV は 10,573）（2026-10-05、memory ai_agent_era_strategy_2026_10_05）
+- PV の絶対値は AdSense の PV とも突き合わせる（2026-09-29 は AdSense の PV が GA4 日本語 PV の約36%。実数は hq）（2026-10-05、memory ai_agent_era_strategy_2026_10_05）
 - i18n-demand-report.js 等の月別 PV を JST 9時より前に実行すると、期間の始まりが前月の末日になる（2026-10-06、memory project_ai_multi_venture_ops_2026_10_05）
-- AI アシスタント経由の流入は GA4 で30日あたり26→7と小さい。AI 施策の成否は流入でなく、ボットの取得数と引用の定点チェックで見る（2026-10-05、memory ai_agent_era_strategy_2026_10_05）
+- AI アシスタント経由の流入は GA4 で小さく、減っている（実数は hq）。AI 施策の成否は流入でなく、ボットの取得数と引用の定点チェックで見る（2026-10-05、memory ai_agent_era_strategy_2026_10_05）
 - 2026-08 時点で直近30日のアクティブユーザーの約48%がリピーター、新規の翌週の定着率は約13%。リピーターは /hit-races・/accuracy をよく見る（2026-08-19、memory boatai_rebrand_investigation_2026_08_19）
 - 定点観測は戦略文書に書いた本来の KPI と照合する。X の KPI はサイト送客（docs/operation/x-operations-playbook.md）なのに、/x-growth-report が X の中の指標だけを見ていた（2026-09-05、memory x_growth_report_evolution_2026_09、PR #530）
 - sns_strategy_insights に登録するのは型・題材・投稿時間帯のように次の生成に効く知見だけ。操作の手順の改善は入れない（2026-09-06、memory x_growth_report_evolution_2026_09）
 
-## 目標と収益
-- 集客の目標は月間100万PV。基準は 2026-10-01〜12 の13,313PV（月に直して約3.3万、約30倍の差）。集客・SEO・SNS の施策は PV の伸びへの効き方で順位を付ける（2026-10-13 オーナー確認、memory project_pv_goal_1m_2026_10_13）
-- AdSense は月約¥550、ページ RPM ¥52、広告が出るのは広告コードが動いたページの約3割（2026-10-05、memory ai_agent_era_strategy_2026_10_05、docs/proposal/ai-agent-era-strategy.md）
+## 目標と収益（実数は hq）
+- 集客・SEO・SNS の施策は PV の伸びへの効き方で順位を付ける（2026-10-13 オーナー確認）。PV の目標の数字と基準の実数はhq の非公開の記録にある（2026-11-06 オーナー決定。公開のリポジトリに置かない）
+- AdSense で広告が出るのは広告コードが動いたページの約3割（2026-10-05、docs/proposal/ai-agent-era-strategy.md）。収益・RPM の実数はhq の非公開の記録（2026-11-06 オーナー決定）
+
+## 点検での見落としを防ぐ知見
+- 制作完了・投稿承認・実投稿・指標取得は別の状態として記録し、実投稿を承認だけで補わない。（2026-10-13、2026-10-13-plan-1413.md）
+- 広告向け動画の推奨を通常投稿の必須条件や効果の保証とせず、制作上の採用と公開後の観測を分ける。（2026-10-13、2026-10-13-task-46-x-entry-video.md）
+- cronの稼働窓の終了と監視終了を別に確認し、終盤の停止でも監視閾値に達して検出できるか点検する。（2026-10-13、2026-10-13-plan-review-snsrunner-20261013-04.md）
+- fakeのpublishedAt切替は実公開時刻の外部仕様の検証とせず、認可チャンネル・候補ID・承認版・実公開後の読取証跡で計測起点を確認する。（2026-10-13、2026-10-13-plan-review-youtube-20261013-01.md）
+- 読取専用の初期選択クエリもpage_viewのURLへの混入を点検し、レース詳細で除く範囲と他ページで保持する範囲を確認する。（2026-10-13、2026-10-13-task-62-check-boa-847.md）
+- sns-hubのX型比較のurl_link_clicks/impressionsは尺NULLや尺の違いを比較条件に使わず、その他のX指標・YouTubeの尺条件を維持し、サイト流入へ合算しない。（2026-10-13、2026-10-13-task-69-check-codex-patches.md）
+- 動画の可読性・配置の改善は、共通素材への適用範囲を優先根拠にできるが、PV 増分の順位や月間目標に届く規模の根拠にならない。投稿後指標が欠測の間、品質レビューの合格数や比較案の数を集客の進捗として報告しない（2026-10-13、2026-10-13-plan-1826.md・2026-10-13-plan-2027.md）
+- 目標値の指定期間と、受領した月次資料の終端が違うときは、同じ PV 値でも同一期間と断定しない（2026-10-13、2026-10-13-plan-2201.md）
+- UTM campaign の DB 許可拡張は、URL への付与・content のキー・送信時刻・GA4 結合・レーン別集計がつながった証拠にならない（2026-10-13、2026-10-13-plan-review-20261013-08.md）
+- クエリ除外は、通常の PageViewTracker と Cookie 同意直後の初回送信を別々に対応付ける。同意時に生の location.search を渡す経路があれば、通常経路の正規化だけでは艇選択を全送信から除外できない（2026-10-16、2026-10-16-review-20261016-06.md）
+- 公開の規模一覧では閲覧日と出典側のデータ取得時点を別に残し、古い表示を現在の実数として扱わない。（2026-10-19、2026-10-19-competitor-discovery.md）
+- 報告冒頭の合格表示と本文の未修正の重大指摘が食い違うときは、合格表示だけを次の制作計画の品質根拠にしない。（2026-10-19、2026-10-19-plan-1450.md）
+- GA4の人数指標の要求に次元を足してから、その次元を落としてtotalUsersを加算すると同じ人を重複する。既存キーの人数は元の粒度で要求し、分割値の和を重複排除人数として保存しない。（2026-10-19、2026-10-19-review-20261019-04.md）
+- Vercel のボット取得数は Observability のクエリ（`vercel.request.count`、`incoming_request` を `bot_name` で集計）で CDN 段まで数えられ、静的ファイル・robots.txt・CDN HIT も入る。開始は36日以内、生の UA の次元は無い。関数のログは CDN HIT が漏れ、middleware は matcher に無いパスが漏れる（2026-10-20、Vercel API で実測、docs/proposal/ai-crawler-daily-count.md §1）
+- GSC プロパティのデータは 2025-12-21 から。前年同期の比較はできない（2026-10-20、data/analysis/organic-decline-2026-10-20/README.md）
+- GA4 の Admin API は Google Cloud プロジェクトで無効。タイムゾーン・カスタムディメンション・キーイベントは API で読めない（有効化はプロジェクト設定の変更）（2026-10-20、ga4-organic-weekly-export.js の settings.*.error）
+- 月の費用見込みは累計÷経過日×月の日数だけで判断せず、直近7日平均による見込みも並べる。両者の差が大きければ費用水準が変わった日を調べ、変更前後を混ぜた平均を現在の水準とみなさない（2026-10-20、finance、ledger/costs.jsonl・alerts.json の費用点検）
+- costs.jsonlの月累計や見込みを使う前に、月初から集計終端までの日付とserviceの欠落を確認する。欠測を0ドルとして扱わず、累計の欠落範囲と平均に使った日数を併記する（2026-10-20、finance、ledger/costs.jsonl の日付・service欠落点検）
+- 費用見込みの終端は全source共通の最終日でなく、sourceごとの確定済み最終日を使う。請求確定が遅れるsourceの未確定日を0ドルで平均へ入れず、検算時は各sourceの最後のdateと確定状況を先に確認する（2026-10-21、finance、ledger/costs.jsonl のsource別終端点検）
+- sns-channel-daily.csvのdayがUTCの15:00で、definitionがJSTの暦日を指す場合、表へ転記する日付はJSTへ直す。UTCの日付のままでは1日ずれるため、報告には時区変換を明記する。他のSNS指標の時区へ一般化しない（2026-10-21、measurement、company-in/sns-db/sns-channel-daily.csv のday・definition）
+- sns-post-metrics.csvで投稿24時間後の累積値を使うときは、window=24hかつobserved_atが投稿24時間後以降の行を選ぶ。day_endは別窓で、23:00 JSTの取得前に作った写しには当日分が無い。窓名・観測時刻・写しの取得時刻を照合し、未取得を0にしない（2026-10-22、measurement、company-in/sns-db/sns-post-metrics.csv）
+- Search ConsoleのURL検査で429などの取得失敗が特定の群に偏ると、indexed÷checkedは群全体の代表値にならない。再検査後も群ごとのerrors件数を併記し、取得失敗のある群と全件取得できた群の率を同条件として比較しない（2026-10-23、measurement、company-in/growth-main/2026-10-18/summary.json・inspect-retry.jsonl）
+- gsc_daily.jsonの更新待ちで日別値が欠ける場合、growth-mainのgsc-date.jsonを補完候補にできる。使う前に重なる日の値が一致するか確認し、補完した日と出典・更新時点を残す。一部の日の一致を将来の更新分まで同値である保証にしない（2026-10-23、measurement、company-in/growth-main/2026-10-18/gsc-date.json・hq/state/growth-dashboard/gsc_daily.json）
+- day_end の23:00 JSTより前に作った写しでは当日分が欠ける。翌周で観測値の有無を確認し、取得できた値を追記する。先に残した欠測行は消さず、観測時刻と補完の経過を追えるようにする（2026-10-24、measurement、sns-post-metrics.csv の day_end 行）。
+- GA4 の比較には9/29・10/1以外に、2026-08-29の同意前読み込み経路離脱、8/31の source による流入元上書き開始、9/15の link_source への是正も考慮する。8/29の影響量は未観測で、是正前の流入元は後の直接訪問に残る（2026-10-24、BOA-905、scripts/lib/ga4MeasurementBreaks.js）。
+- sns-channel-daily のUTM別行はGA4が行を返した日だけ作られる。行なしを投稿の sessions=0と断定せず欠測理由を残し、チャネル全体の値を代入しない。全体には他の投稿のUTMも含まれる（2026-10-25、measurement、sns-channel-daily.csv・scripts/lib/snsDailyRunner.js）。
+- sns_daily のYouTube日次は、取得成功でPTのD−3の日自体に行が無ければ件数3指標を0、平均2指標をNULLにする。規則による0の理由はrunnerのreportへ残し、DBではAPI明示0と区別しない（2026-10-26、BOA-998の回答1・2、snsDailyRunner.js・verify-sns-daily-runner.js）。
+- Xの返信・引用は取得済みの public_metrics.reply_count・quote_count を使えるため追加呼び出しは不要。reply_count は自分の返信も含むので、外部の反応数と同一視しない（2026-10-27、PR #1986、scripts/lib/snsMetricsRunner.js）。
+- 全貌のUTM別機能利用を保存するときは、訪問・ソナーの応答に無く機能の応答だけにある utm_content も下書き検索へ含める。投稿日・翌日の照合に必要な下書きが見つからず、利用行を落とすため（2026-10-26、BOA-1154、snsDailyRunner.js・verify-sns-daily-runner.js）。
+- 全貌YouTubeの完全版とShortsの24時間後viewsは、同題材ペアの形式間の差と、施策による変化を分けて読む。同じ大小関係が2回続いたことだけを施策効果や起票の根拠にせず、型の存続は方針の判断として扱う（2026-11-01、measurement、company-out/measurement/metrics/posts.csv の10/21〜31の同題材ペア）。

@@ -347,6 +347,24 @@ export function boatScopeKey(keys, countOf, picked) {
 }
 
 /**
+ * 七角形の軸の項目（差がつく材料の図と、艇の行の「{n}項目中」の n）。ボート2連率は着順との関係が小さいので入れない
+ * （承認モック mock-compare-v3）。展示タイムは展示後の時点だけ。優勝戦・準優勝戦の日と節の初日は今節の平均着順点を入れない
+ * （Q-F1・BOA-802）。値の有無では外さない（6艇とも値が無い軸も数える）。全貌動画 f01 も同じ関数で軸を決める
+ * @param {object} today facts の応答の today
+ * @param {boolean} exhibitionStage 画面の時点が展示後か
+ */
+export function radarAxisItems(today, exhibitionStage) {
+  const drop =
+    hidesSeriesScoreLine(today) || seriesScoreNote(today) === "first";
+  return FACT_ITEMS.filter(
+    (it) =>
+      it.key !== "boat_2" &&
+      (exhibitionStage || it.key !== "exh_time") &&
+      !(drop && it.key === "series_score"),
+  );
+}
+
+/**
  * 七角形と項目の表の値（承認モック sonar-tab mock-compare-v3）。6艇それぞれ、その艇を一番上で選んだときと
  * 同じ集めたレース（boatScopeKey）で出す。cells は items の順で、今日の順位の区分（bucket、線を描く順位）・
  * 表示の順位（同じ値は幅）・その区分のときの [当たり, 件数]
@@ -441,21 +459,37 @@ export const MIN_WIND_WAVE = 300;
  * @returns {{mode: "wave"|"waveFew"|"wind", rows: object, n: number, waveN?: number, sameAsWind?: boolean, wind: string, wave: string|null}|null}
  */
 export function windWaveView(vaFacts, exhibition) {
-  const wind = exhibition?.wind_band ?? windBand(exhibition?.wind_speed);
-  const rows = wind ? vaFacts?.wind?.[wind] : null;
+  const { wind, rows } = windRowsOf(vaFacts, exhibition);
   if (!rows) return null;
   const wave = waveBand(exhibition?.wave_height);
   const n = rows["1"]?.win?.[1] ?? 0;
   const mode = vaFacts.wave_mode;
   if (!mode?.use_wave || !wave || !vaFacts.wind_wave)
-    return {
-      mode: "wind",
-      rows,
-      n,
-      sameAsWind: Boolean(mode) && !mode.use_wave,
-      wind,
-      wave,
-    };
+    return windOnlyView(rows, n, mode, wind, wave);
+  return windWaveCellView(vaFacts, rows, n, wind, wave);
+}
+
+// 今日の風の帯（展示の wind_band、無ければ風速から）と、その帯の facts の行
+function windRowsOf(vaFacts, exhibition) {
+  const wind = exhibition?.wind_band ?? windBand(exhibition?.wind_speed);
+  const rows = wind ? vaFacts?.wind?.[wind] : null;
+  return { wind, rows };
+}
+
+// 風だけで見る（波で分けない会場・今日の波高が無い・Q-F3 より前の集計）。sameAsWind は注記を出す印
+function windOnlyView(rows, n, mode, wind, wave) {
+  return {
+    mode: "wind",
+    rows,
+    n,
+    sameAsWind: Boolean(mode) && !mode.use_wave,
+    wind,
+    wave,
+  };
+}
+
+// 風×波の升で見る。升の件数が MIN_WIND_WAVE 未満なら風の行に戻し waveN を添える
+function windWaveCellView(vaFacts, rows, n, wind, wave) {
   const cell = vaFacts.wind_wave[wind]?.[wave];
   const waveN = cell?.["1"]?.win?.[1] ?? 0;
   if (waveN >= MIN_WIND_WAVE)

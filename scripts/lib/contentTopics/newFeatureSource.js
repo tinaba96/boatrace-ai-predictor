@@ -7,16 +7,16 @@
  *    （検知されなくなる＝content-index.jsonが作られた時点で自然に対象から外れる）。
  *    成績・確率に関わる可能性があるため`isGamblingRelevant: true`（既定・安全側）
  * 2. 既存機能の使い方紹介（EXISTING_FEATURE_LIFEHACKS、2026-09-02追加）。
- *    `docs/proposal/tiktok-non-gambling-content-ideas.md`案4「使い方ライフハック型」
+ *    `docs/archive/tiktok-non-gambling-content-ideas.md`案4「使い方ライフハック型」
  *    を吸収したもの。成績・確率と無関係と選定済みの機能のみを対象にしているため
- *    `isGamblingRelevant: false`（TikTok展開可）を明示する。使用履歴は
+ *    `isGamblingRelevant: false`を明示する。使用履歴は
  *    data/analysis/content-topics/new-feature-lifehack-history.json で管理する
  */
 
 import { promises as fs } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { checkMissingContentIndex } from "../../maintenance/content-ops-checks/check-missing-content-index.js";
+import { checkMissingContentIndex } from "./missingContentIndex.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LIFEHACK_HISTORY_PATH = path.join(
@@ -28,7 +28,7 @@ export const id = "new-feature";
 
 // 成績・確率と無関係と判定済みの既存機能のみ。AI予想・展開予測・出目分布・
 // 回収率分析等、成績・確率に関わる分析ツールタブは対象外にすること
-// （docs/proposal/tiktok-non-gambling-content-ideas.md案4の判断基準を継承）
+// （docs/archive/tiktok-non-gambling-content-ideas.md案4の判断基準を継承）
 const EXISTING_FEATURE_LIFEHACKS = [
   {
     featureKey: "language-switcher",

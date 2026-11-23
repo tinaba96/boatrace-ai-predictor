@@ -8,6 +8,8 @@ import {
   createMockHeadless,
 } from "../../api/_lib/snsDeadlineQueue.js";
 import { SCREEN_MARKERS, SCREEN_TABS } from "../lib/snsScreenMarkers.js";
+import { runSnsHeadlessScenes1 } from "./verifyData/sns-headless-scenes.js";
+import { analogyControlsShape } from "./verifyData/sns-headless-analogy-controls.js";
 
 function fakeBrowser({ visible = [], finalUrl } = {}) {
   const log = {
@@ -23,6 +25,12 @@ function fakeBrowser({ visible = [], finalUrl } = {}) {
       log.contexts += 1;
       log.contextOptions = options;
       return {
+        async addInitScript(fn, arg) {
+          log.initScripts = [
+            ...(log.initScripts ?? []),
+            { source: String(fn), arg },
+          ];
+        },
         async route(pattern) {
           log.routes.push(String(pattern));
         },
@@ -34,10 +42,43 @@ function fakeBrowser({ visible = [], finalUrl } = {}) {
               log.gotos.push(url);
             },
             url: () => current,
+            evaluate: async (fn) => {
+              log.evaluated = [...(log.evaluated ?? []), String(fn)];
+            },
+            waitForTimeout: async (ms) => {
+              log.waits = [...(log.waits ?? []), ms];
+            },
+            screenshot: async (options) => {
+              log.screenshots = [...(log.screenshots ?? []), options];
+              return Buffer.from("png");
+            },
             locator: (selector) => ({
               first: () => ({
                 waitFor: async () => {
                   if (!visible.includes(selector)) throw new Error("timeout");
+                },
+                isVisible: async () => visible.includes(selector),
+                evaluate: async (fn, arg) => {
+                  // 撮った画像の上下の色の検査（captureElement）は、見出しの差し込みと分けて数える
+                  if (arg?.edgeCheck) {
+                    log.edgeChecks = [...(log.edgeChecks ?? []), arg];
+                    return (log.edgeResults ?? []).shift() ?? true;
+                  }
+                  log.labels = [...(log.labels ?? []), { selector, arg }];
+                },
+                scrollIntoViewIfNeeded: async () => {},
+                boundingBox: async () => ({
+                  x: 0,
+                  y: 10,
+                  width: 375,
+                  height: 300,
+                }),
+                screenshot: async (options) => {
+                  log.elementShots = [
+                    ...(log.elementShots ?? []),
+                    { selector, options },
+                  ];
+                  return Buffer.from("element");
                 },
               }),
             }),
@@ -50,6 +91,7 @@ function fakeBrowser({ visible = [], finalUrl } = {}) {
     },
     async close() {
       log.closed = true;
+      log.browserCloses = (log.browserCloses ?? 0) + 1;
     },
   };
   return {
@@ -64,17 +106,38 @@ function fakeBrowser({ visible = [], finalUrl } = {}) {
 const URL_SONAR =
   "https://www.boat-ai.jp/race/2026-10-16-11-12?tab=sonar&utm_source=x&utm_medium=social&utm_campaign=race-full&utm_content=d1";
 
-test("印の表: race-sonar は2つの data-testid、許すタブは sonar だけ", () => {
-  assert.deepEqual(Object.keys(SCREEN_MARKERS), ["race-sonar"]);
-  assert.ok(
-    SCREEN_MARKERS["race-sonar"].every((s) =>
-      /^\[data-testid="[a-z-]+"\]$/.test(s),
-    ),
-  );
+test("印の表: race-sonar・today・venue は2つずつの data-testid、許すタブは sonar だけ", () => {
+  assert.deepEqual(Object.keys(SCREEN_MARKERS), [
+    "race-sonar",
+    "today",
+    "venue",
+  ]);
+  for (const key of ["race-sonar", "today", "venue"])
+    assert.ok(
+      SCREEN_MARKERS[key].length === 2 &&
+        SCREEN_MARKERS[key].every((s) => /^\[data-testid="[a-z-]+"\]$/.test(s)),
+    );
   assert.deepEqual(SCREEN_TABS, ["sonar"]);
 });
 
-test("Chromium は1回だけ起動し、毎回新しい context で開いて閉じ、解析のタグを止め、見えた印だけを返す", async () => {
+test("race-sonar の印は展示の前後どちらでも出る要素だけ（段の表示 analogy-stage-chip は展示の後に消える、2026-10-17）", async () => {
+  assert.ok(
+    !SCREEN_MARKERS["race-sonar"].some((s) => s.includes("analogy-stage-chip")),
+  );
+  // 箱は展示の有無で分かれる前の外側にある（段の表示とボタンはその中で入れ替わる）。部品を展示の前・後で描いて見る
+  assert.deepEqual(await analogyControlsShape(false), {
+    box: true,
+    chip: true,
+    stageButtons: 0,
+  });
+  assert.deepEqual(await analogyControlsShape(true), {
+    box: true,
+    chip: false,
+    stageButtons: 2,
+  });
+});
+
+test("Chromium は開くたびに起動して閉じ、新しい context で開き、解析のタグを止め、見えた印だけを返す（--single-process は context を閉じるとブラウザごと終わる、2026-10-17）", async () => {
   const fake = fakeBrowser({ visible: [SCREEN_MARKERS["race-sonar"][0]] });
   const headless = createChromiumHeadless({ launch: fake.launch });
   for (let i = 0; i < 2; i++) {
@@ -88,13 +151,12 @@ test("Chromium は1回だけ起動し、毎回新しい context で開いて閉�
       SCREEN_MARKERS["race-sonar"][0],
     ]);
   }
-  assert.equal(fake.log.launches, 1);
+  assert.equal(fake.log.launches, 2);
   assert.equal(fake.log.contexts, 2);
-  assert.equal(fake.log.closedContexts, 2);
+  assert.equal(fake.log.browserCloses, 2);
   assert.equal(fake.log.contextOptions.storageState, undefined);
   assert.match(fake.log.routes[0], /google-analytics/);
   await headless.close();
-  assert.equal(fake.log.closed, true);
   // ログイン状態を持ち込む呼び出しは断る
   await assert.rejects(
     headless.inspect({
@@ -104,6 +166,45 @@ test("Chromium は1回だけ起動し、毎回新しい context で開いて閉�
     }),
     /未ログイン/,
   );
+});
+
+test("前のブラウザが落ちても、次は新しいブラウザで開く（2026-10-17 本番: /today の後の図が4枚とも browser has been closed）", async () => {
+  // @sparticuz/chromium（--single-process）と同じく、context を閉じるとブラウザが終わる偽物
+  let launches = 0;
+  const launch = async () => {
+    launches += 1;
+    const fake = fakeBrowser({ visible: SCREEN_MARKERS.today });
+    const browser = await fake.launch();
+    let dead = false;
+    return {
+      async newContext(options) {
+        if (dead)
+          throw new Error(
+            "browser.newContext: Target page, context or browser has been closed",
+          );
+        const context = await browser.newContext(options);
+        return {
+          ...context,
+          close: async () => {
+            dead = true;
+          },
+        };
+      },
+      async close() {
+        if (dead) throw new Error("Target closed");
+      },
+    };
+  };
+  const headless = createChromiumHeadless({ launch });
+  for (let i = 0; i < 3; i++) {
+    const result = await headless.inspect({
+      url: "https://www.boat-ai.jp/today",
+      context: { storageState: null },
+      requiredSelectors: SCREEN_MARKERS.today,
+    });
+    assert.deepEqual(result.visibleSelectors, SCREEN_MARKERS.today);
+  }
+  assert.equal(launches, 3);
 });
 
 test("1回の実行で開く回数に上限があり、起動の失敗は同じ実行の中で繰り返さない", async () => {
@@ -199,3 +300,114 @@ if (process.argv.includes("--live") && liveRace) {
     }
   });
 }
+
+test("screenshot（/today の画像、tasks 19b）: スマホ幅の上部 4:5 を3倍で、未ログインの context で撮る。印が見えなければ撮らない・回数の上限は inspect と共通", async () => {
+  const TODAY = "https://www.boat-ai.jp/today";
+  const fake = fakeBrowser({ visible: SCREEN_MARKERS.today });
+  const headless = createChromiumHeadless({
+    launch: fake.launch,
+    maxInspections: 2,
+  });
+  const shot = await headless.screenshot({
+    url: TODAY,
+    requiredSelectors: SCREEN_MARKERS.today,
+  });
+  assert.equal(String(shot.png), "png");
+  assert.deepEqual(fake.log.contextOptions, {
+    viewport: { width: 390, height: 488 },
+    deviceScaleFactor: 3,
+    storageState: undefined,
+  });
+  assert.deepEqual(fake.log.screenshots, [{ type: "png" }]);
+  assert.ok(fake.log.routes.some((r) => r.includes("google-analytics")));
+  await headless.inspect({
+    url: TODAY,
+    context: { storageState: null },
+    requiredSelectors: SCREEN_MARKERS.today,
+  });
+  assert.deepEqual(fake.log.contextOptions.viewport, {
+    width: 390,
+    height: 844,
+  });
+  await assert.rejects(
+    headless.screenshot({
+      url: TODAY,
+      requiredSelectors: SCREEN_MARKERS.today,
+    }),
+    /public_check_budget/,
+  );
+
+  const missing = fakeBrowser({ visible: [SCREEN_MARKERS.today[0]] });
+  await assert.rejects(
+    createChromiumHeadless({ launch: missing.launch }).screenshot({
+      url: TODAY,
+      requiredSelectors: SCREEN_MARKERS.today,
+    }),
+    /screenshot_component_missing/,
+  );
+  assert.equal(missing.log.screenshots, undefined);
+  // 撮れなくてもブラウザは閉じる（次は新しいブラウザで開く）
+  assert.equal(missing.log.browserCloses, 1);
+});
+
+test("screenshot: 撮る前に Cookie の同意を「拒否」で記録し、帯が出ていれば撮らない。フォントの読み込みを待ってから撮る（2026-10-16 画像の不具合）", async () => {
+  const { CONSENT_KEY } = await import("../../api/_lib/snsHeadless.js");
+  const TODAY = "https://www.boat-ai.jp/today";
+  const fake = fakeBrowser({ visible: SCREEN_MARKERS.today });
+  await createChromiumHeadless({ launch: fake.launch }).screenshot({
+    url: TODAY,
+    requiredSelectors: SCREEN_MARKERS.today,
+  });
+  assert.equal(CONSENT_KEY, "boatai:cookie-consent");
+  assert.deepEqual(
+    fake.log.initScripts.map((s) => s.arg),
+    [CONSENT_KEY],
+  );
+  assert.match(
+    fake.log.initScripts[0].source,
+    /localStorage\.setItem\(key, "rejected"\)/,
+  );
+  assert.ok(fake.log.evaluated.some((f) => f.includes("document.fonts.ready")));
+  // 帯が出ていれば撮らない
+  const covered = fakeBrowser({
+    visible: [...SCREEN_MARKERS.today, ".cookie-consent"],
+  });
+  await assert.rejects(
+    createChromiumHeadless({ launch: covered.launch }).screenshot({
+      url: TODAY,
+      requiredSelectors: SCREEN_MARKERS.today,
+    }),
+    /screenshot_overlay_visible/,
+  );
+  assert.equal(covered.log.screenshots, undefined);
+  // 同意のキーは画面の側（analytics.js）と同じ。画面の読み書き（getCookieConsent・setCookieConsent）を偽の localStorage で回して見る
+  const { getCookieConsent, setCookieConsent } =
+    await import("../../src/utils/analytics.js");
+  const store = new Map();
+  const saved = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (k) => (store.has(k) ? store.get(k) : null),
+      setItem: (k, v) => store.set(k, String(v)),
+    },
+  });
+  try {
+    setCookieConsent("rejected");
+    assert.deepEqual([...store], [[CONSENT_KEY, "rejected"]]);
+    store.set(CONSENT_KEY, "accepted");
+    assert.equal(getCookieConsent(), "accepted");
+  } finally {
+    if (saved) Object.defineProperty(globalThis, "localStorage", saved);
+    else delete globalThis.localStorage;
+  }
+});
+
+// ---- 後半の場面（verifyData/sns-headless-scenes.js） ----
+runSnsHeadlessScenes1({ fakeBrowser });
+
+// headless.screenshot に渡すこと自体は verify-sns-today-plan.js が計画を偽の撮影で回して見る（撮った図の要求の edgeColorVar）
+test("/today の図の外周の色の検査は ryujin の紺（SONAR_EDGE_COLOR_VAR）", async () => {
+  const planner = await import("../lib/snsTodayPlanner.js");
+  assert.equal(planner.SONAR_EDGE_COLOR_VAR, "--ryujin-navy-600");
+});

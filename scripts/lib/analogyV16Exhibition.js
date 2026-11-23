@@ -15,14 +15,9 @@ import {
   readObject,
   rest,
   writeObject,
-} from "../../api/_lib/analogyV16.js";
+} from "./analogyV16Store.js";
 import { buildLiveFeatures } from "../../src/utils/analogyRaceFeatures.js";
-import {
-  entryType,
-  exhibitionForms,
-  signedSt,
-  windBand,
-} from "../../src/utils/analogyScenario.js";
+import { BOATS, todayExhibition } from "./analogyV16ExhibitionToday.js";
 import {
   EXHIBITION_ITEMS,
   exhibitionItemLevels,
@@ -31,8 +26,12 @@ import {
   rerankSimilar,
 } from "../../src/utils/analogySimilarRerank.js";
 
+export { todayExhibition };
+
 export const MAX_RACES = 20;
-const BOATS = [1, 2, 3, 4, 5, 6];
+// 展示取得の最後の予定は8分前、並べ直しは2分ごと。最後の取得から2回分待ち、
+// 4分前以降は取得障害中でも今の気象で作る（BOA-788）。
+const WEATHER_WAIT_MINUTES = 4;
 
 const toJstDate = (d) =>
   new Date(d.getTime() + 9 * 3600 * 1000).toISOString().slice(0, 10);
@@ -72,53 +71,6 @@ export function selectExhibitionTargets(snaps, races, exh, entries, now) {
       absent: absent.has(r.race_id),
       deadline: deadlineOf(r),
     }));
-}
-
-/**
- * 今日の展示の値（today-exhibition。T4-2）: 展示タイムと順位、風速区分、展示の進入の型、展示 ST（F は負）と
- * 展示の形（F.05 までは .00 として判定、F.06 以上か出遅れの艇がいれば判定しない。Q-F6）
- * @param {object[]} exhRows exhibition_data の6行
- * @param {object} live buildLiveFeatures の6艇
- * @param {object} cond race_conditions の行
- */
-export function todayExhibition(exhRows, live, cond) {
-  const byBoat = new Map(exhRows.map((r) => [Number(r.boat_number), r]));
-  const course = BOATS.map((b) => {
-    const c = byBoat.get(b)?.exhibition_course;
-    return c === null || c === undefined ? null : Number(c);
-  });
-  const stByCourse = [null, null, null, null, null, null];
-  BOATS.forEach((b, i) => {
-    const r = byBoat.get(b);
-    const st = r?.start_timing;
-    if (course[i] && st !== null && st !== undefined)
-      stByCourse[course[i] - 1] = signedSt(Number(st), r.start_flag === "F");
-  });
-  const hasLate = BOATS.some((b) => byBoat.get(b)?.start_flag === "L");
-  const { forms, excluded } = exhibitionForms(stByCourse, hasLate);
-  return {
-    exh_time: live.map((v) => (Number.isNaN(v.exh_time) ? null : v.exh_time)),
-    exh_time_rank: live.map((v) =>
-      Number.isNaN(v.exh_time_rank) ? null : v.exh_time_rank,
-    ),
-    exh_time_diff: live.map((v) =>
-      Number.isNaN(v.exh_time_diff) ? null : v.exh_time_diff,
-    ),
-    weather_code: Number.isNaN(live[0]?.weather_code)
-      ? null
-      : (live[0]?.weather_code ?? null),
-    wind_x: Number.isNaN(live[0]?.wind_x) ? null : (live[0]?.wind_x ?? null),
-    wind_y: Number.isNaN(live[0]?.wind_y) ? null : (live[0]?.wind_y ?? null),
-    wind_speed: cond?.wind_speed ?? null,
-    wave_height: cond?.wave_height ?? null,
-    wind_band: windBand(cond?.wind_speed ?? null),
-    course_by_boat: course,
-    entry_type: entryType(course),
-    st_by_course: stByCourse,
-    forms,
-    // F.06 以上か出遅れの艇がいるので展示の形を判定しなかった（Q-F6）
-    forms_excluded: excluded,
-  };
 }
 
 /**
@@ -174,34 +126,49 @@ function poolLoader() {
   };
 }
 
-async function buildRace(raceId, racecardSnap, ctx, runId, loadPool) {
-  const rc = racecardSnap;
-  const [file, todayRc, exhRows, conds, display, pool] = await Promise.all([
-    readObject(objectPath(raceId, rc.run_id, "similar", raceId)),
+/**
+ * 並べ直しに使う気象は、判定した観測と同じ読み取りの値にする。
+ * 1R・前走の時刻なし・観測時刻なしは従来どおり（鮮度を確かめられない）。前走の後の観測でなければ待つ理由を返す
+ */
+function waitingForPreviousRace(raceId, cond, timing) {
+  if (
+    timing.previous &&
+    cond.weather_observed_at &&
+    timing.now.getTime() < timing.deadline.getTime() - WEATHER_WAIT_MINUTES * 60000 &&
+    !(Date.parse(cond.weather_observed_at) >= timing.previous.getTime())
+  ) {
+    return {
+      race_id: raceId,
+      reason: "before_previous_race",
+      weather_observed_at: cond.weather_observed_at,
+      required_after: timing.previous.toISOString(),
+    };
+  }
+  return null;
+}
+
+/** 出走表の段のファイルと今日の展示の元の行を読む（出走表の段のファイルが無ければ例外） */
+async function loadRaceInputs(raceId, rc, emptyLayer, loadPool) {
+  const [file, todayRc, exhRows, display, pool] = await Promise.all([
+    emptyLayer ? null : readObject(objectPath(raceId, rc.run_id, "similar", raceId)),
     readObject(objectPath(raceId, rc.run_id, "today", raceId)),
     rest(
       `exhibition_data?race_id=eq.${raceId}&select=boat_number,exhibition_time,exhibition_course,start_timing,start_flag,is_absent`,
     ),
-    rest(
-      `race_conditions?race_id=eq.${raceId}&select=weather,wind_direction,wind_speed,wave_height`,
-    ),
     // 表示用の値（無い回＝この列を足す前の朝のバッチの回は、値なしで並べ直す）
-    readObject(objectPath(raceId, rc.run_id, "similar-display", raceId)),
-    loadPool(raceId, rc.run_id),
+    emptyLayer ? null : readObject(objectPath(raceId, rc.run_id, "similar-display", raceId)),
+    emptyLayer ? null : loadPool(raceId, rc.run_id),
   ]);
-  if (!file || !todayRc)
+  if ((!emptyLayer && !file) || !todayRc)
     throw new Error(
       `${raceId}: 出走表の段のファイルが無い（run ${rc.run_id}）`,
     );
-  const cond = conds[0] ?? {};
-  const offset = todayRc.wind_offset_deg ?? NaN;
-  const live = buildLiveFeatures({
-    boatNumbers: BOATS,
-    exhibition: exhRows,
-    conditions: cond,
-    windOffset: offset,
-  });
-  const today = {
+  return { file, todayRc, exhRows, display, pool };
+}
+
+/** 並べ直しに渡す今日の展示の値（buildLiveFeatures の6艇から） */
+function todayFromLive(live) {
+  return {
     boats: {
       exh_time: live.map((v) => v.exh_time),
       exh_time_diff: live.map((v) => v.exh_time_diff),
@@ -215,6 +182,40 @@ async function buildRace(raceId, racecardSnap, ctx, runId, loadPool) {
       wave_height: live[0].wave_height,
     },
   };
+}
+
+async function buildRace(raceId, racecardSnap, ctx, runId, loadPool, timing) {
+  const rc = racecardSnap;
+  const emptyLayer = rc.status === "empty_layer";
+  const conds = await rest(
+    `race_conditions?race_id=eq.${raceId}&select=weather,wind_direction,wind_speed,wave_height,weather_observed_at`,
+  );
+  const cond = conds[0] ?? {};
+  const waiting = waitingForPreviousRace(raceId, cond, timing);
+  if (waiting) return { waiting };
+  const { file, todayRc, exhRows, display, pool } = await loadRaceInputs(
+    raceId,
+    rc,
+    emptyLayer,
+    loadPool,
+  );
+  const offset = todayRc.wind_offset_deg ?? NaN;
+  const live = buildLiveFeatures({
+    boatNumbers: BOATS,
+    exhibition: exhRows,
+    conditions: cond,
+    windOffset: offset,
+  });
+  // 層が0件でも今日の展示は必要。類似レースの並べ直しだけを省く。
+  if (emptyLayer) {
+    if (ctx.mode === "live")
+      await writeObject(
+        objectPath(raceId, runId, "today-exhibition", raceId),
+        todayExhibition(exhRows, live, cond),
+      );
+    return { exact: true };
+  }
+  const today = todayFromLive(live);
   const reranked = rerankSimilar(file, today);
   const todayExh = { race: today.race, exh_time: today.boats.exh_time };
   const similar = {
@@ -242,17 +243,8 @@ async function buildRace(raceId, racecardSnap, ctx, runId, loadPool) {
   return { exact: reranked.exact };
 }
 
-/**
- * Cron の本体（createScrapeCronHandler の run）
- * @param {{mode:string, now:() => Date}} ctx
- */
-export async function runAnalogyV16Exhibition(ctx) {
-  const now = ctx.now();
-  const date = toJstDate(now);
-  const runId = `exh-${now
-    .toISOString()
-    .replace(/[-:.TZ]/g, "")
-    .slice(0, 14)}`;
+/** 今日の snapshot・レース・展示・欠場を読み、今回の対象を決める */
+async function loadDay(now, date) {
   const like = encodeURIComponent(`${date}-*`);
   const [snaps, races] = await Promise.all([
     rest(
@@ -276,6 +268,63 @@ export async function runAnalogyV16Exhibition(ctx) {
     entries,
     now,
   ).slice(0, MAX_RACES);
+  return { snaps, races, targets };
+}
+
+/**
+ * 1レースの snapshot の行を決める（必要なら Storage に書く）。気象が前走の後でなければ待ちを報告して null
+ */
+async function decideRow(t, rc, base, env) {
+  const { ctx, runId, loadPool, races, now, report } = env;
+  if (t.absent) return { ...base, status: "absent", exact: null };
+  if (rc.status !== "ok" && rc.status !== "empty_layer")
+    return { ...base, status: "empty_layer", exact: true };
+  // race_id は YYYY-MM-DD-会場-レース番号。同日・同会場の直前の番号だけを使う。
+  const previousId = `${t.race_id.slice(0, -2)}${String(Number(t.race_id.slice(-2)) - 1).padStart(2, "0")}`;
+  const result = await buildRace(t.race_id, rc, ctx, runId, loadPool, {
+    now,
+    deadline: t.deadline,
+    previous: deadlineOf(races.find((r) => r.race_id === previousId)),
+  });
+  if (result.waiting) {
+    report.waiting_weather.push(result.waiting);
+    return null;
+  }
+  return { ...base, status: rc.status, exact: result.exact };
+}
+
+/** 締切を書く直前に確かめ直し、越えていなければ snapshot を書く（shadow は数えない） */
+async function commitRow(row, t, ctx, report) {
+  // 締切は書く直前に確かめ直す（起動時は締切前でも、前のレースの処理やこのレースの読み込みの間に締切を
+  // 越えうる。plan「締切前だけ書く」。朝のバッチの late_for と同じ）。Storage のファイルは置いたまま
+  const at = ctx.now();
+  if (t.deadline.getTime() <= at.getTime()) {
+    report.late.push(t.race_id);
+    return;
+  }
+  row.computed_at = at.toISOString();
+  if (ctx.mode === "live") {
+    await rest("analogy_v16_snapshots?on_conflict=race_id,stage", {
+      method: "POST",
+      body: [row],
+      prefer: "resolution=ignore-duplicates,return=minimal",
+    });
+    report.written += 1;
+  }
+}
+
+/**
+ * Cron の本体（createScrapeCronHandler の run）
+ * @param {{mode:string, now:() => Date}} ctx
+ */
+export async function runAnalogyV16Exhibition(ctx) {
+  const now = ctx.now();
+  const date = toJstDate(now);
+  const runId = `exh-${now
+    .toISOString()
+    .replace(/[-:.TZ]/g, "")
+    .slice(0, 14)}`;
+  const { snaps, races, targets } = await loadDay(now, date);
   const rcBy = new Map(
     snaps.filter((s) => s.stage === "racecard").map((s) => [s.race_id, s]),
   );
@@ -286,8 +335,9 @@ export async function runAnalogyV16Exhibition(ctx) {
     written: 0,
     failed: [],
     late: [],
+    waiting_weather: [],
   };
-  const loadPool = poolLoader();
+  const env = { ctx, runId, loadPool: poolLoader(), races, now, report };
   for (const t of targets) {
     // 関数の上限の手前（共通ラッパのソフトデッドライン）で止める。残りは次の起動（2分後）が拾う。
     // 候補が3万件になり1レースの読み込みが大きくなったため（T2-4）
@@ -305,30 +355,8 @@ export async function runAnalogyV16Exhibition(ctx) {
       n_layer: rc.n_layer,
     };
     try {
-      let row;
-      if (t.absent) row = { ...base, status: "absent", exact: null };
-      else if (rc.status !== "ok")
-        row = { ...base, status: "empty_layer", exact: true };
-      else {
-        const { exact } = await buildRace(t.race_id, rc, ctx, runId, loadPool);
-        row = { ...base, status: "ok", exact };
-      }
-      // 締切は書く直前に確かめ直す（起動時は締切前でも、前のレースの処理やこのレースの読み込みの間に締切を
-      // 越えうる。plan「締切前だけ書く」。朝のバッチの late_for と同じ）。Storage のファイルは置いたまま
-      const at = ctx.now();
-      if (t.deadline.getTime() <= at.getTime()) {
-        report.late.push(t.race_id);
-        continue;
-      }
-      row.computed_at = at.toISOString();
-      if (ctx.mode === "live") {
-        await rest("analogy_v16_snapshots?on_conflict=race_id,stage", {
-          method: "POST",
-          body: [row],
-          prefer: "resolution=ignore-duplicates,return=minimal",
-        });
-        report.written += 1;
-      }
+      const row = await decideRow(t, rc, base, env);
+      if (row) await commitRow(row, t, ctx, report);
     } catch (e) {
       report.failed.push({ race_id: t.race_id, error: String(e.message ?? e) });
     }

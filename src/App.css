@@ -173,16 +173,16 @@ input:focus-visible,
   box-shadow: none;
 }
 
-.race-list-section .race-card--deadline-passed /* リンク（a）で描くとき、ボタンと同じ見た目にする（SEO 点検 F3） */
-a.predict-btn {
+.race-list-section .race-card--deadline-passed .predict-btn:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* リンク（a）で描くとき、ボタンと同じ見た目にする（SEO 点検 F3）。締切前・締切後のどちらのカードにも効かせる */
+.race-list-section a.predict-btn {
   display: block;
   box-sizing: border-box;
   text-align: center;
   text-decoration: none;
-}
-
-.predict-btn:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .race-list-section .race-card-header {
@@ -621,6 +621,12 @@ a.predict-btn {
   font-size: var(--font-size-2xs);
   font-weight: var(--font-weight-semibold);
   color: var(--text-secondary);
+}
+
+/* 1着の金の線（行の外）と「1着」の間に余白を取る（BOA-1027）。列の左端は全行・見出しでそろえるため両方に足す */
+.rr-row,
+.rr-row-head {
+  padding-left: 0.5rem;
 }
 
 .rr-row-head .rr-head-st,
@@ -1468,10 +1474,9 @@ a.predict-btn {
 }
 
 .blog-preview-card:hover {
-  background: #f0f9ff;
-  border-color: #0ea5e9;
+  border-color: var(--brand-accent-secondary);
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(14, 165, 233, 0.15);
+  box-shadow: var(--shadow-xl);
 }
 
 .blog-preview-category {
@@ -1796,3 +1801,22 @@ a.predict-btn {
 }
 
 
+
+/* 戻るリンクの基本指定は既存の使用箇所に限定し、ページ固有の指定を優先する。 */
+:where(.race-detail-page, .race-detail-page-v2, .blog-post-header, .venue-race-list-page, .accuracy-history-page, .sns-hub-header, .admin-header) .back-link {
+  display: inline-block;
+  text-decoration: none;
+  margin-bottom: 1rem;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+:is(.race-detail-page, .blog-post-header, .venue-race-list-page) .back-link {
+  color: var(--brand-accent-secondary);
+  text-decoration: none;
+}
+
+:is(.race-detail-page, .blog-post-header, .venue-race-list-page) .back-link:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}

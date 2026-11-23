@@ -1,4 +1,8 @@
 import { test, expect } from "./fixtures.js";
+import { closeSrcLoader, loadSrc, srcFixedT } from "./src-modules.js";
+
+// 共有文の検査は src/ をテストの側（Node）で読む（e2e/src-modules.js。build した束の preview でも通るように）
+test.afterAll(closeSrcLoader);
 
 /**
  * 展開予測の的中は1着の艇だけで判定し、決まり手は見ない（判定と公開している的中率は変えない）。
@@ -9,16 +13,12 @@ import { test, expect } from "./fixtures.js";
  * - A-3: カードの「予想: 逃げ 54%」は、実際と違うときに「（実際: 差し）」を添える
  */
 
-test("A-2: 共有文は、決まり手もコースも予想どおりのときだけ「予想通りの展開でした」と書く", async ({
-  page,
-}) => {
-  await page.goto("/about", { waitUntil: "domcontentloaded" });
-  const texts = await page.evaluate(async () => {
-    const { generateTurnHitShareText } = await import("/src/utils/share.js");
-    const { default: i18n } = await import("/src/i18n.js");
-    // /hit-races は ja 専用なので ja の文面で確かめる（BOA-754 で文面を locale に移した）
-    const share = (race) =>
-      generateTurnHitShareText(race, i18n.getFixedT("ja"));
+test("A-2: 共有文は、決まり手もコースも予想どおりのときだけ「予想通りの展開でした」と書く", async () => {
+  const { generateTurnHitShareText } = await loadSrc("/src/utils/share.js");
+  // /hit-races は ja 専用なので ja の文面で確かめる（BOA-754 で文面を locale に移した）
+  const t = await srcFixedT("ja");
+  const share = (race) => generateTurnHitShareText(race, t);
+  const texts = (() => {
     const base = { venue: "鳴門", raceNo: 12, date: "2026-10-02" };
     return {
       asPredicted: share({
@@ -64,7 +64,7 @@ test("A-2: 共有文は、決まり手もコースも予想どおりのときだ
         probability: 0.12,
       }),
     };
-  });
+  })();
   expect(texts.asPredicted).toContain(
     "1号艇が1着（AIの予想: 逃げ 54%）\n予想通りの展開でした ✅",
   );
@@ -90,22 +90,15 @@ test("A-2: 共有文は、決まり手もコースも予想どおりのときだ
   }
   // 共有はレース当日とは限らない
   for (let i = 0; i < 30; i += 1) {
-    const text = await page.evaluate(async () => {
-      const { generateTurnHitShareText } = await import("/src/utils/share.js");
-      const { default: i18n } = await import("/src/i18n.js");
-      // /hit-races は ja 専用なので ja の文面で確かめる（BOA-754 で文面を locale に移した）
-      const share = (race) =>
-        generateTurnHitShareText(race, i18n.getFixedT("ja"));
-      return share({
-        venue: "戸田",
-        raceNo: 11,
-        date: "2026-09-27",
-        winnerBoat: 1,
-        winnerEntryCourse: 1,
-        technique: "逃げ",
-        actualTechnique: "逃げ",
-        probability: 0.6,
-      });
+    const text = share({
+      venue: "戸田",
+      raceNo: 11,
+      date: "2026-09-27",
+      winnerBoat: 1,
+      winnerEntryCourse: 1,
+      technique: "逃げ",
+      actualTechnique: "逃げ",
+      probability: 0.6,
     });
     expect(text).not.toContain("今日も");
   }
@@ -259,6 +252,12 @@ test("ファン評価3周目: 的中カードの「（本命）」「（2コー�
   expect(rows.filter((r) => r.lines !== 1)).toEqual([]);
 });
 
+// 一覧は直近14日だけなので、特定の日のレース（以前は戸田 9/27 11R など）を決め打ちすると、録画を
+// 撮り直した日に一覧から消えて落ちる（BOA-929。撮り直した録画の strict 再生で失敗し、採用を止めていた）。
+// 判定そのもの（isAsPredicted）は verify-frontend-pure-functions.js が固定しているので、ここでは
+// 見出しがカードに出ている事実と食い違わないこと（配線）を、その日の一覧の全カードで確かめる。
+// - 2番手以下・前付け（◯コース進入）・決まり手外れ（実際: ◯）のカードは「1着の艇が的中」
+// - 「展開予測的中」のカードは、本命で、前付けも決まり手外れも無い
 test("カードの見出しは、本命が予想どおりに勝ったときだけ「展開予測的中」にする（共有文と同じ区別）", async ({
   page,
 }) => {
@@ -268,31 +267,47 @@ test("カードの見出しは、本命が予想どおりに勝ったときだ�
   const more = page.locator(".show-more-button");
   await more.waitFor({ timeout: 60000 });
   await more.click();
-  const cardOf = (venue, raceNo, date) =>
-    page
-      .locator(".race-card")
-      .filter({ hasText: date })
-      .filter({
-        has: page.locator(".race-card-venue", {
-          hasText: new RegExp(`^${venue}$`),
-        }),
-      })
-      .filter({
-        has: page.locator(".race-card-number", {
-          hasText: new RegExp(`^${raceNo}$`),
-        }),
-      })
-      .first();
-  // 戸田 9/27 11R: 本命の1号艇が1コースから逃げ
+  await expect(more).toContainText("閉じる", { timeout: 60000 });
+  // 前付けの「◯コース進入」は表示中のカードだけ後から引く（「もっと見る」の後に取り直す）。
+  // networkidle は最初の読み込みで済んでいて待たないので、前付けのカードが出るまで待つ
+  // （14日分の的中には前付けで勝ったレースが必ずある。出ないなら配線が壊れている）
   await expect(
-    cardOf("戸田", "11R", "2026-09-27").locator(".hit-badge"),
-  ).toHaveText("🌊 展開予測的中", { timeout: 60000 });
-  // 戸田 9/30 8R: 2番手の3号艇
-  await expect(
-    cardOf("戸田", "8R", "2026-09-30").locator(".hit-badge"),
-  ).toHaveText("🌊 1着の艇が的中");
-  // 大村 9/29 10R: 本命の1号艇だが決まり手が外れ（逃げ→抜き）
-  await expect(
-    cardOf("大村", "10R", "2026-09-29").locator(".hit-badge"),
-  ).toHaveText("🌊 1着の艇が的中");
+    page.locator(".turn-hit-course", { hasText: "コース進入" }).first(),
+  ).toBeVisible({ timeout: 60000 });
+  const cards = await page.locator(".race-card").evaluateAll((els) =>
+    els.map((el) => ({
+      date: el.querySelector(".race-card-date")?.textContent.trim() ?? "",
+      venue: el.querySelector(".race-card-venue")?.textContent.trim() ?? "",
+      no: el.querySelector(".race-card-number")?.textContent.trim() ?? "",
+      badge: el.querySelector(".hit-badge")?.textContent.trim() ?? "",
+      course: el.querySelector(".turn-hit-course")?.textContent ?? "",
+      actualDiffers: el.querySelector(".turn-hit-actual") != null,
+      hasTechnique: /予想: \S+ \d+%/.test(
+        el.querySelector(".turn-hit-probability")?.textContent ?? "",
+      ),
+    })),
+  );
+  expect(cards.length).toBeGreaterThan(0);
+  const label = (c) => `${c.date} ${c.venue}${c.no}`;
+  const notAsPredicted = (c) =>
+    !c.course.includes("本命") ||
+    /コース進入/.test(c.course) ||
+    c.actualDiffers ||
+    !c.hasTechnique;
+  // 見出しは2通りだけ
+  expect(
+    cards
+      .filter((c) => !["🌊 展開予測的中", "🌊 1着の艇が的中"].includes(c.badge))
+      .map(label),
+  ).toEqual([]);
+  // 予想どおりでないカードに「展開予測的中」を付けていない
+  expect(
+    cards
+      .filter((c) => notAsPredicted(c) && c.badge === "🌊 展開予測的中")
+      .map(label),
+  ).toEqual([]);
+  // 両方の見出しが実際に出ている（片方に倒れたままの配線を見逃さない。14日分の的中には
+  // 本命の逃げも2番手以下の的中も毎日ある）
+  expect(cards.some((c) => c.badge === "🌊 展開予測的中")).toBe(true);
+  expect(cards.some((c) => c.badge === "🌊 1着の艇が的中")).toBe(true);
 });

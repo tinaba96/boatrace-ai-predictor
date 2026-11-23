@@ -3,6 +3,43 @@
  * パスの検証・SQL の文への分割・トランザクションに包めない文の検出・触るテーブルの抽出・台帳（APPLIED.md）の更新。
  * 手順は docs/operation/db-apply.md。
  */
+import {
+  bare,
+  countNewlines,
+  invisibleRejections,
+  metaRejections,
+  scanStatements,
+  scanToken,
+  statementHeads,
+  tableList,
+  transactionRejections,
+  transactionShape,
+  TX_CONTROL_RE,
+} from "./dbApplySqlParts.js";
+import {
+  appliedNoticeLines,
+  bodyLines,
+  confirmationLines,
+  infoTableLines,
+  longLineLines,
+  rejectionLines,
+  statementListLines,
+  tableLines,
+} from "./dbApplyRenderParts.js";
+import {
+  backupEntry,
+  classifyStatement,
+  hasExemptMarker,
+  missingBackupStops,
+  noBackupTables,
+  statementStops,
+} from "./dbApplyClassifyParts.js";
+
+// 他のファイル・試験が import する名は、移した先から同じ名で出し直す（export の名の集合は元と同じ）
+export { canonName, isPiiColumn } from "./dbApplyNameParts.js";
+export { extractTables } from "./dbApplySqlParts.js";
+export { codeCell, escapeInline, extractConfirmationSections } from "./dbApplyRenderParts.js";
+export { BACKUP_SCHEMA } from "./dbApplyClassifyParts.js";
 
 // docs/db-migration/ の実ファイルは「3桁の番号（013b のような英小文字1字の枝番あり）_英小文字」。
 // 大文字を含む古いファイル（008_ADD_EXHIBITION_TO_RPC.sql 等）は適用済みのため対象にしない。
@@ -22,7 +59,6 @@ export function validateMigrationPath(value) {
 }
 
 const IDENT_START = /[A-Za-z_\u0080-\uffff]/;
-const IDENT_CHAR = /[A-Za-z0-9_$\u0080-\uffff]/;
 
 /**
  * SQL を最上位の `;` で文に分ける。文字列（'…'・E'…'）・$タグ$…$タグ$・"識別子"・コメント（-- と入れ子の \/* *\/）の中の
@@ -43,136 +79,16 @@ export function splitStatements(sql) {
   let stmtStart = 0; // 文の最初の非空白文字の位置
   let line = 1;
   let i = 0;
-  const n = sql.length;
 
-  const markStart = () => {
-    if (stmtLine === 0) {
+  while (i < sql.length) {
+    const tok = scanToken(sql, i, line);
+    if (tok.mark && stmtLine === 0) {
       stmtLine = line;
       stmtStart = i;
     }
-  };
-  const advance = (count) => {
-    for (let k = 0; k < count; k += 1) {
-      if (sql[i + k] === "\n") line += 1;
-    }
-    i += count;
-  };
-
-  while (i < n) {
-    const c = sql[i];
-    const next = sql[i + 1];
-
-    if (c === "-" && next === "-") {
-      const end = sql.indexOf("\n", i);
-      const stop = end === -1 ? n : end;
-      code += " ";
-      advance(stop - i);
-      continue;
-    }
-    if (c === "/" && next === "*") {
-      let depth = 1;
-      const startLine = line;
-      advance(2);
-      while (i < n && depth > 0) {
-        if (sql[i] === "/" && sql[i + 1] === "*") {
-          depth += 1;
-          advance(2);
-        } else if (sql[i] === "*" && sql[i + 1] === "/") {
-          depth -= 1;
-          advance(2);
-        } else {
-          advance(1);
-        }
-      }
-      if (depth > 0) errors.push(`${startLine}行目: 閉じていないコメント /*`);
-      code += " ";
-      continue;
-    }
-    if (c === "'") {
-      markStart();
-      const prev = sql[i - 1] ?? "";
-      const prev2 = sql[i - 2] ?? "";
-      const escapeString = /[Ee]/.test(prev) && !IDENT_CHAR.test(prev2);
-      const startLine = line;
-      advance(1);
-      let closed = false;
-      while (i < n) {
-        if (escapeString && sql[i] === "\\") {
-          advance(2);
-          continue;
-        }
-        if (sql[i] === "'") {
-          if (sql[i + 1] === "'") {
-            advance(2);
-            continue;
-          }
-          advance(1);
-          closed = true;
-          break;
-        }
-        advance(1);
-      }
-      if (!closed) errors.push(`${startLine}行目: 閉じていない文字列 '`);
-      code += "''";
-      continue;
-    }
-    if (c === '"') {
-      markStart();
-      const startLine = line;
-      let j = i + 1;
-      let closed = false;
-      while (j < n) {
-        if (sql[j] === '"') {
-          if (sql[j + 1] === '"') {
-            j += 2;
-            continue;
-          }
-          closed = true;
-          break;
-        }
-        j += 1;
-      }
-      if (!closed) {
-        errors.push(`${startLine}行目: 閉じていない識別子 "`);
-        code += sql.slice(i);
-        advance(n - i);
-        continue;
-      }
-      code += sql.slice(i, j + 1);
-      advance(j + 1 - i);
-      continue;
-    }
-    if (c === "$" && !IDENT_CHAR.test(sql[i - 1] ?? "")) {
-      const m = /^\$([A-Za-z_\u0080-\uffff][A-Za-z0-9_\u0080-\uffff]*)?\$/.exec(
-        sql.slice(i, i + 64),
-      );
-      if (m) {
-        markStart();
-        const tag = m[0];
-        const startLine = line;
-        const end = sql.indexOf(tag, i + tag.length);
-        if (end === -1) {
-          errors.push(`${startLine}行目: 閉じていない ${tag} 引用`);
-          code += `${tag}${tag}`;
-          advance(n - i);
-          continue;
-        }
-        code += `${tag}${tag}`;
-        advance(end + tag.length - i);
-        continue;
-      }
-    }
-    if (c === "\\") {
-      const end = sql.indexOf("\n", i);
-      metaCommands.push({
-        line,
-        text: sql.slice(i, end === -1 ? n : end).slice(0, 80),
-      });
-      code += " ";
-      advance(1);
-      continue;
-    }
-    if (c === ";") {
+    if (tok.error) errors.push(tok.error);
+    if (tok.meta) metaCommands.push({ line, text: tok.meta });
+    if (tok.semi) {
       if (code.trim() !== "") {
         statements.push({
           code: code.trim(),
@@ -182,12 +98,11 @@ export function splitStatements(sql) {
       }
       code = "";
       stmtLine = 0;
-      advance(1);
-      continue;
+    } else {
+      code += tok.append;
     }
-    if (!/\s/.test(c)) markStart();
-    code += c;
-    advance(1);
+    line += countNewlines(sql, i, tok.end);
+    i = tok.end;
   }
   if (code.trim() !== "") {
     statements.push({ code: code.trim(), line: stmtLine, text: sql.slice(stmtStart) });
@@ -195,132 +110,13 @@ export function splitStatements(sql) {
   return { statements, metaCommands, errors };
 }
 
-// 判定用: "識別子" の中身を消し、空白を1つにまとめて大文字にする
-const bare = (code) =>
-  code
-    .replace(/"(?:[^"]|"")*"/g, '"_"')
-    .replace(/\s+/g, " ")
-    .toUpperCase();
-
-const TX_BEGIN_RE = /^(BEGIN|START TRANSACTION)\b/;
-const TX_END_RE = /^(COMMIT|END)( WORK| TRANSACTION)?$/;
-const TX_CONTROL_RE =
-  /^(BEGIN|START TRANSACTION|COMMIT|END|ROLLBACK|ABORT|SAVEPOINT|RELEASE|PREPARE TRANSACTION)\b/;
-
-// トランザクションに包めない（または今回の適用で扱わない）文。[文の先頭か任意の位置か, 正規表現, 理由]
-const REJECT_RULES = [
-  [/\bCONCURRENTLY\b/, "CONCURRENTLY はトランザクションの中で実行できない"],
-  [/^VACUUM\b/, "VACUUM はトランザクションの中で実行できない"],
-  [/^ALTER SYSTEM\b/, "ALTER SYSTEM はトランザクションの中で実行できない"],
-  [
-    /^(CREATE|DROP) DATABASE\b/,
-    "CREATE/DROP DATABASE はトランザクションの中で実行できない",
-  ],
-  [
-    /^(CREATE|DROP) TABLESPACE\b/,
-    "CREATE/DROP TABLESPACE はトランザクションの中で実行できない",
-  ],
-  [
-    /^(CREATE|ALTER|DROP) SUBSCRIPTION\b/,
-    "SUBSCRIPTION の操作はトランザクションに包めない場合がある",
-  ],
-  [
-    /^REINDEX (SYSTEM|DATABASE)\b/,
-    "REINDEX SYSTEM/DATABASE はトランザクションの中で実行できない",
-  ],
-  [/^DISCARD ALL\b/, "DISCARD ALL はトランザクションの中で実行できない"],
-  [
-    /^COPY\b/,
-    "COPY はこのワークフローでは扱わない（データの投入は別ワークフローにする方針）",
-  ],
-  [
-    /\bBEGIN ATOMIC\b/,
-    "BEGIN ATOMIC の関数本体は文の区切りを判定できないため扱わない（$$ で書く）",
-  ],
-];
-
 // apply の上限。ロック待ちは早めに諦め（再実行すればよい）、1文の実行は job の timeout（15分）より前に打ち切る
 export const LOCK_TIMEOUT = "10s";
 export const STATEMENT_TIMEOUT = "10min";
-// これを超える行には注意を出す（本文の枠の外に隠れる）
-const LONG_LINE_CHARS = 200;
-
-// 双方向制御（Trojan Source）・ゼロ幅文字・BOM。承認者が読む本文と実際の SQL をずらせるため拒否する
-const INVISIBLE_RE = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/;
-
-const ID = String.raw`(?:"(?:[^"]|"")+"|[A-Za-z_][A-Za-z0-9_$]*)(?:\s*\.\s*(?:"(?:[^"]|"")+"|[A-Za-z_][A-Za-z0-9_$]*))?`;
-const TABLE_RULES = [
-  [
-    "CREATE",
-    new RegExp(
-      String.raw`^CREATE\s+(?:OR\s+REPLACE\s+)?(?:(?:GLOBAL|LOCAL)\s+)?(?:(?:TEMP|TEMPORARY|UNLOGGED)\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(${ID})`,
-      "i",
-    ),
-  ],
-  [
-    "ALTER",
-    new RegExp(
-      String.raw`^ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?(${ID})`,
-      "i",
-    ),
-  ],
-  ["INSERT", new RegExp(String.raw`\bINSERT\s+INTO\s+(${ID})`, "gi")],
-  [
-    "UPDATE",
-    new RegExp(
-      String.raw`\bUPDATE\s+(?:ONLY\s+)?(${ID})(?:\s+(?:AS\s+)?[A-Za-z_][A-Za-z0-9_]*)?\s+SET\b`,
-      "gi",
-    ),
-  ],
-  [
-    "DELETE",
-    new RegExp(String.raw`\bDELETE\s+FROM\s+(?:ONLY\s+)?(${ID})`, "gi"),
-  ],
-];
-const TABLE_LIST_RULES = [
-  [
-    "DROP",
-    new RegExp(String.raw`^DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(.+)$`, "is"),
-  ],
-  [
-    "TRUNCATE",
-    new RegExp(String.raw`^TRUNCATE\s+(?:TABLE\s+)?(?:ONLY\s+)?(.+)$`, "is"),
-  ],
-];
-
-const normalizeName = (name) =>
-  name.replace(/\s*\.\s*/g, ".").trim().replace(/^public\./i, "");
-
-/**
- * @param {string} code 1文（splitStatements の code）
- * @returns {{ table: string, op: string }[]}
- */
-export function extractTables(code) {
-  const found = [];
-  for (const [op, re] of TABLE_RULES) {
-    if (re.global) {
-      re.lastIndex = 0;
-      for (const m of code.matchAll(re))
-        found.push({ table: normalizeName(m[1]), op });
-    } else {
-      const m = re.exec(code);
-      if (m) found.push({ table: normalizeName(m[1]), op });
-    }
-  }
-  for (const [op, re] of TABLE_LIST_RULES) {
-    const m = re.exec(code);
-    if (!m) continue;
-    const list = m[1].replace(
-      /\b(CASCADE|RESTRICT|CONTINUE IDENTITY|RESTART IDENTITY)\b.*$/is,
-      "",
-    );
-    for (const part of list.split(",")) {
-      const name = new RegExp(`^\\s*(?:ONLY\\s+)?(${ID})`, "i").exec(part);
-      if (name) found.push({ table: normalizeName(name[1]), op });
-    }
-  }
-  return found;
-}
+// 自動の経路（承認なし、ADR-0097）。判定は表の大きさを見られないので、長い索引の作成等は statement の上限で失敗として止める。
+// lock は手での適用と同じ10秒（このリポジトリのマイグレーションは SET LOCAL lock_timeout = '10s' と書く決まりで、
+// ファイルの SET LOCAL は -c の SET より後に効く。判定は SET LOCAL を SET_LOCAL_MAX_MS 以内のものだけ軽いにしている）
+export const AUTO_TIMEOUTS = { lock: "10s", statement: "120s" };
 
 /**
  * マイグレーションを検査する。rejections が1件でもあれば適用しない。
@@ -332,133 +128,23 @@ export function extractTables(code) {
  */
 export function inspectMigration(sql) {
   const { statements, metaCommands, errors } = splitStatements(sql);
-  const rejections = [...errors];
-  for (const [idx, lineText] of sql.split("\n").entries()) {
-    if (INVISIBLE_RE.test(lineText)) {
-      rejections.push(
-        `${idx + 1}行目: 見えない制御文字（双方向制御・ゼロ幅・BOM）がある。承認画面の表示と実行される SQL がずれるため許可しない`,
-      );
-    }
-  }
-  for (const m of metaCommands) {
-    rejections.push(
-      `${m.line}行目: psql のメタコマンド（\\…）は許可しない: ${m.text}`,
-    );
-  }
-  if (statements.length === 0) rejections.push("SQL の文が1つも無い");
-
-  const txIndexes = statements
-    .map((s, idx) => (TX_CONTROL_RE.test(bare(s.code)) ? idx : -1))
-    .filter((idx) => idx !== -1);
-  const last = statements.length - 1;
-  const wrapped =
-    statements.length >= 2 &&
-    txIndexes.length === 2 &&
-    txIndexes[0] === 0 &&
-    txIndexes[1] === last &&
-    TX_BEGIN_RE.test(bare(statements[0].code)) &&
-    TX_END_RE.test(bare(statements[last].code));
-  if (txIndexes.length > 0 && !wrapped) {
-    for (const idx of txIndexes) {
-      rejections.push(
-        `${statements[idx].line}行目: トランザクション制御（${bare(statements[idx].code).slice(0, 40)}）。` +
-          "許すのは「先頭の文が BEGIN、最後の文が COMMIT」の1組だけ",
-      );
-    }
-  }
-
-  const tables = new Map();
-  for (const s of statements) {
-    const upper = bare(s.code);
-    for (const [re, reason] of REJECT_RULES) {
-      if (re.test(upper)) rejections.push(`${s.line}行目: ${reason}`);
-    }
-    for (const { table, op } of extractTables(s.code)) {
-      if (!tables.has(table)) tables.set(table, new Set());
-      tables.get(table).add(op);
-    }
-  }
-
+  const { txIndexes, wrapped } = transactionShape(statements);
+  const scan = scanStatements(statements);
+  const rejections = [
+    ...errors,
+    ...invisibleRejections(sql),
+    ...metaRejections(metaCommands),
+    ...(statements.length === 0 ? ["SQL の文が1つも無い"] : []),
+    ...transactionRejections(statements, txIndexes, wrapped),
+    ...scan.rejections,
+  ];
   return {
     mode: wrapped ? "file-transaction" : "single-transaction",
-    statements: statements.map((s) => ({
-      line: s.line,
-      head: s.text.replace(/\s+/g, " ").trim().slice(0, 120),
-    })),
-    tables: [...tables.entries()]
-      .map(([table, ops]) => ({ table, ops: [...ops] }))
-      .sort((a, b) => a.table.localeCompare(b.table)),
+    statements: statementHeads(statements),
+    tables: tableList(scan.tables),
     rejections,
   };
 }
-
-/**
- * ファイル冒頭のコメント（最初の文より前の -- 行）から、見出しに「確認」を含む節を取り出す。
- * 見出し: `-- 適用後の確認（読み取りのみ）:` のように `-- ` の直後から書かれ、`:`（全角可）を含む行。
- * 中身: 続く `--` + 空白2つ以上で字下げされた行。
- *
- * @param {string} sql
- * @returns {{ heading: string, lines: string[] }[]}
- */
-export function extractConfirmationSections(sql) {
-  const header = [];
-  for (const raw of sql.split("\n")) {
-    const lineText = raw.replace(/\r$/, "");
-    if (lineText.trim() === "") {
-      header.push("--");
-      continue;
-    }
-    if (!/^\s*--/.test(lineText)) break;
-    header.push(lineText.trim());
-  }
-  const sections = [];
-  let current = null;
-  for (const lineText of header) {
-    // 見出しの「確認」より前に : が無いこと（「過去分: …確認できておらず」を見出しにしない）
-    const heading = /^-- ?((?=\S)[^:：]*確認[^:：]*[:：])\s*(.*)$/.exec(lineText);
-    if (heading) {
-      current = { heading: heading[1], inline: heading[2], indented: [] };
-      sections.push(current);
-      continue;
-    }
-    if (current && /^--\s{2,}\S/.test(lineText)) {
-      current.indented.push(lineText.slice(2));
-      continue;
-    }
-    current = null;
-  }
-  return sections.map(({ heading, inline, indented }) => {
-    const indent = Math.min(...indented.map((l) => l.search(/\S/)));
-    return {
-      heading,
-      lines: [...(inline ? [inline] : []), ...indented.map((l) => l.slice(indent))],
-    };
-  });
-}
-
-/**
- * job summary の表のセルに入れるコード片（`…` で囲む前）。コードスパンの中では HTML も Markdown も解釈されないので、
- * 抜け出す手段（` と改行）と、表の列を割る | だけを潰す
- */
-export const codeCell = (text) =>
-  String(text).replace(/\s+/g, " ").replace(/`/g, "'").replace(/\|/g, "\\|");
-
-/** job summary の地の文（見出し等）に SQL 由来の文字列を入れるとき、Markdown・HTML として解釈させない */
-export const escapeInline = (text) =>
-  String(text)
-    .replace(/\s+/g, " ")
-    .replace(/[\\`*_[\]|~]/g, (c) => `\\${c}`)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-
-const fenceFor = (text) => {
-  const longest = Math.max(
-    2,
-    ...[...text.matchAll(/`+/g)].map((m) => m[0].length),
-  );
-  return "`".repeat(longest + 1);
-};
 
 /**
  * 承認の前に見る job summary（Markdown）。
@@ -476,104 +162,18 @@ export function renderSummary({
 }) {
   const lines = sql.split("\n");
   const lineCount = sql.endsWith("\n") ? lines.length - 1 : lines.length;
-  const out = [];
-  out.push(`## 本番 DB への適用: \`${path}\``);
-  out.push("");
-  if (inspection.rejections.length > 0) {
-    out.push("### このファイルは適用できない（承認の前に止めた）");
-    out.push("");
-    for (const r of inspection.rejections) out.push(`- ${r}`);
-    out.push("");
-  }
-  const longLines = lines
-    .map((l, idx) => ({ line: idx + 1, length: l.length }))
-    .filter((l) => l.length > LONG_LINE_CHARS);
-  if (longLines.length > 0) {
-    out.push(
-      `> **注意: ${LONG_LINE_CHARS} 字を超える行がある（${longLines
-        .slice(0, 10)
-        .map((l) => `${l.line}行目 ${l.length}字`)
-        .join("、")}）。本文の枠は横にスクロールしないと見えないので、行末まで読んでから承認する**`,
-    );
-    out.push("");
-  }
-  if (alreadyApplied) {
-    out.push(
-      "> **注意: 台帳（APPLIED.md）ではこのファイルは既に「適用済み」。再適用で問題ないか確認してから承認する**",
-    );
-    out.push("");
-  }
-  out.push("| 項目 | 値 |");
-  out.push("|---|---|");
-  out.push(`| ファイル | [${path}](${fileUrl}) |`);
-  out.push(`| sha256 | \`${sha256}\` |`);
-  out.push(`| 行数 | ${lineCount} |`);
-  out.push(`| 文の数 | ${inspection.statements.length} |`);
-  out.push(
-    `| 実行のしかた | ${
-      inspection.mode === "file-transaction"
-        ? "ファイル自身の BEGIN〜COMMIT（1つのトランザクション。途中で失敗したら全体が戻る）"
-        : "psql --single-transaction（1つのトランザクション。途中で失敗したら全体が戻る）"
-    } |`,
-  );
-  out.push("");
-  out.push(
-    "### 触るテーブル（CREATE/ALTER/INSERT/UPDATE/DELETE/DROP/TRUNCATE の対象）",
-  );
-  out.push("");
-  if (inspection.tables.length === 0) {
-    out.push(
-      "なし（関数・ポリシー・権限・コメントだけの変更か、DO ブロックの中で触っている。本文で確認する）",
-    );
-  } else {
-    out.push("| テーブル | 操作 |");
-    out.push("|---|---|");
-    for (const t of inspection.tables)
-      out.push(`| \`${codeCell(t.table)}\` | ${t.ops.join(", ")} |`);
-  }
-  out.push("");
-  out.push("DO ブロック・関数本体（$$ の中）は抽出しない。");
-  out.push("");
-  out.push("### 冒頭コメントの確認 SQL");
-  out.push("");
-  const sections = extractConfirmationSections(sql);
-  if (sections.length === 0) {
-    out.push(
-      "冒頭コメントに「確認」の節が無い。本文の確認方法を読んでから承認する。",
-    );
-  } else {
-    for (const s of sections) {
-      const text = s.lines.join("\n");
-      const fence = fenceFor(text);
-      out.push(`**${escapeInline(s.heading)}**`);
-      out.push("");
-      out.push(`${fence}sql`);
-      out.push(text);
-      out.push(fence);
-      out.push("");
-    }
-  }
-  out.push("### 文の一覧（先頭120字）");
-  out.push("");
-  out.push("| 行 | 文 |");
-  out.push("|---|---|");
-  for (const s of inspection.statements) {
-    out.push(`| ${s.line} | \`${codeCell(s.head)}\` |`);
-  }
-  out.push("");
-  const shown = lines.slice(0, maxBodyLines).join("\n");
-  const fence = fenceFor(shown);
-  out.push(
-    lineCount > maxBodyLines
-      ? `### 本文（先頭 ${maxBodyLines} 行 / 全 ${lineCount} 行。全文は上のリンク）`
-      : "### 本文",
-  );
-  out.push("");
-  out.push(`${fence}sql`);
-  out.push(shown.replace(/\n$/, ""));
-  out.push(fence);
-  out.push("");
-  return out.join("\n");
+  return [
+    `## 本番 DB への適用: \`${path}\``,
+    "",
+    ...rejectionLines(inspection.rejections),
+    ...longLineLines(lines),
+    ...appliedNoticeLines(alreadyApplied),
+    ...infoTableLines({ path, sha256, fileUrl, lineCount, inspection }),
+    ...tableLines(inspection.tables),
+    ...confirmationLines(sql),
+    ...statementListLines(inspection.statements),
+    ...bodyLines(lines, lineCount, maxBodyLines),
+  ].join("\n");
 }
 
 /**
@@ -585,11 +185,15 @@ export function renderSummary({
  * @param {"single-transaction" | "file-transaction"} mode
  * @param {string} migrationPath
  */
-export function psqlArgs(mode, migrationPath) {
+export function psqlArgs(
+  mode,
+  migrationPath,
+  timeouts = { lock: LOCK_TIMEOUT, statement: STATEMENT_TIMEOUT },
+) {
   const args = ["-X", "-v", "ON_ERROR_STOP=1", "--echo-errors"];
   if (mode === "single-transaction") args.push("--single-transaction");
-  args.push("-c", `SET lock_timeout = '${LOCK_TIMEOUT}'`);
-  args.push("-c", `SET statement_timeout = '${STATEMENT_TIMEOUT}'`);
+  args.push("-c", `SET lock_timeout = '${timeouts.lock}'`);
+  args.push("-c", `SET statement_timeout = '${timeouts.statement}'`);
   args.push("-f", migrationPath);
   return args;
 }
@@ -651,4 +255,57 @@ export function markAppliedInLedger(
   const insertAt = unnumbered !== -1 ? unnumbered : end + 1;
   rows.splice(insertAt, 0, newRow);
   return { text: rows.join("\n"), action: "inserted" };
+}
+
+// ---------------------------------------------------------------------------
+// 軽い／重いの判定（ADR-0097）。許可のリスト方式: ファイルの全部の文が下の形に丸ごと当てはまるときだけ「軽い」
+// （Environment production-db-auto で承認なしに当てる）。1文でも外れたら「重い」（production-db、オーナーの1タップ）。
+// 個人情報らしい列を足すもの・削除の前の控えが無いもの・inspectMigration が拒否するものは「止める」（当てずに通知）。
+// 判定は文の code（コメントを消し、文字列と $$ の中身を空にしたもの）で行う。DO・関数の本体は見えないが、どちらも重い。
+// ---------------------------------------------------------------------------
+
+/**
+ * マイグレーションを軽い／重い／止めるに分ける（ADR-0097）。
+ *
+ * @param {string} sql
+ * @param {string} fileName 例 "167_x.sql"（控えの表の名前 db_backup._bak_<番号>_<表> に使う）
+ * @returns {{ label: "light" | "heavy" | "stop",
+ *            statements: { line: number, kind: "light" | "heavy" | "backup" | "tx", reason: string }[],
+ *            stops: string[], backups: { table: string, line: number }[] }}
+ */
+export function classifyMigration(sql, fileName) {
+  const inspection = inspectMigration(sql);
+  const stops = inspection.rejections.map((r) => `適用できない: ${r}`);
+  const { statements } = splitStatements(sql);
+  const number = migrationNumber(fileName);
+  const ctx = { createdTables: new Set() };
+  const backups = [];
+  const results = [];
+  const noBackup = noBackupTables(sql);
+
+  for (const s of statements) {
+    const flat = s.code.replace(/\s+/g, " ").trim();
+    if (TX_CONTROL_RE.test(bare(s.code)) && inspection.mode === "file-transaction") {
+      results.push({ line: s.line, kind: "tx", reason: "BEGIN / COMMIT" });
+      continue;
+    }
+
+    const bk = backupEntry(flat, s.line, number);
+    if (bk) {
+      backups.push(bk.backup);
+      results.push(bk.result);
+      continue;
+    }
+
+    stops.push(...missingBackupStops(s, backups, noBackup, number), ...statementStops(s, flat));
+    results.push({ line: s.line, ...classifyStatement(s.code, s.text, ctx) });
+  }
+
+  if (hasExemptMarker(sql)) {
+    results.push({ line: 0, kind: "heavy", reason: "verify-migration-rls の除外マーカーがある" });
+  }
+
+  const label =
+    stops.length > 0 ? "stop" : results.some((r) => r.kind !== "light" && r.kind !== "tx") ? "heavy" : "light";
+  return { label, statements: results, stops, backups };
 }

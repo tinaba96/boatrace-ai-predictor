@@ -13,7 +13,7 @@ argument-hint: "<機能slug（kebab-case）>"
 
 `docs/design/{slug}/spec.md`・`plan.md`・`screens.md`（あれば）から逸脱しない。
 
-**受け入れE2E（`e2e/acceptance/{slug}.spec.js`、UI機能のみ）は書き換えない**。仕様だけを読んだ別エージェントが書いたもので、実装者が直すと独立性が失われる。テストが仕様の誤読だと判断したら実装を止め、spec.md・screens.md の該当箇所とテストの該当行を添えてユーザーに報告する。ユーザー承認後の修正は可。UI機能なのに受け入れE2Eが無い場合は、`/step3`の完了後アクションが済んでいないので先にそれを行う（`.claude/rules/sdd-workflow.md`）。プロジェクト CLAUDE.md・`.claude/rules/` のルールを厳守する。
+**受け入れE2E（`e2e/acceptance/{slug}.spec.js`、UI機能のみ）は書き換えない**。仕様だけを読んだ別エージェントが書いたもので、実装者が直すと独立性が失われる。テストが仕様の誤読だと判断したら実装を止め、spec.md・screens.md の該当箇所とテストの該当行を添えてユーザーに報告する。ユーザー承認後の修正は可。UI機能なのに受け入れE2Eが無い場合は、`/step3`の完了後アクションが済んでいないので先にそれを行う。`.claude/CLAUDE.md`・`AGENTS.md` の決まりを厳守する。
 
 タスク完了後は、`/implement` と同様に並列エージェントでビルド検証・品質チェックを行ってから `docs/design/{slug}/tasks.md` の該当チェックボックスにチェックを入れる（`.claude/commands/implement.md` の並列検証パターンに揃える）。
 
@@ -21,4 +21,4 @@ argument-hint: "<機能slug（kebab-case）>"
 
 UI機能では、完了監査で受け入れE2Eをローカル実行する: `npx playwright test --config=playwright.acceptance.config.js e2e/acceptance/{slug}.spec.js`。全件 pass を完了の条件とする。fail は実装の不足か、テストの仕様誤読かを判定し、後者はユーザー承認を得てから直す。結果（件数・pass/fail・各failの判定）をPR本文に書く。CIでは走らない（PRゲートへの組み込みはBOA-466の後）。
 
-完了監査を終えたら `/create-pr` で PR を作成し、プロジェクト CLAUDE.md の既存フロー（`/code-review` セルフレビュー → 大規模・高リスクな変更は `/codex-review` → PRコメント・チャット本文への報告 → ユーザー承認後マージ）に進む。
+完了監査を終えたら `/create-pr` で PR を作成し、`/code-review` のセルフレビュー → PRコメント・チャット本文への報告 → `/merge-pr` の手順でマージ（heavy はオーナーの承認）に進む。LLM の審査（Codex の `@codex review`・review.yml）は v3.3（2026-11-06）でやめた。

@@ -106,6 +106,13 @@ const ANON_RPCS = [
   "get_race_return_rate",
   "get_race_st_predictability",
   "get_race_technique_profile",
+  // 6艇の想定コース別成績の全選手・会場の平均（199、BOA-1290）
+  "get_course_win_rate_baseline",
+  // 選手の事故の記録（本番 2026-11-04 に anon の EXECUTE を確認。この一覧への記載が漏れていた）
+  "get_racer_accident_records",
+  // 203: レースの頁の6表の生の行の読みの置き換え（「イン屋」の札の件数・選手の走を1走1行）
+  "get_racer_front_taking_counts",
+  "get_racer_scoped_race_rows",
   "get_today_races",
 ];
 // 読ませない設計のテーブル（RLS有効・ポリシー無し・権限なし）

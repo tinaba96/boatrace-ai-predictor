@@ -1,0 +1,62 @@
+{
+  "schema": "content-pr-manifest/v1",
+  "id": "headwind-strong-makuri-makurizashi-by-venue",
+  "kind": "revision",
+  "ticket": "ZB04",
+  "paths": [
+    "public/blog/headwind-strong-makuri-makurizashi-by-venue.md"
+  ],
+  "files": {
+    "public/blog/headwind-strong-makuri-makurizashi-by-venue.md": "e0a9f33fcec63d88083c3121a283301f9161a4b50038a45841c49641e22874ab"
+  },
+  "content_sha256": "f0f8e46baaa06df7f8c25682e979c8649510cc42b53459702a9dd6a593eac950",
+  "content_at": "2026-11-23T14:49:21+09:00",
+  "judgement_words": [],
+  "reviews": [
+    {
+      "role": "content-qa",
+      "agent": "content-qa",
+      "result": "pass",
+      "p0": 0,
+      "p1": 0,
+      "reviewed_sha256": "f0f8e46baaa06df7f8c25682e979c8649510cc42b53459702a9dd6a593eac950",
+      "model": "claude-sonnet-5-5",
+      "at": "2026-11-23T15:14:21+09:00"
+    },
+    {
+      "role": "wording-editor",
+      "agent": "wording-editor",
+      "result": "pass",
+      "p0": 0,
+      "p1": 0,
+      "reviewed_sha256": "f0f8e46baaa06df7f8c25682e979c8649510cc42b53459702a9dd6a593eac950",
+      "model": "claude-sonnet-5-5",
+      "at": "2026-11-23T15:14:21+09:00"
+    },
+    {
+      "role": "fan",
+      "agent": "boatrace-fan-reviewer",
+      "result": "pass",
+      "p0": 0,
+      "p1": 0,
+      "reviewed_sha256": "f0f8e46baaa06df7f8c25682e979c8649510cc42b53459702a9dd6a593eac950",
+      "model": "claude-sonnet-5-5",
+      "at": "2026-11-23T15:14:21+09:00"
+    },
+    {
+      "role": "seo-marketer",
+      "agent": "seo-marketer",
+      "result": "pass",
+      "p0": 0,
+      "p1": 0,
+      "reviewed_sha256": "f0f8e46baaa06df7f8c25682e979c8649510cc42b53459702a9dd6a593eac950",
+      "model": "claude-sonnet-5-5",
+      "at": "2026-11-23T15:14:21+09:00"
+    }
+  ],
+  "author": {
+    "model": "seo-human（hq、2026-11-23 の直し）・取り込み claude-opus-5-5",
+    "lane": "窓口（龍神）"
+  },
+  "created_at": "2026-11-23T15:19:21+09:00"
+}

@@ -6,6 +6,13 @@
 // Node（ボット向け HTML の関数、ADR 0089）からも import するため拡張子付きで書く
 import { WEEKDAYS } from "../constants/index.js";
 
+/** "2019-04-01" → "2019/4/1"（空なら空） */
+export function slashDate(iso) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${y}/${m}/${d}`;
+}
+
 /**
  * パーセント表示
  * @param {number} rate - 0-1の割合
@@ -14,16 +21,27 @@ import { WEEKDAYS } from "../constants/index.js";
 export const formatPercent = (rate) => (rate * 100).toFixed(1) + "%";
 
 /**
+ * YYYY-MM-DD（日本の暦日。レースの開催日等）を年・月・日・曜日に分ける。
+ * 文字列の年月日をそのまま使い、実行環境のタイムゾーンに左右されないようにする。
+ * `new Date(dateStr + "T00:00:00+09:00")` をローカル時刻の getDate() で読むと、
+ * JST より西（UTC のサーバー・海外のブラウザ）で前日になる（ADR 0089、BOA-1092）
+ * @param {string} dateStr - YYYY-MM-DD形式の日付
+ * @returns {{year: number, month: number, day: number, weekday: string}}
+ */
+const splitJstDate = (dateStr) => {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const weekday =
+    WEEKDAYS[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
+  return { year, month, day, weekday };
+};
+
+/**
  * 日付フォーマット（フル形式）
  * @param {string} dateStr - YYYY-MM-DD形式の日付
  * @returns {string} YYYY年M月D日(曜日) 形式
  */
 export const formatDate = (dateStr) => {
-  const date = new Date(dateStr + "T00:00:00+09:00");
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const weekday = WEEKDAYS[date.getDay()];
+  const { year, month, day, weekday } = splitJstDate(dateStr);
   return `${year}年${month}月${day}日(${weekday})`;
 };
 
@@ -65,11 +83,7 @@ export const formatDateLocalized = (dateStr, lang) => {
  * @returns {string} M/D(曜日) 形式
  */
 export const formatDateShort = (dateStr) => {
-  // 文字列の年月日をそのまま使い、実行環境のタイムゾーンに左右されないようにする。
-  // ローカル時刻の getDate() だと、JST より西（UTC のサーバー・海外のブラウザ）で前日になる（ADR 0089）
-  const [year, month, day] = dateStr.split("-").map(Number);
-  const weekday =
-    WEEKDAYS[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
+  const { month, day, weekday } = splitJstDate(dateStr);
   return `${month}/${day}(${weekday})`;
 };
 
@@ -112,11 +126,7 @@ export const formatDateLongLocalized = (dateStr, lang) => {
  * @returns {Object} full, short, yearMonth の各形式
  */
 export const formatDateObject = (dateStr) => {
-  const date = new Date(dateStr + "T00:00:00+09:00");
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const weekday = WEEKDAYS[date.getDay()];
+  const { year, month, day, weekday } = splitJstDate(dateStr);
   return {
     full: `${year}年${month}月${day}日(${weekday})`,
     short: `${month}/${day}(${weekday})`,
@@ -129,12 +139,6 @@ export const formatDateObject = (dateStr) => {
  * @param {string} isoString - ISO 8601形式の日時
  * @returns {string} YYYY/M/D HH:MM 形式
  */
-/**
- * 回収率フォーマット
- * @param {number} rate - 回収率 (1.0 = 100%)
- * @returns {string} パーセント文字列 (例: "125.5%")
- */
-export const formatRecoveryRate = (rate) => (rate * 100).toFixed(1) + "%";
 
 // ロケールによる並び順・桁揃えの差を受けないよう、部品で取り出してから組み立てる
 // （month/dayに"numeric"を指定しても、hourと組み合わせると2桁に揃うロケールがある）
@@ -167,6 +171,46 @@ export function formatCapturedAtJst(capturedAt) {
   const day = Number(pick("day"));
   if (!month || !day) return null;
   return `${month}/${day} ${pick("hour")}:${pick("minute")}`;
+}
+
+// 年まで出す JST の部品（トップの説明の「データ更新」、PV09 T2）。部品で取り出すのは上と同じ理由
+const JST_UPDATED_AT_FORMAT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Tokyo",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+/**
+ * データの更新時刻（ISO文字列）を、年つきの JST の部品にする（トップの説明の②データの行）。
+ * 人の画面（HomeAiIntro）とボット向け（botPageModel の buildAiIntro）が同じ部品から
+ * 同じ i18n の文（home.aiIntro.updated）を組むため、ブラウザのタイムゾーンに左右されない JST で返す。
+ * 読めなければ null（時刻の部分だけ出さない）
+ *
+ * @param {string|null|undefined} isoString scrapedAt
+ * @returns {{datetime: string, year: string, month: number, day: number, hour: string, minute: string}|null}
+ */
+export function formatUpdatedAtJstParts(isoString) {
+  if (!isoString) return null;
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return null;
+  const parts = JST_UPDATED_AT_FORMAT.formatToParts(date);
+  const pick = (type) => parts.find((p) => p.type === type)?.value ?? "";
+  const year = pick("year");
+  const month = Number(pick("month"));
+  const day = Number(pick("day"));
+  if (!/^\d{4}$/.test(year) || !month || !day) return null;
+  return {
+    datetime: date.toISOString(),
+    year,
+    month,
+    day,
+    hour: pick("hour"),
+    minute: pick("minute"),
+  };
 }
 
 /**

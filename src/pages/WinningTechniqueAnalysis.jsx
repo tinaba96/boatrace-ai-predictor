@@ -1,8 +1,12 @@
 import { useTranslation } from "react-i18next";
+import AnalysisTabs from "../components/analysis/AnalysisTabs";
+import { TAB_GROUPS } from "../components/analysis/analysisTabGroups";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { useSocialMeta } from "../hooks/useSocialMeta";
 import { localizePath, getLanguage } from "../config/languages";
+import { isInCautionEnabled } from "../config/featureFlags";
 import {
   WinningTechniqueChart,
   MotorConditionChart,
@@ -22,34 +26,16 @@ import {
   VenueRankingChart,
   VenueGradeMatrix,
   VolatilityAccuracyChart,
+  InCautionAccuracyChart,
   VenueMotorRanking,
   WeatherInEscapeChart,
 } from "../components/analysis";
 import "./OutcomeDistribution.css";
 import "./WinningTechniqueAnalysis.css";
 
-const TAB_KEYS = [
-  "outcome",
-  "technique",
-  "motor",
-  "motorranking",
-  "racer",
-  "st",
-  "topstart",
-  "losing",
-  "nige",
-  "extime",
-  "extrend",
-  "techprofile",
-  "formranking",
-  "returnrate",
-  "attackdefense",
-  "racecard",
-  "venueranking",
-  "venuegrade",
-  "volatility",
-  "weather",
-];
+// タブの一覧の正本は TAB_GROUPS（組の順）。組に入れ忘れたタブがボタンに出なくなるのを防ぐ
+const TAB_KEYS = TAB_GROUPS.flatMap((group) => group.tabs);
+
 
 // 詳しい解説記事（ja専用ブログのため、非ja言語では該当info-cardごと非表示にする）
 const BLOG_LINKS = {
@@ -69,6 +55,241 @@ const BLOG_LINKS = {
 
 const SITE_URL = "https://www.boat-ai.jp";
 const PAGE_PATH = "/winning-technique";
+
+
+function AnalysisHead({ t, i18n, canonicalUrl, homeUrl }) {
+  return (
+    <>
+      <title>{t("analysisPage.meta.title")}</title>
+      <meta name="description" content={t("analysisPage.meta.description")} />
+      <meta
+        property="og:locale"
+        content={getLanguage(i18n.resolvedLanguage).ogLocale}
+      />
+      <link rel="canonical" href={canonicalUrl} />
+
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          name: t("analysisPage.itemListName"),
+          description: t("analysisPage.itemListDescription"),
+          itemListElement: TAB_KEYS.map((key, index) => ({
+            "@type": "ListItem",
+            position: index + 1,
+            name: t(`analysisPage.features.${key}.name`),
+            description: t(`analysisPage.features.${key}.description`),
+          })),
+        })}
+      </script>
+
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            {
+              "@type": "ListItem",
+              position: 1,
+              name: t("analysisPage.breadcrumbHome"),
+              item: homeUrl,
+            },
+            {
+              "@type": "ListItem",
+              position: 2,
+              name: t("analysisPage.itemListName"),
+              item: canonicalUrl,
+            },
+          ],
+        })}
+      </script>
+    </>
+  );
+}
+
+
+function TabChartsFirst({
+  activeTab,
+  initialVenueCode,
+  initialRaceId,
+  initialMotorNumber,
+}) {
+  return (
+    <>
+      {activeTab === "outcome" && (
+        <OutcomeDistributionTable
+          initialVenueCode={
+            initialVenueCode !== null
+              ? String(initialVenueCode).padStart(2, "0")
+              : null
+          }
+        />
+      )}
+      {activeTab === "technique" && (
+        <WinningTechniqueChart initialVenueCode={initialVenueCode} />
+      )}
+      {activeTab === "motor" && (
+        <MotorConditionChart
+          // ディープリンク先（venue/race/motor）が変わるたびに内部stateを
+          // 作り直す。useVenueRaceSelector等のuseRefベースの初期値適用は
+          // マウント時に1回しか効かないため、同一タブ内で別レースの
+          // バッジから再度この画面に遷移した場合に古い選択が残ってしまう
+          key={`${initialVenueCode}-${initialRaceId}-${initialMotorNumber}`}
+          initialVenueCode={initialVenueCode}
+          initialRaceId={initialRaceId}
+          initialMotorNumber={initialMotorNumber}
+        />
+      )}
+      {activeTab === "motorranking" && (
+        <VenueMotorRanking
+          key={initialVenueCode ?? "default"}
+          initialVenueCode={initialVenueCode}
+        />
+      )}
+      {activeTab === "racer" && (
+        <RacerFormChart
+          initialVenueCode={initialVenueCode}
+          initialRaceId={initialRaceId}
+        />
+      )}
+      {activeTab === "st" && (
+        <StPredictabilityChart
+          initialVenueCode={initialVenueCode}
+          initialRaceId={initialRaceId}
+        />
+      )}
+      {activeTab === "topstart" && (
+        <TopStartChart initialVenueCode={initialVenueCode} />
+      )}
+      {activeTab === "losing" && (
+        <LosingTechniqueChart initialVenueCode={initialVenueCode} />
+      )}
+      {activeTab === "nige" && (
+        <NigeOutcomeChart
+          initialVenueCode={
+            initialVenueCode !== null
+              ? String(initialVenueCode).padStart(2, "0")
+              : null
+          }
+        />
+      )}
+    </>
+  );
+}
+
+function TabChartsSecond({ activeTab, initialVenueCode, initialRaceId }) {
+  return (
+    <>
+      {activeTab === "extime" && (
+        <ExhibitionTimeTopChart initialVenueCode={initialVenueCode} />
+      )}
+      {activeTab === "extrend" && (
+        <ExhibitionTimeTrendChart
+          initialVenueCode={initialVenueCode}
+          initialRaceId={initialRaceId}
+        />
+      )}
+      {activeTab === "techprofile" && (
+        <RacerTechniqueProfileChart
+          initialVenueCode={initialVenueCode}
+          initialRaceId={initialRaceId}
+        />
+      )}
+      {activeTab === "formranking" && <RacerFormRankingChart />}
+      {activeTab === "returnrate" && (
+        <RacerBoatReturnRateChart
+          initialVenueCode={initialVenueCode}
+          initialRaceId={initialRaceId}
+        />
+      )}
+      {activeTab === "attackdefense" && (
+        <AttackDefenseAnalysis
+          initialVenueCode={initialVenueCode}
+          initialRaceId={initialRaceId}
+        />
+      )}
+      {activeTab === "racecard" && (
+        <RaceCardDataTable
+          initialVenueCode={initialVenueCode}
+          initialRaceId={initialRaceId}
+        />
+      )}
+      {activeTab === "venueranking" && <VenueRankingChart />}
+      {activeTab === "venuegrade" && <VenueGradeMatrix />}
+      {/* BOA-822（機能フラグの側）: 旧イン崩れ指数の実績をイン崩れ注意度の段ごとの実績に。タブのキーは据え置き（?tab=volatility を壊さない） */}
+      {activeTab === "volatility" &&
+        (isInCautionEnabled() ? (
+          <InCautionAccuracyChart />
+        ) : (
+          <VolatilityAccuracyChart />
+        ))}
+      {activeTab === "weather" && (
+        <WeatherInEscapeChart initialVenueCode={initialVenueCode} />
+      )}
+    </>
+  );
+}
+
+function TabInfo({ t, i18n, activeTab }) {
+  const info = t(`analysisPage.info.${activeTab}`, {
+    returnObjects: true,
+  });
+  return (
+    <div>
+      <h2>{info.title}</h2>
+
+      <div className="info-card">
+        <h3>{t("analysisPage.dataViewHeading")}</h3>
+        <p>{info.dataView}</p>
+      </div>
+
+      <div className="info-card">
+        <h3>{t("analysisPage.tipsHeading")}</h3>
+        <ul>
+          {info.tips.map((tip, idx) => (
+            <li key={idx}>
+              {tip.strong ? (
+                <>
+                  <strong>{tip.strong}</strong>
+                  {tip.text}
+                </>
+              ) : (
+                tip.text
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {i18n.resolvedLanguage === "ja" &&
+        BLOG_LINKS[activeTab] && (
+          <div className="info-card">
+            <h3>{t("analysisPage.articleHeading")}</h3>
+            <p>
+              <Link to={BLOG_LINKS[activeTab]}>
+                {info.articleLinkText}
+              </Link>
+            </p>
+          </div>
+        )}
+    </div>
+  );
+}
+
+function NoticeCard({ t }) {
+  return (
+      <div className="info-card">
+        <h3>{t("analysisPage.noticeHeading")}</h3>
+        <ul>
+          {t("analysisPage.notice.items", { returnObjects: true }).map(
+            (item, idx) => (
+              <li key={idx}>{item}</li>
+            ),
+          )}
+        </ul>
+      </div>
+  );
+}
 
 function WinningTechniqueAnalysis() {
   const { t, i18n } = useTranslation();
@@ -94,55 +315,21 @@ function WinningTechniqueAnalysis() {
   };
 
   const canonicalUrl = `${SITE_URL}${localizePath(PAGE_PATH, i18n.resolvedLanguage)}`;
+  useSocialMeta({
+    title: t("analysisPage.meta.title"),
+    description: t("analysisPage.meta.description"),
+    url: canonicalUrl,
+  });
   const homeUrl = `${SITE_URL}${localizePath("/", i18n.resolvedLanguage)}`;
 
   return (
     <div className="outcome-distribution-page">
-      <>
-        <title>{t("analysisPage.meta.title")}</title>
-        <meta name="description" content={t("analysisPage.meta.description")} />
-        <meta
-          property="og:locale"
-          content={getLanguage(i18n.resolvedLanguage).ogLocale}
-        />
-        <link rel="canonical" href={canonicalUrl} />
-
-        <script type="application/ld+json">
-          {JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "ItemList",
-            name: t("analysisPage.itemListName"),
-            description: t("analysisPage.itemListDescription"),
-            itemListElement: TAB_KEYS.map((key, index) => ({
-              "@type": "ListItem",
-              position: index + 1,
-              name: t(`analysisPage.features.${key}.name`),
-              description: t(`analysisPage.features.${key}.description`),
-            })),
-          })}
-        </script>
-
-        <script type="application/ld+json">
-          {JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            itemListElement: [
-              {
-                "@type": "ListItem",
-                position: 1,
-                name: t("analysisPage.breadcrumbHome"),
-                item: homeUrl,
-              },
-              {
-                "@type": "ListItem",
-                position: 2,
-                name: t("analysisPage.itemListName"),
-                item: canonicalUrl,
-              },
-            ],
-          })}
-        </script>
-      </>
+      <AnalysisHead
+        t={t}
+        i18n={i18n}
+        canonicalUrl={canonicalUrl}
+        homeUrl={homeUrl}
+      />
 
       <Header />
 
@@ -153,174 +340,32 @@ function WinningTechniqueAnalysis() {
             <p className="page-subtitle">{t("analysisPage.subtitle")}</p>
           </div>
 
-          <div className="analysis-tabs">
-            {TAB_KEYS.map((key) => (
-              <button
-                key={key}
-                className={`analysis-tab-btn ${activeTab === key ? "active" : ""}`}
-                onClick={() => setActiveTab(key)}
-              >
-                {t(`analysisPage.tabs.${key}`)}
-              </button>
-            ))}
-          </div>
+          <AnalysisTabs
+            t={t}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+          />
 
-          {activeTab === "outcome" && (
-            <OutcomeDistributionTable
-              initialVenueCode={
-                initialVenueCode !== null
-                  ? String(initialVenueCode).padStart(2, "0")
-                  : null
-              }
-            />
-          )}
-          {activeTab === "technique" && (
-            <WinningTechniqueChart initialVenueCode={initialVenueCode} />
-          )}
-          {activeTab === "motor" && (
-            <MotorConditionChart
-              // ディープリンク先（venue/race/motor）が変わるたびに内部stateを
-              // 作り直す。useVenueRaceSelector等のuseRefベースの初期値適用は
-              // マウント時に1回しか効かないため、同一タブ内で別レースの
-              // バッジから再度この画面に遷移した場合に古い選択が残ってしまう
-              key={`${initialVenueCode}-${initialRaceId}-${initialMotorNumber}`}
-              initialVenueCode={initialVenueCode}
-              initialRaceId={initialRaceId}
-              initialMotorNumber={initialMotorNumber}
-            />
-          )}
-          {activeTab === "motorranking" && (
-            <VenueMotorRanking
-              key={initialVenueCode ?? "default"}
-              initialVenueCode={initialVenueCode}
-            />
-          )}
-          {activeTab === "racer" && (
-            <RacerFormChart
-              initialVenueCode={initialVenueCode}
-              initialRaceId={initialRaceId}
-            />
-          )}
-          {activeTab === "st" && (
-            <StPredictabilityChart
-              initialVenueCode={initialVenueCode}
-              initialRaceId={initialRaceId}
-            />
-          )}
-          {activeTab === "topstart" && (
-            <TopStartChart initialVenueCode={initialVenueCode} />
-          )}
-          {activeTab === "losing" && (
-            <LosingTechniqueChart initialVenueCode={initialVenueCode} />
-          )}
-          {activeTab === "nige" && (
-            <NigeOutcomeChart
-              initialVenueCode={
-                initialVenueCode !== null
-                  ? String(initialVenueCode).padStart(2, "0")
-                  : null
-              }
-            />
-          )}
-          {activeTab === "extime" && (
-            <ExhibitionTimeTopChart initialVenueCode={initialVenueCode} />
-          )}
-          {activeTab === "extrend" && (
-            <ExhibitionTimeTrendChart
-              initialVenueCode={initialVenueCode}
-              initialRaceId={initialRaceId}
-            />
-          )}
-          {activeTab === "techprofile" && (
-            <RacerTechniqueProfileChart
-              initialVenueCode={initialVenueCode}
-              initialRaceId={initialRaceId}
-            />
-          )}
-          {activeTab === "formranking" && <RacerFormRankingChart />}
-          {activeTab === "returnrate" && (
-            <RacerBoatReturnRateChart
-              initialVenueCode={initialVenueCode}
-              initialRaceId={initialRaceId}
-            />
-          )}
-          {activeTab === "attackdefense" && (
-            <AttackDefenseAnalysis
-              initialVenueCode={initialVenueCode}
-              initialRaceId={initialRaceId}
-            />
-          )}
-          {activeTab === "racecard" && (
-            <RaceCardDataTable
-              initialVenueCode={initialVenueCode}
-              initialRaceId={initialRaceId}
-            />
-          )}
-          {activeTab === "venueranking" && <VenueRankingChart />}
-          {activeTab === "venuegrade" && <VenueGradeMatrix />}
-          {activeTab === "volatility" && <VolatilityAccuracyChart />}
-          {activeTab === "weather" && (
-            <WeatherInEscapeChart initialVenueCode={initialVenueCode} />
-          )}
+          <TabChartsFirst
+            activeTab={activeTab}
+            initialVenueCode={initialVenueCode}
+            initialRaceId={initialRaceId}
+            initialMotorNumber={initialMotorNumber}
+          />
+          <TabChartsSecond
+            activeTab={activeTab}
+            initialVenueCode={initialVenueCode}
+            initialRaceId={initialRaceId}
+          />
 
           <section className="info-section">
+            {/* BOA-822（機能フラグの側）: 旧指数の説明は出さない。注意度の中身は InCautionAccuracyChart の中に書く */}
             {TAB_KEYS.includes(activeTab) &&
-              (() => {
-                const info = t(`analysisPage.info.${activeTab}`, {
-                  returnObjects: true,
-                });
-                return (
-                  <div>
-                    <h2>{info.title}</h2>
+              !(activeTab === "volatility" && isInCautionEnabled()) && (
+                <TabInfo t={t} i18n={i18n} activeTab={activeTab} />
+              )}
 
-                    <div className="info-card">
-                      <h3>{t("analysisPage.dataViewHeading")}</h3>
-                      <p>{info.dataView}</p>
-                    </div>
-
-                    <div className="info-card">
-                      <h3>{t("analysisPage.tipsHeading")}</h3>
-                      <ul>
-                        {info.tips.map((tip, idx) => (
-                          <li key={idx}>
-                            {tip.strong ? (
-                              <>
-                                <strong>{tip.strong}</strong>
-                                {tip.text}
-                              </>
-                            ) : (
-                              tip.text
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {i18n.resolvedLanguage === "ja" &&
-                      BLOG_LINKS[activeTab] && (
-                        <div className="info-card">
-                          <h3>{t("analysisPage.articleHeading")}</h3>
-                          <p>
-                            <Link to={BLOG_LINKS[activeTab]}>
-                              {info.articleLinkText}
-                            </Link>
-                          </p>
-                        </div>
-                      )}
-                  </div>
-                );
-              })()}
-
-            <div className="info-card">
-              <h3>{t("analysisPage.noticeHeading")}</h3>
-              <ul>
-                {t("analysisPage.notice.items", { returnObjects: true }).map(
-                  (item, idx) => (
-                    <li key={idx}>{item}</li>
-                  ),
-                )}
-              </ul>
-            </div>
+            <NoticeCard t={t} />
           </section>
         </div>
       </main>

@@ -1,7 +1,31 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "ignoreCommand": "node scripts/vercel-ignore-build.js",
+  "git": {
+    "deploymentEnabled": {
+      "claude/**": false,
+      "codex/**": false,
+      "master": false
+    }
+  },
   "crons": [
+    {
+      "path": "/api/cron/eve-deadlines",
+      "schedule": "40 11 * * *"
+    },
+    {
+      "path": "/api/cron/eve-deadlines",
+      "schedule": "0,10,20 12 * * *"
+    },
+    {
+      "path": "/api/cron/eve-deadlines-reconcile",
+      "schedule": "30 21 * * *"
+    },
+    {
+      "path": "/api/cron/eve-deadlines-reconcile",
+      "schedule": "0 23 * * *"
+    },
     {
       "path": "/api/cron/race-notices",
       "schedule": "30 13 * * *"
@@ -12,11 +36,23 @@
     },
     {
       "path": "/api/cron/sns-send",
-      "schedule": "*/2 23,0-11 * * *"
+      "schedule": "*/2 22-23,0-13 * * *"
+    },
+    {
+      "path": "/api/cron/sns-auto-plan",
+      "schedule": "*/5 20-23,0-13 * * *"
     },
     {
       "path": "/api/cron/sns-metrics",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/sns-daily",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/sns-daily",
+      "schedule": "30 2 * * *"
     },
     {
       "path": "/api/cron/analogy-exhibition",
@@ -171,6 +207,10 @@
       "schedule": "35 21-23 * * *"
     },
     {
+      "path": "/api/cron/data-health-morning",
+      "schedule": "55 22,23 * * *"
+    },
+    {
       "path": "/api/cron/race-series",
       "schedule": "0 19 * * *"
     },
@@ -193,6 +233,22 @@
     {
       "path": "/api/cron/racer-course-technique-stats",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/outcome-distribution-update",
+      "schedule": "30 22 * * *"
+    },
+    {
+      "path": "/api/cron/outcome-distribution-update",
+      "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/racer-career-main",
+      "schedule": "30 14 * * *"
+    },
+    {
+      "path": "/api/cron/racer-career-main",
+      "schedule": "0 16 * * *"
     },
     {
       "path": "/api/cron/morning-digest",
@@ -231,6 +287,38 @@
       "schedule": "30 17 * * *"
     },
     {
+      "path": "/api/cron/db-apply-dispatch",
+      "schedule": "17 * * * *"
+    },
+    {
+      "path": "/api/cron/e2e-rerecord-dispatch",
+      "schedule": "23 1 * * *"
+    },
+    {
+      "path": "/api/cron/e2e-rerecord-dispatch",
+      "schedule": "47 3 * * *"
+    },
+    {
+      "path": "/api/cron/e2e-rerecord-dispatch",
+      "schedule": "37 5 * * *"
+    },
+    {
+      "path": "/api/cron/e2e-rerecord-dispatch",
+      "schedule": "13 7 * * *"
+    },
+    {
+      "path": "/api/cron/key-canary-dispatch",
+      "schedule": "7,37 * * * *"
+    },
+    {
+      "path": "/api/cron/release-dispatch",
+      "schedule": "45 2,8,20 * * *"
+    },
+    {
+      "path": "/api/cron/release-dispatch",
+      "schedule": "5 3,9,21 * * *"
+    },
+    {
       "path": "/api/cron/in-caution-health",
       "schedule": "30 19 * * *"
     },
@@ -240,9 +328,18 @@
     }
   ],
   "functions": {
+    "api/admin/sns-hub/send-probe.js": {
+      "regions": ["syd1"],
+      "includeFiles": "{node_modules/@sparticuz/chromium/bin/**,scripts/lib/fonts/**}"
+    },
     "api/cron/sns-send.js": {
       "regions": ["syd1"],
-      "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
+      "includeFiles": "{node_modules/@sparticuz/chromium/bin/**,scripts/lib/fonts/**}"
+    },
+    "api/cron/sns-auto-plan.js": {
+      "regions": ["syd1"],
+      "memory": 3009,
+      "includeFiles": "{node_modules/@sparticuz/chromium/bin/**,scripts/lib/fonts/**,sns-video-studio/remotion/risk-rules.json,src/locales/ja/common.json,config/today-variants.json}"
     },
     "api/cron/*.js": {
       "regions": ["syd1"]
@@ -250,12 +347,9 @@
     "api/odds/live.js": {
       "regions": ["syd1"]
     },
-    "api/admin/sns-hub/mobile-approval.js": {
-      "includeFiles": "sns-video-studio/remotion/risk-rules.json"
-    },
     "api/bot-page/**/*.js": {
       "regions": ["syd1"],
-      "includeFiles": "{src/locales/ja/common.json,src/locales/en/common.json,src/locales/zh-TW/common.json,src/locales/ko/common.json,index.html,src/data/blog-posts/*.json}"
+      "includeFiles": "{src/locales/ja/common.json,src/locales/en/common.json,src/locales/zh-TW/common.json,src/locales/ko/common.json,index.html,src/data/blog-posts/**/*.json}"
     }
   },
   "redirects": [
@@ -273,11 +367,9 @@
   ],
   "headers": [
     {
-      "source": "/api/(.*)",
+      "source": "/(.*)",
       "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
       ]
     },
     {
@@ -297,7 +389,7 @@
     {
       "source": "/",
       "missing": [
-        { "type": "header", "key": "user-agent", "value": ".*(?:GPTBot|ClaudeBot|PerplexityBot|Google-Extended|facebookexternalhit|Twitterbot|OAI-SearchBot|ChatGPT-User|Claude-SearchBot|Claude-User|Perplexity-User|bingbot|Applebot|DuckDuckBot).*" }
+        { "type": "header", "key": "user-agent", "value": ".*(?:GPTBot|ClaudeBot|PerplexityBot|facebookexternalhit|Twitterbot|OAI-SearchBot|ChatGPT-User|Claude-SearchBot|Claude-User|Perplexity-User|Google-GeminiNotebook|bingbot|Applebot|DuckDuckBot).*" }
       ],
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate, s-maxage=0" },
@@ -308,7 +400,7 @@
     {
       "source": "/venue/((?:[1-9]|1\\d|2[0-4]))",
       "missing": [
-        { "type": "header", "key": "user-agent", "value": ".*(?:GPTBot|ClaudeBot|PerplexityBot|Google-Extended|facebookexternalhit|Twitterbot|OAI-SearchBot|ChatGPT-User|Claude-SearchBot|Claude-User|Perplexity-User|bingbot|Applebot|DuckDuckBot).*" }
+        { "type": "header", "key": "user-agent", "value": ".*(?:GPTBot|ClaudeBot|PerplexityBot|facebookexternalhit|Twitterbot|OAI-SearchBot|ChatGPT-User|Claude-SearchBot|Claude-User|Perplexity-User|Google-GeminiNotebook|bingbot|Applebot|DuckDuckBot).*" }
       ],
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate, s-maxage=0" },
@@ -319,7 +411,7 @@
     {
       "source": "/((?:en|zh-TW|ko)/?)",
       "missing": [
-        { "type": "header", "key": "user-agent", "value": ".*(?:GPTBot|ClaudeBot|PerplexityBot|Google-Extended|facebookexternalhit|Twitterbot|OAI-SearchBot|ChatGPT-User|Claude-SearchBot|Claude-User|Perplexity-User|bingbot|Applebot|DuckDuckBot).*" }
+        { "type": "header", "key": "user-agent", "value": ".*(?:GPTBot|ClaudeBot|PerplexityBot|facebookexternalhit|Twitterbot|OAI-SearchBot|ChatGPT-User|Claude-SearchBot|Claude-User|Perplexity-User|Google-GeminiNotebook|bingbot|Applebot|DuckDuckBot).*" }
       ],
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate, s-maxage=0" },
@@ -330,7 +422,7 @@
     {
       "source": "/((?:en|zh-TW|ko)/venue/(?:[1-9]|1\\d|2[0-4]))",
       "missing": [
-        { "type": "header", "key": "user-agent", "value": ".*(?:GPTBot|ClaudeBot|PerplexityBot|Google-Extended|facebookexternalhit|Twitterbot|OAI-SearchBot|ChatGPT-User|Claude-SearchBot|Claude-User|Perplexity-User|bingbot|Applebot|DuckDuckBot).*" }
+        { "type": "header", "key": "user-agent", "value": ".*(?:GPTBot|ClaudeBot|PerplexityBot|facebookexternalhit|Twitterbot|OAI-SearchBot|ChatGPT-User|Claude-SearchBot|Claude-User|Perplexity-User|Google-GeminiNotebook|bingbot|Applebot|DuckDuckBot).*" }
       ],
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate, s-maxage=0" },
@@ -341,7 +433,7 @@
     {
       "source": "/today",
       "missing": [
-        { "type": "header", "key": "user-agent", "value": ".*(?:GPTBot|ClaudeBot|PerplexityBot|Google-Extended|facebookexternalhit|Twitterbot|OAI-SearchBot|ChatGPT-User|Claude-SearchBot|Claude-User|Perplexity-User|bingbot|Applebot|DuckDuckBot).*" }
+        { "type": "header", "key": "user-agent", "value": ".*(?:GPTBot|ClaudeBot|PerplexityBot|facebookexternalhit|Twitterbot|OAI-SearchBot|ChatGPT-User|Claude-SearchBot|Claude-User|Perplexity-User|Google-GeminiNotebook|bingbot|Applebot|DuckDuckBot).*" }
       ],
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate, s-maxage=0" },
@@ -352,13 +444,17 @@
     {
       "source": "/((?:(?:en|zh-TW|ko)/)?race/\\d{4}-\\d{2}-\\d{2}-\\d{2}-\\d{2})",
       "missing": [
-        { "type": "header", "key": "user-agent", "value": ".*(?:GPTBot|ClaudeBot|PerplexityBot|Google-Extended|facebookexternalhit|Twitterbot|OAI-SearchBot|ChatGPT-User|Claude-SearchBot|Claude-User|Perplexity-User|bingbot|Applebot|DuckDuckBot).*" }
+        { "type": "header", "key": "user-agent", "value": ".*(?:GPTBot|ClaudeBot|PerplexityBot|facebookexternalhit|Twitterbot|OAI-SearchBot|ChatGPT-User|Claude-SearchBot|Claude-User|Perplexity-User|Google-GeminiNotebook|bingbot|Applebot|DuckDuckBot).*" }
       ],
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate, s-maxage=0" },
         { "key": "CDN-Cache-Control", "value": "no-store" },
         { "key": "Vercel-CDN-Cache-Control", "value": "no-store" }
       ]
+    },
+    {
+      "source": "/((?:en|zh-TW|ko)/race/.*)",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
     }
   ]
 }

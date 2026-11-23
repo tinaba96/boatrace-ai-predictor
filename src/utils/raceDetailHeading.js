@@ -5,7 +5,7 @@
  * 同じ値を出すよう、1箇所で組む。t は i18next の t。Node からも import するため、ブラウザ専用の依存を持ち込まない。
  * 検証: scripts/maintenance/verify-bot-race-function.js
  */
-import { localizePath } from "../config/languages.js";
+import { localizePath } from "../pure/localizePath.js";
 import { GRADE_CONFIG } from "../constants/gradeConfig.js";
 import {
   getRaceStageBadge,
@@ -13,19 +13,12 @@ import {
 } from "../constants/raceStageConfig.js";
 import { isRaceCancelled } from "./raceCancellation.js";
 import { formatDateLocalized } from "./formatters.js";
+import { getSeriesDayLabel } from "./seriesDayLabel.js";
 
 const SITE_ORIGIN = "https://www.boat-ai.jp";
 
-// 開催の何日目かの表示ラベル（BOA-488）。値が無ければnull（「—」も出さない）。
-// 初日と最終日が同時に立つ1日開催は実在しないため、判定順は仕様の記載順に従う
-export function getSeriesDayLabel(seriesDay, isFinalDay, t) {
-  if (seriesDay === 1) return t("raceDetailPage.seriesDayFirst");
-  if (isFinalDay === true) return t("raceDetailPage.seriesDayFinal");
-  if (Number.isInteger(seriesDay) && seriesDay > 1) {
-    return t("raceDetailPage.seriesDayNth", { day: seriesDay });
-  }
-  return null;
-}
+// 日目のラベルは seriesDayLabel.js に置く（languages.js を import しないので Remotion の束からも使える）。ここからも今までどおり import できる
+export { getSeriesDayLabel, getVenueSeriesDayLabel } from "./seriesDayLabel.js";
 
 // 見出しの種別チップ（BOA-509）。分類できたものは分類名、できないもの
 // （会場の企画レース名）は公式表記のまま出す。race_stage はレースごとの値なので
@@ -128,15 +121,17 @@ export function getRaceDetailMeta(
   t,
   { raceId, venueCode, raceNo, date },
   lang,
+  { cancelled = false, finished = false } = {},
 ) {
+  const suffix = finished ? "Result" : cancelled ? "Cancelled" : "";
   const params = {
     venue: t(`venues.${venueCode}`),
     race: raceNo,
     date: formatDateLocalized(date, lang),
   };
   return {
-    title: t("raceDetailPage.metaTitle", params),
-    description: t("raceDetailPage.metaDescription", params),
+    title: t(`raceDetailPage.metaTitle${suffix}`, params),
+    description: t(`raceDetailPage.metaDescription${suffix}`, params),
     canonical: `${SITE_ORIGIN}${localizePath(`/race/${raceId}`, lang)}`,
   };
 }

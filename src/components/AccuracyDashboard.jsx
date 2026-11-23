@@ -1,51 +1,67 @@
-import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import UpdateStatus from "./UpdateStatus";
-import { supabaseDataService } from "../services/supabaseDataService";
-import { formatPercent } from "../utils/formatters";
 import { ReliabilityWarning, VolatilityAccuracySection } from "./accuracy";
-import LoadingScreen from "./LoadingScreen";
+import useAccuracySummary from "./AccuracyDashboardSummary";
+import {
+  AccuracyDashboardLoading,
+  AccuracyDashboardUnavailable,
+} from "./AccuracyDashboardStates";
+import AccuracyDashboardHero from "./AccuracyDashboardHero";
+import AccuracyDashboardInfo from "./AccuracyDashboardInfo";
 import "./AccuracyDashboard.css";
-import { errorMessageOf } from "../utils/errorMessage.js";
+import { formatTodayHeadingJST } from "../utils/dateUtils.js";
+import { isInCautionEnabled } from "../config/featureFlags";
+import InCautionAccuracyChart from "./analysis/InCautionAccuracyChart";
 
-function AccuracyDashboard({ onRefresh, isRefreshing }) {
-  const [modelAccuracy, setModelAccuracy] = useState(null);
-  const [volatilityStats, setVolatilityStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const PAGE_TITLE = "成績 | 龍神レーダー";
+const HISTORY_LINK = (
+  <div className="history-link-container">
+    <Link to="/accuracy/history" className="history-link">
+      📅 旧モデルの月別成績アーカイブを見る
+    </Link>
+  </div>
+);
 
-  useEffect(() => {
-    let cancelled = false;
+/**
+ * BOA-822（機能フラグの側、task 24・screens S-5）: 展開予測の的中率・会場別の表・旧イン崩れ指数の実績を外し、
+ * イン崩れ注意度の段ごとの実績だけにする。旧3モデルの月別アーカイブへのリンクは残す（plan「URL」）
+ */
+function InCautionAccuracyDashboard() {
+  return (
+    <>
+      <title>{PAGE_TITLE}</title>
+      <meta
+        name="description"
+        content="龍神レーダーのイン崩れ注意度を、段ごとに実際の結果（1号艇が1着を逃した割合）と照らし合わせた実績を公開中。"
+      />
+      <link rel="canonical" href="https://www.boat-ai.jp/accuracy" />
+      <div className="accuracy-dashboard">
+        <div className="dashboard-header">
+          <h2>📊 成績</h2>
+        </div>
+        <InCautionAccuracyChart />
+        {HISTORY_LINK}
+      </div>
+    </>
+  );
+}
 
-    const fetchSummary = async () => {
-      try {
-        setLoading(true);
-        const [accuracyData, volatilityData] = await Promise.all([
-          supabaseDataService.getUnifiedModelAccuracy(),
-          supabaseDataService.getUnifiedVolatilityAccuracy(),
-        ]);
-        if (!cancelled) {
-          setModelAccuracy(accuracyData);
-          setVolatilityStats(volatilityData);
-        }
-      } catch (err) {
-        console.error("Failed to load accuracy summary:", err);
-        if (!cancelled) setError(errorMessageOf(err));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
+function AccuracyDashboard(props) {
+  return isInCautionEnabled() ? (
+    <InCautionAccuracyDashboard />
+  ) : (
+    <LegacyAccuracyDashboard {...props} />
+  );
+}
 
-    fetchSummary();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+function LegacyAccuracyDashboard({ onRefresh, isRefreshing }) {
+  const { modelAccuracy, volatilityStats, loading, error } =
+    useAccuracySummary();
 
   // メタタグは loading / error 分岐でも出力する（React 19 が <head> にホイスティング）
   const pageMeta = (
     <>
-      <title>成績 | 龍神レーダー</title>
+      <title>{PAGE_TITLE}</title>
       <meta
         name="description"
         content="龍神レーダーのAI予想（展開予測・イン崩れ指数）の実測精度を公開中。過去のレース結果と機械的に照合した実績データです。"
@@ -54,50 +70,13 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
     </>
   );
 
-  if (loading) {
-    return (
-      <div className="accuracy-dashboard">
-        {pageMeta}
-        <h2>📊 成績</h2>
-        <LoadingScreen
-          title="実測精度データを読み込み中..."
-          description="成績データを集計しています"
-        />
-      </div>
-    );
-  }
+  if (loading) return <AccuracyDashboardLoading pageMeta={pageMeta} />;
 
   const hasData = modelAccuracy && modelAccuracy.turn.totalRaces > 0;
 
   if (error || !modelAccuracy || !hasData) {
-    return (
-      <div className="accuracy-dashboard">
-        {pageMeta}
-        <h2>📊 成績</h2>
-        <div className="error-message">
-          <p>
-            実測精度データはまだ利用できません。レース終了後に自動計算されます。
-          </p>
-          <button
-            className="reload-button"
-            onClick={() => window.location.reload()}
-          >
-            🔄 再読み込み
-          </button>
-        </div>
-      </div>
-    );
+    return <AccuracyDashboardUnavailable pageMeta={pageMeta} />;
   }
-
-  const getTodayDate = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth() + 1;
-    const day = today.getDate();
-    const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-    const weekday = weekdays[today.getDay()];
-    return `${year}年${month}月${day}日（${weekday}）`;
-  };
 
   return (
     <>
@@ -105,7 +84,7 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
       <div className="accuracy-dashboard">
         <div className="dashboard-header">
           <h2>📊 成績</h2>
-          <p className="last-updated">{getTodayDate()}</p>
+          <p className="last-updated">{formatTodayHeadingJST()}</p>
         </div>
         <UpdateStatus
           lastUpdated={modelAccuracy.calculatedAt}
@@ -116,89 +95,15 @@ function AccuracyDashboard({ onRefresh, isRefreshing }) {
 
         <ReliabilityWarning races={modelAccuracy.turn.totalRaces} />
 
-        <div className="turn-accuracy-hero">
-          <h3>🌊 展開予測の実測的中率</h3>
-          <p className="turn-accuracy-hero-rate">
-            {formatPercent(modelAccuracy.turn.hitRate)}
-          </p>
-          <p className="turn-accuracy-hero-note">
-            過去{modelAccuracy.turn.totalRaces}
-            レースの実測値（1マーク展開の予想パターンのいずれかの艇が実際に1着になった割合）
-          </p>
-
-          {modelAccuracy.turn.byVenue &&
-            modelAccuracy.turn.byVenue.length > 0 && (
-              <details className="turn-accuracy-venue-details">
-                <summary>会場別の的中率を見る</summary>
-                <div className="table-wrapper">
-                  <table className="turn-accuracy-venue-table">
-                    <thead>
-                      <tr>
-                        <th>会場</th>
-                        <th>展開予測 的中率</th>
-                        <th>件数</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {modelAccuracy.turn.byVenue.map((v) => (
-                        <tr
-                          key={v.venueCode}
-                          style={{ opacity: v.isReliable ? 1 : 0.7 }}
-                        >
-                          <td className="turn-accuracy-venue-table__name">
-                            {v.venueName}
-                          </td>
-                          <td>
-                            {v.hitRate.toFixed(1)}%
-                            {!v.isReliable && (
-                              <span className="turn-accuracy-venue-ref-note">
-                                {" "}
-                                ※
-                              </span>
-                            )}
-                          </td>
-                          <td>{v.totalRaces}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="turn-accuracy-venue-ref-desc">
-                  ※ サンプル数が20件未満のため参考値
-                </p>
-              </details>
-            )}
-        </div>
+        <AccuracyDashboardHero turn={modelAccuracy.turn} />
 
         {volatilityStats && (
           <VolatilityAccuracySection stats={volatilityStats} />
         )}
 
-        <div className="history-link-container">
-          <Link to="/accuracy/history" className="history-link">
-            📅 旧モデルの月別成績アーカイブを見る
-          </Link>
-        </div>
+        {HISTORY_LINK}
 
-        <div className="accuracy-info">
-          <h4>💡 展開予測の的中率について</h4>
-          <div className="info-section">
-            <p>
-              展開予測は、1マーク（最初のターン）の攻防でどの艇が1着になるかを予想する機能です。上位パターンのいずれかの艇が実際に1着になれば「的中」としてカウントしています（艇番で判定。前付けで進入コースが変わっても、その艇が勝てば的中）。
-            </p>
-          </div>
-          <div className="info-section">
-            <p>
-              複勝予想（AIの本命が2着以内に入るかの予想）の実測精度は、算出方法の見直しのため一時的に非表示にしています。
-            </p>
-          </div>
-          <div className="info-section">
-            <p>
-              <strong>データ更新:</strong>{" "}
-              レース終了後、自動的に的中率が再計算されます
-            </p>
-          </div>
-        </div>
+        <AccuracyDashboardInfo />
       </div>
     </>
   );

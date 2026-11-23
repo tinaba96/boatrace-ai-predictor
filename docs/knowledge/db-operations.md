@@ -7,6 +7,7 @@
 - ADR の番号は並行セッションで重複しやすい。足したら npm run verify:adr-numbers（次の番号も出る）（2026-09-12 に8組15件を振り直し、memory technical_adr_number_collisions）
 - マイグレーションの番号は並行するレーンで重なりうる。着手時にオーケストレーターに番号を取ってもらい、PR 作成前に origin/master の最新番号と比べる（2026-10-11、オーケストレーター依頼）
 - 新しいマイグレーションの番号は origin/master の最大番号より大きくないと verify-migration-numbers が CI で落とす。予約した番号でも、master が先に進んでいたら使えない（2026-10-13、BOA-822 の 149〜151 を 155〜157 に付け替え）
+- マイグレーションと ADR の番号は予約しない。PR を作るときに origin/master の最大＋1 を使い、CI で落ちたらその時の最大＋1 に付け直す（2026-10-19 hq の決定で予約を廃止。予約した 164・162 が、後の番号の先のマージで使えなくなったため）
 - マイグレーションの番号を付け替えるときは、SQL のファイル名・docs/db-migration/APPLIED.md・docs/design の番号の表記・verify-*.js が読むファイル名を全部 grep して直す（2026-10-10、memory sns_hub_intake_paused_2026_10_09）
 - plan.md に新しいテーブル・リレーションを書いたら node scripts/maintenance/generate-er-diagram.js {slug} で DDL から erDiagram を作り、npm run verify:er-diagram で照合する（2026-09-15、memory er_diagram_generation_2026_09_15、PR #665）
 - docs/reference/database-design.md の関係図は自動更新されず、「テーブル一覧と使用状況」等は古い（race_odds を「未使用」と書く等）（2026-09-15、memory er_diagram_generation_2026_09_15。更新されたかは要確認）
@@ -18,6 +19,9 @@
 - 「適用済み」はそのマイグレーションだけが持つ差分で確かめる。他の版も入れるキーを見ても区別できない（063/068 の取り違え、memory migration_applied_check_needs_discriminating_observation）
 - CREATE OR REPLACE FUNCTION は古い定義を土台にすると、後のマイグレーションが足したキーを黙って消す。適用後に scripts/maintenance/verify-rpc-output-keys.js を実行する（BOA-363・BOA-431、ADR-0074 で PR 時の検査あり、.claude/CLAUDE.md）
 - PostgREST のバルク upsert はキーの集合が違う行を混ぜると、その列を持たない行に NULL を書く。scripts/lib/unchangedRows.js の diffRows で列をそろえる（2026-09-27 に1,729行が NULL、PR #870、memory technical_postgrest_bulk_upsert_nulls_missing_keys）
+- upsertChangedRows の既存行の読み取りは、chunkColumn の IN だけで読み、ほかの条件で絞れない。同じ racer_id に別の層（era）の行がある表では、chunkSize を両方の層を足した選手あたりの行数から決めないと、上限1000行で黙って切れて「変更の無い行」まで書き直す（2026-10-31、system-architect、unchangedRows.js:391・racerCareerJob.js:487。190 の書き手は fullPageRows・failOnFetchError で止める）
+- kb_archive_* は created_at だけで updated_at が無く、kb-backfill は upsertChangedRows で値を書き換える。件数と日付の指紋では、値だけの再投入を検知できない（2026-10-31、system-architect）
+- 多くの値を1つの jsonb で返す SELECT を `x->'a', x->'b'` のように何度も読むと、副問い合わせが展開されて同じ計算を何回も行い、実測が数倍になる。重さを測るときは `OFFSET 0` を付けるか、EXPLAIN ANALYZE の Execution Time で見る（2026-10-31、system-architect の実測）
 - 外部キー・制約の確認は pg_constraint で行う。information_schema の多段 JOIN は黙って0行を返す（races を参照する FK は18本、memory technical_pg_constraint_not_information_schema_for_fks）
 - PK のリネーム等は全種類の制約（FK・UNIQUE・CHECK 等）を洗い、1件で先に試す（ユーザー指摘、memory feedback_pk_migration_verify_all_constraints_and_single_row_test）
 - 既存の RPC の本文だけを差し替えるマイグレーションも、114番以降は関数ごとに GRANT/REVOKE か `-- function-exempt` を書かないと verify:migration-rls で CI が落ちる（2026-10-13、BOA-822 の 157、scripts/maintenance/verify-migration-rls.js:340）
@@ -29,6 +33,13 @@
 - 除外するものを DB から読んで集合にするとき、エラーを見ずに (data || []) にすると、読み取りの失敗で除外が空になりガードが外れる（BOA-512 で開催した32レースを中止に一括更新）。失敗は例外にする（ADR-0069、verify-query-errors.js）。一括 UPDATE の跡は updated_at がミリ秒まで同じ行で見分けられる（2026-09-20、memory technical_supabase_read_error_swallowed_flips_guard、PR #743）
 - verify-migration-rls.js は REVOKE/GRANT の1文につき先頭の関数名しか読まない。複数の関数を並べた文は1関数1文に分ける（2026-10-08、memory feedback_codex_patch_intake_checklist）
 - race_entries が別の日の出走表で上書きされる汚染は、race_results が正常に入るので欠損を探す検知では見つからない。日次の data_health_entries_duplicates（マイグレーション100）で検知する（2026-09-25、memory project_data_foundation_orchestration_2026_09_19、BOA-423）
+- transition_sns_send_139 を置き換えるマイグレーションの先頭の照合は md5(prosrc) の一致で行う（LIKE は前の版の印が残るので版を区別できない）。182 の本文は c2b4835c416ff6e824a43fe9025c6518。PGlite の verify は now() を test_now() にした本文の md5 に照合の値を差し替えて当てる（2026-10-27、BOA-1169、189・verify-sns-today-thinking.js）
+- sns_auto_send_items と sns_auto_send_control を同じマイグレーションで ALTER するときは、先頭で SET LOCAL lock_timeout の後に control → items の順に LOCK TABLE … ACCESS EXCLUSIVE を取る（送り手の transition_sns_x_send が control → items の順に読むので、逆だとデッドロックしうる）（2026-10-27、BOA-1169、189）
+- 適用待ちキーを WARN にする RPC 検査は、終了コード0でも当該マイグレーションの成功証拠にならない。台帳・途中の WARN・対象日と同一 raceId の保存値/応答を併せて確認する（2026-10-13、2026-10-13-plan-review-20261013-22.md）
+- approve_sns_x_send の ON CONFLICT は、state が sending・reconcile・posted でない job の youtube_stage と external_post_id を NULL に戻す。cancelled 等で閉じた job は承認し直せるので、記録を残したいなら approve で拒むか、別の場所に残す（2026-10-27、system-architect、177:145）
+- transition_sns_x_send に足した新しい操作を古い DB に送ると、YouTube の分岐を素通りして transition_sns_send_139 の「不正な操作です」で落ちる。コードを先に出しても壊れない根拠になる（2026-10-27、system-architect、182:307）
+- verify-rpc-key-regression は `'値',` の形の文字列をキーとして集めるので、CASE の ELSE などで値の後ろに `,` が無くなると「消えた」と出る。元の文の形を残して後から上書きする（2026-10-27、BOA-1164、186）
+- 2分ごとに繰り返す理由を残す表は、UNIQUE と PostgREST の `on_conflict` ＋ `Prefer: resolution=ignore-duplicates` で初出だけを書く。同じ理由の繰り返しは行を書かず WAL を増やさない（2026-10-31、system-architect、BOA-1201・191 の sns_send_events）
 
 ## 画面からの読み取り
 - 画面から Supabase を読むのは src/services/supabaseClient.js の1つの入口だけ。.throwOnError() が既定で、失敗を「データなし」に化けさせない（BOA-359、.claude/rules/frontend-data-fetch.md）
@@ -40,10 +51,102 @@
 - 予想を作るときの「前日まで」はレースの日付で読む（race_date < 対象日）。「最新まで」で読むと過去の日を作り直したときに結果が混ざる（2026-10-12、BOA-628 と同じ系統、同 architecture-y.md）
 - fetchAll の .range() で全件を読むときは .order("race_id") 等の一意の並びを付ける。並びが無いとページの境目で行が重なったり抜けたりする（2026-09-25、memory project_data_foundation_orchestration_2026_09_19、BOA-403）
 - Supabase は Small。Nano のときは get_predictions_by_date が2.3〜12秒かかり、anon の statement_timeout（3秒）を超えて「開催なし」と誤って表示した。DB は ap-southeast-2 で、api/cron/* も syd1 に固定している（2026-09-19、memory project_data_foundation_orchestration_2026_09_19、PR #747）
+- 本番の statement_timeout は authenticator 8s・anon 3s・authenticated 8s・service_role 未設定・claude_ro 30s で、authenticator には safeupdate も入っている。service_role の RPC も PostgREST 経由なら 8秒で打ち切られるので、重い集計は呼び出しを分ける（2026-10-31、pg_roles.rolconfig、system-architect、マイグレーション 190）
 
-## SNS の送信
-- SNS の送信を止めるのは許可のリスト（自動送信の job は item が notified かつ mode が自動のときだけ進める）にし、claim・check・begin_post・youtube_publish_begin の全部で見る。拒否のリストや下書きの状態の変更だけでは、送信中・要照合で 148 のガードが RAISE し止まらない（2026-10-12、system-architect、docs/design/sns-pdca-loop/plan.md §3）
-- v0 素材の公開保留は5か所にある: sns_bundle_imports の CHECK、取り込みの関数、版×媒体×言語の一意索引、approve の bundle_import_id、transition_sns_send_139・youtube_call_guard の bundle_import_id。外すなら全部を変える（2026-10-12、135:8,26,89・139:137・146:174）
-- 送信の契約は、毎日 daily_baseline_date（JST）と YouTube の baseline_day（PT）を当日にしないと claim できない（2026-10-12、139:144・146:143）
-- PostgREST の upsert は式の一意索引（COALESCE）を on_conflict に使えない。NULL を含むキーは UNIQUE NULLS NOT DISTINCT の制約にする（本番は PG 17.6、2026-10-12）
-- findQualifyingRaces は standard と unified のうち predicted_at の新しい方の1行を使う。unified にしか無いキーを条件にすると黙って0件になる（2026-10-13、system-architect、scripts/lib/snsCampaigns.js:141-158）
+- SNS の送信（承認・claim・runner・通知・容量）に関する知見は [sns-send-ops.md](sns-send-ops.md) へ移動（2026-10-18）
+- 複数 bundle の下書きを limit だけでまとめて読むと、取得の打切りが素材の本数不備に化ける。対象日の抽出前の上限と下書き集合の完全性を別に確認し、超過を不合格素材として確定しない（2026-10-14、2026-10-14-plan-review-20261014-01.md）
+
+## 点検での見落としを防ぐ知見
+- 本番操作待ちの引継ぎと後続PRのマージは時点を分け、マージだけで表生成・公開への切替・データ削除の完了を推定しない。（2026-10-13、2026-10-13-plan-1517.md）
+- 取得対象の削除だけで保存済みhealthが消えるとせず、履歴ファイルとlast_report.healthの両方に旧警告入力が残らないか確認する。（2026-10-13、2026-10-13-plan-review-motorstop-20261013-06.md）
+- fetchRecordedという名前だけで録画限定とせず、モードとstrictを確認し、本番接続禁止のレーンでは録画漏れ・live/recordの実通信への遷移を遮断する。（2026-10-13、2026-10-13-task-70-check-codex-patches.md）
+- 同じファイルの同じ文脈へ追加する並行パッチは単独適用成功だけで統合可能とせず、まとめた適用でも両方の検査が残るか確認する。（2026-10-13、2026-10-13-task-72-check-codex-patches.md）
+- 新verifyの台帳登録を取り込み側へ委ねた場合、登録と品質ゲートでの実行確認が済むまで取り込み判定に残作業を明記する。（2026-10-13、2026-10-13-task-72-check-codex-patches.md）
+- 鍵を読まず本番接続を避けるローカル検証ではstrict replay・API_PROXY_TARGET空文字に加えViteのenvDirを空ディレクトリにし、複合npmスクリプトの引数転送先も確認する。（2026-10-13、2026-10-13-boa-744-part2.md）
+- verify実行前にimport先の秘密ファイル読込と実通信を確認し、本番接続禁止のレーンではmanualのDB検証をローカル純関数検査と区別して未実行と報告する。（2026-10-13、2026-10-13-boa-856.md）
+- 表・列・RPC を変える・止める・消す前に docs/reference/data-readers.md で読み手（src・api・scripts・sns-video-studio のファイル:行）・書き手・RPC の本体が読む表・取得のジョブ・repo の外の読み手（data-readers.extra.json）を確かめる。名前が式の箇所・Python・SQL の直書きは拾わないので「拾えなかったもの」の節も見る。台帳は master へのマージ後に CI が作り直す機械生成の文書で、PR に含めない（2026-10-27、基盤の計画 B、ADR-0078）
+- 表・関数を DROP する前の参照確認は、本番の pg_depend（deptype<>'i'）・prosrc の ILIKE・pg_views・pg_constraint の confrelid の4つで行う。plpgsql の本文は pg_depend に出ないので prosrc の検索が要る（2026-10-19、system-architect、163）
+- DROP だけのマイグレーションでも APPLIED.md の行が無いと verify-migration-numbers（--base origin/master）が CI で落ちる。display-coverage.md は手で直さず、マージ後の再生成に任せる（ADR-0078）（2026-10-19、163）
+- 本番に pg_cron は入っていない（cron.job が無い）。DB の DROP で cron の依存を気にしなくてよい（2026-10-19、system-architect の本番読み取り）
+- DROP だけのマイグレーションの runbook では、「最後に書かれた時刻」の判定の基準を、呼び出し元を消した PR の本番デプロイ時刻にする（DROP の PR の時刻では、その間の想定外の書き込みを見逃す）。読むだけの RPC はこの判定では見えず、コードの grep だけが根拠になる（2026-10-19、system-architect、168。呼び出し元を消したのは #1645）
+- pg_depend（deptype<>'i'）で外からの依存を数えるときは、対象の表自身の制約（pg_constraint）・既定値（pg_attrdef）・索引（pg_index の indexrelid）を除く。索引を除き忘れると、外の依存が無くても 0 にならない（2026-10-19、168-runbook の PGlite での再現）
+- 消した表は元のマイグレーションをもう一度流せば作り直せるが、行は戻らない。後で読む経路が無く件数が小さければ APPLIED.md に要点を書き、そうでなければ適用前にオーナーが CSV で退避してリポジトリの外に置く。本番に退避用の表は作らない（2026-10-19、system-architect、168）
+- 手元の既定の node は v16 で `node:test` 等が無く verify-*.js が落ちる。`~/.nvm/versions/node/v22.20.0/bin` を PATH に足して実行する。worktree の node_modules が古いと `twitter-text` 等が見つからないので `npm ci` する（2026-10-19）
+- middleware から DB で数を足す設計は、anon で実行できる口・UA の偽装による水増し・パスの種類の増加・upsert で足し算できない（RPC が要る）が重なるので避ける（2026-10-20、system-architect、ADR-0089 決定6）
+- 本番のデプロイを1日3回の定時にまとめた後（ADR-0106 の切り替えの後（`vercel.json` の `git.deploymentEnabled.master` が false。それまではマージごとに出る））は、master に入ったマイグレーションがコードより先に当たりうる（古いコードが最大約12時間動く）。「コードが先でも壊れない」だけでは足りず、出ている版のコードのままでも壊れないこと（足すだけ・expand → 定時で出す → contract）を確かめる。出ている版に入ったかは Vercel の本番のデプロイの sha で見る（2026-11-06、system-architect、ADR-0106。2026-10-20 の「コードのデプロイが必ず先」を改めた）
+- 共通ラッパは、行の無いジョブの初回の起動で scrape_job_state に mode='off' の行を作る（cronWrapper.js の ensureRow）。後から入れる `INSERT … ON CONFLICT DO NOTHING` は空振りして off のまま残るので、条件つきの DO UPDATE（mode='off' かつ last_success_at・last_tick_at が NULL）にする（2026-10-20、system-architect、170）
+- data_health の reconcileAlerts は「同じキーで欠損数が増えない未達」を7日間通知しない。日ごとの事故である鮮度の未達には everyDay を付けて毎日通知する（2026-10-20、system-architect・/code-review、170）
+- db-apply の classifyMigration は関数の `$$`・REVOKE・GRANT・`INSERT … ON CONFLICT` のどれでも heavy と判定する。scrape_job_state の行をマイグレーションで入れると自動の経路には乗らない（2026-10-20、system-architect、170）
+
+- 読取専用ロール・権限検査・読取CLIの知見は [db-readonly.md](db-readonly.md) を参照（2026-10-19、依頼77の分割案）。
+- 列控えは削除列の包含だけでなく主キーとの対応と、削除時点まで控えが残ることを確認する。過去のCREATEの存在だけでは復元可能性を示せない。（2026-10-19、2026-10-19-review-20261019-13.md）
+- db-apply は毎時17分の自動適用になる予定（ADR-0097、今は DB_APPLY_DRY_RUN）。本番の反映は ADR-0106 でまとめる（切り替えの後（`vercel.json` の `git.deploymentEnabled.master` が false。それまではマージごとに出る））ので SQL がコードより先に当たりうる。DRY_RUN を外す前に、本番のデプロイの SHA にそのマイグレーションが要るコードが入っているかを確かめる関門（マイグレーションごとの before-code / after-code の印）を入れる。それまで手で当てるときは、after-code のものは定時で出た後に当てる（2026-11-06、system-architect、db-apply.yml:50・ADR-0106）
+- `INSERT ... ON CONFLICT DO NOTHING`（対象を書かない形）は PK にも UNIQUE にも効くので、中身の違う既存行があっても黙って成功する。固定 uuid でマスタの行を入れるときは、COMMIT の前に DO ブロックで「入ったはずの行がそろっているか」を検査して落とす（2026-10-20、system-architect、171・PR #1695）
+- sns_template_variants を外部キーで参照するのは sns_drafts.template_variant_id（035）と sns_post_tracking.template_variant_id（136、154 で NULL 可）の2つだけ。行を消す前の参照の数は、この2表を足して数える（2026-10-20、system-architect、PR #1695）
+- db-apply の確認の節の見出しを拾う処理（scripts/lib/dbApplySql.js の extractConfirmationSections）は、最初の「:」/「：」で見出しを切る。見出しの括弧の中に「:」を書くと、job summary で SQL の1行目にはみ出す（2026-10-20、system-architect、171）
+- workflow_dispatch に mode を足して schedule の経路を共有させると、Actions: write の PAT で承認なしの経路（db-apply の reconcile → apply-auto）を任意の時刻に起動できるようになる。「できることは増えない」と書く前に、承認の無い job まで届くかを確かめる（2026-10-20、PR #1722 の審査、db-apply.yml の reconcile の if）
+- scrape_job_state.last_report は recordSuccess が丸ごと置き換え、recordFailure は触らない。off の間は起動の記録（last_tick_at）も更新されない。失敗が続く間も持ち越したい状態は last_report に置き、off から戻したかは last_tick_at の空きで見る（2026-10-20、scripts/lib/scrapeJobs/store.js・cronWrapper.js、scripts/lib/dbApplyDispatch.js）
+- kind:"monitor" の job は mode を問わず通知の対象になる（scrapeJobs/monitor.js の active）。off にしても consecutive_failures が残る間は通知が止まらない。止めるときは失敗の回数も 0 に戻す（2026-10-20、PR #1722 の審査）
+- AbortSignal.timeout のタイマーは unref なので、偽の fetch が返らない Promise だけを返すテストでは、打ち切りの前に Node のプロセスが終わる（unsettled top-level await）。偽物の側で ref のタイマーを持つ（2026-10-20、verify-analogy-dispatch.js (g)）
+- hq の codex-pr.py の自動マージ（--merge）は ryujin-maker の名義の直接マージ（squash・--match-head-commit）で、GitHub の auto-merge を要さない。Allow auto-merge は OFF のままでよい（2026-10-24、~/hq/scripts/codex-pr.py:1035-1036、docs/design/codex-direct-pr/design.md:208、オーナー決定）
+- Allow auto-merge を ON にすると、--auto を付けた PR が ruleset の承認1件と必須の3つの check だけで入り、codex-pr.py の M2〜M7（skipped の不合格・保護対象・新規ファイルだけ等）を飛ばす道が増える（2026-10-24、system-architect の審査、design.md §5.2）
+- review.yml の gate（scripts/lib/reviewPr.js の mechanicalRejections）は .github/** の変更を一般には落とさない（落とすのは本文の無い差分・symlink・submodule・LFS・.gitattributes 等、reviewPr.js:56 付近）。保護パスの守りは codex-pr.py の G5・M3 だけ（2026-10-24、system-architect の審査、design.md:70・186）
+- ruleset master-guard の承認1件は、書き込み権限のある身元の承認なら誰のものでも数える（審査の App に限らない）。審査の App だけを数える前提で守りを組まない（2026-10-24、system-architect の審査）
+- ruleset の bypass の Integration 5220661 は App が非公開で、API では名前を確かめられない。オーナーが画面で ryujin-bot と確認した（2026-10-23、design.md §10.1 Q8）
+
+## 検査と試験の土台
+- DAL（src/services/*Queries*.js・core.js。旧 supabaseDataService.js は RA40 で消えた）は Node で import できない。supabaseClient.js:44-45 が import.meta.env を読み、拡張子なしの import（./supabaseClient・../utils/stConsideration 等）を Node の ESM が解決しない。中の純粋な計算を試験するには、手を加えずに別ファイルへ移して旧の export から呼ぶ（2026-10-24、system-architect の審査、docs/design/dev-efficiency/plan.md 3+2）
+- PGlite を使う verify（scripts/maintenance/ に34本）は、それぞれ必要なマイグレーションだけを読む。全スキーマの共通の土台は無く、マイグレーションの積み上げでは DROP・RENAME を追えない。土台を作るなら claude_ro でカタログを読んだ本番のスナップショットを正本にする（2026-10-24、system-architect の審査、plan.md 5）
+- ESLint の error は 345（system-architect の実測）。範囲で数が変わり、e2d194f35 の再測は eslint . 全体で 699、docs・sns-video-studio を除くと 352（no-unused-vars 316）。lint 全体を必須にせず、違反を 0 にした規則から verify:ci に足す（2026-10-24、ADR-0079 追記、plan.md 1a）
+- E2E で録画に無いリクエストの素通しが0件なら、その E2E が通る経路の SQL（PostgREST のクエリ）を変えていない証拠になる。録画は URL で照合するので、クエリが変われば素通しに出る。E2E が通らない関数のクエリは証拠にならない（2026-10-24、system-architect の審査、e2e/fixtures.js:35・426、scripts/maintenance/report-e2e-passthrough.js）
+- ADR-0072 の「ci が100本を超えたらランナーを見直す」の線を越えた（2026-10-24 の台帳で ci 239本・manual 12本）。当面は自作のランナーを続け、新しい純関数の試験だけ新しい verify ファイルにする。vitest・node:test への移行は3件の切り出しの後に見直す（2026-10-24、ADR-0072 追記）
+- ESLint の flat config は languageOptions.globals を上から重ねて合わせるので、後のブロックの globals: {} では node・browser の名前を消せない。消すには "off" を並べるか、overrideConfigFile: true の別の設定で検査する（2026-10-24、system-architect の審査、eslint.config.js:19・45）
+- post-merge-checks.yml:69 は verify-no-undef.js を引数なしで直接呼ぶ。このスクリプトの既定の規則を増やすと、マージ後の Slack の範囲も広がる。規則を広げるのは引数（台帳の args）で行う（2026-10-24、system-architect の審査、ADR-0079 追記）
+- 共通ロジックの索引（generate-lib-index.js:39-55）の対象は scripts/lib・src/utils・src/services だけで、再 export の行は export に数えない。src/pure に移すときは TARGETS に足す（2026-10-24、system-architect の審査）
+- tsc の範囲を include で絞っても、JSDoc の import('...') 型と /// <reference> を伝って根の外が入る。既定の lib は DOM を含み、@types/* も自動で入る。閉じるには types: [] と DOM なしの lib（2026-10-24、system-architect の審査）
+- ブレーカーの段階は、開いている間（半開の試行でない）に届いた 429・403 では上げない。同時の要求12件の 429 で一気に段階4・60分になった（旧は8分）。上げるのは閉じている状態か半開から開くときだけ（2026-10-27、system-architect の審査、#1983、scripts/lib/scrapeJobs/circuitBreaker.js）
+- 403 と 429/503 は同じ breaker_level を使う（止める側に倒れるので共用を採る）。24時間で1段下げ・閉じた後24時間の絞りは 429 にも効く。期間の表だけ分ける（403 のホスト60分から倍・上限6時間、429 は5・10・20・60分）（2026-10-27、#1983 の審査の決定、ADR-0101 決定5 の追記）
+- Retry-After が10秒を超える 429/503 は再試行せず、その時間（上限60分）ホストを開く。段階は上げない（2026-10-27、#1983 の審査の決定、scripts/lib/scrapeJobs/politeFetch.js）
+- 利用者の要求（/api/odds/live）の 429 は段階を上げない（countOverload:false）。外から呼べる口で定時の取得の止め方を強めさせない。Retry-After>10秒ならその時間開くのは同じ（2026-10-27、#1983 の審査の決定、api/odds/live.js）
+- 本番の /api を叩く素の Node の呼び出しは、ブラウザの判定（Sec-Fetch-Site）では通らない。GHA の bot-html-parity（verify-bot-html-parity.js:169）と full-picture の stage.cjs:3（preflight）は見落としやすい（2026-10-27、system-architect、BOA-1110）
+- Vercel の環境変数を変えても既存のデプロイには効かず、Redeploy が要る。Edge Config なら即時に切り替わるが新しい資源になる（案。採るかはオーナー判断）（2026-10-27、system-architect、BOA-1110 の審査）
+- analogy_contribution_profiles（118:97-98）・race_history_cache（020:16）・accuracy_cache（013・013b）は匿名に SELECT がある。/api を閉じても同じ値は匿名キーで取れる（2026-10-27、DDL で確認。本番の権限は check-anon-access.js で要確認）
+- /api の関門は除外だけを名指しにし、デコードしたパスで判定する（matcher はデコード前で照合、adminAuth.js:4-8）。/%61pi/ のように api をエンコードした要求が関数に届くかは実測する（2026-10-27、system-architect、BOA-1110）
+- Googlebot には SPA を返しているので（ADR-0089:110）、/api を閉じる前に検索ボットの拒む候補を別に数える。WRS が Sec-Fetch-Site を送るかは未確認（2026-10-27、system-architect、BOA-1110）
+- WHATWG URL は %2F を区切りにしないので、pathname をデコードしてから前方一致で除外を判定すると /api/bot-page%2F..%2Fpredictions が /api/bot-page/ の除外に入る。デコード後に ..・.・//・\ のセグメントがあれば 400 にする（2026-10-27、node で実測、#1991 の代わりの審査）
+- 観測から強制へ進む条件を「自分の呼び出し元の拒否が0件」だけにすると母数0でも満たす。1日1回・手作業の呼び出し元は期間中に来ないことがあるので、秘密でない呼び出し元の名前のヘッダで群ごとの成功1件以上も条件にする（2026-10-27、#1991 の代わりの審査）
+- Search Console の URL 検査の取得の UA は Google-InspectionTool で、Googlebot の文字を含まない（Google の公開の一覧による、確度中・要確認）。UA を Googlebot に限った疎通試験は検索ボットの経路の証明にならない（2026-10-27、#1991 の代わりの審査）
+- e2e/fixtures.js の fetchRecorded は route.fetch() でブラウザの通信経路を通らずに出る（:47,317-320）。Sec-Fetch-Site で判定する関門では E2E の素通しがブラウザに見えないおそれがある（2026-10-27、#1991 の代わりの審査）
+- 関門の判定の順が「ブラウザ（Sec-Fetch-Site）→検索ボット（UA と IP）」だと、本物のボットがブラウザの経路で通り reason=search_bot は0件になりうる。経路の件数を進む条件にせず、UA と IP の確認の結果（bot_verified）を reason と別にログに出して数え、経路の正しさは固定の IP の verify で固める（2026-10-27、#1991 の再審査）
+- Cron の口は2つある。共通の createScrapeCronHandler と、オッズの createOddsCronHandlerWithPredictionOdds（api/cron/odds.js、予測オッズの導出つき）。共通の口だけに足した仕組み（取得の数え等）はオッズに効かない。両方が使う小さな関数（createCronFetchContext）にまとめる（2026-10-27、system-architect の審査、BOA-1145 P3・185）
+- 取得の数えを起動の終わりの1回だけで書くと、関数の打ち切り（maxDuration）で溜まった分を全部失う。20件か60秒で裏で書き、handler の終わりは try/finally で残りを書く（2026-10-27、同、scripts/lib/scrapeJobs/fetchCounter.js）
+- 取得の数えでは、呼び出し側の中断（init.signal の abort。ソフトデッドライン等）を数えない。politeFetch 自身の打ち切りは kind=timeout に分けて、接続の失敗（network）と区別する（2026-10-27、同、185 の CHECK）
+- 1分の上限（目安60）を見る数は、時の表をパスで割っても出ない。表を当てた後に分の列を足すとマイグレーションがもう1本要るので、最初から分の表（fetch_counts_minute、パス・種類なし）を一緒に作る（2026-10-27、同、185）
+- ブレーカーが作る scrape_job_state の host・パス行は mode を指定せず作るため既定の off になる。host 行の mode を非常停止の旗として使い回さない（2026-10-26、system-architect、scrapeJobs/store.js・075_scrape_slots_and_job_state.sql）。
+- /api でRPC応答の不要欄を落とすときは削除するキーを名指しする。残すキーの列挙では、後からRPCへ足したキーが /api だけで消え、RPCのキー回帰検査や直読みのフォールバックでは検出できない（2026-10-25、BOA-1110、PR #1906、system-architect）。
+- racer_course_technique_stats は window_end・window_days が日々変わるため、値の差分だけを想定しても毎日ほぼ全行を書き換える。更新量の見積もりには窓の列も含める（2026-10-25、system-architect、PR #1905、9,503行中9,499行更新）。
+- verify-rpc-key-regression は RETURNS TABLE と OR REPLACE の無い CREATE FUNCTION を検査しない。この構文の変更は同検査の成功だけで出力互換を保証できない（2026-10-25、system-architect、PR #1905）。
+- パスの禁止セグメント検査は二重符号化も考慮する。1回のデコードだけでは %252e%252e が残り、除外の前方一致へ入るため、デコードが安定するまで禁じた形を検査する（2026-10-27、BOA-1110段階0、verify-api-gate.js）。
+- PostgREST のeqは列の型へキャストして比較する。timestamptz の +00:00 と Z は同じ時刻なら一致するが、1ms違えば条件から外れる。条件付き更新にはDBが返した時刻をそのまま使う（2026-10-27、PR #1985、scrapeJobs/store.js の reserveProbe）。
+- DBを正として状態を読み直す処理は、書き込みを条件付きにし、成功した後だけ「最後に書いた値」を更新する。書けなかった値を次の照合条件へ使わない（2026-10-27、PR #1985、半開試行の条件付きUPDATE）。
+- STABLE関数をplpgsql内の独立した代入文 v := f(...) から呼ぶ場合、その文のsnapshotで読む。先行するFOR UPDATEの待機後に、待っていたclaimのコミットを反映する集計は、呼び出し文の位置も確認する（2026-10-27、system-architect、PR #1979）。
+- マイグレーションの事前確認で本番設定値を期待する場合は、適用直前に読み直す。設計時の上限値を不変と扱わない（2026-10-27、system-architect、daily_limit_x が8から9へ変わったPR #1979の確認）。
+- plpgsqlのELSIF式は初めて評価するときに準備される。未追加列を読む式の評価まで進む呼び出しはkindに関係なく落ちるため、関数置換と同じSQLの先頭で pg_attribute により必要列を確認する（2026-10-27、system-architect、マイグレーション180・PR #1978）。
+- Supabaseの1000行上限はRPCのRETURNS TABLE・SETOFにも効き、エラーなしで切れる。1000行を超えうる結果はページング可能な契約か単一jsonbで返し、上限件数を完全取得の証拠にしない（2026-10-27、system-architect、マイグレーション181・PR #1977）。
+- 多行を単一jsonbで返すRPCは jsonb_agg の中へ ORDER BY を付け、返却配列の順を明示する。行上限を避ける変更と順序の保証を別に確認する（2026-10-27、system-architect、マイグレーション181・PR #1977）。
+- 人がブレーカーの取得を早めに再開する場合、breaker_open_until はNULLでなく現在時刻にする。NULLは閉じた状態になり、半開カナリアと再開後の絞りを通らない（2026-10-27、system-architect、PR #1965）。
+- PostgRESTのSELECTで未知の列を指定すると、PGの42703・HTTP 400になる。列追加前の互換処理は isColumnMissingError で対象列を確認して分岐する（2026-10-27、system-architect、マイグレーション178・PR #1963）。
+- update_venue_stats() は048で削除した venues.avg_volatility_score に書く定義のまま残る。呼び手が0でも再利用可能とみなさず、現行スキーマと本文を照合する（2026-10-28、docs/design/legacy-prediction-cleanup/plan.md §1 F7）。
+- DB全体のER図は docs/reference/schema-er-diagram.md を見る。本番スキーマの写しから機械生成し、マージ後にCIが作り直すため、生成物をPRへ含めない（2026-10-28、PR #2042、基盤の計画段6）。
+- 対象日−(series_day−1)で作るmeet_start_dateは、丸一日の中止で同じ日目が続くと実際の節開始日からずれる。racer_series_points_dailyの日別値はvenue_code・snapshot_dateの範囲・series_dayで読み、推定したmeet_start_dateだけに依存しない（2026-11-02、system-architect、BOA-1210、docs/design/pointrank-history/plan.md §4）。
+- 本番ではpgrst_ddl_watchイベントトリガーがDDL後にPostgRESTのスキーマ再読込を通知するため、同じ目的のNOTIFY pgrstを別途足す必要は無い。他環境でも同じ機構があるとは仮定しない（2026-11-02、system-architect、BOA-1210・PR #2085、pg_event_triggerの確認）。
+- DO・ALTER TABLE を含むマイグレーションは db-apply の判定で apply-gated になり、当たるのはオーナーが承認を押した時刻。SQL のコメントの「当てる時刻」を守る仕組みは無いので、承認を押す窓を PR 本文にも書く（2026-11-04、system-architect、BOA-1249・201、scripts/lib/dbApplySql.js）。
+- stop_sns_auto_item は bundle_import_id で下書きを探すので、draft_id でひもづく item（setsu・upset・research 等）には効かない。手で止めるときは item の stopped と下書きの publish_blocked=true を1つのトランザクションで行い、job が sending・reconcile・posted の item は除く（2026-11-04、system-architect、BOA-1249・201）。
+- sns_auto_send_items に ACCESS EXCLUSIVE を取るマイグレーションの窓は 23:00〜04:59 JST（sns-send は JST 7:00〜22:58、sns-auto-plan は JST 5:00〜22:55 の通し。vercel.json、2026-11-04、BOA-1249）。
+- 本番の `/ai-snapshots/` に無いファイルを取ると、vercel.json の catch-all の rewrite で 200 の SPA の外枠（約5KB）が返る。「200 なら在る」と判定しない（2026-11-05、system-architect、`/ai-snapshots/racer/0001.html` の実測）。
+- 選手ページのスナップショットは gzip で約27KB/人（元は約250KB）。参照する `/assets/` は main の js・css の2つだけ（RacerProfile は AppRouter.jsx で静的に import され別の chunk が無い）（2026-11-05、system-architect、3256.html の実測）。
+- 本番のビルドが「今の本番の alias」を読んで判定すると、同時に走るビルドはどれも同じ古い版を読む。On-Demand Concurrent Builds のままでは閾値を越えた瞬間に全部が重い道へ倒れる（2026-11-05、system-architect、ADR 0032 追記）。
+- update-sitemap.yml は sitemap・llms.txt に差分があるときだけコミットする。「毎日1回は本番のビルドが走る」の根拠にしない（2026-11-05、.github/workflows/update-sitemap.yml）。
+- admin の bypass を外しても、Claude のセッションの素の gh がオーナー（admin）なら、オーナーの名義の PR の承認と ruleset の API で審査・CODEOWNERS を越えられる。文字の照合のフック（guard-deploy-approval.sh）で止め、塞ぎきるには素の gh を App にする（2026-11-06、system-architect の審査、db-operations.md の「承認1件は書き込みの身元なら誰でも数える」）
+- Claude の Bash の道具では標準出力が端末でない（process.stdout.isTTY は undefined）。isTTY で「トークンを会話に出さない」を守る判定は効かないので、トークンを出す形を作らず環境変数で子に渡す（2026-11-06、node -e の実測、scripts/maintenance/ryujin-maker-token.js）
+- review.yml の月の上限は、作者の actor の run を取り消し・skipped も含めて数え、Codex と Claude で分け合う。Claude を ryujin-maker の名義にすると1日約68件の見込み（推測）で、既定の300は数日で尽き、尽きると全部の PR に REQUEST_CHANGES が付く（2026-11-06、scripts/review/gate.js・scripts/lib/reviewPr.js の monthlyRunsPath、11/1〜6 の実測は ryujin-maker 118件・rhapsody0919 290件）

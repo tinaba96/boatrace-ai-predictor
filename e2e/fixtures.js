@@ -17,6 +17,7 @@ import {
   harKey,
   LOCAL_ORIGIN_PLACEHOLDER,
 } from "./har-merge.js";
+import { liveApiHeaders } from "./live-api-key.js";
 
 /**
  * E2Eの通信と時計を「録画時点」に固定する共通fixture（BOA-466、ADR-0077）。
@@ -151,11 +152,24 @@ export function e2eTodayJST() {
     .split("T")[0];
 }
 
+/** 再生用の HAR のコピーの置き場所（api.har と同じディレクトリ。理由は replayHar の説明） */
+export function replayHarPath(pid) {
+  return path.join(RECORDINGS_DIR, `.replay-api-${pid}.har`);
+}
+
 let cachedReplayHar;
 /**
  * 録画はローカルのオリジンを LOCAL_ORIGIN_PLACEHOLDER で保存している
  * （devサーバーのポートはworktreeごとに変わるため）。今回の baseURL に置き換えた
- * コピーを test-results 配下に作り、routeFromHAR にはそれを渡す。
+ * コピーを api.har と同じ場所（RECORDINGS_DIR）に作り、routeFromHAR にはそれを渡す。
+ *
+ * 本文は content._file（api.har からの相対パス）のまま渡す。Playwright 1.64 の routeFromHAR は
+ * _file が HAR のある場所の外を指すと「HAR entry _file escapes base directory」で応答を返さない
+ * （絶対パスも外とみなす）。1.59 までは絶対パスで読めたので、コピーを test-results 配下に置いて
+ * _file を絶対パスに直していた。外に置くと全ての録画の応答が失敗し、画面が空になる（#2102 で
+ * 実測: トップの会場がすべて「本日開催なし」寄りに変わり、BOA-152 の導線のテストが落ちた）。
+ * e2e/recordings/ は .gitignore 済みで、録画の公開（e2e-recording.js publish）は
+ * api.har・meta.json・bodies だけを固めるので、コピーは混ざらない。
  */
 function replayHar(testInfo) {
   if (cachedReplayHar) return cachedReplayHar;
@@ -170,21 +184,10 @@ function replayHar(testInfo) {
       `${HAR_PATH} を読めません（録画がありません。npm run test:e2e:record で撮り直してください）: ${error.message}`,
     );
   }
-  const file = path.join(
-    testInfo.project.outputDir,
-    ".replay",
-    `api-${process.pid}.har`,
-  );
-  mkdirSync(path.dirname(file), { recursive: true });
+  const file = replayHarPath(process.pid);
   const har = JSON.parse(
     text.replaceAll(LOCAL_ORIGIN_PLACEHOLDER, new URL(baseURL).origin),
   );
-  // 本文は content._file（api.har からの相対パス）で参照している。
-  // コピー先から読めるよう絶対パスに直す
-  for (const entry of har.log.entries) {
-    const content = entry.response.content;
-    if (content._file) content._file = path.join(RECORDINGS_DIR, content._file);
-  }
   writeFileSync(file, JSON.stringify(har));
   const keys = new Map(
     har.log.entries.map((e) => [
@@ -210,14 +213,37 @@ function toResponse(status, headersArray, body) {
     body: async () => body,
     text: async () => body.toString("utf8"),
     json: async () => JSON.parse(body.toString("utf8")),
-    fulfillOptions: () => ({ status, headers, body }),
+    /**
+     * route.fulfill に渡す引数。本文を差し替えるときは { json } を渡す（状態・ヘッダーは元の応答のまま）。
+     * route.fulfill({ response }) には渡さない。Playwright は APIResponse でない response を黙って
+     * 無視し、空の200を返す（録画・再生でだけ壊れ、live では通る。BOA-929）
+     */
+    fulfillOptions: (overrides = {}) => {
+      if (!Object.hasOwn(overrides, "json")) return { status, headers, body };
+      // 加工の関数が値を返し忘れると json: undefined になり、加工前の録画を黙って返してしまう
+      if (overrides.json === undefined) {
+        throw new Error(
+          "fulfillOptions({ json }) の json が undefined です（加工の関数が値を返していない）",
+        );
+      }
+      return { status, headers, json: overrides.json };
+    },
   };
+}
+
+/** route.fetch() の APIResponse を、録画・再生の応答と同じ形にする（どのモードでも fulfillOptions を持たせる） */
+async function fromApiResponse(response) {
+  return toResponse(
+    response.status(),
+    response.headersArray(),
+    await response.body(),
+  );
 }
 
 function entryToResponse(entry) {
   const content = entry.response.content;
   const body = content._file
-    ? readFileSync(content._file)
+    ? readFileSync(path.join(RECORDINGS_DIR, content._file))
     : Buffer.from(
         content.text ?? "",
         content.encoding === "base64" ? "base64" : "utf8",
@@ -251,9 +277,11 @@ async function recordThrough(request, fetchResponse) {
 
   const response = await fetchResponse();
   const body = await response.body();
-  // 本番DBの一時的な失敗（statement timeout の500等）は録画に固定しない。
+  // 本番DBの一時的な失敗（statement timeout の500等）と、関門・認証の拒否（401・403。合言葉の
+  // 付け忘れ・鍵の入れ替え中、BOA-1436）は録画に固定しない。
   // このテストにはそのまま返し、次に同じリクエストが来たら取り直す
-  if (response.status() >= 500) {
+  const status = response.status();
+  if (status >= 500 || status === 401 || status === 403) {
     return toResponse(response.status(), response.headersArray(), body);
   }
   const mimeType = response.headers()["content-type"] ?? "";
@@ -291,21 +319,39 @@ async function recordThrough(request, fetchResponse) {
 }
 
 /**
+ * route.fetch の options に、本番の /api/ の合言葉（BOA-1110）を足す（live・record、BOA-1436）。
+ * 付けない要求（/rest/v1・本番以外の host・replay）は options をそのまま返す。route.fetch の headers は
+ * 元のヘッダを丸ごと差し替え、request.headers() は cookie 等を返さないため、付けない要求のヘッダは触らない
+ */
+function keyedFetchOptions(request, url, options = {}) {
+  const base = { ...request.headers(), ...options.headers };
+  const headers = liveApiHeaders(url, base, { mode: E2E_MODE });
+  return headers === base ? options : { ...options, headers };
+}
+
+/**
  * spec の page.route で「実応答を取ってから加工する」ときに route.fetch() の代わりに使う。
  *
  * route.fetch() はブラウザの通信経路を通らずに直接ネットワークへ出るため、
  * context の routeFromHAR では再生されない（再生時に本番へ出ようとする）。
  * 録画時は取った応答を録画に入れ、再生時は録画から同じ応答を返す。
  *
- * 戻り値は status() / headers() / body() / text() / json() を持つ。
+ * 戻り値は status() / headers() / body() / text() / json() / fulfillOptions() を持つ（どのモードでも同じ形）。
  * APIResponse そのものではないので、route.fulfill には { response } ではなく
- * status・headers を明示して渡すこと。
+ * response.fulfillOptions()（本文を差し替えるときは fulfillOptions({ json })）を渡すこと。
+ * { response } で渡すと Playwright は黙って無視し、空の200を返す。live と素通しでだけ
+ * 通り、撮り直した録画の strict 再生で落ちて採用を止めていた（BOA-929。
+ * scripts/maintenance/verify-e2e-recorded-network.js が検出する）
  */
 export async function fetchRecorded(route, options = {}) {
   const request = route.request();
   // options.url で取り先を差し替えられる（route.fetch({ url }) と同じ）
   const url = options.url ?? request.url();
-  if (E2E_MODE === "live") return route.fetch(options);
+  // live・record は本番の /api/ の関門（BOA-1110）の合言葉を付ける（replay は変えない、BOA-1436）
+  if (E2E_MODE === "live" || E2E_MODE === "record") {
+    options = keyedFetchOptions(request, url, options);
+  }
+  if (E2E_MODE === "live") return fromApiResponse(await route.fetch(options));
   if (E2E_MODE === "record") {
     return recordThrough(
       {
@@ -327,7 +373,51 @@ export async function fetchRecorded(route, options = {}) {
     );
   }
   notePassthrough(test.info(), request.method(), url);
-  return route.fetch(options);
+  return fromApiResponse(await route.fetch(options));
+}
+
+/**
+ * テストが終わった後（context・page が閉じた後）に route の操作が投げる失敗。
+ * 画面はテストの終わりの後にも要求を出す（例: レース詳細の racer_period_stats）。その要求の
+ * ハンドラが route.fetch / route.fulfill / route.fallback を呼ぶと、Playwright は
+ * 「route.fetch: Test ended.」「Target page, context or browser has been closed」で投げ、
+ * 「while running route callback」として実行全体を失敗にする（テスト自体は通っていても）。
+ */
+// 「Test ended.」「Test timeout of Nms exceeded.」は Playwright がテストの終わりで context を閉じる理由
+// （playwright/lib/index.js の closeReason）で、閉じた後の操作の失敗の文言になる
+const ROUTE_AFTER_END =
+  /Test ended|Test timeout of \d+ms exceeded|Target closed|has been closed/;
+
+export function isRouteAfterEndError(error) {
+  return ROUTE_AFTER_END.test(String(error?.message ?? error));
+}
+
+function guardRouteHandler(handler) {
+  return async (route, request) => {
+    try {
+      return await handler(route, request);
+    } catch (error) {
+      // テストの終わりの後の失敗だけ捨てる。ほかの失敗（spec の誤り・録画に無い strict 等）は投げ直す
+      if (isRouteAfterEndError(error)) return;
+      throw error;
+    }
+  };
+}
+
+const guardedRouteTargets = new WeakSet();
+
+/**
+ * page・context の route に登録するハンドラを、すべて guardRouteHandler で包む。
+ * spec ごとに try/catch を書かずに済むよう、ここ1か所で捨てる（#2281・#2283 の e2e-shard 5/5）。
+ * 包んだハンドラは元の関数と別物になるので unroute(url, handler) では外れないが、
+ * unroute はそもそも使わない（scripts/maintenance/verify-e2e-no-unroute.js）。
+ */
+function guardRoutes(target) {
+  if (guardedRouteTargets.has(target)) return;
+  guardedRouteTargets.add(target);
+  const route = target.route.bind(target);
+  target.route = (url, handler, options) =>
+    route(url, guardRouteHandler(handler), options);
 }
 
 /**
@@ -335,6 +425,10 @@ export async function fetchRecorded(route, options = {}) {
  * fixture を通らずに browser.newContext() で作った context にも呼ぶこと。
  */
 export async function applyRecording(context, testInfo) {
+  // live でも、テストの終わりの後の route の失敗は捨てる
+  guardRoutes(context);
+  context.on("page", guardRoutes);
+  for (const page of context.pages()) guardRoutes(page);
   if (E2E_MODE === "live") return;
 
   // setFixedTime は Date だけを固定し、setTimeout 等のタイマーは実時間で進める。
@@ -354,9 +448,10 @@ export async function applyRecording(context, testInfo) {
     // テスト終了時にまだ応答を受け取っていないリクエストは、context が閉じると
     // 録画されずに終わる（別のテストがそのURLを必要としても録画に無くなる）。
     // context を閉じる前に受け取り切るのを待つ
-    const inflight = new Set();
+    // 値は送った時刻。待ちの打ち切りで、どの URL が何秒届かなかったかを出す（CI02 の 1）
+    const inflight = new Map();
     context.on("request", (request) => {
-      if (RECORDED_URL.test(request.url())) inflight.add(request);
+      if (RECORDED_URL.test(request.url())) inflight.set(request, Date.now());
     });
     context.on("requestfinished", (request) => inflight.delete(request));
     context.on("requestfailed", (request) => inflight.delete(request));
@@ -377,7 +472,10 @@ export async function applyRecording(context, testInfo) {
       const request = route.request();
       let response;
       try {
-        response = await recordThrough(request, () => route.fetch());
+        // 本番の /api/ へ出るので合言葉を付ける（BOA-1436。/rest/v1 等はヘッダを変えない）
+        response = await recordThrough(request, () =>
+          route.fetch(keyedFetchOptions(request, request.url())),
+        );
       } catch (error) {
         // 本番側の失敗（切断・タイムアウト）は録画せず、ブラウザにも失敗として返す。
         // テスト終了で context が閉じた場合も同じ経路に来る
@@ -456,7 +554,21 @@ function notePassthrough(testInfo, method, url) {
 const inflightByContext = new WeakMap();
 const INFLIGHT_WAIT_MS = 30000;
 
-async function waitForInflight(context) {
+/**
+ * 待ちを打ち切ったときに出す行。1件1行で、URL ごとに数えられる形にする
+ * （`gh run view --log | grep "e2e record] 未着"` で集計する。CI02 の 1）。
+ * 照会の文字列は長いので、パスと照会を分けて照会だけ切り詰める
+ */
+export function describeInflight(entries, now, testTitle) {
+  return entries.map(([method, url, startedAt]) => {
+    const { pathname, search } = new URL(url);
+    const query = search.length > 300 ? `${search.slice(0, 300)}…` : search;
+    const waited = ((now - startedAt) / 1000).toFixed(1);
+    return `[e2e record] 未着: ${method} ${pathname}${query} 待ち${waited}秒（${testTitle}）`;
+  });
+}
+
+async function waitForInflight(context, testInfo) {
   const inflight = inflightByContext.get(context);
   if (!inflight) return;
   const deadline = Date.now() + INFLIGHT_WAIT_MS;
@@ -466,6 +578,125 @@ async function waitForInflight(context) {
   if (inflight.size > 0) {
     console.warn(
       `[e2e record] ${inflight.size}件の応答が${INFLIGHT_WAIT_MS / 1000}秒以内に届かず、録画から外れます`,
+    );
+    const title = [
+      path.basename(testInfo.file),
+      ...testInfo.titlePath.slice(1),
+    ].join(" › ");
+    const entries = [...inflight].map(([request, startedAt]) => [
+      request.method(),
+      request.url(),
+      startedAt,
+    ]);
+    for (const line of describeInflight(entries, Date.now(), title)) {
+      console.warn(line);
+    }
+  }
+}
+
+/**
+ * E2E_COVERAGE=1（毎晩の全件、.github/workflows/e2e-nightly.yml）のときだけ、test ごとに「動いた src のファイル」を
+ * test-results/.e2e-coverage/<pid>.jsonl に1行足す（docs/design/ci-minutes-reduction/design.md 12章）。
+ * 束は E2E_SOURCEMAP=1 の build:e2e で作る（dist/assets/*.js.map が要る）。無いときは tests ごと落とさず、
+ * 何が足りないかを書いて投げる（黙って空の表にしない）。数え方は scripts/lib/e2eCoverageMap.js
+ */
+const E2E_COVERAGE = process.env.E2E_COVERAGE === "1";
+export const COVERAGE_DIR = path.join(
+  repoRoot,
+  "test-results",
+  ".e2e-coverage",
+);
+const E2E_DIR = path.join(repoRoot, "e2e");
+
+// 束の source map はワーカーの中でファイルごとに1回だけ読む
+const traceMaps = new Map();
+async function traceMapFor(bundleFile) {
+  if (!traceMaps.has(bundleFile)) {
+    traceMaps.set(
+      bundleFile,
+      (async () => {
+        const { TraceMap } = await import("@jridgewell/trace-mapping");
+        let text;
+        try {
+          text = readFileSync(`${bundleFile}.map`, "utf8");
+        } catch (error) {
+          throw new Error(
+            `${bundleFile}.map を読めません（E2E_SOURCEMAP=1 で npm run build:e2e したか）: ${error.message}`,
+          );
+        }
+        return new TraceMap(text);
+      })(),
+    );
+  }
+  return traceMaps.get(bundleFile);
+}
+
+async function sourcesOfCoverage(entries) {
+  const { coveredSources } = await import("../scripts/lib/e2eCoverageMap.js");
+  const files = new Set();
+  for (const entry of entries) {
+    let pathname;
+    try {
+      pathname = new URL(entry.url).pathname;
+    } catch {
+      continue;
+    }
+    if (!/^\/assets\/.+\.js$/.test(pathname)) continue;
+    const bundleFile = path.join(repoRoot, "dist", pathname);
+    const source = entry.source ?? readFileSync(bundleFile, "utf8");
+    for (const f of coveredSources(
+      entry,
+      source,
+      await traceMapFor(bundleFile),
+    ))
+      files.add(f);
+  }
+  return files;
+}
+
+/**
+ * fixture の page と、test の中で context に増えた page（window.open 等）の JS coverage を取る。
+ * 増えた page は "page" の出来事で始めるので、最初の遷移に間に合わないことがある（その分は取れない。
+ * 取れない spec は、表の組み立てで「常に流す」側に入る）。閉じた page は止められず、その分も取れない
+ */
+async function provideWithCoverage(page, provide, testInfo) {
+  const options = { resetOnNavigation: false };
+  await page.coverage.startJSCoverage(options);
+  const started = [Promise.resolve(page)];
+  const onPage = (extra) => {
+    started.push(
+      extra.coverage.startJSCoverage(options).then(
+        () => extra,
+        () => null,
+      ),
+    );
+  };
+  page.context().on("page", onPage);
+  try {
+    await provide(page);
+  } finally {
+    page.context().off("page", onPage);
+    const entries = [];
+    for (const p of await Promise.all(started)) {
+      if (!p) continue;
+      try {
+        entries.push(...(await p.coverage.stopJSCoverage()));
+      } catch (error) {
+        console.warn(
+          `[e2e coverage] 止められない page があります: ${error.message}`,
+        );
+      }
+    }
+    const files = await sourcesOfCoverage(entries);
+    mkdirSync(COVERAGE_DIR, { recursive: true });
+    appendFileSync(
+      path.join(COVERAGE_DIR, `${process.pid}.jsonl`),
+      `${JSON.stringify({
+        spec: path.relative(E2E_DIR, testInfo.file).split(path.sep).join("/"),
+        project: testInfo.project.name,
+        title: testInfo.titlePath.slice(1).join(" › "),
+        files: [...files].sort(),
+      })}\n`,
     );
   }
 }
@@ -510,11 +741,20 @@ export const test = base.extend({
    * 同意後の挙動（GA の page_view 等）を見るテストは "accepted" を指定する
    */
   cookieConsent: ["rejected", { option: true }],
-  context: async ({ context, cookieConsent }, use, testInfo) => {
+  context: async ({ context, cookieConsent }, provide, testInfo) => {
     await applyCookieConsent(context, cookieConsent);
     await applyRecording(context, testInfo);
-    await use(context);
-    await waitForInflight(context);
+    await provide(context);
+    await waitForInflight(context, testInfo);
+  },
+  // context の "page" でも包むが、fixture の page は念のためここでも包む（二重には包まない）
+  page: async ({ page }, provide, testInfo) => {
+    guardRoutes(page);
+    if (!E2E_COVERAGE) {
+      await provide(page);
+      return;
+    }
+    await provideWithCoverage(page, provide, testInfo);
   },
 });
 

@@ -63,6 +63,8 @@ export const CLEANUP_LOOKBACK_DAYS = 30;
 export const STORAGE_WARN_BYTES = 80e9;
 /** analogy-v16 の日ごとの大きさの控え（毎晩全部を数え直すと、2年分で数万回の一覧の取得になるため） */
 const USAGE_LEDGER = "_usage/days.json.gz";
+/** 日付→種類→完了時の保持日数。容量の控えとは分け、保持日数の変更時は再検査する。 */
+const CLEANUP_LEDGER = "_usage/cleanup-days.json.gz";
 /** 日ごとの大きさは、この日数より新しい日だけ毎晩数え直す（similar・similar-display が消えて小さくなる間） */
 export const USAGE_RECOUNT_DAYS = 9;
 /** 1回の削除の要求に入れるパスの数（scenario-boat-races は1日 1,000個を超える） */
@@ -86,46 +88,60 @@ const addDays = (date, n) =>
  *   exhibitionOnTime:number, exact:number, missingRacecard:string[], missingExhibition:string[]}}
  */
 export function summarizeDay(races, snaps, exh, entries) {
-  const absent = new Set(
-    [...exh, ...entries].filter((r) => r.is_absent).map((r) => r.race_id),
-  );
+  const absent = absentRaceIds(exh, entries);
+  const timed = timedBoatCounts(exh);
+  const snap = new Map(snaps.map((s) => [`${s.race_id}|${s.stage}`, s]));
+  const out = emptyDaySummary();
+  for (const race of races) {
+    if (race.cancellation_status || absent.has(race.race_id)) continue;
+    countRaceInto(out, race, snap, timed);
+  }
+  return out;
+}
+
+const absentRaceIds = (exh, entries) =>
+  new Set([...exh, ...entries].filter((r) => r.is_absent).map((r) => r.race_id));
+
+const timedBoatCounts = (exh) => {
   const timed = new Map();
   for (const r of exh)
     if (r.exhibition_time !== null && !r.is_absent)
       timed.set(r.race_id, (timed.get(r.race_id) ?? 0) + 1);
-  const snap = new Map(snaps.map((s) => [`${s.race_id}|${s.stage}`, s]));
-  const onTime = (s, race) => {
-    const d = deadlineOf(race);
-    return s && d !== null && new Date(s.computed_at).getTime() < d.getTime();
-  };
-  const out = {
-    eligible: 0,
-    racecard: 0,
-    racecardOnTime: 0,
-    exhEligible: 0,
-    exhibition: 0,
-    exhibitionOnTime: 0,
-    exact: 0,
-    missingRacecard: [],
-    missingExhibition: [],
-  };
-  for (const race of races) {
-    if (race.cancellation_status || absent.has(race.race_id)) continue;
-    out.eligible += 1;
-    const rc = snap.get(`${race.race_id}|racecard`);
-    if (rc) out.racecard += 1;
-    else out.missingRacecard.push(race.race_id);
-    if (onTime(rc, race)) out.racecardOnTime += 1;
-    if (timed.get(race.race_id) === 6 && rc) {
-      out.exhEligible += 1;
-      const ex = snap.get(`${race.race_id}|exhibition`);
-      if (ex) out.exhibition += 1;
-      else out.missingExhibition.push(race.race_id);
-      if (onTime(ex, race)) out.exhibitionOnTime += 1;
-      if (ex?.exact) out.exact += 1;
-    }
+  return timed;
+};
+
+const snapOnTime = (s, race) => {
+  const d = deadlineOf(race);
+  return s && d !== null && new Date(s.computed_at).getTime() < d.getTime();
+};
+
+const emptyDaySummary = () => ({
+  eligible: 0,
+  racecard: 0,
+  racecardOnTime: 0,
+  exhEligible: 0,
+  exhibition: 0,
+  exhibitionOnTime: 0,
+  exact: 0,
+  missingRacecard: [],
+  missingExhibition: [],
+});
+
+/** 数える対象の1レース分を out に足す */
+function countRaceInto(out, race, snap, timed) {
+  out.eligible += 1;
+  const rc = snap.get(`${race.race_id}|racecard`);
+  if (rc) out.racecard += 1;
+  else out.missingRacecard.push(race.race_id);
+  if (snapOnTime(rc, race)) out.racecardOnTime += 1;
+  if (timed.get(race.race_id) === 6 && rc) {
+    out.exhEligible += 1;
+    const ex = snap.get(`${race.race_id}|exhibition`);
+    if (ex) out.exhibition += 1;
+    else out.missingExhibition.push(race.race_id);
+    if (snapOnTime(ex, race)) out.exhibitionOnTime += 1;
+    if (ex?.exact) out.exact += 1;
   }
-  return out;
 }
 
 /** 残す日数を過ぎた日付のフォルダ（`YYYY-MM-DD`）を選ぶ。境目から CLEANUP_LOOKBACK_DAYS 日前までだけ（純粋関数） */
@@ -216,23 +232,63 @@ async function storageUsage(today) {
   return byBucket;
 }
 
-async function cleanup(today) {
-  const top = await dateFolders();
-  let n = 0;
-  for (const [kind, keep] of CLEANUP) {
+/** 掃除の控えを読む。形式が不正なら例外 */
+async function readCleanupLedger(read) {
+  const saved = (await read(CLEANUP_LEDGER)) ?? {};
+  if (typeof saved !== "object" || Array.isArray(saved))
+    throw new UpstreamError("掃除の控えの形式が不正");
+  return saved;
+}
+
+/** 日付→[種類, 残す日数] の対（掃除の窓を過ぎた日だけ） */
+function eligibleCleanups(top, today) {
+  const eligible = new Map();
+  for (const [kind, keep] of CLEANUP)
     for (const date of datesToClean(top, today, keep)) {
-      for (const run of (await listObjects(`${date}/`)).filter(
-        (r) => r.id === null,
-      )) {
-        const files = await listObjects(`${date}/${run.name}/${kind}/`);
-        const paths = files
-          .filter((f) => f.id !== null)
-          .map((f) => `${date}/${run.name}/${kind}/${f.name}`);
-        for (let i = 0; i < paths.length; i += DELETE_CHUNK)
-          await deleteObjects(paths.slice(i, i + DELETE_CHUNK));
-        n += paths.length;
-      }
+      if (!eligible.has(date)) eligible.set(date, []);
+      eligible.get(date).push([kind, keep]);
     }
+  return eligible;
+}
+
+/** 1日・1種類の全ファイルを消して、消した数を返す */
+async function removeKind(date, kind, runs, { list, remove }) {
+  let n = 0;
+  for (const run of runs) {
+    const files = await list(`${date}/${run.name}/${kind}/`);
+    const paths = files
+      .filter((f) => f.id !== null)
+      .map((f) => `${date}/${run.name}/${kind}/${f.name}`);
+    for (let i = 0; i < paths.length; i += DELETE_CHUNK)
+      await remove(paths.slice(i, i + DELETE_CHUNK));
+    n += paths.length;
+  }
+  return n;
+}
+
+/** 完了済みの日・種類を飛ばす。日ごとの全削除が成功してから控えを保存する（失敗した日は再試行）。 */
+export async function cleanup(today, {
+  list = listObjects,
+  remove = deleteObjects,
+  read = readObject,
+  write = writeObject,
+} = {}) {
+  const top = (await list("")).filter((r) => r.id === null).map((r) => r.name);
+  const saved = await readCleanupLedger(read);
+  const eligible = eligibleCleanups(top, today);
+  // 日付が残っていても、全種類が掃除の窓を過ぎた控えは不要。
+  const ledger = Object.fromEntries(
+    Object.entries(saved).filter(([date]) => eligible.has(date)),
+  );
+  let n = 0;
+  for (const [date, kinds] of eligible) {
+    const pending = kinds.filter(([kind, keep]) => ledger[date]?.[kind] !== keep);
+    if (!pending.length) continue;
+    const runs = (await list(`${date}/`)).filter((r) => r.id === null);
+    for (const [kind] of pending)
+      n += await removeKind(date, kind, runs, { list, remove });
+    ledger[date] = { ...ledger[date], ...Object.fromEntries(pending) };
+    await write(CLEANUP_LEDGER, ledger, { upsert: true });
   }
   return n;
 }

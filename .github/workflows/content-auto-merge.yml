@@ -1,0 +1,64 @@
+name: Content Auto Merge
+
+# 記事の PR（claude/content-*）を、段階0 F の条件（4つの審査が pass・P0 は0・content-qa と言葉の P1 は0・判断の要る語が無い・
+# 置き場が記事だけ・必須の check が緑・pr-lane が light）を満たしたら人の手なしでマージする（オーナー 2026-11-23 yes）。
+# 判定は scripts/lib/contentAutoMerge.js（master の版）。PR のコードは実行しない。
+# マージは ryujin-bot の App の名義（GITHUB_TOKEN でマージすると master への push の workflow が起きないため）。
+# ryujin-bot は ruleset の bypass にいるので、必須の check の緑は判定の中で自分で確かめる。
+on:
+  schedule:
+    # 予備。新設の日から GitHub の schedule が来なかった（11/23、key-canary の BOA-917 と同じ型）
+    - cron: "17 * * * *"
+  # 主の起動: Vercel Cron から30分ごとに確実に起きる Key Canary の完了。毎回見る（開いた記事の PR が無ければ何もしない）
+  workflow_run:
+    workflows: [Key Canary]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "true ならマージせず判定だけ出す"
+        default: "false"
+
+concurrency:
+  group: content-auto-merge
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  merge:
+    if: github.repository == 'rhapsody0919/boatrace-ai-predictor'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ryujin-bot
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.RYUJIN_BOT_APP_ID }}
+          private-key: ${{ secrets.RYUJIN_BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      # 依存のパッケージを使わない（gh・git・pr-lane.js だけ）ので npm ci はしない
+      - name: Merge passing article PRs
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            node scripts/content/auto-merge-content-prs.js --dry-run
+          else
+            node scripts/content/auto-merge-content-prs.js
+          fi

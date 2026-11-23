@@ -1,0 +1,172 @@
+/**
+ * SNS の自動送信の計画（sns-pdca-loop tasks 12、ADR 0094）。5分ごとに、その日の優勝戦・準優勝戦の素材 v1 から
+ * レース×チャネルの item を作り、検査して個別承認に回す。本体は scripts/lib/snsAutoPlanRunner.js。共通の cron ラッパを通す。
+ *
+ * モード（scrape_job_state の job='sns_auto_plan'。153 で shadow の行を入れた）:
+ *   off（または行なし）  何もしない
+ *   shadow              検査までで止める（item・下書き・UTM の表・Slack に書かない）
+ *   live                item を作り、検査の結果を書き、合格した下書きの公開保留を外す（送るのは sns-send。dry_run の間は claim の前で止まる）。
+ *                       チャネルが mode=auto なら、評価役の P0 が0件の全貌動画を事前通知のあと自動送信の承認者で承認する（2026-10-18 ユーザー決定）
+ *
+ * /today の X 投稿（tasks 19b、今は文だけの型 v3。BOA-1314）も同じ実行で計画する（JST 6:30〜8:00 だけ、送るのは 7:00 ごろ。scripts/lib/snsTodayPlanner.js）。
+ * /today の計画が落ちてもレースの計画は続け、理由を report.alerts に出す（次の5分でやり直す）
+ *
+ * cron式（vercel.json）は UTC。5分ごと、時は 20〜23・0〜13（UTC）= JST 5:00〜22:55（稼働時間の監視は JST 5:30〜23:00。ミッドナイトの優勝戦のため、2026-10-14 オーナー決定）
+ */
+import { createScrapeCronHandler } from "../../scripts/lib/scrapeJobs/cronWrapper.js";
+import { postSlack } from "../../scripts/lib/scrapeJobs/monitor.js";
+import {
+  createAutoPlanStore,
+  runSnsAutoPlan,
+} from "../../scripts/lib/snsAutoPlanRunner.js";
+import { createPostTrackingStore } from "../../scripts/lib/snsPostTracking.js";
+import { SCREEN_MARKERS } from "../../scripts/lib/snsScreenMarkers.js";
+import { checkClaims } from "../_lib/snsClaimCheck.js";
+import { createChromiumHeadless } from "../_lib/snsHeadless.js";
+import riskRules from "../_lib/snsRiskRulesFile.js";
+import {
+  SUPABASE_SERVICE_KEY,
+  SUPABASE_URL,
+  signStoragePath,
+} from "../_lib/snsHubHelpers.js";
+import {
+  createTodayStore,
+  finishTodayLog,
+  isTodayRebuild,
+  runTodayPlan,
+} from "../../scripts/lib/snsTodayPlanner.js";
+import { createTodayDigestSource } from "../_lib/snsTodayDigest.js";
+import { createPostgrestReader } from "../../scripts/lib/snsSendRunner.js";
+import { getJaT } from "../_lib/botPage.js";
+import { bundleStore } from "../_lib/snsBundleImport.js";
+import { createXSnapshot } from "../_lib/snsXSend.js";
+import { loadXMedia, xSendStore } from "../_lib/snsXSendStore.js";
+
+export const config = { maxDuration: 300 };
+
+const env = process.env;
+const notify = async (text) => {
+  if (env.SLACK_WEBHOOK_URL) await postSlack(env.SLACK_WEBHOOK_URL, { text });
+};
+
+export default createScrapeCronHandler({
+  job: "sns_auto_plan",
+  run: async (ctx) => {
+    // /today の確認1回＋龍神ソナーの図4枚と、レースの計画の表示の確認（素材ごと1回）
+    const headless = createChromiumHeadless({ maxInspections: 12 });
+    const trackingStore = createPostTrackingStore({
+      url: SUPABASE_URL,
+      key: SUPABASE_SERVICE_KEY,
+    });
+    try {
+      let today;
+      try {
+        today = await runTodayPlan(ctx, {
+          store: createTodayStore({
+            url: SUPABASE_URL,
+            key: SUPABASE_SERVICE_KEY,
+          }),
+          getDigest: createTodayDigestSource(),
+          raceDb: createPostgrestReader({
+            url: SUPABASE_URL,
+            key: SUPABASE_SERVICE_KEY,
+          }),
+          t: await getJaT(),
+          headless,
+          markers: SCREEN_MARKERS,
+          riskRules: riskRules.rules,
+          trackingStore,
+          saveImage: (path, bytes) =>
+            bundleStore.saveFile(path, { mime: "image/png", bytes }),
+          signImage: (path) => signStoragePath(path, 6 * 3600),
+          notify,
+          reviewDate: ctx.state?.cursor?.today_rebuild ?? null,
+        });
+      } catch (error) {
+        // 記録と警告には最初の1行だけ（Playwright の例外はブラウザのログ全文を含む）
+        const reason = error.message.split("\n")[0];
+        today = {
+          rowsWritten: 0,
+          report: {
+            items: [{ kind: "digest", outcome: "error", reason }],
+            alerts: [
+              {
+                key: "today",
+                text: `SNS /today の計画に失敗（次の5分でやり直す）: ${reason.slice(0, 500)}`,
+              },
+            ],
+          },
+        };
+      }
+      const todayItem = today.report.items.find((i) => i.kind === "digest");
+      const {
+        log: todayLog,
+        notice,
+        giveUp,
+      } = finishTodayLog(ctx.state?.cursor?.today, todayItem, ctx.now(), {
+        rebuilding: isTodayRebuild(
+          ctx.state?.cursor?.today_rebuild ?? null,
+          ctx.now(),
+        ),
+      });
+      // その日の下書きを作れずに送る時刻を過ぎたら、理由つきで1回だけ Slack に知らせる（監視は 7:00 前を見ず、
+      // 関数の時間切れは何も記録されないため、黙って終わる経路があった。2026-10-17）。
+      // 確認用の作り直しが続けて失敗したときも1回知らせる（監視は同じ警告を6時間まとめるので、夜の失敗が届かなかった。2026-10-17）
+      if (ctx.mode === "live" && notice) {
+        try {
+          await notify(notice);
+          if (!giveUp) todayLog.missed_notified = true;
+        } catch (error) {
+          today.report.alerts.push({
+            key: "today_missed",
+            text: `SNS /today の「下書きを作れなかった」の通知に失敗: ${error.message}`,
+          });
+        }
+      }
+      const race = await runSnsAutoPlan(ctx, {
+        store: createAutoPlanStore({
+          url: SUPABASE_URL,
+          key: SUPABASE_SERVICE_KEY,
+        }),
+        checkClaims,
+        headless,
+        markers: SCREEN_MARKERS,
+        riskRules: riskRules.rules,
+        trackingStore,
+        notify,
+        // 自動（全貌動画）の承認: 管理画面の承認と同じ snapshot を作って approve_sns_x_send を呼ぶ
+        approve: async (draft, approverId, scheduledAt) =>
+          xSendStore.approve(
+            draft.id,
+            approverId,
+            await createXSnapshot(draft, loadXMedia),
+            scheduledAt,
+          ),
+      });
+      return {
+        rowsWritten: race.rowsWritten + today.rowsWritten,
+        report: {
+          items: [...today.report.items, ...race.report.items],
+          alerts: [...today.report.alerts, ...race.report.alerts],
+        },
+        body: { items: [...today.report.items, ...race.body.items] },
+        // /today の各回の結果をその日の分だけ残す（送る時刻を過ぎても朝の経過を読めるように）
+        cursor: {
+          ...(ctx.state?.cursor ?? {}),
+          today: todayLog,
+          // 確認用の作り直しは1回だけ。下書きを作れたら消す。作れなければ残して次の5分でやり直し、続けて失敗したら消す
+          ...((todayItem?.review && todayItem.written) || giveUp
+            ? { today_rebuild: null }
+            : {}),
+        },
+      };
+    } finally {
+      // 閉じるのに失敗しても、計画の結果は消さない
+      await headless
+        .close()
+        .catch((error) =>
+          console.error(`Chromium を閉じられません: ${error.message}`),
+        );
+    }
+  },
+});

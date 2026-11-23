@@ -11,46 +11,60 @@ masterへのマージ後に `regenerate-generated-docs.yml` が作り直して�
 
 | 区分 | 件数 |
 |---|---|
-| テーブル・ビューの定義 | 104 |
-| 読んでいる（テーブルを直接） | 57 |
-| 読んでいる（RPC経由のみ） | 3 |
-| 画面から読んでいない（例外登録あり） | 23 |
-| **画面から読んでいない（例外登録なし＝要判断）** | **21** |
+| テーブル・ビューの定義 | 114 |
+| 読んでいる（テーブルを直接） | 48 |
+| 読んでいる（RPC経由のみ） | 2 |
+| 画面から読んでいない（例外登録あり） | 29 |
+| **画面から読んでいない（例外登録なし＝要判断）** | **35** |
 | 画面から読んでいるが匿名SELECT権限の記述が無い | 1 |
 
 「例外登録なし」は、取得したのに表示に繋がっていない候補。表示するか、`scripts/maintenance/display-coverage-exceptions.json` に理由を書いて例外にするかのどちらかを選ぶ。
 
 「匿名SELECT権限の記述が無い」は、**画面（`src/`）が匿名キーで直接読んでいるのに** `GRANT SELECT … TO anon` もSELECTポリシーもマイグレーションに無いもの。076（BOA-370）が新規テーブルの既定権限を剥奪したため、**076以降に定義されたテーブル**に限って見る。`api/` のEdge Functions経由の読み取りと、RPC経由（`SECURITY DEFINER` がありうる）は対象外。
 
-画面が呼んでいるRPC: `append_sns_metric_observation` / `decide_sns_edit_finding` / `get_admin_rule_performance` / `get_race_exhibition_trend` / `get_race_return_rate` / `get_race_st_predictability` / `get_race_technique_profile` / `get_racer_accident_records` / `get_today_races` / `import_sns_preview_bundle`
+画面が呼んでいるRPC: `append_sns_metric_observation` / `get_admin_rule_performance` / `get_course_win_rate_baseline` / `get_race_exhibition_trend` / `get_race_return_rate` / `get_race_st_predictability` / `get_race_technique_profile` / `get_racer_accident_records` / `get_racer_front_taking_counts` / `get_racer_scoped_race_rows` / `get_today_races` / `import_sns_preview_bundle`
 
-## 要判断: 画面から読んでいない（例外登録なし）（21件）
+## 要判断: 画面から読んでいない（例外登録なし）（35件）
 
 | 名前 | 種別 | 定義元 | 画面からの参照 | 匿名SELECT | 備考 |
 |---|---|---|---|---|---|
 | `analogy_v16_snapshots` | 表 | 133_analogy_v16_snapshots.sql | なし | GRANT（133_analogy_v16_snapshots.sql） |  |
+| `eve_race_deadlines` | 表 | 202_eve_race_deadlines.sql | なし | 記述なし |  |
 | `external_predictions` | 表 | 021_external_predictions.sql | なし | GRANT（021_external_predictions.sql） |  |
+| `fetch_counts` | 表 | 185_fetch_counts.sql | なし | 記述なし |  |
+| `fetch_counts_minute` | 表 | 185_fetch_counts.sql | なし | 記述なし |  |
+| `growth_gsc_daily` | 表 | 204_growth_gsc_daily.sql | なし | 記述なし |  |
 | `in_caution_gap_band_daily` | 表 | 155_in_caution_gap_band_daily.sql | なし | 記述なし |  |
 | `prediction_odds` | 表 | 011_prediction_odds.sql | なし | ポリシー（011_prediction_odds.sql） |  |
 | `race_payouts` | 表 | 079_race_payouts.sql | なし | GRANT（109_predictions_rpc_race_status_payouts.sql） |  |
 | `race_special_notes` | 表 | 060_race_special_notes.sql | なし | 記述なし |  |
+| `racer_career_meta` | 表 | 190_racer_career_stats.sql | なし | GRANT（190_racer_career_stats.sql） |  |
+| `racer_championships` | 表 | 190_racer_career_stats.sql | なし | GRANT（190_racer_career_stats.sql） |  |
+| `racer_course_stats` | 表 | 190_racer_career_stats.sql | なし | GRANT（190_racer_career_stats.sql） |  |
+| `racer_series_points_daily` | 表 | 192_racer_series_points_daily.sql | なし | GRANT（192_racer_series_points_daily.sql） |  |
+| `racer_term_stats` | 表 | 190_racer_career_stats.sql | なし | GRANT（190_racer_career_stats.sql） |  |
+| `racer_venue_stats` | 表 | 190_racer_career_stats.sql | なし | GRANT（190_racer_career_stats.sql） |  |
 | `raw_snapshots` | 表 | 125_raw_snapshots.sql | なし | 記述なし |  |
+| `rule_applications` | 表 | 008_venue_rules.sql | なし | 記述なし |  |
 | `sns_auto_send_control` | 表 | 153_sns_auto_send.sql | なし | 記述なし |  |
 | `sns_auto_send_incidents` | 表 | 153_sns_auto_send.sql | なし | 記述なし |  |
 | `sns_auto_send_items` | 表 | 153_sns_auto_send.sql | なし | 記述なし |  |
 | `sns_channel_daily` | 表 | 154_sns_tokens_metric_jobs.sql | なし | 記述なし |  |
-| `sns_edit_decisions` | 表 | 145_sns_edit_assist.sql | なし | 記述なし |  |
+| `sns_draft_metrics` | 表 | 035_sns_marketing_hub_schema.sql | なし | 記述なし |  |
 | `sns_metric_jobs` | 表 | 154_sns_tokens_metric_jobs.sql | なし | 記述なし |  |
-| `sns_mobile_reviews` | 表 | 140_sns_mobile_approval.sql | なし | 記述なし |  |
 | `sns_oauth_tokens` | 表 | 154_sns_tokens_metric_jobs.sql | なし | 記述なし |  |
 | `sns_post_tracking` | 表 | 136_sns_metric_observations.sql | なし | 記述なし |  |
+| `sns_send_events` | 表 | 191_sns_send_events.sql | なし | 記述なし |  |
+| `sns_today_type_schedule` | 表 | 174_sns_today_type_schedule.sql | なし | 記述なし |  |
+| `sns_x_kind_reserves` | 表 | 182_sns_x_kind_reserves.sql | なし | 記述なし |  |
 | `sns_x_send_control` | 表 | 137_sns_x_send.sql | なし | 記述なし |  |
 | `sns_x_send_jobs` | 表 | 137_sns_x_send.sql | なし | 記述なし |  |
 | `sns_youtube_quota_attempts` | 表 | 146_sns_shorts_send.sql | なし | 記述なし |  |
 | `sns_youtube_quota_control` | 表 | 146_sns_shorts_send.sql | なし | 記述なし |  |
 | `sns_youtube_quota_reads` | 表 | 146_sns_shorts_send.sql | なし | 記述なし |  |
+| `venue_rules` | 表 | 008_venue_rules.sql | なし | 記述なし |  |
 
-## 画面から読んでいない（例外登録あり）（23件）
+## 画面から読んでいない（例外登録あり）（29件）
 
 | 名前 | 種別 | 定義元 | 画面からの参照 | 匿名SELECT | 備考 |
 |---|---|---|---|---|---|
@@ -68,8 +82,14 @@ masterへのマージ後に `regenerate-generated-docs.yml` が作り直して�
 | `scrape_job_state` | 表 | 075_scrape_slots_and_job_state.sql | なし | 記述なし | 取得基盤の内部状態（ジョブのモード live/shadow/off と最終成功時刻、075）。画面ではなく data_health と orchestration.md が使う |
 | `scrape_slots` | 表 | 075_scrape_slots_and_job_state.sql | なし | 記述なし | 取得基盤の内部状態（Cronの実行スロット、075）。画面に出す性質のデータではない |
 | `sns_campaign_entries` | 表 | 054_sns_campaigns_schema.sql | なし | 記述なし | SNS運用（sns-hub）。上と同じ |
-| `sns_campaigns` | 表 | 054_sns_campaigns_schema.sql | なし | 記述なし | SNS運用（sns-hub）。他の sns_* は管理API（api/admin/sns-hub）経由で読まれており、公開サイトの表示対象ではない |
-| `sns_target_accounts` | 表 | 043_sns_topic_gate_schema.sql | なし | 記述なし | SNS運用（sns-hub）。上と同じ |
+| `sns_campaigns` | 表 | 054_sns_campaigns_schema.sql | なし | 記述なし | SNS運用（sns-hub）の企画。書き手（campaign-detect 等）と読み手を SH01 R2（2026-10-24、直近30日0件）で消した。表は残す（DROP は別途）。公開サイトの表示対象ではない |
+| `sns_content_types` | 表 | 043_sns_topic_gate_schema.sql | なし | 記述なし | SNS運用のネタの型の区分。上と同じ（SH01 R2） |
+| `sns_target_accounts` | 表 | 043_sns_topic_gate_schema.sql | なし | 記述なし | SNS運用（sns-hub）。管理画面・送信の経路は sns_drafts を読み、この表を直接は読まない。公開サイトの表示対象ではない |
+| `sns_template_variants` | 表 | 035_sns_marketing_hub_schema.sql | なし | 記述なし | SNS運用の型の版。drafts API の埋め込み select（sns_template_variants(variant_name,...)）で今も読む。一覧の口（template-variants API）は SH01 R2 で撤去。抽出が .from() だけを見るため例外に置く |
+| `sns_topic_categories` | 表 | 044_sns_topic_categories.sql | なし | 記述なし | SNS運用のネタの型。上と同じ（SH01 R2 で topic-categories の口を撤去） |
+| `sns_topic_category_channels` | 表 | 044_sns_topic_categories.sql | なし | 記述なし | SNS運用のネタの型×チャネルの ON/OFF。上と同じ（SH01 R2） |
+| `sns_topic_targets` | 表 | 043_sns_topic_gate_schema.sql | なし | 記述なし | SNS運用のネタのチャネル割り当て。上と同じ（SH01 R2 で口と書き手を撤去） |
+| `sns_topics` | 表 | 043_sns_topic_gate_schema.sql | なし | 記述なし | SNS運用のネタ。管理画面の口（topics API）と書き手（朝の digest の登録・提案の起動・企画）を SH01 R2（2026-10-24、Routine 停止後の残り）で消した。表は残す（DROP は別途） |
 | `user_visible_summary` | 表 | 001_schema.sql | なし | ポリシー（001_schema.sql） | 001_schema.sql の初期設計に由来。読み手は scripts/ のみ |
 | `v_performance_comparison` | ビュー | 001_schema.sql | なし | 記述なし | 001_schema.sql のモデル評価用ビュー。読み手は scripts/ のみ |
 | `v_prediction_performance` | ビュー | 001_schema.sql | なし | 記述なし | 001_schema.sql のモデル評価用ビュー。読み手は scripts/ のみ |
@@ -78,7 +98,7 @@ masterへのマージ後に `regenerate-generated-docs.yml` が作り直して�
 | `venue_course_technique_baseline` | 表 | 098_morning_data_digest.sql | なし | GRANT（098_morning_data_digest.sql） | 会場×グレード×実進入コースの決まり手ベースライン（098）。上と同じく集計の中間テーブル |
 | `venue_entry_course_stats` | 表 | 064_venue_entry_course_stats.sql | なし | 記述なし | 「表示には使わず、自前計算の全国値の検証にのみ使う」とユーザー判断済み（BOA-293、orchestration.md）。読み手が無いことは既知 |
 
-## 画面から読んでいる（60件）
+## 画面から読んでいる（50件）
 
 | 名前 | 種別 | 定義元 | 画面からの参照 | 匿名SELECT | 備考 |
 |---|---|---|---|---|---|
@@ -87,7 +107,7 @@ masterへのマージ後に `regenerate-generated-docs.yml` が作り直して�
 | `analogy_feedback` | 表 | 143_analogy_feedback.sql | 画面が直接 | 記述なし | 画面が匿名キーで直接読むが GRANT SELECT … TO anon もSELECTポリシーも無い（076以降は明示が必要） |
 | `analogy_models` | 表 | 118_analogy_contribution_tables.sql | 画面が直接 | GRANT（118_analogy_contribution_tables.sql） |  |
 | `bet_recommendations` | 表 | 001_schema.sql | 画面が直接 | ポリシー（001_schema.sql） |  |
-| `exhibition_data` | 表 | 001_schema.sql | 画面が直接 / RPC経由: get_race_exhibition_trend(画面), get_race_st_predictability(画面) | ポリシー（076_enable_rls_on_public_tables.sql） |  |
+| `exhibition_data` | 表 | 001_schema.sql | 画面が直接 / RPC経由: get_race_exhibition_trend(画面), get_race_st_predictability(画面), get_racer_scoped_race_rows(画面) | ポリシー（076_enable_rls_on_public_tables.sql） |  |
 | `exhibition_time_top_stats` | 表 | 028_exhibition_time_top_stats.sql | 画面が直接 | GRANT（028_exhibition_time_top_stats.sql） |  |
 | `losing_technique_stats` | 表 | 026_losing_technique_stats.sql | 画面が直接 | GRANT（026_losing_technique_stats.sql） |  |
 | `model_performance_daily` | 表 | 001_schema.sql | 画面が直接 | ポリシー（076_enable_rls_on_public_tables.sql） |  |
@@ -101,43 +121,33 @@ masterへのマージ後に `regenerate-generated-docs.yml` が作り直して�
 | `outcome_distribution` | 表 | 020_outcome_distribution.sql | API・画面が直接 | GRANT（020_outcome_distribution.sql） |  |
 | `poirot_predictions` | 表 | 021_poirot_predictions.sql | 画面が直接 | ポリシー（021_poirot_predictions.sql） |  |
 | `predictions` | 表 | 001_schema.sql | 画面が直接 / RPC経由: get_admin_rule_performance(API), get_today_races(API・画面) | ポリシー（001_schema.sql） |  |
-| `race_conditions` | 表 | 001_schema.sql | 画面が直接 / RPC経由: get_racer_accident_records(画面), get_today_races(API・画面) | ポリシー（076_enable_rls_on_public_tables.sql） |  |
-| `race_entries` | 表 | 001_schema.sql | 画面が直接 / RPC経由: get_race_exhibition_trend(画面), get_race_return_rate(画面), get_race_st_predictability(画面), get_race_technique_profile(画面), get_racer_accident_records(画面), get_today_races(API・画面) | ポリシー（001_schema.sql） |  |
+| `race_conditions` | 表 | 001_schema.sql | 画面が直接 / RPC経由: get_racer_accident_records(画面), get_racer_scoped_race_rows(画面), get_today_races(API・画面) | ポリシー（076_enable_rls_on_public_tables.sql） |  |
+| `race_entries` | 表 | 001_schema.sql | 画面が直接 / RPC経由: get_race_exhibition_trend(画面), get_race_return_rate(画面), get_race_st_predictability(画面), get_race_technique_profile(画面), get_racer_accident_records(画面), get_racer_front_taking_counts(画面), get_racer_scoped_race_rows(画面), get_today_races(API・画面) | ポリシー（001_schema.sql） |  |
 | `race_history_cache` | 表 | 020_race_history_cache.sql | API・画面が直接 | GRANT（020_race_history_cache.sql） |  |
-| `race_odds` | 表 | 001_schema.sql | 画面が直接 | ポリシー（076_enable_rls_on_public_tables.sql） |  |
+| `race_odds` | 表 | 001_schema.sql | API・画面が直接 | ポリシー（076_enable_rls_on_public_tables.sql） |  |
 | `race_odds_final` | 表 | 108_race_odds_final.sql | 画面が直接 | GRANT（108_race_odds_final.sql） |  |
 | `race_original_exhibition` | 表 | 091_boatcast_original_exhibition.sql | 画面が直接 | GRANT（096_original_exhibition_public_read.sql） |  |
 | `race_original_exhibition_values` | 表 | 091_boatcast_original_exhibition.sql | 画面が直接 | GRANT（096_original_exhibition_public_read.sql） |  |
 | `race_pit_comments` | 表 | 085_race_pit_reports.sql | 画面が直接 | GRANT（086_race_pit_reports_public_read.sql） |  |
 | `race_pit_reports` | 表 | 085_race_pit_reports.sql | 画面が直接 | GRANT（086_race_pit_reports_public_read.sql） |  |
-| `race_results` | 表 | 001_schema.sql | 画面が直接 / RPC経由: get_admin_rule_performance(API), get_race_return_rate(画面), get_race_technique_profile(画面), get_today_races(API・画面) | ポリシー（001_schema.sql） |  |
-| `race_series` | 表 | 084_race_series.sql | 画面が直接 | GRANT（095_phase_a_numeric_public_read.sql） |  |
+| `race_results` | 表 | 001_schema.sql | 画面が直接 / RPC経由: get_admin_rule_performance(API), get_course_win_rate_baseline(画面), get_race_return_rate(画面), get_race_technique_profile(画面), get_racer_front_taking_counts(画面), get_racer_scoped_race_rows(画面), get_today_races(API・画面) | ポリシー（001_schema.sql） |  |
+| `race_series` | 表 | 084_race_series.sql | API・画面が直接 | GRANT（095_phase_a_numeric_public_read.sql） |  |
 | `racer_grade_cache` | 表 | 054_racer_grade_cache_table.sql | 画面が直接 | GRANT（054_racer_grade_cache_table.sql） |  |
 | `racer_news` | 表 | 036_create_racer_news.sql | 画面が直接 | ポリシー（036_create_racer_news.sql） |  |
-| `racer_period_stats` | 表 | 083_racer_period_stats.sql | 画面が直接 | GRANT（095_phase_a_numeric_public_read.sql） |  |
+| `racer_period_stats` | 表 | 083_racer_period_stats.sql | 画面が直接 / RPC経由: get_course_win_rate_baseline(画面) | GRANT（095_phase_a_numeric_public_read.sql） |  |
 | `racer_profiles` | 表 | 035_create_racer_profiles.sql | 画面が直接 | ポリシー（035_create_racer_profiles.sql） |  |
 | `racer_series_points` | 表 | 064_racer_series_points.sql | 画面が直接 | ポリシー（076_enable_rls_on_public_tables.sql） |  |
-| `races` | 表 | 001_schema.sql | 画面が直接 / RPC経由: get_today_races(API・画面) | ポリシー（001_schema.sql） |  |
-| `rule_applications` | 表 | 008_venue_rules.sql | 画面が直接 | 記述なし |  |
-| `sns_approvers` | 表 | 035_sns_marketing_hub_schema.sql | APIが直接 / RPC経由: decide_sns_edit_finding(API) | 記述なし |  |
+| `races` | 表 | 001_schema.sql | API・画面が直接 / RPC経由: get_course_win_rate_baseline(画面), get_racer_front_taking_counts(画面), get_racer_scoped_race_rows(画面), get_today_races(API・画面) | ポリシー（001_schema.sql） |  |
+| `sns_approvers` | 表 | 035_sns_marketing_hub_schema.sql | APIが直接 | 記述なし |  |
 | `sns_bundle_imports` | 表 | 135_sns_preview_bundle_import.sql | RPC経由: import_sns_preview_bundle(API) | 記述なし |  |
-| `sns_content_types` | 表 | 043_sns_topic_gate_schema.sql | APIが直接 | 記述なし |  |
-| `sns_draft_metrics` | 表 | 035_sns_marketing_hub_schema.sql | APIが直接 | 記述なし |  |
-| `sns_drafts` | 表 | 035_sns_marketing_hub_schema.sql | APIが直接 / RPC経由: append_sns_metric_observation(API), decide_sns_edit_finding(API), import_sns_preview_bundle(API) | 記述なし |  |
-| `sns_edit_inspections` | 表 | 145_sns_edit_assist.sql | RPC経由: decide_sns_edit_finding(API) | 記述なし |  |
+| `sns_drafts` | 表 | 035_sns_marketing_hub_schema.sql | APIが直接 / RPC経由: append_sns_metric_observation(API), import_sns_preview_bundle(API) | 記述なし |  |
 | `sns_metric_observations` | 表 | 136_sns_metric_observations.sql | RPC経由: append_sns_metric_observation(API) | 記述なし |  |
 | `sns_strategy_insights` | 表 | 039_sns_strategy_insights.sql | APIが直接 | 記述なし |  |
-| `sns_template_variants` | 表 | 035_sns_marketing_hub_schema.sql | APIが直接 | 記述なし |  |
-| `sns_topic_categories` | 表 | 044_sns_topic_categories.sql | APIが直接 | 記述なし |  |
-| `sns_topic_category_channels` | 表 | 044_sns_topic_categories.sql | APIが直接 | 記述なし |  |
-| `sns_topic_targets` | 表 | 043_sns_topic_gate_schema.sql | APIが直接 | 記述なし |  |
-| `sns_topics` | 表 | 043_sns_topic_gate_schema.sql | APIが直接 | 記述なし |  |
 | `st_course_baseline` | 表 | 094_course_baselines.sql | 画面が直接 | GRANT（094_course_baselines.sql） |  |
 | `top_start_stats` | 表 | 025_top_start_stats.sql | 画面が直接 | GRANT（025_top_start_stats.sql） |  |
 | `venue_grade_boat_stats` | 表 | 059_venue_grade_boat_stats.sql | 画面が直接 | ポリシー（059_venue_grade_boat_stats.sql） |  |
 | `venue_motor_start_dates` | 表 | 091_boatcast_original_exhibition.sql | 画面が直接 | GRANT（104_venue_motor_start_dates_public_read.sql） |  |
 | `venue_motor_stats` | 表 | 057_venue_motor_stats.sql | 画面が直接 | ポリシー（076_enable_rls_on_public_tables.sql） |  |
-| `venue_rules` | 表 | 008_venue_rules.sql | 画面が直接 | 記述なし |  |
 | `venue_technique_period_stats` | 表 | 134_venue_technique_period_stats.sql | 画面が直接 | GRANT（134_venue_technique_period_stats.sql） |  |
 | `venues` | 表 | 001_schema.sql | 画面が直接 | ポリシー（001_schema.sql） |  |
 | `watson_predictions` | 表 | 029_watson_predictions.sql | 画面が直接 | ポリシー（029_watson_predictions.sql） |  |

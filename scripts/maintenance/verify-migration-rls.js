@@ -22,6 +22,10 @@
  *      匿名に呼ばせるかどうかを関数ごとに明示させる。BOA-575）
  *   7. 【114番以降】SECURITY DEFINER の関数の EXECUTE を anon / authenticated / PUBLIC に付与している
  *      （所有者権限でRLSを迂回する関数を匿名に公開しない）
+ *   8. 【167番以降】CREATE TABLE / ALTER TABLE ... ADD COLUMN（publicスキーマ）の列名に token・secret・
+ *      ciphertext・credential・password・passphrase・api_key（apikey）・private_key を含む表に、同じファイル内で
+ *      SELECT か ALL を表単位で外す REVOKE ... ON <表> FROM claude_ro が無い
+ *      （166 の既定権限で postgres が作る表は claude_ro から読める。秘密の値は読ませない。ADR-0096）
  * 警告のみ:
  *   5. RLS有効＋SELECTポリシーがあるのに GRANT SELECT が無い（076で既定権限を剥奪済みのため、
  *      匿名からは読めない。読ませたいなら GRANT SELECT ON ... TO anon, authenticated を書く）
@@ -31,11 +35,13 @@
  *   -- grant-exempt: <理由>                  （2・3: 書き込み権限・書き込みポリシー）
  *   -- view-exempt: <ビュー名> <理由>        （4）
  *   -- function-exempt: <関数名> <理由>      （6・7）
+ *   -- ro-exempt: <テーブル名> <理由>        （8: 列名は当たるが秘密の値を入れない表）
  * 除外マーカーはレビューで理由を確認すること。
  */
 import { promises as fs } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { MIGRATION_RLS_CASES } from "./verifyData/migration-rls-cases.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MIGRATION_DIR = path.join(__dirname, "../../docs/db-migration");
@@ -43,14 +49,39 @@ const MIGRATION_DIR = path.join(__dirname, "../../docs/db-migration");
 export const MIN_CHECKED_NUMBER = 76;
 /** 関数の権限の明示（6・7）を検査する番号（113=関数の既定EXECUTEの剥奪。114以降が対象） */
 export const FUNCTION_GRANT_MIN_NUMBER = 114;
+/** 秘密の列を持つ表の claude_ro からの REVOKE（8）を検査する番号（166=claude_ro の既定権限。167以降が対象） */
+export const CLAUDE_RO_REVOKE_MIN_NUMBER = 167;
+const SECRET_COLUMN_RE =
+  /token|secret|ciphertext|credential|password|passphrase|api_?key|private_key/i;
+const TABLE_CONSTRAINT_RE =
+  /^(CONSTRAINT|PRIMARY|UNIQUE|CHECK|FOREIGN|EXCLUDE|LIKE)\b/i;
+
+/** CREATE TABLE の "(" の位置から、対応する ")" までを最上位の "," で分けた列・制約の定義を返す */
+function tableElements(body, openIdx) {
+  const items = [];
+  let depth = 0;
+  let start = openIdx + 1;
+  for (let i = openIdx; i < body.length; i++) {
+    const c = body[i];
+    if (c === "(") depth++;
+    else if (c === ")" && --depth === 0) {
+      items.push(body.slice(start, i));
+      break;
+    } else if (c === "," && depth === 1) {
+      items.push(body.slice(start, i));
+      start = i + 1;
+    }
+  }
+  return items.map((s) => s.trim()).filter(Boolean);
+}
 
 const stripComments = (sql) =>
   sql.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
 
 const norm = (name) =>
   name
-    .replace(/^public\./i, "")
     .replace(/"/g, "")
+    .replace(/^public\./i, "")
     .toLowerCase();
 
 function exemptions(sql, kind) {
@@ -61,16 +92,9 @@ function exemptions(sql, kind) {
   return { set, any: new RegExp(`--\\s*${kind}:`, "i").test(sql) };
 }
 
-/** SQL文字列を検査し、{errors, warnings} を返す（純関数）。number はマイグレーション番号（6・7の適用判定） */
-export function checkMigrationSql(sql, { number = Infinity } = {}) {
+/** 1. public の CREATE TABLE に ENABLE ROW LEVEL SECURITY があるか */
+function checkRls(body, rlsExempt) {
   const errors = [];
-  const warnings = [];
-  const body = stripComments(sql);
-  const rlsExempt = exemptions(sql, "rls-exempt");
-  const grantExempt = exemptions(sql, "grant-exempt");
-  const viewExempt = exemptions(sql, "view-exempt");
-  const functionExempt = exemptions(sql, "function-exempt");
-
   // 1. CREATE TABLE と RLS有効化
   const created = [];
   const createRe =
@@ -93,7 +117,13 @@ export function checkMigrationSql(sql, { number = Infinity } = {}) {
       );
     }
   }
+  return errors;
+}
 
+/** 2. anon / authenticated / PUBLIC への書き込み権限の GRANT */
+function checkWriteGrants(body, grantExempt) {
+  const errors = [];
+  let m;
   // 2. 書き込み権限のGRANT
   const grantRe =
     /GRANT\s+([\s\S]*?)\s+ON\s+(?:TABLE\s+|ALL\s+TABLES\s+IN\s+SCHEMA\s+)?([\s\S]*?)\s+TO\s+([^;]+);/gi;
@@ -112,7 +142,13 @@ export function checkMigrationSql(sql, { number = Infinity } = {}) {
       }
     }
   }
+  return errors;
+}
 
+/** 3. 書き込みポリシー。SELECT の公開ポリシーのある表も返す（5 の警告に使う） */
+function checkPolicies(body, grantExempt) {
+  const errors = [];
+  let m;
   // 3. 書き込みポリシー
   const policyRe =
     /CREATE\s+POLICY\s+("[^"]+"|[\w]+)\s+ON\s+((?:"?[\w]+"?\.)?"?[\w]+"?)([^;]*);/gi;
@@ -133,7 +169,13 @@ export function checkMigrationSql(sql, { number = Infinity } = {}) {
       );
     }
   }
+  return { errors, hasSelectPolicy };
+}
 
+/** 4. ビューの security_invoker */
+function checkViews(body, viewExempt) {
+  const errors = [];
+  let m;
   // 4. ビューの security_invoker
   const viewRe =
     /CREATE\s+(?:OR\s+REPLACE\s+)?(?:TEMP(?:ORARY)?\s+)?VIEW\s+((?:"?[\w]+"?\.)?"?[\w]+"?)([\s\S]*?)\bAS\b/gi;
@@ -150,49 +192,118 @@ export function checkMigrationSql(sql, { number = Infinity } = {}) {
         `WITH (security_invoker = true) を付ける。意図的なら "-- view-exempt: ${name} <理由>" を書く`,
     );
   }
+  return errors;
+}
 
+/** 6・7. 【114番以降】関数の権限の明示と、SECURITY DEFINER の匿名公開 */
+function checkFunctions(body, functionExempt) {
+  const errors = [];
+  let m;
   // 6・7. 関数の権限の明示と、SECURITY DEFINER の匿名公開
-  if (number >= FUNCTION_GRANT_MIN_NUMBER) {
-    // 関数本文（ドル引用・単一引用）の中の文字列を拾わないよう、本文を印に置き換えてから探す。
-    // 本文が消えるので、CREATE FUNCTION 文は次の ; で終わる（SECURITY DEFINER が本文の前後どちらにあっても拾える）
-    const outer = body
-      .replace(/\$([\w]*)\$[\s\S]*?\$\1\$/g, () => " __BODY__ ")
-      .replace(/'(?:[^']|'')*'/g, () => " __BODY__ ");
-    const fnRe =
-      /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+((?:"?[\w]+"?\.)?"?[\w]+"?)\s*\(([^;]*);/gi;
-    while ((m = fnRe.exec(outer))) {
-      const raw = m[1];
-      if (/^"?(?!public\b)[\w]+"?\./i.test(raw)) continue; // public以外のスキーマ
-      const name = norm(raw);
-      if (functionExempt.set.has(name)) continue;
-      const onFn = `ON\\s+FUNCTION\\s+(?:public\\.)?"?${name}"?\\s*\\(`;
-      const grantRe2 = new RegExp(
-        `GRANT\\s+[^;]*\\bEXECUTE\\b[^;]*${onFn}[^;]*;`,
-        "gi",
+  // 関数本文（ドル引用・単一引用）の中の文字列を拾わないよう、本文を印に置き換えてから探す。
+  // 本文が消えるので、CREATE FUNCTION 文は次の ; で終わる（SECURITY DEFINER が本文の前後どちらにあっても拾える）
+  const outer = body
+    .replace(/\$([\w]*)\$[\s\S]*?\$\1\$/g, () => " __BODY__ ")
+    .replace(/'(?:[^']|'')*'/g, () => " __BODY__ ");
+  const fnRe =
+    /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+((?:"?[\w]+"?\.)?"?[\w]+"?)\s*\(([^;]*);/gi;
+  while ((m = fnRe.exec(outer))) {
+    const raw = m[1];
+    if (/^"?(?!public\b)[\w]+"?\./i.test(raw)) continue; // public以外のスキーマ
+    const name = norm(raw);
+    if (functionExempt.set.has(name)) continue;
+    const onFn = `ON\\s+FUNCTION\\s+(?:public\\.)?"?${name}"?\\s*\\(`;
+    const grantRe2 = new RegExp(
+      `GRANT\\s+[^;]*\\bEXECUTE\\b[^;]*${onFn}[^;]*;`,
+      "gi",
+    );
+    const revokeRe2 = new RegExp(`REVOKE\\s+[^;]*${onFn}`, "i");
+    const grants = outer.match(grantRe2) ?? [];
+    if (grants.length === 0 && !revokeRe2.test(outer)) {
+      errors.push(
+        `関数 ${name}: GRANT EXECUTE / REVOKE が無い（113で既定のEXECUTE付与を剥奪済み）。` +
+          `画面から呼ぶなら GRANT EXECUTE ON FUNCTION public.${name}(<引数>) TO anon, authenticated;、` +
+          `バッチ専用なら REVOKE ALL ... FROM PUBLIC, anon, authenticated; GRANT EXECUTE ... TO service_role; を書く。` +
+          `意図的なら "-- function-exempt: ${name} <理由>" を書く`,
       );
-      const revokeRe2 = new RegExp(`REVOKE\\s+[^;]*${onFn}`, "i");
-      const grants = outer.match(grantRe2) ?? [];
-      if (grants.length === 0 && !revokeRe2.test(outer)) {
-        errors.push(
-          `関数 ${name}: GRANT EXECUTE / REVOKE が無い（113で既定のEXECUTE付与を剥奪済み）。` +
-            `画面から呼ぶなら GRANT EXECUTE ON FUNCTION public.${name}(<引数>) TO anon, authenticated;、` +
-            `バッチ専用なら REVOKE ALL ... FROM PUBLIC, anon, authenticated; GRANT EXECUTE ... TO service_role; を書く。` +
-            `意図的なら "-- function-exempt: ${name} <理由>" を書く`,
-        );
-      }
-      const definer = /\bSECURITY\s+DEFINER\b/i.test(m[2]);
-      const toAnon = grants.some((g) =>
-        /\bTO\b[^;]*\b(anon|authenticated|public)\b/i.test(g),
+    }
+    const definer = /\bSECURITY\s+DEFINER\b/i.test(m[2]);
+    const toAnon = grants.some((g) =>
+      /\bTO\b[^;]*\b(anon|authenticated|public)\b/i.test(g),
+    );
+    if (definer && toAnon) {
+      errors.push(
+        `関数 ${name}: SECURITY DEFINER の関数を anon/authenticated/PUBLIC に公開しない` +
+          `（所有者権限でRLSを迂回する）。SECURITY INVOKER にする。意図的なら "-- function-exempt: ${name} <理由>" を書く`,
       );
-      if (definer && toAnon) {
-        errors.push(
-          `関数 ${name}: SECURITY DEFINER の関数を anon/authenticated/PUBLIC に公開しない` +
-            `（所有者権限でRLSを迂回する）。SECURITY INVOKER にする。意図的なら "-- function-exempt: ${name} <理由>" を書く`,
-        );
-      }
     }
   }
+  return errors;
+}
 
+/** 8. 【167番以降】秘密らしい列を持つ表の claude_ro からの REVOKE */
+function checkSecretColumns(sql, body) {
+  const errors = [];
+  let m;
+  // 8. 秘密の列を持つ表を claude_ro から外す
+  const roExempt = exemptions(sql, "ro-exempt");
+  const noStrings = body.replace(/'(?:[^']|'')*'/g, "''"); // DEFAULT '(' 等で括弧の対応がずれないように
+  const revoked = new Set();
+  const revokeRe =
+    /REVOKE\s+([^;]*?)\s+ON\s+(?:TABLE\s+)?([^;]*?)\s+FROM\s+([^;]+);/gi;
+  while ((m = revokeRe.exec(noStrings))) {
+    // SELECT か ALL を表単位で外す REVOKE だけを数える（REVOKE INSERT 等では読めるまま。
+    // 表単位で付いた SELECT は列単位の REVOKE SELECT (列) では外れない）
+    if (!/\b(SELECT|ALL)\b/i.test(m[1]) || m[1].includes("(")) continue;
+    if (/\bGRANT\s+OPTION\s+FOR\b/i.test(m[1])) continue; // 権限そのものは残る
+    if (!/\bclaude_ro\b/i.test(m[3])) continue;
+    for (const t of m[2].split(",")) revoked.add(norm(t.trim()));
+  }
+  const isPublic = (raw) => !/^"?(?!public\b)[\w]+"?\./i.test(raw);
+  /** 表 → 秘密らしい列。CREATE TABLE の列と、ALTER TABLE ... ADD COLUMN で足す列 */
+  const secretCols = new Map();
+  const addCols = (raw, cols) => {
+    const hits = cols
+      .map((c) => c.replace(/"/g, ""))
+      .filter((c) => SECRET_COLUMN_RE.test(c));
+    if (!isPublic(raw) || hits.length === 0) return;
+    const t = norm(raw);
+    secretCols.set(t, [...(secretCols.get(t) ?? []), ...hits]);
+  };
+  const tableRe =
+    /CREATE\s+(?:UNLOGGED\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?((?:"?[\w]+"?\.)?"?[\w]+"?)\s*\(/gi;
+  while ((m = tableRe.exec(noStrings))) {
+    const cols = tableElements(noStrings, m.index + m[0].length - 1)
+      .filter((el) => !TABLE_CONSTRAINT_RE.test(el))
+      .map((el) => el.split(/\s+/)[0]);
+    addCols(m[1], cols);
+  }
+  const alterRe =
+    /ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?((?:"?[\w]+"?\.)?"?[\w]+"?)\s+([^;]*);/gi;
+  while ((m = alterRe.exec(noStrings))) {
+    const cols = [
+      ...m[2].matchAll(
+        /(?:^|,)\s*ADD\s+(?:COLUMN\s+)?(?:IF\s+NOT\s+EXISTS\s+)?("?[\w]+"?)/gi,
+      ),
+    ]
+      .map((a) => a[1])
+      .filter((c) => !TABLE_CONSTRAINT_RE.test(c));
+    addCols(m[1], cols);
+  }
+  for (const [t, cols] of secretCols) {
+    if (revoked.has(t) || roExempt.set.has(t)) continue;
+    errors.push(
+      `テーブル ${t}: 秘密らしい列（${cols.join(", ")}）があるのに REVOKE ... ON ${t} FROM claude_ro が無い` +
+        `（166 の既定権限で claude_ro から読める。ADR-0096）。REVOKE ALL ON public.${t} FROM claude_ro; を書く。` +
+        `秘密の値を入れないなら "-- ro-exempt: ${t} <理由>" を書く`,
+    );
+  }
+  return errors;
+}
+
+/** 5. SELECT ポリシーがあるのに GRANT SELECT が無い表（警告） */
+function checkSelectGrants(body, hasSelectPolicy) {
+  const warnings = [];
   // 5. GRANT SELECT の付け忘れ（警告）
   // 076のようにDOブロックで動的にGRANT SELECTするマイグレーションは、文面で判定できないため対象外
   const dynamicGrant = /GRANT\s+SELECT\s+ON\s+TABLE\s+public\.%I/i.test(body);
@@ -208,143 +319,36 @@ export function checkMigrationSql(sql, { number = Infinity } = {}) {
       );
     }
   }
-
-  return { errors, warnings };
+  return warnings;
 }
+
+/** SQL文字列を検査し、{errors, warnings} を返す（純関数）。number はマイグレーション番号（6・7の適用判定） */
+export function checkMigrationSql(sql, { number = Infinity } = {}) {
+  const body = stripComments(sql);
+  const grantExempt = exemptions(sql, "grant-exempt");
+  const policies = checkPolicies(body, grantExempt);
+  const errors = [
+    ...checkRls(body, exemptions(sql, "rls-exempt")),
+    ...checkWriteGrants(body, grantExempt),
+    ...policies.errors,
+    ...checkViews(body, exemptions(sql, "view-exempt")),
+    ...(number >= FUNCTION_GRANT_MIN_NUMBER
+      ? checkFunctions(body, exemptions(sql, "function-exempt"))
+      : []),
+    ...(number >= CLAUDE_RO_REVOKE_MIN_NUMBER
+      ? checkSecretColumns(sql, body)
+      : []),
+  ];
+  return { errors, warnings: checkSelectGrants(body, policies.hasSelectPolicy) };
+}
+
 
 // ---------------------------------------------------------------------------
 // 検査器そのものの自己テスト（毎回実行。文字列のみで即座に終わる）
 // ---------------------------------------------------------------------------
 function selfTest() {
-  const cases = [
-    {
-      name: "RLS無しのCREATE TABLE",
-      sql: "CREATE TABLE IF NOT EXISTS public.foo (id int);",
-      errors: 1,
-    },
-    {
-      name: "RLS有効＋SELECTポリシー＋GRANT SELECT",
-      sql: `CREATE TABLE public.foo (id int);
-ALTER TABLE public.foo ENABLE ROW LEVEL SECURITY;
-CREATE POLICY foo_read ON public.foo FOR SELECT TO anon, authenticated USING (true);
-GRANT SELECT ON public.foo TO anon, authenticated;`,
-      errors: 0,
-      warnings: 0,
-    },
-    {
-      name: "anonへの書き込みGRANT",
-      sql: `CREATE TABLE foo (id int); ALTER TABLE foo ENABLE ROW LEVEL SECURITY;
-GRANT ALL ON foo TO anon;`,
-      errors: 1,
-    },
-    {
-      name: "FOR ALL ポリシー（TO省略=public）",
-      sql: `CREATE TABLE foo (id int); ALTER TABLE foo ENABLE ROW LEVEL SECURITY;
-CREATE POLICY p ON foo FOR ALL USING (true);`,
-      errors: 1,
-    },
-    {
-      name: "GRANT SELECT の付け忘れは警告のみ",
-      sql: `CREATE TABLE foo (id int); ALTER TABLE foo ENABLE ROW LEVEL SECURITY;
-CREATE POLICY p ON foo FOR SELECT USING (true);`,
-      errors: 0,
-      warnings: 1,
-    },
-    {
-      name: "security_invokerの無いビュー",
-      sql: "CREATE OR REPLACE VIEW v_x AS SELECT 1;",
-      errors: 1,
-    },
-    {
-      name: "security_invoker付きビュー",
-      sql: "CREATE VIEW v_x WITH (security_invoker = true) AS SELECT 1;",
-      errors: 0,
-    },
-    {
-      name: "除外マーカー付きのRLSなしテーブル",
-      sql: "-- rls-exempt: foo 内部の一時集計。anon権限なし\nCREATE TABLE foo (id int);",
-      errors: 0,
-    },
-    {
-      name: "コメント内のCREATE TABLEは無視",
-      sql: "-- CREATE TABLE foo (id int);\nSELECT 1;",
-      errors: 0,
-    },
-    {
-      name: "public以外のスキーマは対象外",
-      sql: "CREATE TABLE internal.foo (id int);",
-      errors: 0,
-    },
-    {
-      name: "EXECUTEのGRANTは対象外",
-      sql: "GRANT EXECUTE ON FUNCTION f() TO anon, authenticated;",
-      errors: 0,
-    },
-    {
-      name: "114番以降: GRANT/REVOKEの無い関数",
-      sql: "CREATE OR REPLACE FUNCTION public.f(p int) RETURNS int LANGUAGE sql AS $$ SELECT 1 $$;",
-      number: 114,
-      errors: 1,
-    },
-    {
-      name: "113番以前は関数の権限を検査しない",
-      sql: "CREATE OR REPLACE FUNCTION public.f(p int) RETURNS int LANGUAGE sql AS $$ SELECT 1 $$;",
-      number: 113,
-      errors: 0,
-    },
-    {
-      name: "114番以降: 匿名へのGRANT EXECUTEあり",
-      sql: `CREATE FUNCTION f(p int) RETURNS int LANGUAGE sql AS $$ SELECT 1 $$;
-GRANT EXECUTE ON FUNCTION public.f(int) TO anon, authenticated;`,
-      number: 114,
-      errors: 0,
-    },
-    {
-      name: "114番以降: service_role限定（REVOKE＋GRANT）",
-      sql: `CREATE FUNCTION public.f() RETURNS int LANGUAGE sql AS $$ SELECT 1 $$;
-REVOKE ALL ON FUNCTION public.f() FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.f() TO service_role;`,
-      number: 114,
-      errors: 0,
-    },
-    {
-      name: "114番以降: SECURITY DEFINERを匿名に公開",
-      sql: `CREATE FUNCTION public.f() RETURNS int LANGUAGE sql SECURITY DEFINER AS $$ SELECT 1 $$;
-GRANT EXECUTE ON FUNCTION public.f() TO anon;`,
-      number: 114,
-      errors: 1,
-    },
-    {
-      name: "114番以降: 本文の後ろに書いたSECURITY DEFINERも拾う",
-      sql: `CREATE FUNCTION public.f() RETURNS int AS $fn$ SELECT 1 $fn$ LANGUAGE sql SECURITY DEFINER;
-GRANT EXECUTE ON FUNCTION public.f() TO authenticated;`,
-      number: 114,
-      errors: 1,
-    },
-    {
-      name: "114番以降: 単一引用の本文に ; があっても後ろのSECURITY DEFINERを拾う",
-      sql: `CREATE FUNCTION public.f() RETURNS int LANGUAGE sql AS 'SELECT 1; SELECT 2' SECURITY DEFINER;
-GRANT EXECUTE ON FUNCTION public.f() TO anon;`,
-      number: 114,
-      errors: 1,
-    },
-    {
-      name: "114番以降: 本文中の文字列 ON FUNCTION は数えない（ドル引用の中）",
-      sql: `CREATE FUNCTION public.f() RETURNS text LANGUAGE sql AS $$ SELECT 'CREATE FUNCTION g()' $$;
-GRANT EXECUTE ON FUNCTION public.f() TO anon;`,
-      number: 114,
-      errors: 0,
-    },
-    {
-      name: "114番以降: 除外マーカー付き",
-      sql: `-- function-exempt: f 既存関数の本文だけの差し替え。権限は既存のまま
-CREATE OR REPLACE FUNCTION public.f() RETURNS int LANGUAGE sql AS $$ SELECT 1 $$;`,
-      number: 114,
-      errors: 0,
-    },
-  ];
   const failed = [];
-  for (const c of cases) {
+  for (const c of MIGRATION_RLS_CASES) {
     const r = checkMigrationSql(c.sql, { number: c.number });
     if (r.errors.length !== c.errors)
       failed.push(`${c.name}: errors=${r.errors.length}(期待${c.errors})`);
@@ -384,7 +388,7 @@ async function main() {
   if (failed) {
     console.error(
       "\nRLS・権限の規律違反があります。docs/db-migration/076_enable_rls_on_public_tables.sql のヘッダーと" +
-        " .claude/rules/data-acquisition.md「DBマイグレーションのRLS規律」を参照してください",
+        " この verify の頭の注釈（失敗にする条件）を参照してください",
     );
     process.exit(1);
   }

@@ -7,7 +7,7 @@ import LoadingScreen from "../components/LoadingScreen";
 import DataFetchError from "../components/DataFetchError";
 import MeetRankingTable from "../components/meet/MeetRankingTable";
 import MeetQualifiersSection from "../components/meet/MeetQualifiersSection";
-import { supabaseDataService } from "../services/supabaseDataService";
+import { getMeetPage } from "../services/meetQueries3.js";
 import { useLocalizedPath } from "../hooks/useLocalizedPath";
 import { useRobotsMeta } from "../hooks/useRobotsMeta";
 import { getTodayJST } from "../utils/dateUtils";
@@ -16,7 +16,8 @@ import {
   buildMeetRanking,
   listAbsentOnlyRacers,
   SEMIFINAL_DEFAULT_SLOTS,
-} from "../components/race/seriesPoints";
+  readOfficialPenalty,
+} from "../pure/seriesPoints.js";
 import { pickShobugake } from "../utils/meetPageModel";
 import "./MeetPage.css";
 
@@ -43,6 +44,9 @@ function MeetPage() {
     venueCode <= 24 &&
     /^\d{4}-\d{2}-\d{2}$/.test(startDate ?? "");
   const key = `${venueCode}-${startDate}`;
+  const isNoindex = (valid, p) =>
+    !valid ||
+    (p && (["preOpen", "notFound", "outOfScope"].includes(p.state) || !p.knownMeet));
   // 取得結果は節のキーとセットで持つ（URL だけ変わったときに前の節が混ざらない）
   const [loaded, setLoaded] = useState({ key: null, page: null });
   const [failedKey, setFailedKey] = useState(null);
@@ -50,8 +54,7 @@ function MeetPage() {
   useEffect(() => {
     if (!validParams) return undefined;
     let cancelled = false;
-    supabaseDataService
-      .getMeetPage(venueCode, startDate, getTodayJST())
+    getMeetPage(venueCode, startDate, getTodayJST())
       .then((page) => {
         if (!cancelled) setLoaded({ key, page });
       })
@@ -63,47 +66,19 @@ function MeetPage() {
       cancelled = true;
     };
   }, [key, validParams, venueCode, startDate]);
-
   const page = loaded.key === key ? loaded.page : null;
   const failed = failedKey === key;
+  const state = page?.state;
   const venueName = validParams ? t(`venues.${venueCode}`) : "";
-  const series = normalizeTitle(page?.title);
-  // 日付の形でない URL（validParams が偽）は日付を作らない（「NaN/NaN開幕の節」を出さない）
-  const meetLabel =
-    series ??
-    (validParams
-      ? t("meetPage.meetFallback", { date: md(startDate) })
-      : t("meetPage.titleFallback", { venue: venueName }));
-  const canonicalPath = `/venue/${venueCode}/meet/${startDate}`;
-  const metaTitle = t("meetPage.metaTitle", {
-    venue: venueName,
-    series: meetLabel,
-  });
-  const metaDescription = t("meetPage.metaDescription", {
-    venue: venueName,
-    series: meetLabel,
-  });
-  const noindex =
-    !validParams ||
-    (page &&
-      (["notFound", "outOfScope"].includes(page.state) || !page.knownMeet));
   // 宣言的な <meta> は index.html の静的 robots と重複するので DOM を書き換える
-  useRobotsMeta(Boolean(noindex));
-
-  const breadcrumbItems = [
-    { name: t("analysisPage.breadcrumbHome"), url: localize("/") },
-    { name: venueName, url: localize(`/venue/${venueCode}`) },
-    { name: meetLabel, url: localize(canonicalPath) },
-  ];
-
+  useRobotsMeta(Boolean(isNoindex(validParams, page)));
   const backToVenue = (
     <Link to={localize(`/venue/${venueCode}`)} className="meet-page__back">
       {t("meetPage.backToVenue", { venue: venueName })}
     </Link>
   );
-
   let body;
-  if (!validParams || page?.state === "notFound") {
+  if (!validParams || state === "notFound") {
     body = (
       <div className="meet-page__message">
         <p>{t("meetPage.notFound")}</p>
@@ -119,14 +94,14 @@ function MeetPage() {
         description={t("home.loadingDesc")}
       />
     );
-  } else if (page.state === "outOfScope") {
+  } else if (state === "outOfScope") {
     body = (
       <div className="meet-page__message">
         <p>{t("meetPage.outOfScope")}</p>
         {backToVenue}
       </div>
     );
-  } else if (page.state === "preOpen") {
+  } else if (state === "preOpen") {
     body = (
       <div className="meet-page__message">
         <p>
@@ -143,18 +118,61 @@ function MeetPage() {
   }
 
   return (
+    <MeetPageView
+      validParams={validParams}
+      failed={failed}
+      venueCode={venueCode}
+      venueName={venueName}
+      startDate={startDate}
+      page={page}
+      body={body}
+    />
+  );
+}
+
+/** 節ページの外側（title・canonical・description・見出し・パンくず・本文の枠） */
+function MeetPageView({
+  validParams,
+  failed,
+  venueCode,
+  venueName,
+  startDate,
+  page,
+  body,
+}) {
+  const { t } = useTranslation();
+  const localize = useLocalizedPath();
+  const series = normalizeTitle(page?.title);
+  // 日付の形でない URL（validParams が偽）は日付を作らない（「NaN/NaN開幕の節」を出さない）
+  const meetLabel =
+    series ??
+    (validParams
+      ? t("meetPage.meetFallback", { date: md(startDate) })
+      : t("meetPage.titleFallback", { venue: venueName }));
+  const canonicalPath = `/venue/${venueCode}/meet/${startDate}`;
+  const metaTitle = t("meetPage.metaTitle", {
+    venue: venueName,
+    series: meetLabel,
+  });
+  const metaDescription = t("meetPage.metaDescription", {
+    venue: venueName,
+    series: meetLabel,
+  });
+  const breadcrumbItems = [
+    { name: t("analysisPage.breadcrumbHome"), url: localize("/") },
+    { name: venueName, url: localize(`/venue/${venueCode}`) },
+    { name: meetLabel, url: localize(canonicalPath) },
+  ];
+  return (
     <>
-      {/* 節タイトルが届く前に「9/28開幕の節」の仮の title を出すと、届いた後に書き換わる
-          （クローラーやテストが仮の値を読む）。読み込み中は出さない */}
+      {/* 取得待ちでも URL から決まる会場・開幕日と canonical を出す。節名は取得後に更新する */}
+      <title>{metaTitle}</title>
+      <link
+        rel="canonical"
+        href={`https://www.boat-ai.jp${localize(canonicalPath)}`}
+      />
       {(page || failed || !validParams) && (
-        <>
-          <title>{metaTitle}</title>
-          <meta name="description" content={metaDescription} />
-          <link
-            rel="canonical"
-            href={`https://www.boat-ai.jp${localize(canonicalPath)}`}
-          />
-        </>
+        <meta name="description" content={metaDescription} />
       )}
       <Header />
       <div className="meet-page">
@@ -167,18 +185,19 @@ function MeetPage() {
           endDate={page?.endDate ?? null}
           seriesDay={page?.seriesDayToday ?? null}
           state={page?.state ?? null}
-          winner={
-            page?.state === "finished"
-              ? (page.qualifiers?.finals?.[0]?.boats ?? []).find(
-                  (b) => b.finish === 1,
-                )
-              : null
-          }
+          winner={pickWinner(page)}
         />
         {body}
       </div>
     </>
   );
+}
+
+/** 節が終わっていれば優勝者（決勝の1着）。それ以外は null */
+function pickWinner(page) {
+  return page?.state === "finished"
+    ? (page.qualifiers?.finals?.[0]?.boats ?? []).find((b) => b.finish === 1)
+    : null;
 }
 
 /** 節の見出し（会場・節タイトル・グレード・期間・何日目・段階。spec FR-1.1） */
@@ -240,16 +259,12 @@ function MeetHeader({
 
 const CONFIRMED_STATES = ["prelimDone", "semifinalDay", "finalDay", "finished"];
 
-/** 予選中〜節終了のランキングと勝ち上がり */
-function MeetBody({ page }) {
-  const { t } = useTranslation();
-  const board = page.board;
-  const ranking = buildMeetRanking(board);
-  const rows = ranking.filter((r) => !r.withdrawn);
+/** 順位の対象外の選手（途中帰郷・賞典除外・今節F と、今節の走が全て欠場の選手） */
+function buildExcluded(ranking, board) {
   // 順位の対象外: 途中帰郷・賞典除外・今節F（`buildMeetRanking` の withdrawn）と、
   // 今節の走が全て欠場で得点率が出ない選手（ランキングに載らないので足す。BOA-504）
   const rankedIds = new Set(ranking.map((r) => r.racerId));
-  const excluded = [
+  return [
     ...ranking
       .filter((r) => r.withdrawn)
       .map((r) => ({
@@ -262,6 +277,34 @@ function MeetBody({ page }) {
       .filter((r) => !rankedIds.has(r.racerId))
       .map((r) => ({ ...r, reason: "absent" })),
   ];
+}
+
+/** 準優の目安（ボーダー）。まだ1走もしていない選手がいる間は null */
+function pickBorder(rows, slots, notYetStarted) {
+  return notYetStarted > 0 ? null : (rows[slots - 1]?.rate ?? null);
+}
+
+const buildClassByRacer = (board) =>
+  Object.fromEntries(
+    Object.entries(board?.pretestByRacer ?? {}).map(([id, p]) => [
+      id,
+      p?.racer_class ?? "",
+    ]),
+  );
+
+const buildPenaltyByRacer = (board) =>
+  Object.fromEntries(
+    Object.entries(board?.officialByRacer ?? {})
+      .map(([id, o]) => [id, readOfficialPenalty(o?.penalty_points ?? 0).deduct])
+      .filter(([, p]) => p > 0),
+  );
+
+/** 順位表まわりの値（board から導く。副作用なし） */
+function buildMeetBodyModel(page) {
+  const board = page.board;
+  const ranking = buildMeetRanking(board);
+  const rows = ranking.filter((r) => !r.withdrawn);
+  const excluded = buildExcluded(ranking, board);
   const slots = board?.semifinalSlots ?? SEMIFINAL_DEFAULT_SLOTS;
   const confirmed = CONFIRMED_STATES.includes(page.state);
   // まだ1走もしていない選手がいる間（ふつうは初日の途中）は、順位の対象がそろって
@@ -269,20 +312,77 @@ function MeetBody({ page }) {
   const notYetStarted = confirmed
     ? 0
     : (board?.notYetStartedRacerIds ?? []).length;
-  const border =
-    notYetStarted > 0 ? null : (rows[slots - 1]?.rate ?? null);
+  const border = pickBorder(rows, slots, notYetStarted);
   const showRemaining = page.state === "prelimFinalDay";
   const remainingRuns = board?.remainingPrelimRunsByRacer ?? {};
   const remainingMax = board?.remainingPrelimMaxPointsByRacer ?? {};
   const shobugake = showRemaining
     ? pickShobugake(rows, border, slots, remainingRuns, remainingMax)
     : new Set();
-  const classByRacer = Object.fromEntries(
-    Object.entries(board?.pretestByRacer ?? {}).map(([id, p]) => [
-      id,
-      p?.racer_class ?? "",
-    ]),
+  const classByRacer = buildClassByRacer(board);
+  return {
+    board,
+    rows,
+    excluded,
+    slots,
+    confirmed,
+    notYetStarted,
+    border,
+    showRemaining,
+    remainingRuns,
+    remainingMax,
+    shobugake,
+    classByRacer,
+  };
+}
+
+/** 順位表（または「まだ得点率が無い」の案内） */
+function MeetRankingBlock({ page, m }) {
+  const { t } = useTranslation();
+  const {
+    board,
+    rows,
+    excluded,
+    slots,
+    confirmed,
+    border,
+    showRemaining,
+    remainingRuns,
+    remainingMax,
+    shobugake,
+    classByRacer,
+  } = m;
+  // 初日の最初のレースの結果が出るまでは、得点率の付いた選手がいない。
+  // 見出しだけの空の表と「全0人」を出さず、開幕前と同じ案内にする
+  return rows.length === 0 && excluded.length === 0 ? (
+    <p className="meet-page__message meet-page__no-rate">
+      {t("meetPage.noRateYet")}
+    </p>
+  ) : (
+    <MeetRankingTable
+      rows={rows}
+      excluded={excluded}
+      slots={slots}
+      border={border}
+      confirmed={confirmed}
+      showRemaining={showRemaining}
+      remainingRuns={remainingRuns}
+      remainingMax={remainingMax}
+      shobugake={shobugake}
+      classByRacer={classByRacer}
+      officialAsOfDay={page.officialAsOfDay ?? null}
+      officialAsOfIsToday={page.officialAsOfIsToday ?? false}
+      officialLink={`https://www.boatrace.jp/owpc/pc/race/pointrank?jcd=${String(page.venueCode).padStart(2, "0")}&hd=${getTodayJST().replaceAll("-", "")}`}
+      penaltyByRacer={buildPenaltyByRacer(board)}
+    />
   );
+}
+
+/** 予選中〜節終了のランキングと勝ち上がり */
+function MeetBody({ page }) {
+  const { t } = useTranslation();
+  const m = buildMeetBodyModel(page);
+  const { rows, notYetStarted, confirmed } = m;
 
   return (
     <div className="meet-page__body">
@@ -295,34 +395,7 @@ function MeetBody({ page }) {
         {page.state === "prelim" && rows.length > 0 && (
           <p className="meet-page__note">{t("meetPage.shobugakePending")}</p>
         )}
-        {/* 初日の最初のレースの結果が出るまでは、得点率の付いた選手がいない。
-            見出しだけの空の表と「全0人」を出さず、開幕前と同じ案内にする */}
-        {rows.length === 0 && excluded.length === 0 ? (
-          <p className="meet-page__message meet-page__no-rate">
-            {t("meetPage.noRateYet")}
-          </p>
-        ) : (
-        <MeetRankingTable
-          rows={rows}
-          excluded={excluded}
-          slots={slots}
-          border={border}
-          confirmed={confirmed}
-          showRemaining={showRemaining}
-          remainingRuns={remainingRuns}
-          remainingMax={remainingMax}
-          shobugake={shobugake}
-          classByRacer={classByRacer}
-          officialAsOfDay={page.officialAsOfDay ?? null}
-          officialAsOfIsToday={page.officialAsOfIsToday ?? false}
-          officialLink={`https://www.boatrace.jp/owpc/pc/race/pointrank?jcd=${String(page.venueCode).padStart(2, "0")}&hd=${getTodayJST().replaceAll("-", "")}`}
-          penaltyByRacer={Object.fromEntries(
-            Object.entries(board?.officialByRacer ?? {})
-              .map(([id, o]) => [id, o?.penalty_points ?? 0])
-              .filter(([, p]) => p > 0 && p !== 99),
-          )}
-        />
-        )}
+        <MeetRankingBlock page={page} m={m} />
         <p className="meet-page__source">
           {t(confirmed ? "meetPage.sourceConfirmed" : "meetPage.source")}
         </p>

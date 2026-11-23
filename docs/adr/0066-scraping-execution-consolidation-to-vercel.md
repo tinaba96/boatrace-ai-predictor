@@ -20,7 +20,7 @@
 - 基盤ごとに監視が分断され、次の状態が見逃された（本番DBの実測）。
   - `scrape-point-rank.yml`は2026-09-16〜18に3回`success`だが、`racer_series_points`は0件
   - `scrape-racer-season-stats.yml`は月次で一度も実行されておらず、`racer_profiles.ability_index`は0/1,627件
-- Vercelは既にProプランで、Vercel Cronは1分間隔・分単位精度で使える（[investigation.md](../proposal/scraping-serverless-migration/investigation.md)の2026-09-15追記、公式ドキュメントで確認済み）。純正Cronが直接Functionを呼ぶ場合、cron-job.orgの30秒タイムアウト制約は無くなる
+- Vercelは既にProプランで、Vercel Cronは1分間隔・分単位精度で使える（[investigation.md](../design/scraping-serverless-migration/investigation.md)の2026-09-15追記、公式ドキュメントで確認済み）。純正Cronが直接Functionを呼ぶ場合、cron-job.orgの30秒タイムアウト制約は無くなる
 - レビュー（2026-09-19、Vercel公式ドキュメントで確認）の事実: Cron登録数は1プロジェクトあたり100個、Proは1分精度、関数の最大実行時間は800秒
 
 ## 決定
@@ -40,7 +40,7 @@
   - 関数の最大実行時間の制約 → 1回の呼び出しで処理する対象（会場・レース）を分割し、時間内に必ず終わる粒度にする
   - 前回の実行中でも次の実行が起動しうる（公式ドキュメント manage-cron-jobs に明記。1分間隔では重複が増える） → DB上のリース（ロック行）による排他を設計に入れる
   - 並走期間（新旧基盤の併存中）の二重書き込み → 行に取得元（source）を持たせて区別し、窓内取得率が水増しされないようにする
-- **監視を1系統に統一する**: 取得件数・取得遅延・空テーブルを、DBの実測値から自動計測してSlack通知する。指標と閾値は`.claude/rules/data-acquisition.md`の「完了の定義」に従う
+- **監視を1系統に統一する**: 取得件数・取得遅延・空テーブルを、DBの実測値から自動計測してSlack通知する。指標と閾値は`.claude/rules/data-acquisition.md`の「完了の定義」に従う。取得先への回数（相手ごとの1日の予算）と、拒否・過負荷のときの止め方は [ADR-0101](./0101-official-site-fetch-budget-and-stop-policy.md)（2026-10-26）
 
 ## 却下した選択肢
 

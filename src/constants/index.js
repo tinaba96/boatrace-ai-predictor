@@ -49,16 +49,6 @@ export const MODEL_NAMES = {
 // 曜日名（日本語）
 export const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
-// モデルのAPI形式からUI形式へのマッピング
-export const MODEL_KEY_MAP = {
-  "safe-bet": "safeBet",
-  "upset-focus": "upsetFocus",
-  standard: "standard",
-};
-
-// UI形式からAPI形式へのマッピング
-export const MODEL_KEY_REVERSE_MAP = {
-  safeBet: "safe-bet",
-  upsetFocus: "upset-focus",
-  standard: "standard",
-};
+// 運営者の名（/profile の見出し・Person の name と同じ字）。トップの説明の①運営の行（PV09 T2）が人の画面と
+// ボット向けで使う。全言語で訳さない（i18n の照合は en・ko の文に かな を許さないので、文には {{name}} で差し込む）
+export const OPERATOR_NAME = "らぷそでぃ";

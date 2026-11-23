@@ -1,6 +1,6 @@
 ---
 name: analyze-vup-feature
-description: kyoteibiyori.com/vup/ の指定機能を boatAI 向けに詳細分析＆Linearチケット化
+description: kyoteibiyori.com/vup/ の指定機能を boatAI 向けに詳細分析し、確認が取れたら Linear に起票する
 ---
 
 # ボートレース日和 機能詳細分析 & Linearチケット化
@@ -39,15 +39,22 @@ kyoteibiyori.com/vup/ の指定機能をboatAI向けに詳細分析し、Linear�
 3. **UI/UX実装案・技術的実装案を提示**（競合の見た目をそのまま再現しない。上記大原則に従う）
    - 推奨コンポーネント・配置場所・既存パターンとの連携・モバイル対応方針
    - データソース（Supabaseテーブル等）・API/RPC関数・キャッシング戦略・推定工数
-   - `.claude/rules/component-reuse.md` を踏まえ、既存コンポーネント拡張で足りるかを明記する
+   - `AGENTS.md` の「落とし穴」（ヘルパーの索引）と `docs/reference/shared-logic-index.md` を踏まえ、既存コンポーネント拡張で足りるかを明記する
 
-4. **Linearチケット案を提示**（チケットはまだ作成しない。ユーザー確認後 `/create-vup-ticket` へ）
+4. **Linearチケット案を提示**（この時点ではまだ起票しない）
    - チケットタイトル（`[boatAI提案] {機能名}` 形式）
    - 説明文（概要・機能説明・適用可能性・実装検討項目・参考URL）
    - 推奨ラベル（Linearの「Boat-ai」チームに実在するラベルのみ指定可能: `Improvement`, `Feature`, `Bug`。
      存在しないラベル名を指定してもチケット作成時に自動でスキップされるため、細分類が必要な場合は
      タイトルの `[boatAI提案]` プレフィックスやチケット本文の分類記述で代替する）
    - ストーリーポイント見積もり
+
+5. **ユーザーの確認が取れたら Linear に起票する**
+   確認が取れたチケット案を `{title, description, labels, estimate}` の形式で一時ファイル（例: スクラッチパッドの `vup-ticket.json`）に書き出し、登録する。
+   ```bash
+   node scripts/analysis/create-vup-linear-ticket.js <JSONファイル>
+   ```
+   ラベルは Linear 側の既存ラベル名と一致するものだけが付く（存在しないラベル名は警告付きでスキップされる）。分析だけで止める場合はこの手順を飛ばす
 
 ---
 
@@ -57,7 +64,7 @@ kyoteibiyori.com/vup/ の指定機能をboatAI向けに詳細分析し、Linear�
 /analyze-vup-feature スロー／ダッシュ表示
 ```
 
-↓ スクリプトが生データを返す ↓ Claudeが上記4項目を会話で提示する
+↓ スクリプトが生データを返す ↓ Claudeが上記1〜4を会話で提示する ↓ 確認が取れたら5で起票する ↓ `/implement` で実装
 
 ---
 

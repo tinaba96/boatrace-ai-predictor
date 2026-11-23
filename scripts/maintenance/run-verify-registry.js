@@ -21,6 +21,7 @@
  *   node scripts/maintenance/run-verify-registry.js            # 突き合わせ + ci層の実行
  *   node scripts/maintenance/run-verify-registry.js --list     # 実行せず一覧だけ出す
  *   node scripts/maintenance/run-verify-registry.js --check    # 突き合わせだけ（実行しない）
+ *   node scripts/maintenance/run-verify-registry.js --sort     # entries を script の名前の順に並べ直して書く（BOA-938）
  *   node scripts/maintenance/run-verify-registry.js --jobs=2   # 並列度を指定（既定: CPU数と4の小さい方）
  */
 import { promises as fs } from "node:fs";
@@ -28,6 +29,10 @@ import { spawn } from "node:child_process";
 import { cpus } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  registryOrderProblems,
+  sortRegistryText,
+} from "../lib/verifyRegistryOrder.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "../..");
@@ -69,9 +74,44 @@ if (jobsArg) {
   jobs = parsed;
 }
 
+/** 1つの項目の問題の一覧（条件と文の対を、出す順に並べる） */
+function entryProblems(e, files) {
+  const checks = [
+    [
+      !files.includes(e.script),
+      () =>
+        `ファイルなし: verify-registry.json の ${e.script} が存在しません。削除したならレジストリからも消してください`,
+    ],
+    [
+      !["ci", "manual"].includes(e.tier),
+      () => `tierが不正: ${e.script} の tier="${e.tier}"（ci / manual）`,
+    ],
+    [
+      !e.guards,
+      () => `guardsなし: ${e.script} に「何を守るか」の1行がありません`,
+    ],
+    [
+      e.runner && !["node", "bash"].includes(e.runner),
+      () =>
+        `runnerが不正: ${e.script} の runner="${e.runner}"（node / bash。省略時は node）`,
+    ],
+    [
+      e.timeoutSec !== undefined &&
+        !(Number.isInteger(e.timeoutSec) && e.timeoutSec > 0),
+      () =>
+        `timeoutSecが不正: ${e.script} の timeoutSec=${JSON.stringify(e.timeoutSec)}（1以上の整数・秒）`,
+    ],
+    [
+      e.tier === "manual" && (!e.reason || !e.command),
+      () =>
+        `manualの説明不足: ${e.script} には reason（なぜCIに載せないか）と command（実行方法）が要ります`,
+    ],
+  ];
+  return checks.filter(([bad]) => bad).map(([, text]) => text());
+}
+
 /** レジストリと実ファイルを突き合わせ、問題の一覧を返す */
 async function checkRegistry(entries) {
-  const problems = [];
   // .js だけを見ていると、verify-push-with-retry.sh のような別形式が
   // 未登録のまま素通りする（実際に1本あった）。
   // 対象は scripts/maintenance/ 直下のみ。サブディレクトリの check-*.js と
@@ -81,59 +121,24 @@ async function checkRegistry(entries) {
     .filter((f) => /^verify-.*\.(js|mjs|cjs|sh)$/.test(f))
     .sort();
   const registered = new Set(entries.map((e) => e.script));
-
-  for (const f of files) {
-    if (!registered.has(f)) {
-      problems.push(
+  const unregistered = files
+    .filter((f) => !registered.has(f))
+    .map(
+      (f) =>
         `未登録: ${f} が verify-registry.json にありません。tier（ci / manual）と guards を追記してください`,
-      );
-    }
-  }
-  for (const e of entries) {
-    if (!files.includes(e.script)) {
-      problems.push(
-        `ファイルなし: verify-registry.json の ${e.script} が存在しません。削除したならレジストリからも消してください`,
-      );
-    }
-    if (!["ci", "manual"].includes(e.tier)) {
-      problems.push(
-        `tierが不正: ${e.script} の tier="${e.tier}"（ci / manual）`,
-      );
-    }
-    if (!e.guards) {
-      problems.push(
-        `guardsなし: ${e.script} に「何を守るか」の1行がありません`,
-      );
-    }
-    if (e.runner && !["node", "bash"].includes(e.runner)) {
-      problems.push(
-        `runnerが不正: ${e.script} の runner="${e.runner}"（node / bash。省略時は node）`,
-      );
-    }
-    if (
-      e.timeoutSec !== undefined &&
-      !(Number.isInteger(e.timeoutSec) && e.timeoutSec > 0)
-    ) {
-      problems.push(
-        `timeoutSecが不正: ${e.script} の timeoutSec=${JSON.stringify(e.timeoutSec)}（1以上の整数・秒）`,
-      );
-    }
-    if (e.tier === "manual" && (!e.reason || !e.command)) {
-      problems.push(
-        `manualの説明不足: ${e.script} には reason（なぜCIに載せないか）と command（実行方法）が要ります`,
-      );
-    }
-  }
+    );
   const dup = entries
     .map((e) => e.script)
     .filter((s, i, a) => a.indexOf(s) !== i);
-  for (const s of new Set(dup)) {
-    problems.push(`重複エントリ: ${s} がレジストリに複数あります`);
-  }
-  return problems;
+  return [
+    ...unregistered,
+    ...entries.flatMap((e) => entryProblems(e, files)),
+    ...[...new Set(dup)].map(
+      (s) => `重複エントリ: ${s} がレジストリに複数あります`,
+    ),
+  ];
 }
 
-/** 暴走出力でランナーがメモリを食い潰さないための上限 */
 const MAX_CAPTURE_BYTES = 256 * 1024;
 const capped = (buf, chunk) =>
   buf.length >= MAX_CAPTURE_BYTES ? buf : buf + chunk;
@@ -217,6 +222,34 @@ async function runAll(entries) {
   return results;
 }
 
+// 末尾に足すと並行する PR が衝突するので、entries は script の名前の順に置く（BOA-938）
+if (args.includes("--sort")) {
+  // 並べ替えだけをする。ほかの引数と一緒だと検査を飛ばして 0 で終わるので断る
+  if (args.length > 1) {
+    console.error(
+      "NG: --sort はほかの引数と一緒に使えない（並べた後に --check を別に実行する）",
+    );
+    process.exit(2);
+  }
+  const text = await fs.readFile(REGISTRY_PATH, "utf8");
+  let sorted;
+  try {
+    sorted = sortRegistryText(text);
+  } catch (err) {
+    console.error(
+      `NG: 並べ替えられない（書き換えていない）: ${err.message}。行末の空白・CRLF・衝突の印が残っていないか確かめる`,
+    );
+    process.exit(2);
+  }
+  if (sorted !== text) await fs.writeFile(REGISTRY_PATH, sorted);
+  console.log(
+    sorted === text
+      ? "OK: entries は名前の順に並んでいる（書き換えなし）"
+      : `並べ直した: ${REGISTRY_PATH}`,
+  );
+  process.exit(0);
+}
+
 let registry;
 try {
   registry = JSON.parse(await fs.readFile(REGISTRY_PATH, "utf8"));
@@ -246,7 +279,10 @@ if (listOnly) {
   process.exit(0);
 }
 
-const problems = await checkRegistry(entries);
+const problems = [
+  ...(await checkRegistry(entries)),
+  ...registryOrderProblems(entries),
+];
 if (problems.length > 0) {
   console.error("NG: verify-registry.json と実ファイルが食い違っています\n");
   for (const p of problems) console.error(`  - ${p}`);

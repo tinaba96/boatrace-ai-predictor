@@ -1,0 +1,184 @@
+import { test, expect } from "./fixtures.js";
+import {
+  ensureOpenVenues,
+  rewriteTodayRaces,
+  setJstNoon,
+  venueCodeOf,
+} from "./today-races-rewrite.js";
+
+/**
+ * トップの会場カードの「N日目」の札（BOA-1199、モック A案 docs/design/top-venue-series-day/APPROVED.md）。
+ *
+ * 録画の本日のレースを書き換え、開催日程に左右されずに確かめる。時計は録画の時刻に固定されるので、
+ * 発走を "23:59" にすれば次のレースがある会場、"00:00" にすれば全レース終了の会場になる。
+ * 値の決め方はレース詳細の見出しと同じ（src/utils/raceDetailHeading.js の getVenueSeriesDayLabel）。
+ */
+
+test.describe.configure({ timeout: 180_000 });
+
+// 録画に開催中の会場が足りる時刻では足す分岐が通らないので、空配列で直接確かめる
+test("ensureOpenVenues は、開催中の会場が足りないとき（深夜の空配列）に n 会場を作って足す", () => {
+  const venues = [];
+  const open = ensureOpenVenues(venues, 3);
+  expect(open).toHaveLength(3);
+  expect(venues).toHaveLength(3);
+  expect(new Set(venues.map(venueCodeOf)).size).toBe(3);
+  for (const v of venues) expect(v.races).toHaveLength(1);
+  // 足りているときは足さない
+  expect(ensureOpenVenues(venues, 2)).toHaveLength(3);
+  expect(venues).toHaveLength(3);
+});
+
+const cardOf = (page, code, prefix = "") =>
+  page.locator(`a.venue-grid-card--open[href="${prefix}/venue/${code}"]`);
+
+// BOA-1584: 今日のトップの開催中の会場の数。0（0:00〜7:00 JST 前後）なら開催中を前提とする test は skip する
+async function openVenueCount(page) {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.waitForLoadState("networkidle");
+  return page.locator(".venue-grid-card--open").count();
+}
+
+// 同じ会場のレースを minRaces 件まで足す（番号は空いている所から）。朝（0:00〜7:00 JST 前後）は本日のレースが空で、
+// ensureOpenVenues の作る会場が1レースだけになる。レース単位の値の補いを確かめるには2レース要る
+function padRaces(venue, minRaces) {
+  const used = new Set(venue.races.map((r) => r.raceNo));
+  for (let no = 1; venue.races.length < minRaces && no <= 12; no++)
+    if (!used.has(no)) venue.races.push({ ...venue.races[0], raceNo: no });
+}
+
+// 最初に races のある会場を書き換え、その会場コードを返す
+function rewriteFirstVenue(page, edit, { minRaces = 1 } = {}) {
+  const picked = { code: null };
+  const ready = setJstNoon(page).then(() =>
+    rewriteTodayRaces(page, (venues) => {
+      const venue = ensureOpenVenues(venues, 1)[0];
+      padRaces(venue, minRaces);
+      picked.code = venueCodeOf(venue);
+      venue.races.forEach((r, i) => {
+        r.cancellationStatus = null;
+        r.raceStage = null;
+        edit(r, i, venue.races.length);
+      });
+    }),
+  );
+  return { picked, ready };
+}
+
+test("節の途中の日は、会場名の横に「N日目」を出す。レース単位で欠けた日目は同じ会場の値で補う", async ({
+  page,
+}) => {
+  const { picked, ready } = rewriteFirstVenue(
+    page,
+    (r, i) => {
+      r.startTime = "23:59";
+      // 出走表の取得前のレースは日目が null（レース詳細と同じく、値のあるレースで補う）
+      r.seriesDay = i === 0 ? null : 3;
+      r.isFinalDay = false;
+    },
+    { minRaces: 2 },
+  );
+  await ready;
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  const day = cardOf(page, await waitCode(picked)).locator(
+    ".venue-grid-card__name-row .venue-grid-card__series-day",
+  );
+  await expect(day).toHaveText("3日目", { timeout: 30000 });
+});
+
+test("最終日は「最終日」と書き、優勝戦のバッジと並べる（A案）", async ({
+  page,
+}) => {
+  const { picked, ready } = rewriteFirstVenue(page, (r, i, n) => {
+    r.startTime = "23:59";
+    r.seriesDay = 6;
+    // 最終日の印は優勝戦のレースにだけ入っている（レースごとに入る時点がずれる。BOA-509 の浜名湖）。
+    // 先頭レースの false を使うと「6日目」になる
+    r.isFinalDay = i === n - 1;
+    if (i === n - 1) r.raceStage = "優勝戦";
+  });
+  await ready;
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  const card = cardOf(page, await waitCode(picked));
+  await expect(card.locator(".venue-grid-card__series-day")).toHaveText(
+    "最終日",
+    { timeout: 30000 },
+  );
+  await expect(
+    card.locator(".venue-grid-card__name-row .venue-grid-card__stage"),
+  ).toContainText("優勝戦");
+  await expect(card).not.toContainText("6日目");
+});
+
+test("英語のトップでは英語の文言で出す（Last day）", async ({ page }) => {
+  const { picked, ready } = rewriteFirstVenue(page, (r) => {
+    r.startTime = "23:59";
+    r.seriesDay = 4;
+    r.isFinalDay = true;
+  });
+  await ready;
+  await page.goto("/en", { waitUntil: "domcontentloaded" });
+  await expect(
+    cardOf(page, await waitCode(picked), "/en").locator(
+      ".venue-grid-card__series-day",
+    ),
+  ).toHaveText("Last day", { timeout: 30000 });
+});
+
+test("全レース終了の会場・丸一日中止の会場・次開催の会場には出さない", async ({
+  page,
+}) => {
+  test.skip((await openVenueCount(page)) === 0, "開催場なし");
+  const codes = { finished: null, cancelled: null };
+  await setJstNoon(page);
+  await rewriteTodayRaces(page, (venues) => {
+    const open = ensureOpenVenues(venues, 3);
+    for (const v of open)
+      for (const r of v.races) {
+        r.startTime = "23:59";
+        r.seriesDay = 3;
+        r.isFinalDay = false;
+        r.cancellationStatus = null;
+      }
+    // 全レース終了
+    codes.finished = venueCodeOf(open[0]);
+    for (const r of open[0].races) r.startTime = "00:00";
+    // 丸一日中止（結果の無い confirmed）
+    codes.cancelled = venueCodeOf(open[1]);
+    for (const r of open[1].races) {
+      r.cancellationStatus = "confirmed";
+      r.result = null;
+    }
+  });
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  // 書き換えが走っていないと会場コードが null のまま（/venue/null を探して落ちる）。原因が分かる形で先に止める
+  await expect
+    .poll(() => codes.finished, {
+      message: "本日のレースの書き換えが走っていない",
+      timeout: 30000,
+    })
+    .not.toBeNull();
+  await expect(
+    page.locator(".venue-grid-card--open, .venue-grid-card--closed").first(),
+  ).toBeVisible({ timeout: 30000 });
+  // 書き換えた残りの会場には出ている（判定が動いていることの確認）
+  await expect(
+    page.locator(".venue-grid-card__series-day").first(),
+  ).toBeVisible({ timeout: 30000 });
+
+  const finished = cardOf(page, codes.finished);
+  await expect(finished).toContainText("全レース終了");
+  await expect(finished.locator(".venue-grid-card__series-day")).toHaveCount(0);
+  await expect(
+    cardOf(page, codes.cancelled).locator(".venue-grid-card__series-day"),
+  ).toHaveCount(0);
+  await expect(
+    page.locator(".venue-grid-card--closed .venue-grid-card__series-day"),
+  ).toHaveCount(0);
+});
+
+// route の書き換えは応答が来たときに走るので、会場コードはページを開いた後に決まる
+async function waitCode(picked) {
+  await expect.poll(() => picked.code, { timeout: 30000 }).not.toBeNull();
+  return picked.code;
+}

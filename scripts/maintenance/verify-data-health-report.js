@@ -25,9 +25,11 @@ import {
   main as runHealthReport,
   summarizeCoverage,
   summarizeRankDetail,
-  summarizeWindows,
 } from "../analysis/data-health-report.js";
-import { DETECTION_LAG } from "../lib/scrapeJobs/expectedUnpublished.js";
+
+
+
+import { runDataHealthReportScenes1 } from "./verifyData/data-health-report-scenes.js";
 
 let failures = 0;
 function check(label, pass, detail = "") {
@@ -298,7 +300,7 @@ async function runReport(coverageRows, windowRows = [], detectionLagRows = []) {
     if (query.includes("information_schema")) rows = [];
     else if (query.includes("pg_database_size")) rows = [{ bytes: "1000" }];
     else if (query.includes("with o as")) rows = coverageRows;
-    else if (query.includes("window_closed_at")) rows = detectionLagRows;
+    else if (query.includes("from scrape_slots s")) rows = detectionLagRows;
     else if (query.includes("first_race_in_window")) rows = windowRows;
     return { ok: true, status: 200, text: async () => JSON.stringify(rows) };
   };
@@ -383,242 +385,8 @@ async function runReport(coverageRows, windowRows = [], detectionLagRows = []) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// (d) 窓内取得率: 想定内の未公開（第1レースの発走60分前のオッズ。BOA-386）
-// ---------------------------------------------------------------------------
-{
-  const sql = buildQueries({
-    coverageStart: "2026-09-07",
-    windowStart: "2026-09-14",
-    endDate: "2026-09-20",
-  }).windows;
-  check(
-    "windowsのSQL: 第1レースは、その会場・日の races の最小のレース番号（race_id の末尾に依存しない）",
-    /not exists \(select 1 from races fr where fr\.race_date = r\.race_date and fr\.venue_code = r\.venue_code and fr\.race_number < r\.race_number\)/.test(
-      sql,
-    ) && !/right\(r\.race_id/.test(sql),
-  );
-  check(
-    "windowsのSQL: 想定内の未公開 = 第1レースの60分前の窓が窓内に取れておらず、後続の窓（30・15・10・5・0分前）のどれかに取れている",
-    /w\.m = 60 and b\.is_first and not c\.hit and c\.later_hit/.test(sql) &&
-      [30, 15, 10, 5, 0].every((m) =>
-        sql.includes(
-          `o2.captured_at between b.dl - make_interval(mins => ${m + 3})`,
-        ),
-      ),
-  );
-
-  const row = (m, over = {}) => ({
-    d: "2026-09-19",
-    m,
-    races: "100",
-    in_window: "100",
-    races_clean: "100",
-    in_window_clean: "100",
-    first_race: "0",
-    first_race_in_window: "0",
-    structural: "0",
-    ...over,
-  });
-  // 60分前: 100レース中97が窓内。第1レース10件のうち7が窓内、3が未公開で、うち2が後続の窓で公開が確認できた（1は取れていない）
-  const w60 = summarizeWindows([
-    row(60, {
-      in_window: "97",
-      first_race: "10",
-      first_race_in_window: "7",
-      structural: "2",
-    }),
-    row(30),
-  ]).find((x) => x.minutesBefore === 60);
-  check(
-    "summarizeWindows: 想定内の未公開を分母から外した値（97/98）と、除外した件数・除外なしの値（97/100）を別に持つ",
-    w60.structural === 2 &&
-      w60.racesAdjusted === 98 &&
-      near(w60.rateAdjusted, 97 / 98) &&
-      near(w60.rate, 0.97) &&
-      w60.firstRace === 10 &&
-      w60.firstRaceInWindow === 7,
-    JSON.stringify(w60),
-  );
-  check(
-    "閾値判定（belowThreshold）は、想定内の未公開を外した値で行う（除外なし97%は未達だが、97/98=98.98%は達成）",
-    w60.belowThreshold === false,
-  );
-  const w60none = summarizeWindows([
-    row(60, { in_window: "97", first_race: "10", first_race_in_window: "7" }),
-  ]).find((x) => x.minutesBefore === 60);
-  check(
-    "想定内の未公開が0件なら、除外なしの値で判定する（97/100は未達）。後続の窓にも取れていない第1レース（structuralに入らない）は、分母から外さない",
-    w60none.belowThreshold === true &&
-      w60none.structural === 0 &&
-      w60none.racesAdjusted === 100,
-  );
-  const legacy = summarizeWindows([
-    {
-      d: "2026-09-19",
-      m: 60,
-      races: "100",
-      in_window: "99",
-      races_clean: "100",
-      in_window_clean: "99",
-    },
-  ]).find((x) => x.minutesBefore === 60);
-  check(
-    "この列が無い行（古い --cache-file）でも、structural は0で、率は NaN にならない",
-    legacy.structural === 0 && near(legacy.rateAdjusted, 0.99),
-    JSON.stringify(legacy),
-  );
-
-  // レポート全体: 未達の一覧は除外後の値で出し、件数と除外なしの値を併記する。Markdown・JSONに定義と件数が出る
-  const { markdown, json } = await runReport(
-    [day("2026-09-19", { ...full5 })],
-    [
-      row(60, {
-        in_window: "90",
-        first_race: "10",
-        first_race_in_window: "6",
-        structural: "4",
-      }),
-      ...[30, 15, 10, 5, 0].map((m) => row(m)),
-    ],
-  );
-  const winAlert = json.alerts.find((a) => a.item === "窓内取得率 60分前");
-  check(
-    "レポート: 60分前の未達は、除外後の値（90/96）で判定・表示し、除外した件数と除外なしの値（90/100）を併記する",
-    winAlert !== undefined &&
-      near(winAlert.value, 90 / 96) &&
-      /90\/96/.test(winAlert.detail) &&
-      /想定内の未公開 4件/.test(winAlert.detail) &&
-      /90\/100/.test(winAlert.detail),
-    JSON.stringify(winAlert),
-  );
-  check(
-    "Markdown: 想定内の未公開の件数（別列）と、第1レースの60分前の窓の日別の内訳が出る",
-    markdown.includes("全体(想定内の未公開を除外)") &&
-      markdown.includes("第1レースの60分前の窓") &&
-      /\| 2026-09-19\(土\) \| 10 \| 6 \| 60\.0% \| 4 \| 0 \|/.test(markdown),
-    markdown
-      .split("\n")
-      .filter((l) => l.includes("第1レース") || l.includes("2026-09-19"))
-      .join(" | "),
-  );
-  check(
-    "JSON: 想定内の未公開の分母の定義と、集計の件数を残す",
-    /第1レース/.test(
-      json.params.metricDenominators.windowExpectedUnpublished,
-    ) &&
-      json.windows.aggregate.find((x) => x.minutesBefore === 60).structural ===
-        4,
-  );
-}
-
-// ---------------------------------------------------------------------------
-// (e) 発売開始の検知の遅れ（想定内の未公開のレースだけ。近似値。BOA-386続き・完了の定義Bの見直し）
-// ---------------------------------------------------------------------------
-{
-  const sql = buildQueries({
-    coverageStart: "2026-09-07",
-    windowStart: "2026-09-14",
-    endDate: "2026-09-20",
-  }).detectionLag;
-  check(
-    "detectionLagのSQL: 対象は、-60の窓（60分前±3分）に取れておらず（想定内の未公開）、後続の窓（30・15・10・5・0分前）のどれかに取れているレース",
-    /confirmed_at/.test(sql) &&
-      /window_closed_at/.test(sql) &&
-      [30, 15, 10, 5, 0].every((m) =>
-        sql.includes(
-          `o2.captured_at between b.dl - make_interval(mins => ${m + 3})`,
-        ),
-      ),
-  );
-  check(
-    "detectionLagのSQL: 5分以内の割合・p50・p95・最大・計測不能を集計する（基準は expectedUnpublished.js の DETECTION_LAG と同じ）",
-    sql.includes(`<= ${DETECTION_LAG.thresholdMin}`) &&
-      /percentile_cont\(0\.5\)/.test(sql) &&
-      /percentile_cont\(0\.95\)/.test(sql) &&
-      /count\(\*\) filter \(where confirmed_at is null\) as unmeasured/.test(
-        sql,
-      ),
-  );
-
-  const lagRow = (over = {}) => ({
-    total: "10",
-    measured: "8",
-    unmeasured: "2",
-    within_threshold: "3",
-    p50_min: "6.2",
-    p95_min: "20.5",
-    max_min: "25.0",
-    ...over,
-  });
-  const { markdown, json } = await runReport(
-    [day("2026-09-19", { ...full5 })],
-    [],
-    [lagRow()],
-  );
-  check(
-    "JSON: 発売開始の検知の遅れ（対象・計測可能・5分以内の件数・割合・p50/p95/最大・計測不能）を残す",
-    json.detectionLag.total === 10 &&
-      json.detectionLag.measured === 8 &&
-      json.detectionLag.unmeasured === 2 &&
-      json.detectionLag.within === 3 &&
-      json.detectionLag.over === 5 &&
-      near(json.detectionLag.rate, 3 / 8) &&
-      json.detectionLag.p50Min === 6.2 &&
-      json.detectionLag.p95Min === 20.5 &&
-      json.detectionLag.maxMin === 25.0,
-    JSON.stringify(json.detectionLag),
-  );
-  check(
-    "検知の遅れが基準未満（3/8=37.5% < 98%）なら未達として警告に出す",
-    json.detectionLag.belowThreshold === true &&
-      json.alerts.some(
-        (a) =>
-          a.kind === "detection_lag" &&
-          a.item === "発売開始の検知の遅れ" &&
-          /5分以内 3\/8/.test(a.detail),
-      ),
-    JSON.stringify(json.alerts.filter((a) => a.kind === "detection_lag")),
-  );
-  check(
-    "Markdown: 発売開始の検知の遅れの見出し・件数・割合が出る",
-    (markdown.includes("発売開始の検知の遅れ") &&
-      /3.*8.*37\.5%/.test(markdown.replace(/\s+/g, " "))) ||
-      markdown.includes("37.5%"),
-    markdown
-      .split("\n")
-      .filter((l) => l.includes("検知の遅れ") || l.includes("37.5"))
-      .join(" | "),
-  );
-
-  const { json: zeroJson } = await runReport(
-    [day("2026-09-19", { ...full5 })],
-    [],
-    [],
-  );
-  check(
-    "検知の遅れの対象が0件（DBが空行を返す）なら、報告は失敗せず null になる（未達として誤警告しない）",
-    zeroJson.detectionLag === null &&
-      !zeroJson.alerts.some((a) => a.kind === "detection_lag"),
-    JSON.stringify(zeroJson.detectionLag),
-  );
-  const { json: highJson } = await runReport(
-    [day("2026-09-19", { ...full5 })],
-    [],
-    [
-      lagRow({
-        total: "10",
-        measured: "10",
-        unmeasured: "0",
-        within_threshold: "10",
-      }),
-    ],
-  );
-  check(
-    "検知の遅れが基準以上（10/10=100%）なら警告に出さない",
-    !highJson.alerts.some((a) => a.kind === "detection_lag"),
-  );
-}
+// ---- 後半の場面（verifyData/data-health-report-scenes.js） ----
+await runDataHealthReportScenes1({ check, near, day, full5, runReport });
 
 if (failures > 0) {
   console.error(`\n${failures}件の検証に失敗`);

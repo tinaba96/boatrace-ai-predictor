@@ -1,0 +1,94 @@
+# SNS 自動送信の運用と点検
+
+SNS の自動送信（承認 snapshot・claim・runner・通知・容量・cron）の設計と点検で踏みやすい落とし穴。本番 DB の書き込み手順は [db-operations.md](db-operations.md)、cron・CI の一般的な落とし穴は [batch-and-ci.md](batch-and-ci.md)。書き方は [README.md](README.md)。
+
+## SNS の送信（承認・claim・runner）
+- 本番のデプロイは ADR-0106 の切り替えの後（`vercel.json` の `git.deploymentEnabled.master` が false。それまではマージごとに出る）、1日3回の定時にまとめて出る。hq の作り手（scripts/sns/push-*.js・remotion の daily.mjs）は master のコードで動くが、送り手（sns-send 等の cron）は出ている版で動く。新しい型・format を足す PR では、型の `sns_auto_send_control.<型>_enabled` を入れるのは定時で本番に出た後にする。古い送り手は知らない型で `*_part_unknown` を投げる（2026-11-06、system-architect、snsClaimCheck.js:252・345）
+- SNS の送信を止めるのは許可のリスト（自動送信の job は item が notified かつ mode が自動のときだけ進める）にし、claim・check・begin_post・youtube_publish_begin の全部で見る。拒否のリストや下書きの状態の変更だけでは、送信中・要照合で 148 のガードが RAISE し止まらない（2026-10-12、system-architect、docs/design/sns-pdca-loop/plan.md §3）
+- v0 素材の公開保留は5か所にある: sns_bundle_imports の CHECK、取り込みの関数、版×媒体×言語の一意索引、approve の bundle_import_id、transition_sns_send_139・youtube_call_guard の bundle_import_id。外すなら全部を変える（2026-10-12、135:8,26,89・139:137・146:174）
+- 送信の契約は、毎日 daily_baseline_date（JST）と YouTube の baseline_day（PT）を当日にしないと claim できない（2026-10-12、139:144・146:143）
+- PostgREST の upsert は式の一意索引（COALESCE）を on_conflict に使えない。NULL を含むキーは UNIQUE NULLS NOT DISTINCT の制約にする（本番は PG 17.6、2026-10-12）
+- findQualifyingRaces は standard と unified のうち predicted_at の新しい方の1行を使う。unified にしか無いキーを条件にすると黙って0件になる（2026-10-13、system-architect、scripts/lib/snsCampaigns.js:141-158）
+- bundle なしの送信単位を足すときは、承認/停止の RPC だけでなく contract の item 参照条件・本人承認時の検査状態・完了時の全件判定も kind ごとに確認する。DB 列を足しただけで呼出し側の接続・段階移行を完了としない（2026-10-13、2026-10-13-plan-review-20261013-08.md）
+- 月更新の「1日始まり」はコメントだけでは設定値を保証しない。初期設定/renew が作れる期間・月加算を行う DB 時区・実請求期間を固定の証拠で合わせ、md5 一致と運用前提の成立を分ける（2026-10-13、2026-10-13-plan-review-20261013-08.md）
+- 通知依存を持つ共通ヘルパーは、新しい呼出し側が既定の空 notify を使っていないか確認する。診断用の GET でも共通 token 取得が期限前 refresh と DB 保存をするなら、保存失敗の通知は呼出し側まで届く必要がある（2026-10-13、2026-10-13-plan-review-20261013-11.md）
+- 通知依存の欠落を直す検査は、notify の mock 注入だけでなく、handler に env/fetch/DB だけを渡して既定の接続を通す。DB・通信 mock の合格を本番 default export・Edge 配備・実配達の成功と読まない（2026-10-14、2026-10-14-plan-review-20261014-02.md）
+- 投稿別 risk の検査コードを直しても、版 hash が添付 bytes だけで決まり再登録が DO NOTHING なら、既存版の risk は更新されない。新規作成分の修正と既存下書きへの適用を分ける（2026-10-13、2026-10-13-plan-review-20261013-27.md）
+- begin_post 前の媒体 validate が claim の後なら、外部送信は止まっても日次試行/クォータの予約と媒体の読込は進む。held の DB 理由と投げた例外の固有コードも別に確認する（2026-10-13、2026-10-13-plan-review-20261013-10.md）
+- 共通の HTTP 応答処理で void RPC の空本文を許容するときは、実 store を通るゼロ長本文・空白のみ・JSON null・通常 JSON・不正 JSON・HTTP 失敗を分け、runner が後続の取得/claim/外部呼出しに進まないことを別々に検証する。SQL の RETURNS void は実 HTTP 本文の保存証拠ではない（2026-10-15、2026-10-15-plan-review-20261015-04.md）
+- 受領した v1 検査結果と複製の v0 専用検査を区別する。参照版の容量・schema 拒否は現行 v1 の合否を示さない。警告が再現しないときは id・matchedPattern と版の証拠を依頼する（2026-10-14、2026-10-14-sns-v1-bundle-trial.md）
+- 素材取り込み CLI の点検は、取り込み可能・公開可能・運用段階移行を分けて範囲と停止位置を指定する（2026-10-13、2026-10-13-plan-1728.md）
+- 同じ SNS の仕組みでも cron の job が違えば、既存 runner の未配達持越しは新 runner へ自動では適用されない。manual/held_manual の再処理除外と、一度きりの通知の失敗時保存を同じ経路で見る（2026-10-14、2026-10-14-plan-review-20261014-01.md）
+- runner が失敗結果にも report.alerts を返しても、共通 wrapper が成功時だけ report を保存するなら監視に届かない。未設定＋他媒体失敗の組合せを wrapper/store まで追う（2026-10-14、2026-10-14-plan-review-20261014-03.md）
+- private_retained からは poll・publish・update のどの遷移にも進めない。posted に戻る道は lookup の public から complete だけ（2026-10-27、system-architect、153:495-501,573）
+- 要照合を自動で解く経路を足すときは、docs/design/sns-hub-shorts-send/contract.md の「要照合解除」の文と、snsSendRunner.js の冒頭の説明も直す（2026-10-27、system-architect、BOA-1164）
+- X の job は Chromium を3回使う（runner の検査1・runXSendJob の2）。上限6では1回の実行で X は2件までで、3件目は検査に落ちていた。runner は必要数を見積もって次の実行に回す（2026-10-27、BOA-1164、snsSendRunner.js headlessNeed）
+- X の送信の月の予約は claim のたびに足し、送った後に実額で戻さない（月の切り替えで0に戻すだけ、153:665・158:277）。188 から、送る文に URL があれば ceiling_x_url（$0.200）、無ければ ceiling_x_plain（$0.015）で数える（X API の料金表の Post: Create、2026-10-27）。182 までは親を全部 $0.25 で数えていた。出し物を増やす設計は「1日の本数×URL の有無×30」を budget_microusd（本番 $20）と比べる（2026-10-27、system-architect、本番の今月の posted 20本は全部 URL つき）
+- 送る直前の readCurrent（api/_lib/snsClaimCheck.js）は下書きの source_data のキー（digest・full_picture・finals_image・research_image・today_thinking）で振り分ける。新しい種類は別のキーにして他の種類のキーを入れず、枝の中で item の kind も読んで食い違えば投げる（2026-10-27、BOA-1169、snsClaimCheck.js の today_thinking の枝）
+- 全貌の動画・題・説明文には締切の時刻（races.start_time）が焼き込まれているので、締切が延びた束は送る側で通さず（deadline_changed）、作り手が作り直して push し直し、前の束を差し替える（2026-10-31、system-architect・BOA-1201、sns-video-studio/remotion/scripts/full-picture/bundle.mjs:65-75 の raceHeader）
+- 差し替えは、前の item を stopped（stopped_via=superseded）にすると一意の索引 sns_auto_send_items_race_channel（WHERE state NOT IN ('stopped','held_manual')）から外れて、同じレースの新しい item を入れられる。job は item の後に hold（理由 superseded）にする。先に item を止めておけば、hold の前に claim されても auto_stopped で止まる（2026-10-31、BOA-1201、docs/db-migration/172:42・153:51）
+- 差し替えを止める前の job は sending・reconcile・posted だけ。transition_sns_x_send の hold は queued・sending から、fail は sending からしか移さず、外への POST は begin_post で reconcile にした後なので、試行1以上の held・failed は公開されていない（2026-10-31、BOA-1201、docs/db-migration/153:414-423・189:252-261）
+- 版の違いでは「締切が変わる前の材料で作り直した束」を見分けられない。push は束の文の「締切HH:MM」と今の締切を比べて拒否する（2026-10-31、BOA-1201、scripts/sns/push-full-picture.js の bakedDeadlineReasons）
+- YouTube の job の error_code の youtube_preflight_failed は preflight だけでなく、begin_post の前の全部の失敗（承認の hash・媒体・validate・親・preflight）で書かれる。原因は sns_send_events（191）の stage=send の reason（holdReasonOf の code）で見る（2026-10-31、BOA-1201、api/_lib/snsDeadlineQueue.js:151）
+- 送った item を sent にする 186 の置き換え6は bundle_import_id での NOT EXISTS なので、下書きにひもづく kind（full_picture・setsu_kiryoku_short 等）では空集合になり sent に移る。新しい下書きの kind に専用の枝は要らない（2026-11-02、system-architect、186:204-210）
+- 旗を持つ YouTube の kind は、DB では claim・check・begin_post（transition_sns_send_139）でしか旗を見ない。youtube_call・youtube_publish_begin（186 の youtube_call_guard）は旗を見ず、上げている最中の停止は JS の preflight（readCurrent）が頼り。DB で止めるなら mode=manual か item の停止（2026-11-02、system-architect、186:136-157、BOA-1209）
+- YouTube の新しい kind の期限・鮮度は kind で分けない。186 の youtube_call_guard が expiry_minutes・max_source_age_seconds を kind によらず照合するので、kind ごとの値にすると上げる前に止まる（2026-11-02、system-architect、BOA-1209、193）
+- push-full-picture.js は YouTube の日の上限を数えない。後ろの時刻の出し物を早く push すると、後から入った全貌が先に claim し、後ろの出し物の claim が「日次全体上限です」の RAISE で queued のまま鳴り続ける。上限を数える push は送る時刻の直前に流す（節の機力は15分前から）（2026-11-02、system-architect、BOA-1209、本番 daily_limit_youtube=9・10/31 の YouTube の試行8）
+- checkPublicDisplay は finalUrl の完全一致を求める。新しい screen_key を足すときは、リンク先を未認証の Chromium で開いて page.url() が変わらないことも確かめる（/venue/{n} は 2026-11-02 に一致、snsDeadlineQueue.js:27）
+
+## 容量・上限
+- 取り置き（sns_x_kind_reserves）は旗が off でも・締切が過ぎても解けない。新しい出し物の取り置きと daily_limit_x はマイグレーションに入れず、旗 on と同じトランザクションで、その日の最初の X 送信より前に当てる（先に入れると他の出し物の残りを食う）（2026-10-27、BOA-1169、ADR-0094 の 182 の追記の (2)・189 のヘッダー）
+- 容量・上限の境界は、上限より十分短い正常例と超過例だけで済ませない。ちょうどの正常例と+1の拒否を、生成→承認 snapshot→送信の各入口で分けて確認する（2026-10-15、2026-10-15-plan-review-20261015-03.md・2026-10-13-plan-review-20261013-23.md）
+- 上限の単位（添付 file.size の和・multipart 全体・UTF-16 長・加重長・完成本文）は入口ごとに違う。どれに適用するかを明記する（2026-10-13、2026-10-13-plan-review-20261013-27.md・2026-10-15-plan-review-20261015-03.md）
+- 再帰的な容量走査は、階層ごとの Promise.all を8にしても全体の同時取得数は8に収まらない。上限は共有キューで管理する（2026-10-13、2026-10-13-plan-review-20261013-13.md）
+- 日ごとの容量の控えは、掃除が変えた古い日も無効化する。最近9日だけの再測定では、遅れた掃除後の合計が古いまま残る（2026-10-13、2026-10-13-plan-review-20261013-13.md）
+- 保存期限の削除に探索下限（30日）を付けるなら、長期停止や後追加で残った分を回収する復旧経路も要る（2026-10-13、2026-10-13-plan-review-20261013-13.md）
+- 読み取りの予約（reserve_sns_x_read）に渡す1日の送信の見込みは、多めに出すと月初に「残り日数×見込み＞予算」で読み取りが全部止まり、48h・7d の計測が欠ける（今の実績 1日 1,250,000 だと30日で予算 $20 を越える）。少なめに出したときの害は読み取り（1回 $0.001、1日約20回）が送信の予算を食うだけなので、上限額から出す下限の式のままにする（2026-10-27、BOA-1170 を見送り、本番の直近7日の claim の実績・X_READ_MICROUSD）
+
+## 巡回・時刻・監視
+- 巡回候補の失敗理由は、検査なら job 単位、token なら実際に取得した channel 単位で保持/解消を分ける。dry_run で token を取らない回を token 回復としない（2026-10-14、2026-10-14-plan-review-20261014-04.md）
+- 候補走査をページ循環へ変えると、各 tick で作り直していた失敗理由が次ページでは生成されず、監視前の report 上書きで消える。候補の進行と理由の保持を一緒に追う（2026-10-13、2026-10-13-plan-review-20261013-28.md）
+- 要照合の通知を DB 状態から毎回作り直すなら、解消されず累積する状態は既定の上限を越えても回収できるページングか、明示した超過対応が要る（2026-10-14、2026-10-14-plan-review-20261014-04.md）
+- sweep 直前の対象一覧を app の captured now で読み、SQL が別の now() で状態を移す場合、両時刻の間に期限に達した行が通知一覧から落ちる。固定時計の正常試験だけで境界を解消としない（2026-10-13、2026-10-13-plan-review-20261013-28.md）
+- cron の稼働延長は、cron 最終起動予定・runner の処理継続・死活監視の終了を別々に記す。activeHoursJst が監視専用なら runner の時刻ガードの根拠にならない（2026-10-15、2026-10-15-plan-review-20261015-02.md）
+- 新しい投稿時刻を保存する処理を既存 runner へ接続するときは、job 予定時刻だけでなく実 cron の UTC 式と監視の JST 開始も照合する。固定時計で DB の claim を直接呼ぶ検証は、定時起動を保証しない（2026-10-15、2026-10-15-plan-review-20261015-08.md）
+- 「期間終了から自動切替」は、関数の定義だけでなく、その関数を呼ぶ cron の live 条件・適用版・次の実行時刻を合わせて読む。shadow では呼ばれず、終了時刻ちょうどの独立起動でもない（2026-10-14、2026-10-14-plan-review-20261014-05.md）
+- job の live/shadow 切替は、チャネルの manual/auto・claim 前の dry_run・送信の paused/期間と別に確認する。shadow へ戻しても起動済みの run は取り消されず、DB の job 行数と実装された cron の種類数も一致するとは限らない（2026-10-14、2026-10-14-plan-review-20261014-06.md）
+- 再生成処理の冪等性は下書きの版だけで判定せず、後続の tracking・item 検査結果・通知の完了まで区別する（2026-10-15、2026-10-15-plan-review-20261015-08.md）
+- 複数レースを載せる投稿は、投稿自体の queue 期限と各候補の公式締切を分けて保存・照合する（2026-10-15、2026-10-15-plan-review-20261015-09.md）
+- headless の回数上限は job 数と一致しない。runner の claim 前・送信内部・外部 API 直前を通算し、任意 cover など正常経路の最後まで枠が残るか確認する（2026-10-13、2026-10-13-plan-review-20261013-33.md）
+
+## 点検での見落としを防ぐ知見
+- 同一jobの後続成功や通知開始前の成功で先行失敗を消すと未通知になるため、未通知alertの保持を点検する。（2026-10-13、2026-10-13-plan-review-incaution-20261013-05.md）
+- queueの先頭N件を毎回切る処理では、失敗や親待ちが候補枠を塞がないか、送信件数・検査件数・走査進捗を別々に確認する。（2026-10-13、2026-10-13-plan-review-snsrunner-20261013-04.md）
+- 監視より短い周期で上書きするreportの一度きり事象は、即時通知だけに依存せず未配達の永続記録と後処理からの要照合の受け渡しを確認する。（2026-10-13、2026-10-13-plan-review-snsrunner-20261013-04.md）
+- 媒体処理STATUSの応答欠落と正規の省略成功を区別し、空応答を完了に正規化して投稿へ進まないか点検する。（2026-10-13、2026-10-13-plan-review-xadapter-20261013-02.md）
+- 分割アップロードのchunkサイズを変えたら、最大媒体のchunk数と1試行の費用上限の積算も照合する。（2026-10-13、2026-10-13-plan-review-xadapter-20261013-02.md）
+- refresh成功後の条件付き保存が不成立のときは、確認用の再読取の失敗も通知対象に含め、再読取例外で元の理由や再連携案内が脱落しないか点検する。（2026-10-13、2026-10-13-plan-review-xoauth-20261013-03.md）
+- 再連携とrefreshの競合は古いrefreshの保存0行と古いrefreshの失敗を分け、新行利用か停止かがspec未定義なら競合全体を解消済みとしない。（2026-10-13、2026-10-13-plan-review-xoauth-20261013-03.md）
+- IDなしlookupの外部通信抑止と読取台帳の消費は別に確認し、外部通信0を台帳消費0としない。（2026-10-13、2026-10-13-plan-review-youtube-20261013-01.md）
+- カバーありの YouTube は Chromium を7回使い、7回目は videos.update の後・videos.list の前に当たる。上限6で落ちると retain ではなく update_started の要照合になっていたので、videos.list の前の検査を外した。今は全貌の YouTube（カバーなし）は5回、カバーありは6回（2026-10-27、system-architect、BOA-1164・snsDeadlineQueue.js）
+- YouTube の upload→処理の確認→公開は1回の実行の中で終わり、終わらなければ youtube_retain。後の実行で続きをする経路は無い（dueJobs は queued だけを読む）（2026-10-20、system-architect、snsSendRunner.js:232-262,297）
+- job の順番の待ち合わせは parent_job_id を使う。pickDueJobs で Chromium を使わずに外し、transition_sns_send_139 が claim で parent_not_posted として止める。claim の後に JS で待つと、日次の枠とクォータを使ったまま held で終わる（2026-10-20、system-architect、158:144-145・snsSendRunner.js:323-331。全貌の Shorts はこれで完全版を待つ、172）
+- 期限切れの queued は sweep で held/deadline_expired になるが、Slack に知らせる経路は無かった。親を待つ子は、送る前の検査の alert も出ないまま切れるので、runner が期限の10分前から parent_waiting で知らせる（2026-10-20、system-architect、139:204-205）
+- claim が日次の上限で例外になると、job は queued のまま残り、runner が2分ごとに Slack へ「送信が止まった」を送り続ける。全貌の YouTube が1レース2件になると daily_limit_youtube=2 は1日1レースで使い切る（2026-10-20、system-architect、158:169・snsSendRunner.js:203-210、本番の値は同日の読み取り）
+- 全貌の束から X を外す（`channels`、BOA-1167）ときも、完全版・Shorts の送る時刻のずらし（X から4分・8分）は残す。Shorts の受付の上限（締切の50分前）がこの並びの上で計算されており、ずらしを詰めると別のレース・別の型の X と同じ送信の実行に重なりやすい（2026-10-27、push-full-picture.js の OFFSET_MIN・SHORTS_LATEST_BEFORE_MIN）
+- push-full-pictureの拒否理由をnotifyのthrow/reject後も保持できることと、CLIがWebhookのHTTP失敗を検出することは別に検証する。fetchは非2xxだけではrejectしないため、注入notifyの合格だけで実配達を保証しない（2026-10-21、BOA-909、scripts/sns/push-full-picture.js・scripts/maintenance/verify-sns-full-picture.js）
+- snsDraftDiff は source_data 欠落を空オブジェクトにし、長文分岐は共通前後を除いた長さの積が1000000を超えたときだけ使う。null・「100万以上」とする記述とは一致しない（2026-10-25、BOA-1083、verify-sns-draft-diff.js の KNOWN_GAPS）。
+- hqのpushとVercelの送り手は別々に配備される。snapshot に poll など新しいキーを足したら、送り手の本番対応を確認してから許可の旗を入れる。古い送り手は未知のキーを無視して送る（2026-10-26、system-architect、PR #1944）。
+- 親子の投稿を順に承認するときは、親の予定を受領の2分後にして、子の承認前に親が claim される窓を避ける（2026-10-26、PR #1944 の /code-review）。
+- sns_send のリースは300秒で、前の実行が長いと次の2回の起動が lease_held で飛ぶ。scheduled_at=今でも即時送信は保証されず、約7分待つ場合を期限設計に入れる（2026-10-26、system-architect、registry.js・cronWrapper.js）。
+- sns_send のcron最終起動は22:58 JST。締切数分前に送る型は、締切が約23:03より後のレースを扱えない場合があるため、型の先行分数と最終起動を照合する（2026-10-26、vercel.json、PR #1941）。
+- stop_sns_auto_item の158の定義は race・digest の下書きだけを公開保留へ戻す。full_picture・finals_image は送信が auto_stopped で止まっても、下書きの状態は戻らない（2026-10-26、system-architect、158_sns_lanes_digest_period.sql）。
+- 送り終わりを待つ処理では reconcile を終端状態に含めない。begin_post から complete までの送信途中でも reconcile になるため、posted と外部投稿IDまで確認する（2026-10-26、PR #1941 の /code-review、push-finals-image.js）。
+- PT日付境界でclaimを止める場合はpreflight・token取得後にも時計を確認する。候補が次回走査から外れても待機alertを保持し、完了見込みには完全版・次回runner・Shortsまで含める（2026-10-26、BOA-973、verify-sns-send-runner.js）。
+- snsHeadless の screenshot のlabelは要素の先頭へ文字を焼き込む。ソナー図の札用なので、完成画像そのものを撮るページには渡さない（2026-10-27、PR #1984のコードレビュー、scripts/lib/snsTodayPlanner.js）。
+- claim が held を返すと runXSendJob はそのまま返り、runnerはreconcileだけを知らせる。claimへ新しいheld理由を足すときは一度きりの通知経路も足す（2026-10-27、system-architect、snsXSend.js・snsSendRunner.js、PR #1979）。
+- 取り込み時に今日のqueued数で上限を見る場合は、同じ下書きの前の版を除外する。148のトリガーは中身が変わった場合だけ古いjobを取り消すため、作り直しで自分の旧jobを重複して扱いうる（2026-10-27、system-architect、マイグレーション179・PR #1979）。
+- hqから受け取る時刻はZまたは±HH:MM付きに限る。時差なしの文字列はNodeでは端末、DBでは接続のTimeZoneで解釈され、別の時刻になりうる（2026-10-27、コードレビュー、push-research-image.js・PR #1978）。
+- sns-x-posts.csv の caption_text に残る {full_url} は、承認版の保存値の場合がある。送信直前に公開済み完全版URLへ置換するため、未置換の不具合と断定する前に実際の概要欄か fillFullUrl を確認する（2026-10-27、measurement、ADR-0094・api/_lib/snsDeadlineQueue.js）。
+- Xの通り道B以外のclaimでは、自分の未claimの子と、当日claim済みの他の親に属する未claimの子の枠を v_need に足す。子自身は他の親の子を含めず、子の予約分は begin_post で再計算しない。再計算するとclaim後に増えた子のため予約済みの送信が止まる（2026-10-26、177_sns_finals_replies.sql、188_sns_x_cost_by_url.sqlでも継続）。
+- 「数字で見たら」の取り込み・送信には画像ALTを付ける経路が無い。画像内の期間・母数・定義は送り手の検査だけでは保証されないため、hq側の画像検査で確認し、送信成功を内容確認の証拠にしない（2026-10-27、x-channel、PR #1978・scripts/sns/push-research-image.js・api/_lib/snsXSend.js）。
+- 出し物ごとの取り置き（sns_x_kind_reserves・sns_x_slot_room）は X の claim だけに効く。YouTube の新しい型は daily_limit_youtube でしか守れず、朝に送る型は夜の全貌の枠を先に取る（2026-11-04、system-architect、200・182。本番の YouTube の試行の日最大は 10/30 の8）
+- sns-send の稼働時間は vercel.json の cron と registry.js の activeHoursJst の2か所にある。cron だけ広げると、広げた時間は死活監視が見ない。2026-11-04 に両方を JST 7:00 からにした（BOA-1284、verify-sns-send-runner.js）
+- 旗 on が別のマイグレーションの適用を前提にするときは、コメントだけにせず、旗 on の SQL の先頭の DO でその関数の md5 を照合する（2026-11-04、system-architect、200 と 196）

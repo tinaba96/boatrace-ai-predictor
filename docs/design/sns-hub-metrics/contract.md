@@ -4,7 +4,7 @@
 
 ## 保存・読み取り
 
-136を適用後、管理用 `POST /api/admin/sns-hub/observations` に次のJSONを渡す。CSVからの補完もこの契約へ変換し、`source=csv` と定義・分母を明記する。CSVファイルのパーサー・一括インポート画面は含まない。旧 `/drafts/:id/metrics` は互換性維持のため変更せず、窓のない旧値を比較へ混ぜない。
+136を適用後、管理用 `POST /api/admin/sns-hub/observations` に次のJSONを渡す。CSVからの補完もこの契約へ変換し、`source=csv` と定義・分母を明記する。CSVファイルのパーサー・一括インポート画面は含まない。旧 `/drafts/:id/metrics` は互換性維持のため変更せず、窓のない旧値を比較へ混ぜない（旧 API は呼び出し元が無くなったため 2026-10-19 に削除。表 `sns_draft_metrics` は旧値の記録として残す）。
 
 ```json
 {
@@ -60,3 +60,24 @@ provider入力は保存窓への適合検査と分離し、値・欠測理由・
 - 取り込みの cron `sns_metrics`（`scripts/lib/snsMetricsRunner.js`）: YouTube は `videos.list(statistics)` の views・likes・comments、X は `GET /2/users/{id}/tweets`（since_id・until_id で対象の1件に絞る。Owned Reads）の impressions・url_link_clicks（non_public_metrics）と likes・shares（retweet_count、引用は含まない）・saves（bookmark_count）。読み取りの前に `reserve_sns_x_read` で1件分（$0.001）を予約する。窓の終わりから15分を過ぎて処理する job は外部を読まずに欠測で閉じる。値を保存した後に閉じるのが失敗した job は、次の実行で欠測に上書きせず done で閉じる
 - YouTube の `videos.list`（1回1ユニット、50件ずつ）は送信のクォータの台帳（146 の `sns_youtube_quota_reads`）に載せない。台帳は送信の job と試行の番号が必須で、取り込みの読み取りを入れられない。1日の読み取りは多くても L3 の YouTube 16本×2窓＝32ユニット程度（上限 10,000）
 - X の親の投稿の UTM（sns-pdca-loop tasks 23）: `buildObservationUtm` に `campaign`（`sonar-preview`・`race-full`）を足した。`race-full` は型の版が任意で、`utm_content` は下書きの ID（型の版があれば `下書き/版`）。レースの URL にクエリ・fragment があれば作らない。本文への差し込みと `sns_post_tracking` への保存は `scripts/lib/snsPostTracking.js`（auto-plan が承認の前に呼ぶ）
+
+## 全貌動画の測り時（SQL169、2026-10-19 オーナー決定）
+
+- 全貌動画（`format=full_picture`）は 48h・7d をやめ、当日の全レース終了後（投稿日の JST 23:00、窓 `day_end`）と投稿の24時間後（窓 `24h`）の2点で測る。理由（オーナー）: 過去のレースの全貌にはユーザーは基本的に興味を持たない。全貌以外（ブログなど残り続ける投稿・/today）は今までどおり 48h・7d
+- `day_end` の窓は posted_at から投稿日（JST）の 23:00 まで（長さは投稿ごとに違う）。23:00 を過ぎてから投稿されたものは `day_end` を持たず `24h` だけ。累積値の15分の許容差は新しい窓にもそのまま当てる
+- 観測の画面は、既定の 48h で開くと全貌は当日（`day_end`）の値を出し、7d には全貌を出さない（測っていないので「未収集」と数えない）。選択肢に「当日23時」「24h」（全貌だけ）を足した。全貌は型の版の仕組みを持たないので、版の確認（「型の版未確認」）をしない
+- CSV と collector も下書きの型で窓を選ぶ（`windowsFor`）
+
+## 全貌動画の GA4 の来訪（2026-10-19 オーナー決定・hq と合意）
+
+- 全貌の X の本文と YouTube の概要欄のリンクは、hq の作り手が `utm_source=x|youtube`・`utm_medium=social`・`utm_campaign=race-full`・`utm_content=<race_id>`・`utm_term=full|shorts` で組み立てる。push-full-picture は本文をそのまま使う（URL を書き換えない）。下書きの ID は使わない（全貌は1レースにチャネルごとに1下書き）
+- sns-daily（`sns_channel_daily`）は、utm_content がレース ID の行を、X・YouTube と utm_term ごとに分けて入れる。下書きは `source_data.full_picture.race_id` で引き、**その下書きの実際の投稿日（posted_at の JST の日付）と翌日の2日分だけ**を残す。投稿された下書きが無いレースは数えない
+- GA4 の反映は最大48時間遅れるが、sns-daily は毎日 D−3〜D−1 を取り直すので、投稿日と翌日の値は両方とも58時間後まで読み直される。2日分の合計を画面に出す変更はまだ入れない（データが溜まってからオーナーに見せて決める）
+
+
+## YouTube の動画ごとの engagedViews を暦日の窓 pt3d で観測の表に入れる（SQL175、PD02、2026-10-25）
+
+- 上の「暦日の値は観測の表ではなく `sns_channel_daily` に入れる」の例外。hq の毎日の PDCA（Shorts の「見た・スワイプした」の代わり）が `sns_metric_observations` を投稿ごとに読むため、YouTube Analytics の動画ごとの engagedViews（`denominator_name=views`）・views・averageViewPercentage・averageViewDuration を窓 `pt3d` で入れる（cron `sns_daily`、`scripts/lib/snsDailyRunner.js` の collectEngaged）
+- `pt3d` は暦日の窓: 太平洋時間の投稿日から3日（投稿日＋2日）の和。`period_end` は PT の3日目の翌日 0:00（day_end と同じく投稿ごとに長さが違う）。時間の窓（posted_at＋72h）へは変換しない。投稿前の views は0なので和は [posted_at, period_end) と同じで、`data_through=period_end`
+- 入れるのは3日目が取り直しの最も古い日（D−3）より前になってから（反映の遅れ2〜3日、BOA-1006 (b)）。投稿からおよそ5.5〜6.5日後。engagedViews と分母の views がそろうまで、投稿から14日まで1日1回やり直す（欠測は revision を足す。同じ日の2回目の起動では重ねない）
+- Shorts と完全版の区別は `sns_auto_send_items.variant`（172）。完全版は engagedViews がほぼ views と同じ見込み（未確認）なので、比は Shorts に絞る

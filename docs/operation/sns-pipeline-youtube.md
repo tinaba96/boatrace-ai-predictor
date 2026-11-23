@@ -1,5 +1,7 @@
 # YouTubeチャネル別パイプライン 制作ガイド
 
+> **Routine は止まっている（2026-10-24 時点）。** 起動の口（修正指摘の redo・今すぐ生成の fire・ネタの提案）と `scripts/lib/snsTopics.js`・`scripts/lib/snsCampaigns.js` は hq SH01 R2 で消した。下の手順のうち、それらを呼ぶ所は動かない。YouTube の作り方の節は `youtube-channel` の評価の参照として残す。
+
 承認済みネタ（`sns_topics.status='approved'`）のうち、YouTube向けに割り当てられた`sns_topic_targets`をポーリングして動画下書きを生成するRoutine向けの実行手順。設計背景は[`docs/design/sns-topic-gate/`](../design/sns-topic-gate/)（spec.md/plan.md、ADR 0036〜0038）を参照。`docs/operation/sns-pipeline-x.md`と同じ構成をテンプレートにしている。
 
 **このRoutineは下書き（`sns_drafts`、`status='pending_review'`）を作るところまでが責務**。承認後の実際のYouTubeへのアップロード・公開は、既存の`api/admin/sns-hub/drafts/[id]/publish-youtube.js`（YouTube Data API v3、ADR 0035）が承認操作をトリガーに自動で行う。このRoutine自身はYouTubeへの投稿を一切行わない。
@@ -36,13 +38,13 @@
 
 ## 3'. 「本日のデータ一覧」型（morning-digest）のネタ
 
-型が `morning-digest` のネタは、映像の材料を `morning_digest_days` / `morning_digest_rows` の2表だけから取る（再計算禁止）。共通の規則は [`sns-pipeline-morning-digest.md`](sns-pipeline-morning-digest.md) を読む。
+型が `morning-digest` のネタは、映像の材料を `morning_digest_days` / `morning_digest_rows` の2表だけから取る（再計算禁止）。共通の規則は [`sns-pipeline-morning-digest.md`](../archive/sns-pipeline-morning-digest.md) を読む。
 
 YouTube向けは `section='featured'` の1レースに絞り、「この選手の割合」と「その会場・グレードの平均」を並べる構成にする。`metric_predicted`（推定値）には触れない。
 
 ## 4. カバー画像の生成
 
-**Shorts化に伴い、専用サムネイル（Remotion別コンポジション）の生成ステップを廃止する**（2026-09-05）。TikTok/Xと同様、`ffmpeg -vf "select='eq(n\,0)'" -vframes 1`で動画のframe=0を書き出し、それを`cover_image_path`として使う（`sns-video-producer-prompt.md`セルフレビューチェックリスト「frame=0で主要テキスト・マスコットが完全に見えているか」を参照、3.の映像設計時点で確認済みであること）。旧`COMPOSITION_IDS.youtubeThumbnail`（1280×720、16:9）は新しいShorts比率と合わなくなったため、このRoutineでは使用しない。
+**Shorts化に伴い、専用サムネイル（Remotion別コンポジション）の生成ステップを廃止する**（2026-09-05）。Xと同様、`ffmpeg -vf "select='eq(n\,0)'" -vframes 1`で動画のframe=0を書き出し、それを`cover_image_path`として使う（`sns-video-producer-prompt.md`セルフレビューチェックリスト「frame=0（サムネイル）で主要テキストが完全に見えているか」を参照、3.の映像設計時点で確認済みであること）。旧`COMPOSITION_IDS.youtubeThumbnail`（1280×720、16:9）は新しいShorts比率と合わなくなったため、このRoutineでは使用しない。
 
 ## 5. アップロード・永続化
 
@@ -61,5 +63,5 @@ YouTube向けは `section='featured'` の1レースに絞り、「この選手�
 - **1つのclaim済みターゲットにつき、`sns_drafts`行は必ず1件だけ作る**。生成後に内容の誤りに自分で気づいた場合も、同一セッション内で2件目を作り直さない。6.の完了処理（`markTopicTargetGenerated`）を済ませたら、その回の生成物が最終版であり、修正は人間の下書き承認画面からの修正指摘操作に委ねる（2026-09-03、Blogパイプラインで同種の不具合が発生し判明。本パイプラインにも同じ制約を横展開）
 - claim対象が0件、または実データの裏付けが取れない場合は生成せず終了する
 - 「競艇」表記禁止、射幸心を煽らない、実データ以外は使わない
-- **非認証ギャンブルサイトへの誘導が無いか・的中率表現が利益保証と誤解されないかを自己点検する**（2026-09-05追加、`docs/reference/youtube-algorithm-and-growth-notes.md`の反映候補を実装。TikTokの`sns-pipeline-tiktok.md`と同種のポリシーチェックをYouTube側にも明記）
+- **非認証ギャンブルサイトへの誘導が無いか・的中率表現が利益保証と誤解されないかを自己点検する**（`docs/reference/youtube-algorithm-and-growth-notes.md`）
 - **このRoutineはYouTubeへの実際の投稿・公開は一切行わない**（承認時に`publish-youtube.js`が自動で行う）

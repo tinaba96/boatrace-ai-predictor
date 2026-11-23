@@ -9,6 +9,8 @@
  * - 2026-10-02、完了したチケットはアーカイブする運用に決めた（無料枠の上限はアーカイブして
  *   いないチケット数で数えられる）。update で状態の種類（state.type）が完了・取り消しに
  *   変わったら、続けて issueArchive を呼ぶ
+ * - 2026-10-20、無料枠（未アーカイブ250件）の手前で止めるため、create の前に未アーカイブ件数を
+ *   数え、230件以上・数えられないときは Slack に知らせて止める（scripts/lib/linearIssueGate.js）
  *
  * ## どう検査するか
  *
@@ -35,124 +37,146 @@ const STATES = [
   { id: "s-dup", name: "Duplicate", type: "canceled" },
 ];
 
+const ok = (data) => [200, { data }];
+const fail = (status, errors) => [status, { errors }];
+
+/** viewer の問い合わせへの応答 */
+const viewerReply = () =>
+  ok({
+    viewer: {
+      id: "u1",
+      name: "test",
+      teams: { nodes: [{ id: "t1", key: "BOA", name: "boat" }] },
+    },
+  });
+
+/** 起票の前の未アーカイブ件数（scripts/lib/linearIssueGate.js）。既定は10件で閾値の下 */
+const countActiveReply = (state) => {
+  if (state.scenario.countFails) return fail(500, [{ message: "count boom" }]);
+  const n = state.scenario.activeCount ?? 10;
+  return ok({
+    issues: {
+      nodes: Array.from({ length: n }, (_, i) => ({ id: `a${i}` })),
+      pageInfo: { hasNextPage: false, endCursor: null },
+    },
+  });
+};
+
+const getIssueReply = () =>
+  ok({
+    issues: {
+      nodes: [
+        {
+          id: "i1",
+          identifier: "BOA-1",
+          title: "t",
+          description: "",
+          state: { id: "s-todo", name: "Todo" },
+          createdAt: "2026-10-01T00:00:00Z",
+          updatedAt: "2026-10-01T00:00:00Z",
+          url: "u",
+        },
+      ],
+    },
+  });
+
+const updateIssueReply = (state, variables) => {
+  const s = STATES.find((x) => x.id === variables.input.stateId);
+  return ok({
+    issueUpdate: {
+      success: true,
+      issue: {
+        id: "i1",
+        identifier: "BOA-1",
+        title: "t",
+        state: { name: s.name, type: s.type },
+      },
+    },
+  });
+};
+
+const createCommentReply = (state) =>
+  ok({
+    commentCreate: {
+      success: state.scenario.commentFails !== true,
+      comment: { id: "c1", body: "b" },
+    },
+  });
+
+const archiveIssueReply = (state) => {
+  if (state.scenario.archive === "graphqlError")
+    return [
+      200,
+      { errors: [{ message: "boom", extensions: { code: "INTERNAL" } }] },
+    ];
+  return ok({ issueArchive: { success: state.scenario.archive !== "fail" } });
+};
+
+const createIssueReply = (state, variables) => {
+  if (state.scenario.create === "usageLimit") {
+    // 2026-09-28 に実際に返った形（HTTP 400 と 200 の両方を試す）
+    return fail(state.scenario.status ?? 400, [
+      {
+        message: "You've exceeded the free issue limit for this workspace",
+        extensions: { code: "USAGE_LIMIT_EXCEEDED" },
+      },
+    ]);
+  }
+  return ok({
+    issueCreate: {
+      success: true,
+      issue: {
+        id: "i2",
+        identifier: "BOA-2",
+        title: variables.input.title,
+        description: "",
+        state: { name: "Todo" },
+        url: "u",
+      },
+    },
+  });
+};
+
+/** 操作名 → 応答（[HTTP の状態, 本文]） */
+const OP_REPLIES = {
+  CountActiveIssues: countActiveReply,
+  GetStates: () => ok({ workflowStates: { nodes: STATES } }),
+  GetIssue: getIssueReply,
+  UpdateIssue: updateIssueReply,
+  CreateComment: createCommentReply,
+  ArchiveIssue: archiveIssueReply,
+  CreateIssue: createIssueReply,
+};
+
+/** 模擬サーバーの1リクエストの応答（[HTTP の状態, 本文]）。届いた操作を state.calls に積む */
+function mockReplyFor(state, query, variables) {
+  const op = (query.match(/\b(mutation|query)\s+(\w+)/) || [])[2] ?? "viewer";
+  state.calls.push(op);
+  if (/viewer/.test(query)) return viewerReply();
+  const handler = OP_REPLIES[op];
+  return handler
+    ? handler(state, variables)
+    : fail(400, [{ message: `unknown op ${op}` }]);
+}
+
 /** シナリオごとに応答を変える模擬サーバー。届いた操作を calls に積む */
 function startMock() {
-  const state = { scenario: {}, calls: [] };
+  const state = { scenario: {}, calls: [], slack: [] };
   const server = http.createServer((req, res) => {
     let body = "";
     req.on("data", (c) => (body += c));
     req.on("end", () => {
-      const { query, variables } = JSON.parse(body);
       const reply = (status, payload) => {
         res.writeHead(status, { "Content-Type": "application/json" });
         res.end(JSON.stringify(payload));
       };
-      const op =
-        (query.match(/\b(mutation|query)\s+(\w+)/) || [])[2] ?? "viewer";
-      state.calls.push(op);
-
-      if (/viewer/.test(query)) {
-        return reply(200, {
-          data: {
-            viewer: {
-              id: "u1",
-              name: "test",
-              teams: { nodes: [{ id: "t1", key: "BOA", name: "boat" }] },
-            },
-          },
-        });
+      // 起票を止めたときの Slack 通知（SLACK_WEBHOOK_URL をここへ向ける）
+      if (req.url === "/slack") {
+        state.slack.push(JSON.parse(body).text);
+        return reply(200, {});
       }
-      if (op === "GetStates") {
-        return reply(200, { data: { workflowStates: { nodes: STATES } } });
-      }
-      if (op === "GetIssue") {
-        return reply(200, {
-          data: {
-            issues: {
-              nodes: [
-                {
-                  id: "i1",
-                  identifier: "BOA-1",
-                  title: "t",
-                  description: "",
-                  state: { id: "s-todo", name: "Todo" },
-                  createdAt: "2026-10-01T00:00:00Z",
-                  updatedAt: "2026-10-01T00:00:00Z",
-                  url: "u",
-                },
-              ],
-            },
-          },
-        });
-      }
-      if (op === "UpdateIssue") {
-        const s = STATES.find((x) => x.id === variables.input.stateId);
-        return reply(200, {
-          data: {
-            issueUpdate: {
-              success: true,
-              issue: {
-                id: "i1",
-                identifier: "BOA-1",
-                title: "t",
-                state: { name: s.name, type: s.type },
-              },
-            },
-          },
-        });
-      }
-      if (op === "CreateComment") {
-        return reply(200, {
-          data: {
-            commentCreate: {
-              success: state.scenario.commentFails !== true,
-              comment: { id: "c1", body: "b" },
-            },
-          },
-        });
-      }
-      if (op === "ArchiveIssue") {
-        if (state.scenario.archive === "graphqlError") {
-          return reply(200, {
-            errors: [{ message: "boom", extensions: { code: "INTERNAL" } }],
-          });
-        }
-        return reply(200, {
-          data: {
-            issueArchive: { success: state.scenario.archive !== "fail" },
-          },
-        });
-      }
-      if (op === "CreateIssue") {
-        if (state.scenario.create === "usageLimit") {
-          // 2026-09-28 に実際に返った形（HTTP 400 と 200 の両方を試す）
-          return reply(state.scenario.status ?? 400, {
-            errors: [
-              {
-                message:
-                  "You've exceeded the free issue limit for this workspace",
-                extensions: { code: "USAGE_LIMIT_EXCEEDED" },
-              },
-            ],
-          });
-        }
-        return reply(200, {
-          data: {
-            issueCreate: {
-              success: true,
-              issue: {
-                id: "i2",
-                identifier: "BOA-2",
-                title: variables.input.title,
-                description: "",
-                state: { name: "Todo" },
-                url: "u",
-              },
-            },
-          },
-        });
-      }
-      return reply(400, { errors: [{ message: `unknown op ${op}` }] });
+      const { query, variables } = JSON.parse(body);
+      return reply(...mockReplyFor(state, query, variables));
     });
   });
   return new Promise((resolve) => {
@@ -176,6 +200,8 @@ function runCli(url, args) {
           ...process.env,
           LINEAR_API_KEY: "test-key",
           LINEAR_API_URL: url,
+          SLACK_WEBHOOK_URL: url.replace(/\/graphql$/, "/slack"),
+          SLACK_DIGEST_WEBHOOK_URL: "",
         },
         timeout: 30000,
       },
@@ -199,6 +225,35 @@ const CASES = [
     args: ["create", "タイトル", "説明"],
     expect: ({ code, stderr }) =>
       code !== 0 && stderr.includes("USAGE_LIMIT_EXCEEDED"),
+  },
+  {
+    name: "create: 未アーカイブが閾値の230件なら起票せず、Slack に件数と閾値を送って終了コード1",
+    scenario: { activeCount: 230 },
+    args: ["create", "タイトル", "説明"],
+    expect: ({ code, stderr }, calls, slack) =>
+      code !== 0 &&
+      !calls.includes("CreateIssue") &&
+      stderr.includes("未アーカイブ 230 件") &&
+      slack.length === 1 &&
+      slack[0].includes("230 件") &&
+      slack[0].includes("閾値 230 件"),
+  },
+  {
+    name: "create: 未アーカイブ件数を数えられなければ起票せず（fail closed）、Slack に送って終了コード1",
+    scenario: { countFails: true },
+    args: ["create", "タイトル", "説明"],
+    expect: ({ code }, calls, slack) =>
+      code !== 0 &&
+      !calls.includes("CreateIssue") &&
+      slack.length === 1 &&
+      slack[0].includes("数えられません"),
+  },
+  {
+    name: "create: 199件なら起票し、Slack には送らない",
+    scenario: { activeCount: 199 },
+    args: ["create", "タイトル", "説明"],
+    expect: ({ code }, calls, slack) =>
+      code === 0 && calls.includes("CreateIssue") && slack.length === 0,
   },
   {
     name: "create: 成功なら終了コード0",
@@ -260,8 +315,9 @@ async function main() {
     for (const c of CASES) {
       mock.state.scenario = c.scenario;
       mock.state.calls = [];
+      mock.state.slack = [];
       const result = await runCli(mock.url, c.args);
-      if (!c.expect(result, mock.state.calls)) {
+      if (!c.expect(result, mock.state.calls, mock.state.slack)) {
         failures.push(
           `${c.name}\n      終了コード=${result.code} 操作=${mock.state.calls.join(",")}\n      stderr=${result.stderr.trim().slice(0, 300)}`,
         );

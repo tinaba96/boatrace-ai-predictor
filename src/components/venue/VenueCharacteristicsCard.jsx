@@ -1,234 +1,149 @@
 /**
- * VenueCharacteristicsCard - 会場固有の水面特性カード（HUDテレメトリ表示）
- * 枠番別の1着率（過去90日、outcome_distributionの集計）と主な決まり手
- * （winning_technique_stats）を、コックピット計器盤風の発光バーで表示する。
- * バーは0-100%の絶対スケールで固定し、上部に0/25/50/75/100%の軸目盛りを表示。
- * その会場自体の1着率はバー上部の浮動ラベルで、全国平均（24会場プール値）は
- * バー下部のティックマーク＋浮動ラベルで示す（2026-09-07、右側に数値と差分を
- * 列挙する構成は冗長との指摘を受け、バー上に直接数値を載せる形に整理した）。
- * AI予想（超展開予測・データ分析）が参照しているのと同じ会場別データを
- * 選手・レースデータと絡めて見せることで、会場別レース一覧ページの回遊性を高める。
- * デザイン案はArtifact（レーダースイープ/HUDテレメトリ/ソナーリング）から
- * HUDテレメトリ案を採用（2026-09-07）。
- * /venueはTRANSLATED_PATHS対象のため、文言はi18nキー経由にする。
- * 下に「もっと詳しく」（2連率・3連率と決まり手の全内訳、BOA-269）の折りたたみを置く。
+ * VenueCharacteristicsCard - 会場ページの「<会場>のコース別成績と特徴（直近1年）」の節
+ *
+ * 出走表の後に開いた状態で出す（BOA-1687 GS02 V1。以前は次の発走の直上で畳んでいた。BOA-1189・BOA-546）。
+ * 直近1年の進入コース別の1着率の表、全レースのうちの決まり手の割合、水面（公式の場データ）を出す。
+ * 数字は見出しの直下の要約2行（VenueSummaryLines）と同じ静的な値（src/data/venueSummaryStats.js、月1回作る）で、
+ * 期間の文字列も要約と同じ venueSummaryPeriod で組む（同じ指標を違う期間で並べない）。
+ * 下の「もっと詳しく」は過去90日・枠番別の2連率・3連率と、勝ったときの決まり手（VenueCharacteristicsDetails）。
+ * /venue は TRANSLATED_PATHS 対象のため、文言は i18n キー経由
  */
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { supabaseDataService } from "../../services/supabaseDataService";
-import { translateTechnique } from "../race/raceIndicators";
-import { BOAT_COLORS } from "../../utils/colors";
-import InlineFetchError from "../InlineFetchError";
-import CollapsibleSection from "./CollapsibleSection";
+import { VENUE_SUMMARY_STATS } from "../../data/venueSummaryStats";
+import { venueWaterProfile } from "../../data/venueWaterProfiles";
+import {
+  VENUE_COURSE_SECTION_ID,
+  venueCourseTableRows,
+} from "../../pure/venueCourseTableRows";
+import {
+  formatCount,
+  formatRate,
+  venueSummaryPeriod,
+} from "../../utils/venueSummary";
 import VenueCharacteristicsDetails from "./VenueCharacteristicsDetails";
-import { placeRatesByBoat } from "../../utils/venuePlaceRates";
+import VenueCourseTable from "./VenueCourseTable";
 import "./VenueCharacteristicsCard.css";
 
-// このサンプル数を下回る会場は表示しない（ノイズが大きいため）
-const MIN_TOTAL_RACES = 20;
+const TABLE_TECHNIQUES = ["nige", "sashi", "makuri", "makurizashi", "nuki"];
 
-// collapsible: 会場ページで次のレースの直上に差し込むとき、見出しと要約1行に折りたたむ（BOA-546）
-export default function VenueCharacteristicsCard({
-  venueCode,
-  collapsible = false,
-}) {
+// 水面（水質と干満差）。公式の場データ（src/data/venueWaterProfiles.js）
+function waterText(t, venueCode) {
+  const profile = venueWaterProfile(venueCode);
+  if (!profile) return null;
+  return t("venueCharacteristics.waterText", {
+    water: t(`venueCharacteristics.waterType.${profile.waterType}`),
+    tidal: t(
+      profile.tidal
+        ? "venueCharacteristics.tidalYes"
+        : "venueCharacteristics.tidalNo",
+    ),
+  });
+}
+
+function TechniqueTable({ t, venue, national }) {
+  return (
+    <>
+      <h3 className="venue-characteristics-subtitle">
+        {t("venueCharacteristics.techniqueTitle")}
+      </h3>
+      <table
+        className="venue-technique-table"
+        data-testid="venue-technique-table"
+      >
+        <thead>
+          <tr>
+            <th scope="col">{t("venueCharacteristics.techniqueName")}</th>
+            <th scope="col">{t("venueCharacteristics.techniqueVenue")}</th>
+            <th scope="col">{t("venueCharacteristics.techniqueNational")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {TABLE_TECHNIQUES.map((slug) => (
+            <tr key={slug}>
+              <th scope="row">{t(`techniques.${slug}`)}</th>
+              <td>{formatRate(venue.techniques[slug].rate)}%</td>
+              <td>{formatRate(national.techniques[slug].rate)}%</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="venue-characteristics-note">
+        {t("venueCharacteristics.megumareNote", {
+          races: formatCount(venue.races),
+          count: venue.techniques.megumare.count,
+          nationalRaces: formatCount(national.races),
+          nationalCount: formatCount(national.techniques.megumare.count),
+        })}
+      </p>
+    </>
+  );
+}
+
+// 直近1年の脚注は、1年の表の直後・過去90日の「もっと詳しく」より上に置く（90日の説明に読ませない）
+function YearFootnote({ t, venue, national, period }) {
+  return (
+    <p className="venue-characteristics-footnote">
+      {t("venueCharacteristics.footnote", {
+        count: formatCount(venue.races),
+        nationalCount: formatCount(national.races),
+        from: period.from,
+        to: period.to,
+      })}
+    </p>
+  );
+}
+
+export default function VenueCharacteristicsCard({ venueCode }) {
   const { t } = useTranslation();
-  const [outcomeData, setOutcomeData] = useState(null);
-  const [techniqueData, setTechniqueData] = useState(null);
-  const [venueInfo, setVenueInfo] = useState(null);
-  const [nationalAverage, setNationalAverage] = useState(null);
-  const [loading, setLoading] = useState(true);
-  // 取得失敗を「開催実績が少ない会場」と同じ非表示に化けさせない（BOA-359）
-  const [failed, setFailed] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadData = async () => {
-      setLoading(true);
-      setFailed(false);
-      try {
-        const [outcome, technique, info, national] = await Promise.all([
-          supabaseDataService.getOutcomeDistribution(venueCode),
-          supabaseDataService.getWinningTechniqueStats(venueCode),
-          supabaseDataService.getVenueCharacteristics(venueCode),
-          supabaseDataService.getNationalAverageOutcomeDistribution(),
-        ]);
-        if (cancelled) return;
-        setOutcomeData(outcome);
-        setTechniqueData(technique);
-        setVenueInfo(info);
-        setNationalAverage(national);
-        setLoading(false);
-      } catch (err) {
-        if (cancelled) return;
-        console.error("会場特性データ取得エラー:", err?.message ?? String(err));
-        setFailed(true);
-        setLoading(false);
-      }
-    };
-
-    loadData();
-    return () => {
-      cancelled = true;
-    };
-  }, [venueCode, reloadKey]);
-
-  if (failed) {
-    return (
-      <InlineFetchError
-        message={t("venueCharacteristics.fetchError")}
-        onRetry={() => setReloadKey((n) => n + 1)}
-      />
-    );
-  }
-
-  if (loading || !outcomeData || outcomeData.total_races < MIN_TOTAL_RACES) {
-    return null;
-  }
-
-  // 1着率は件数（count / total_races）から出す。probability はパターンごとに小数2桁で
-  // 丸めてあり、足し合わせると最大0.05pt ずれて、下の「もっと詳しく」の表（件数から計算）と
-  // 小数1桁の表示が食い違う（全144セル中19セル、2026-10-02 実測。BOA-269）
-  const placeRates = placeRatesByBoat(outcomeData) ?? [];
-  const boatRows = [1, 2, 3, 4, 5, 6].map((boat) => {
-    const winRate = placeRates.find((r) => r.boat === boat)?.winRate ?? 0;
-    const topTechnique = techniqueData?.data?.[boat]?.techniques?.[0] ?? null;
-    const national = nationalAverage?.[boat] ?? null;
-    return { boat, winRate, topTechnique, national };
-  });
-
-  const hasAnyWinRate = boatRows.some((row) => row.winRate > 0);
-  if (!hasAnyWinRate) return null;
-
-  const venueSummary = venueInfo
-    ? `${t(`venueCharacteristics.waterType.${venueInfo.waterType}`)}${t("listSeparator")}${t(`venueCharacteristics.cluster.${venueInfo.cluster}`)}`
-    : null;
-  // 折りたたんだ見出しの要約1行: 水面・傾向と、1号艇の1着率（中身の代表値）
-  const collapsedTeaser = t("venueCharacteristics.collapsedTeaser", {
-    summary: venueSummary ?? "",
-    rate: boatRows[0].winRate.toFixed(1),
-  });
+  const venue = VENUE_SUMMARY_STATS.venues[venueCode];
+  const national = VENUE_SUMMARY_STATS.national;
+  const rows = venueCourseTableRows(venue, national);
+  if (!rows) return null;
+  const period = venueSummaryPeriod();
+  const water = waterText(t, venueCode);
 
   return (
-    <div
-      className={`venue-characteristics-card${collapsible ? " is-collapsible" : ""}`}
+    <section
+      id={VENUE_COURSE_SECTION_ID}
+      className="venue-characteristics-card"
+      data-testid="venue-course-section"
+      aria-labelledby={`${VENUE_COURSE_SECTION_ID}-title`}
     >
       <div className="venue-hud-scanbar" aria-hidden="true" />
-      <CollapsibleSection
-        collapsible={collapsible}
-        storageKey="venueCharacteristics"
-        summary={
-          <span className="venue-characteristics-collapsed-head">
-            <h2>{t("venueCharacteristics.title")}</h2>
-            <span
-              className="venue-characteristics-teaser"
-              data-testid="venue-characteristics-teaser"
-            >
-              {collapsedTeaser}
-            </span>
-          </span>
-        }
+      <h2 id={`${VENUE_COURSE_SECTION_ID}-title`}>
+        {t("venueCharacteristics.sectionTitle", {
+          venue: t(`venues.${venueCode}`),
+        })}
+      </h2>
+      <p
+        className="venue-characteristics-period"
+        data-testid="venue-course-period"
       >
-        {!collapsible && <h2>{t("venueCharacteristics.title")}</h2>}
-        {venueSummary && (
-          <p className="venue-characteristics-summary">{venueSummary}</p>
-        )}
-        <p className="venue-characteristics-note">
-          {t("venueCharacteristics.note")}
-        </p>
-        <div className="venue-hud-header-row" aria-hidden="true">
-          <span />
-          <span className="venue-hud-axis-labels">
-            <span>0</span>
-            <span>25</span>
-            <span>50</span>
-            <span>75</span>
-            <span>100%</span>
-          </span>
-          <span className="venue-hud-header-technique">
-            {t("venueCharacteristics.techniqueHeader")}
-          </span>
-        </div>
-        <div className="venue-hud-rows">
-          {boatRows.map((row, index) => {
-            const boatColor = BOAT_COLORS[row.boat] ?? {};
-            return (
-              <div className="venue-hud-row" key={row.boat}>
-                <span
-                  className="venue-hud-lane"
-                  style={{ background: boatColor.bg, color: boatColor.text }}
-                >
-                  {row.boat}
-                </span>
-                <span className="venue-hud-track">
-                  <span
-                    className="venue-hud-grid-line"
-                    style={{ left: "25%" }}
-                  />
-                  <span
-                    className="venue-hud-grid-line"
-                    style={{ left: "50%" }}
-                  />
-                  <span
-                    className="venue-hud-grid-line"
-                    style={{ left: "75%" }}
-                  />
-                  <span
-                    className="venue-hud-fill"
-                    style={{
-                      width: `${row.winRate}%`,
-                      animationDelay: `${index * 0.08}s`,
-                    }}
-                  />
-                  <span
-                    className="venue-hud-own-label"
-                    style={{ left: `${row.winRate}%` }}
-                  >
-                    {row.winRate.toFixed(1)}%
-                    <span className="venue-hud-own-label-line" />
-                  </span>
-                  {row.national != null && (
-                    <>
-                      <span
-                        className="venue-hud-national-tick"
-                        style={{ left: `${row.national}%` }}
-                      />
-                      <span
-                        className="venue-hud-national-label"
-                        style={{ left: `${row.national}%` }}
-                      >
-                        <span className="venue-hud-national-label-line" />
-                        {t("venueCharacteristics.nationalAverageTooltip", {
-                          value: row.national.toFixed(1),
-                        })}
-                      </span>
-                    </>
-                  )}
-                </span>
-                <span className="venue-hud-technique">
-                  {row.topTechnique
-                    ? `${translateTechnique(t, row.topTechnique.technique)} ${row.topTechnique.percentage.toFixed(0)}%`
-                    : "-"}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-        <VenueCharacteristicsDetails
-          venueCode={venueCode}
-          outcomeData={outcomeData}
-          techniqueData={techniqueData}
-        />
-        <p className="venue-characteristics-footnote">
-          {t("venueCharacteristics.footnote", {
-            count: outcomeData.total_races,
-            date:
-              outcomeData.last_updated ?? t("venueCharacteristics.unknownDate"),
-          })}
-        </p>
-      </CollapsibleSection>
-    </div>
+        {t("venueCharacteristics.period", {
+          from: period.from,
+          to: period.to,
+          races: formatCount(venue.courseRaces),
+          nationalRaces: formatCount(national.courseRaces),
+        })}
+      </p>
+      <p className="venue-characteristics-note">
+        {t("venueCharacteristics.note")}
+      </p>
+      <VenueCourseTable t={t} rows={rows} />
+
+      <TechniqueTable t={t} venue={venue} national={national} />
+
+      {water && (
+        <>
+          <h3 className="venue-characteristics-subtitle">
+            {t("venueCharacteristics.waterTitle")}
+          </h3>
+          <p className="venue-characteristics-water">{water}</p>
+        </>
+      )}
+
+      <YearFootnote t={t} venue={venue} national={national} period={period} />
+      <VenueCharacteristicsDetails venueCode={venueCode} />
+    </section>
   );
 }

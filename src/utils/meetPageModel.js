@@ -17,8 +17,8 @@ import {
   normalizeStage,
   pointsNeededForBorder,
   SCORE_POINTS,
-} from "../components/race/seriesPoints.js";
-import { finishPositionOf } from "../components/race/basicInfoStats.js";
+} from "../pure/seriesPoints.js";
+import { finishPositionOf } from "../pure/basicInfoStats.js";
 
 /** 節ページの対象グレード */
 export const MEET_PAGE_GRADES = ["SG", "G1", "G2"];
@@ -39,6 +39,71 @@ const OUT_OF_SCOPE_TITLE = /グランプリ|クイーンズクライマックス
 export function isOutOfScopeMeetTitle(title) {
   if (!title) return false;
   return OUT_OF_SCOPE_TITLE.test(String(title).normalize("NFKC"));
+}
+
+/**
+ * 順延で節の予定の最終日より後に走る日を、同じ節とみなす日数（seriesCoveringDate）。
+ * 目安（根拠なし）。荒天の順延は1〜2日が多く、3日あれば足りるとみた
+ */
+export const SERIES_POSTPONE_TOLERANCE_DAYS = 3;
+
+/**
+ * その日以前に始まったいちばん新しい節（race_series の1行）が、その日を含むか。含めばその行、含まなければ null。
+ * race_series は「予定」で順延した節の日程は直らないため、予定の最終日から SERIES_POSTPONE_TOLERANCE_DAYS 日以内も同じ節とみなす。
+ * 画面（supabaseDataService.getSeriesOfDate）とボット向け HTML（api/_lib/botRace.js）が使う
+ * @param {{start_date: string, end_date: string}|null|undefined} latest
+ * @param {string} date YYYY-MM-DD
+ */
+export function seriesCoveringDate(latest, date) {
+  if (!latest) return null;
+  const daysAfterEnd =
+    (Date.parse(`${date}T00:00:00Z`) -
+      Date.parse(`${latest.end_date}T00:00:00Z`)) /
+    86400000;
+  return daysAfterEnd <= SERIES_POSTPONE_TOLERANCE_DAYS ? latest : null;
+}
+
+/**
+ * レース詳細の 1R〜12R の帯で、節（race_series）を引く必要があるか。
+ * レースのグレードが分かっていて SG/G1/G2 でなければ引かない（一般戦・G3 でリンクは出ない）。分からないときだけ引く
+ */
+export function needsMeetSeries(raceGrade) {
+  return !raceGrade || MEET_PAGE_GRADES.includes(raceGrade);
+}
+
+/**
+ * レース詳細の帯に節のページへのリンクを出すなら、その初日（YYYY-MM-DD）。出さないなら null。
+ * 判定は節ページ（meetPageState）と同じく、節の値が無ければレースの値で補う。
+ * 画面（RaceNumberStrip）とボット向け HTML（api/_lib/botRace.js）が使う
+ * @param {{start_date: string, grade?: string|null, title?: string|null}|null} series
+ */
+export function meetLinkStartDateOf(series, raceGrade, raceTitle) {
+  if (!series) return null;
+  const show =
+    MEET_PAGE_GRADES.includes(series.grade ?? raceGrade) &&
+    !isOutOfScopeMeetTitle(series.title ?? raceTitle);
+  return show ? series.start_date : null;
+}
+
+/**
+ * 会場ページの節のページへの帯（VenueMeetBanner、BOA-1189）を出す節か。出すならグレードと節タイトル、出さないなら null。
+ * 判定は今日の先頭レース（会場ページの title・会場カードのバッジと同じ代表値）
+ * @param {{raceGrade?: string|null, raceTitle?: string|null}[]} races - 会場の本日のレース（レース番号順）
+ */
+export function meetBannerSeriesOf(races) {
+  const first = races?.[0];
+  if (!first || !MEET_PAGE_GRADES.includes(first.raceGrade)) return null;
+  const title = first.raceTitle?.normalize("NFKC").trim() || null;
+  if (isOutOfScopeMeetTitle(title)) return null;
+  return { grade: first.raceGrade, title };
+}
+
+/** 会場で絞った race_series の行から、その日の節を選ぶ（初日は日目から逆算しない）。 */
+export function seriesOfDate(rows, date) {
+  const series = [...rows]
+    .filter((row) => row.start_date <= date)
+    .sort((a, b) => b.start_date.localeCompare(a.start_date))[0];
+  return seriesCoveringDate(series, date);
 }
 
 const dateOf = (raceId) => String(raceId).slice(0, 10);
@@ -86,36 +151,57 @@ const isFinalStage = (stage) => {
  * @param {string[]} p.meetDays `meetDaysOf` の値
  * @param {boolean} p.hasEntries 節の日に出走表があるか
  * @param {boolean} [p.windowHasRaces] 窓（初日〜+7日）に出走表か種別が1行でもあるか。
- *   あるのに節の日が無い＝URL の初日が節の途中の日なので、今日に関係なく「見つからない」
+ *   あるのに節の日が無いときは「見つからない」（指定日の対象外グレードの案内を除く）
  * @param {string|null} p.grade 節のグレード（`race_series.grade`、無ければレースの `race_grade`）
+ * @param {string|null} [p.startDateGrade] URL の指定日そのもののレースのグレード
  * @param {string|null} p.title 節タイトル
  * @param {Array<{race_id: string, race_stage?: string|null}>} p.conditions 節の日の種別
  * @param {Set<string>} p.doneRaceIds 結果がある、または中止が確定したレース
  * @param {string[]} p.raceIds 節の日の全レース（出走表または種別にあるもの）
  * @returns {"preOpen"|"notFound"|"outOfScope"|"prelim"|"prelimFinalDay"|"prelimDone"|"semifinalDay"|"finalDay"|"finished"}
  */
-export function meetPageState({
+export function meetPageState(params) {
+  const scope = meetPageScopeState(params);
+  if (scope) return scope;
+  const { today, meetDays, conditions, doneRaceIds, raceIds } = params;
+  const pastDays = meetDays.filter((d) => d <= today);
+  if (pastDays.length === 0) return "preOpen";
+  const day = pastDays[pastDays.length - 1];
+  return meetPageDayState(day, { conditions, doneRaceIds, raceIds });
+}
+
+/**
+ * meetPageState の前段: 節が無い・対象外のときの状態。進行の判定へ進むなら null
+ * （引数は meetPageState と同じ object）
+ */
+function meetPageScopeState({
   today,
   startDate,
   meetDays,
   hasEntries,
   grade,
   title,
-  conditions,
-  doneRaceIds,
-  raceIds,
   windowHasRaces = false,
+  startDateGrade = null,
 }) {
+  // 初日不一致でも、指定日のレースで対象外グレードが分かれば既存の案内を出す。
+  if (startDateGrade && !MEET_PAGE_GRADES.includes(startDateGrade))
+    return "outOfScope";
   if (meetDays.length === 0 && windowHasRaces) return "notFound";
   if (!hasEntries || meetDays.length === 0) {
     return today <= startDate ? "preOpen" : "notFound";
   }
   if (isOutOfScopeMeetTitle(title)) return "outOfScope";
   if (!MEET_PAGE_GRADES.includes(grade)) return "outOfScope";
+  return null;
+}
 
-  const pastDays = meetDays.filter((d) => d <= today);
-  if (pastDays.length === 0) return "preOpen";
-  const day = pastDays[pastDays.length - 1];
+/**
+ * meetPageState の後段: 基準の日 day（表示日以前の最後の開催日）での進行の状態
+ * @param {string} day
+ * @param {{conditions: object[]|undefined, doneRaceIds: Set<string>, raceIds: string[]}} p
+ */
+function meetPageDayState(day, { conditions, doneRaceIds, raceIds }) {
   const stagesOf = (d) =>
     (conditions ?? [])
       .filter((c) => dateOf(c.race_id) === d)

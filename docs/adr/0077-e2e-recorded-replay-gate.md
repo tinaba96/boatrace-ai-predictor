@@ -54,6 +54,12 @@
 
 `E2E_LIVE=1`（`npm run test:e2e:live`）で従来どおり本番データ・実時刻で走る。`.github/workflows/e2e-live.yml` が JST14:00（UTC05:00）に実行し、失敗を Slack に流す（`nightly-verify-db.yml` と同じ webhook・attachments 形式）。`workflow_dispatch` も付けた。
 
+2026-10-27 追記: 1ジョブで全件を流していた間、2026-10-20〜26 の7回とも60分の上限で取り消され、本番データでの検知が1週間働いていなかった（docs/design/ci-minutes-reduction/design.md 2.4）。PR ゲートと同じ `e2e/shards.json` の組に分け（`e2e-shards.js --matrix`、各組 45分まで）、`report` のジョブが組のレポートをまとめて skip・組の網羅を見て、落ちていれば Slack に1回だけ流す。`verify-e2e-shards.js` が e2e-live.yml の組も e2e/shards.json から作ることを検査する。
+
+2026-10-27 追記（BOA-1163）: schedule の JST14:00 は守られていない。2026-10-01〜26 の26回の起動は JST18:04〜21:52（4〜8時間の遅れ）。それでも落ちたテストに起動の時刻が原因のものは無かった。完了した16回（10/01〜10/18）の失敗はすべて次のどれかで説明がつく: (a) 直近N走・直近14日の一覧から固定の過去レースを探していた（選手ページの履歴・的中レース一覧、BOA-929 #1856・BOA-1051 #1846 で直した）、(b) page.route の中で `fetchRecorded` が本番の応答を待っている間にアサーションが通ってページが閉じ、「Target page, context or browser has been closed」で失敗扱いになる（live でだけ起きる。再生では録画からすぐ返る。BOA-509 の欠損の補い 15回中15回・SG の帯が無い日 14回中5回、BOA-1163 で直した）、(c) 揺れ（モータ情報の桁は #1962 で直した）。skip の28件はすべて画面幅で決まるもので、時刻で増えていない。テストは「JST14:00 に走る」ことを前提にしていない。前提にしているのは「JST のその日のうちに走る（本日のレースが DB にある）」ことだけで、起動が UTC15:00（JST の日付が変わる）を過ぎると、本日の会場一覧から開くテスト（`venue-grid-card--open` の first・`e2eTodayJST()`）が落ちうる。page.route の中で `fetchRecorded` を呼ぶ新しい処理は、ページが閉じた後の失敗を無視する（`page.isClosed() || /has been closed/`、`in-caution-assist.spec.js` と同じ形）。
+
+2026-10-27 追記: 組に分けた後の初回（run 40487069745）で、`analogy-contribution.spec.js` の「はっきりしないカードの札」だけが retry でも落ちた。応答はすべて固定（facts は `analogy-v16-fixture.js`）で、本番のデータにも時刻にも依らない。trace では facts の fulfill の約90ms後に `allInnerTexts()` が走り、カードが描かれる前に0件を読んでいた（失敗後の画面ではカードが出ている）。`allInnerTexts()`・`count()`・`all()` は待たないので、先に `expect(...).toBeVisible()` で描画を待つ。10/09〜10/13 の flaky 5回も同じテストで、同じ型と推定する（10/09 の追加時から待ちが無かった。当時のログは未確認）。
+
 ### 4. 既存の個別 `page.route` は優先される
 
 HAR は context に登録し、spec 側の `page.route` は page に登録される。page のルートが先に評価されるため、既存の差し替え（予測データ取得失敗・ピットレポートの回帰テスト）はそのまま効く。`route.fallback()` すれば HAR に落ちる。実測で確認した（`/rest/v1/venues*` を page.route で `[]` にした場合、HAR の応答ではなく `[]` が返った）。
@@ -81,26 +87,52 @@ HAR は context に登録し、spec 側の `page.route` は page に登録され
 
 毎日4回（JST 10:23 / 12:47 / 14:37 / 16:13。UTC 01:23 / 03:47 / 05:37 / 07:13）と `workflow_dispatch` で、master で全件を録画する。その日の録画を採用したら、後の起動は空振りする。
 
+- 起動の主は Vercel Cron（`api/cron/e2e-rerecord-dispatch.js`）からの `workflow_dispatch`（`inputs.gate=true`）。2026-10-02 を最後に schedule が JST19時以降にしか来ず18日撮れなかったため（BOA-929、PR-A2）。schedule は同じ時刻の予備に残す。以下の「定期実行」は schedule と gate=true の dispatch の両方を指す
+
 - 当初は JST11:00（`'0 2 * * *'`）の1回だけだったが、2026-09-30 は JST17:15 に起動した。GitHub の schedule は負荷で遅れ、取りこぼされることもあり、毎時0分に負荷が集中する（[公式](https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#schedule)）。このリポジトリの他の定期実行も1〜4時間の遅れが常態のため、0分を避けたうえで予備の起動を置いた（JST10:23・12:47の2回）
 - 2回でも足りなかった。2026-10-01 は 10:23 の予定が JST16:15 に、12:47 の予定が JST19:27 に起動し、16:15 の回は不採用（テスト3件の失敗）、19:27 の回は打ち切りで撮らずに終わった。1回でも不採用・大幅遅延になると、その日は撮り直せない。起動を JST10〜17時に4回置き、同じ日のうちに再挑戦できるようにした
-- 定期実行は、録画の前に `scripts/maintenance/e2e-recording.js gate` で撮るかを決める。その日（JST）の録画を採用済みなら撮らない（後の起動の空振り。通知しない）。JST19時以降に起動したら撮らない（発走前のレースが夜間開催の数場だけになる。通知する）。`workflow_dispatch` は判定せずに撮る
+- 定期実行は、録画の前に `scripts/maintenance/e2e-recording.js gate` で撮るかを決める。その日（JST）の録画を採用済みなら撮らない（後の起動の空振り。通知しない）。JST19時以降に起動したら撮らない（発走前のレースが夜間開催の数場だけになる。通知する）。人が起こす `workflow_dispatch`（gate=false、既定）は判定せずに撮る
 - 起動が遅れて重なっても、`concurrency`（`cancel-in-progress: false`）で直列になる。後の起動は前の起動の終了後に checkout した master のポインタで判定する（二重に撮らない）。起動時刻・直列化・権限は `verify-e2e-har-merge.js` が機械検査する
 
 1. 本番に繋いで全件を録画する
 2. 撮った録画だけで再生して全件実行する（`E2E_REPLAY_STRICT=1`: 録画に無い通信は abort＝録画が自己完結しているかを見る）
 3. 採用条件（`scripts/maintenance/e2e-recording.js judge`）
    - 2 が全件通る（失敗・flaky・テスト外のエラーが0）
-   - skip が現行の録画（ポインタに記録した件数）より増えていない。発走前のレースが少ない日に撮ると skip が増えるため
+   - skip が現行の録画（ポインタに記録した件数）より増えていない。発走前のレースが少ない日に撮ると skip が増えるため。画面幅（プロジェクト）だけで決まる skip は数えない（理由を `e2e/viewport-skip.js` の `viewportSkipReason()` で包む。どの日に撮っても同じ数で、テストを足すたびに増えるため。BOA-929: 含めていた間は 2026-10-24 の3回とも「現行 0件 → 新 28件」で不採用になった）
 4. 採用したら Release に添付してポインタを master に直接 push する（`push-with-retry.sh`。push はアプリ ryujin-bot のトークンで行い、この push で起動しうるワークフローは `[automated]` で終わるコミットでは動かない条件を持つか、paths で `e2e/recording.json` を対象にしていない。当初は GITHUB_TOKEN で push し、他のワークフローを起動しないことに頼っていた）。直近14件を残して古い Release を消す
-5. 採用しなかった・失敗したときは Slack に通知する。PRゲートは現行の録画のまま動き続ける。定期実行の「採用しなかった・撮らなかった」通知は1日1回まで（`e2e-recording.js notify-dedupe`。同じ日に別の定期実行の通知ステップが動いていれば出さない。確かめられないときは通知する）。2回目以降の結果は各実行の step summary に残る。ワークフロー自体の失敗（push の失敗等、ステップが失敗したとき）と `workflow_dispatch` は毎回通知する
+5. 採用しなかった・失敗したときは Slack に通知する。PRゲートは現行の録画のまま動き続ける。定期実行の「採用しなかった・撮らなかった」通知は1日1回まで（`e2e-recording.js notify-dedupe`。同じ日に master の別の実行の通知ステップが動いていれば出さない。runs の API は inputs を返さないので、人の起動の通知も数える。確かめられないときは通知する）。2回目以降の結果は各実行の step summary に残る。ワークフロー自体の失敗（push の失敗・record ジョブの失敗等）と、人が起こす `workflow_dispatch`（gate=false）は毎回通知する
 
 撮り直しで初めて落ちるテストは、録画の日時か本番データに暗黙に依存している。PRゲートは録画（時計は録画時刻）で再生するので通るが、翌日の撮り直し（時計は撮影時刻・本番の最新データ）で落ちる。2026-10-01 の不採用の3件はいずれもこの型だった。
+
+2026-10-24 の不採用の6件も同じ型で、2つに分かれた（BOA-929）。(1) 直近N件・直近14日の一覧の先頭だけを見て、固定した過去のレースを探していた（選手ページの履歴・的中レース一覧）。(2) `fetchRecorded` の応答を `route.fulfill({ response })` で返していた。Playwright は APIResponse でない `response` を黙って無視して空の200を返すので、録画に無い通信を本番へ素通しする PR ゲートでは通り、撮り直した録画の strict 再生でだけ落ちる。`fetchRecorded` の戻り値は全モードで `fulfillOptions()` を持ち、`verify-e2e-recorded-network.js` が `fulfill({ response })` を検出する。
 
 - 「過去か当日か」で表示が変わる箇所を、録画時刻の日付のレースで確かめていた → テスト内で `page.clock.setFixedTime` で日付を固定する
 - 結果が確定すると既定タブが「結果」に変わるレースで、既定タブの中身を測っていた → タブを明示して開く
 - 本番データの補完（過去のレースの進入コース）で「直近10走」の窓がずれ、先頭の1走の性質が変わった → 位置ではなく「条件を満たす走すべて」で確かめる
+- 本日の「先頭の会場」（会場コード順。桐生はナイターで1R が15時台）に締切後のレースがある前提で探していた（2026-10-26 の JST 10:23・12:47・14:37 の3回の不採用、`race-card-link.spec.js`） → 結果の確定した過去日付の会場ページで探す
 
 固定の race_id を開くテストを書くときは、撮影日が進んでも前提が変わらないか（結果の確定・今日との前後・後日の走の追加）を確かめる。
+
+### 8. 配り方: build した束を `vite preview` で配る（2026-11-03、CI の分数の削減の段2。この PR のマージで採用。マージ後の最初の撮り直しが採用されなければ下の手順で戻す）
+
+#1319（BOA-769 B）は「/src を直に import する4ファイルが preview で通らない」で閉じた。#1997 の実験で4ファイルを Node 側の読み込みに替え、課金の分は中央 94分→39分（約 −58%、4 vCPU、dev 3回・preview 2回）、件数・合否・skip（28件、全部が画面幅だけで決まるもの）は dev と同じだった（docs/design/ci-minutes-reduction/design.md 4.2 A・6章、#1997 の結果のコメント）。
+
+- **入れた所**: `scripts/maintenance/e2e-build.js`（`npm run build:e2e`）、`playwright.config.js`（`E2E_SERVE=preview` と束の照合）、e2e-smoke-test.yml（e2e-shard・e2e-light）・e2e-rerecord.yml（record・replay）・e2e-live.yml。`scripts/maintenance/verify-e2e-build.js` が、`E2E_SERVE: preview` の段の前に同じモードの build があることと、4つが preview であることを固定する
+- **束は3つ**。`npm run build:e2e`（`scripts/maintenance/e2e-build.js`）がモードごとに build する。build は webServer の command に入れない（`timeout: 30000` で切れる）。前の step で流し、webServer は `vite preview` だけ
+  - 再生: `e2e/recording.json` の `supabaseOrigin`（撮った録画の strict 再生は `e2e/recordings/meta.json`、`E2E_RECORDING_SOURCE=local`）
+  - 撮り（`E2E_RECORD=1`）・本番データ（`E2E_LIVE=1`）: 今の `VITE_SUPABASE_URL`
+- **宛先は束に焼き込まれる**。dev では `playwright.config.js` の `replayServerEnv` が起動のたびに録画のオリジンへ差し替えるが、preview では効かない。違う宛先で build すると HAR の URL の完全一致が外れ、全件が本番へ素通しになる（#1319 の 1,132 種類）。`VITE_GA_MEASUREMENT_ID` は空に固定する（本番の束の initGA は DEV で止まらない）
+- **起動の前に束を照合する**。`dist/.e2e-build.json` に mode・焼き込んだ宛先・build のコミット（`git rev-parse HEAD`）を書き、`playwright.config.js` が今のモードの期待（`buildSupabaseUrl`）と HEAD に合わなければ止める（再生の束で本番データを走らせない・古い束で緑にしない）。未コミットの変更までは見ない（手元の既定は dev）
+- **4つを同時に切り替える**: PR ゲート（e2e-shard・e2e-light）、撮り（record）、撮った録画の strict 再生、E2E Live。撮りと再生の片方だけを変えると、下の素通しの集合が配り方の差でずれる。撮り直しは `checkout ref: master` で動くので、ブランチでは「preview で撮って preview で再生」を測れない（#1997 の審査 P1）。**マージ後の最初の撮り直しの採用で確かめる**（採用の条件は緩めない: strict 再生が全件通る・skip が増えない）
+- **Node 側で読む src は HAR の外**。関数・CSS の検査（`e2e/src-modules.js` の `loadSrc`・`srcFixedT`・`srcCss`）はブラウザを通らないので、録画にも素通しの一覧にも出ない。宛先は `https://e2e-node.invalid` に固定し、差し替え漏れで本番へ出ないようにする。通信が要る検査は `globalThis.fetch` を差し替えて確かめ、本番に当てる1本だけを `E2E_LIVE=1` で流す
+- **dev でだけ見ていたもの**は CI で見なくなる: StrictMode の二重描画、dev の警告（console を見る spec は `flying-late-badge.spec.js` の1つ）、`src/i18n.js` の翻訳ファイルの欠落の throw（本番の束では `console.error` で ja に落ちるだけ）。最後のものは `verify-i18n-consistency.js` が `SUPPORTED_LANGUAGES` から言語を読んで代わりに止める。手元の既定（`E2E_SERVE` 未指定）は dev のまま
+- **素通しの集合は、配り方でも同じ配り方の実行どうしでも厳密には同じにならない**（2026-10-27 の実測）。原因は in() の並び（決定2）ではない。テストの途中の画面遷移とテストの終わりで、応答待ちの続きの要求（`fetchAllPages` の2ページ目 `offset=1000`、選手の窓・モーターの指数の続きの読み）が切られるかが、配る速さで変わる
+  - #1997 の preview の2回目で dev より増えた9種類のうち7種類は `offset=1000` の2ページ目で、1ページ目は録画に1000行で入っていた。`race-detail-details.spec.js` が住之江のレースを開いた後に大村のレースへ移り、その遷移で前の画面の選手6人分の読みが切れる。速い preview は遷移の前に2ページ目まで進む。残る2種類は、同じテストの選手の展示の読み（`race_original_exhibition_values` の in()）と、`race-detail-accident-rate.spec.js` の選手1人の窓の読み（`racer_id=eq.4856`。録画にはこの選手の読みが1件も無い）。後者は遷移でなくテストの終わりで切れた型とみられる（未検証）
+  - dev どうし（#1993〜#1996 で7〜11種類）の揺れも同じ型（`smoke.spec.js` の今節の前走のテストで、モーターの指数の `race_entries` の束 `global_2rate` が遷移の前に出るか）
+  - in() の束は並びで揺れない。`fetchAllInChunks` は値を並べてから分け、`chunkArray` に渡す一覧は DB の並び。録画の in() はすべて並び済みだった
+  - 撮りで context を閉じる前に静かな時間（新しい要求が出ない0.5秒）を待つ形は採らない。`race-detail-details.spec.js` の部分録画を手元で撮って確かめたところ、テストの終わりの画面（大村）の2ページ目は今の録画にも入っており、増えた7種類（遷移の前の画面の住之江）は待っても入らなかった。テストの終わりで切れる型（上の `racer_id=eq.4856`）には効きうるが、1種類のために全テストの撮りを延ばさない
+  - 素通しは失敗にしない（決定5）ので合否は変わらない。採用の線は「dev と同じ集合」でなく「増えた分が、続きのページか遷移の前の画面の読みだけであること」にする。撮りと再生を同じ配り方にそろえると、撮りの時点で preview の速さの分まで録画に入る
+- **戻す手順**: 4つのワークフローの `E2E_SERVE: preview` と `npm run build:e2e` の step を外す（dev に戻る）。録画の形式は配り方に依らないので撮り直さなくてよい。戻した後の最初の撮り直しで、素通しの集合は dev のものに戻る。マージ後の最初の撮り直しが採用されなければ戻す
 
 ### 7. 録画の本体は GitHub Release に置く
 

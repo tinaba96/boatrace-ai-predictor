@@ -1,6 +1,6 @@
 # 分析ドキュメント テンプレート集
 
-CLAUDE.md から参照される各種テンプレート。
+`.claude/commands/analyze-venue.md` から参照される各種テンプレート。
 
 ---
 

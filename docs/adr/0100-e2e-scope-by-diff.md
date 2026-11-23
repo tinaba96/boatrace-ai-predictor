@@ -1,0 +1,107 @@
+# ADR 0100: PR ゲートの e2e は差分で範囲を変える（記事だけは軽い組、docs と e2e が読まないパスだけは0件）
+
+## ステータス
+
+採用（2026-10-23、BOA-929・BOA-769。system-architect の審査 2026-10-22）
+
+## 背景
+
+PR ゲートの e2e（`.github/workflows/e2e-smoke-test.yml`）は、どの PR でも全テスト（2,234件）を3つの組に分けて流している。3つ目の組は `--grep-invert` の「残り全部」で、2026-10-21 の run 39527057420 では 1,467件が30分の上限で打ち切られ、445件しか終わらなかった（BOA-929）。
+
+直近1か月（2026-09-23〜10-23）にマージした PR 943件を下の判定にかけると、次のとおり（gh pr list の files で判定。改名は新しいパスだけで数えた。ファイルが100を超えた2件は全部に数えた）。
+
+| 範囲 | 件数 | 割合 |
+|---|---|---|
+| 0件（docs だけ） | 95 | 10.1% |
+| 軽い組（記事の中身だけ、docs との混在を含む） | 25 | 2.7% |
+| 全部 | 823 | 87.3% |
+
+記事・docs だけの PR に全テストを流しても、見ているのは記事に関係しない画面で、待ち時間と並行の枠を使うだけになる。
+
+## 決定
+
+### 1. 範囲は3つ。許可の一覧に全ファイルが当たるときだけ軽くする
+
+`scripts/maintenance/e2e-scope.js` が差分のパス（改名は元と先の両方）から決める。
+
+| 範囲 | 条件 | 流すもの |
+|---|---|---|
+| `none` | 全ファイルが `e2eSkipPathPatterns`（`docs/`。`docs/content-manifests/` と、e2e が例の JSON を読む `docs/design/blog-charts/` は除く）に当たる | 何も流さずに成功 |
+| `light` | 全ファイルが `allowedPathPatterns`（記事の中身だけの PR の許可の一覧）か `e2eSkipPathPatterns` に当たる | `vite build` と `@blog` の試験（114件） |
+| `full` | それ以外。空の差分・判定できないときも | 従来どおり全部 |
+
+- 一覧は `scripts/content/content-pr-gate.json` を読む（記事の PR の関門と同じ一覧。写さない）。`.github`・`scripts`・`src`（記事の JSON を除く）・`e2e`・`package*.json`・vite/playwright の設定は一覧に無いので、触れば必ず `full` になる
+- 記事の JSON は `src/data/blogPosts.js` の `import.meta.glob`（eager）で画面の束に入り、1つ壊れると全体が壊れる。そのため軽い組でも `vite build` と記事に関わる試験は残す
+- e2e が `../docs/` から読むファイル（今は `docs/design/blog-charts/` の例の JSON）は0件の対象から外す。`verify-e2e-scope.js` が e2e の中の `../docs/` の読み込みを拾い、0件にならないことを確かめる
+- 記事の JSON はホーム（最新記事のカード）でも描画するので、ホーム（`/`・`/en` 等）を開く試験にも印を付ける
+- 記事に関わる試験には題に `@blog` を付ける。付け漏れは `scripts/maintenance/check-e2e-blog-tags.js` が、`check-e2e-shard-coverage.js` と同じく `--list` の一覧を読んで落とす（題・本体に `/blog`・記事のデータ・記事の部品の class があるのに印が無いもの）
+
+### 2. 必須のチェックの名前は `e2e` のまま
+
+範囲を決めるジョブ `e2e-scope`、全部の組 `e2e-shard`、軽い組 `e2e-light` を並べ、集約ジョブ `e2e` が範囲ごとに走るべきジョブの成否で合否を決める。集約ジョブは `if: always()` のまま（ADR-0097）で、範囲は step summary に出す。範囲が分からないときは失敗にする。
+
+### 3. 抜け道を2段で塞ぐ
+
+- **ワークフロー**: 判定のスクリプトと一覧は base（マージコミットの1つ目の親）側のものを取り出して実行する。PR の側で一覧やスクリプトを書き換えても、その PR には効かない。base に無ければ `full`
+- **マージ時**: `pull_request` のワークフロー自体は PR の側の定義で動くので、`.github` を書き換えれば軽い組に逃げられる。`scripts/maintenance/guard-pr-merge.js` が `origin/master` の一覧で差分を判定し直し、`full` なのに `e2e-shard` が全部成功していなければ（skip を含む）止める。`--auto` で GitHub にチェックを任せる場合は `e2e` の集約しか見られないので、`.github/workflows` を変える PR は手のマージに回す
+- `pull_request_target` は使わない（PR のコードを秘密の鍵のある文脈で動かすことになるため）
+
+### 4. 組の分け方は e2e/shards.json の1か所に置き、所要時間で割る（BOA-929 の 2）
+
+以前は `e2e-smoke-test.yml` の `e2e-shard` と `e2e-rerecord.yml` の `replay` の matrix に、同じ分け方を2回手で書いていた。最後の組の `--grep-invert` の正規表現も手で書いていた。3つ目の組は「残り全部」なので、spec が増えるたびに重くなった。2026-10-23 の実測（run 39870857258、全2,234件・合計8,626 worker 秒）では、3つ目の組だけで約3,700 worker 秒あった。2026-10-21 の再生（run 39527057420）では、30分の上限で打ち切られている。
+
+- 分け方は `e2e/shards.json` に置く。`scripts/maintenance/e2e-shards.js --matrix` がこれを両ワークフローの matrix に直す。`check-e2e-shard-coverage.js` も同じファイルを読み、分け方の誤りを先に出す
+- 件数でなく、実測の所要（worker 秒）で5組に割る。layout.spec.js は5つの幅（プロジェクト）を2組に分ける。`smoke` プロジェクトは layout.spec.js を無視し、`layout-*` は layout.spec.js だけに当たるので、`--project` を並べれば layout の一部の幅と他の spec を1つの組に混ぜられる
+- 最後の組は `rest: true` で、上の組に書いた spec を除く残り全部。新しい spec は自動でここに入る
+
+| 組 | 中身 | worker 秒 |
+|---|---|---|
+| 1 | smoke.spec.js | 1,784 |
+| 2 | layout（mobile・tablet・laptop）＋ race-odds-live | 1,780 |
+| 3 | layout（desktop・wide）＋ thinking-assist-states ＋ race-share-text | 1,754 |
+| 4 | analogy-contribution ほか10本 | 1,637 |
+| 5 | 残り全部 | 約1,670 |
+
+replay の `timeout-minutes`（30）は、組を増やした効果を測ってから見直す。
+
+## ADR-0077 との関係
+
+ADR-0077（録画の再生と時計の固定）は変えない。軽い組も同じ録画を再生し、録画に無い通信は同じく本番へ素通しして一覧を出す。この ADR は「どのテストを流すか」だけを決め、「どう流すか」は ADR-0077 のまま。
+
+## 結果
+
+- 直近1か月の実績では、約13%の PR が e2e の全部を流さずに済む（0件 10.1%、軽い組 2.7%）
+- 3つ目の組が重い問題は、下の「4. 組の分け方」で直す（BOA-929 の 2、別の PR）
+- `.claude/` だけの PR（46件、4.9%）は今回は `full` のまま。hooks のスクリプトを含むため、一覧に足すかは別に決める（→ 下の追記で0件に入れた）
+
+## 追記（2026-11-03、CI の分数の削減 段2b）: e2e が読まないパスも0件に入れる
+
+`e2eSkipPathPatterns` に `.claude/`・`sns-video-studio/`・`scripts/maintenance/verify-*.js`・`scripts/maintenance/verify-registry.json`・`scripts/sns/`・`scripts/analysis/` を足す。差分の全ファイルがこれと docs に当たる PR は e2e を流さずに成功にする。記事の PR に混ざったときは軽い組のまま。
+
+- **理由**: 10/27〜11/03 の7日で、e2e を全部流した259 run・18,365分のうち、この一覧と docs だけの PR が60 run・3,762分（20%）あった（docs/design/ci-minutes-reduction/design.md 11章、PR 2170）。どれも e2e の run が読まないので、流しても結果は master と同じ。検査の側（verify:ci・ml-tests）は今までどおり全 PR で走る
+- **守り（パスの一覧だけで決めない）**: src は `scripts/lib` を直に import し（hitCalculator 等）、e2e は `scripts/maintenance/e2e-recording.js` 等を読む。そこで `verify-e2e-scope.js` が、e2e/・src/・playwright と vite の設定・index.html から相対の import（静的・動的・require・new URL）で辿れるファイルと、`"../..."` の相対のパスで読むファイル（`${` の前まで、ディレクトリはその下のファイル）を集め、1つでも0件の一覧に当たれば落とす。`scripts/lib/` を一覧に足すと落ちることを確かめた
+- **入れないもの**: `scripts/lib/`（画面の束に入る）、`scripts/maintenance/` の verify 以外（e2e・guard・撮り直しが使う）、`scripts/content/content-pr-gate.json`（この一覧そのもの）、`scripts/daily/` 等の取得（7日の PR が少なく効き目が小さい）、`api/`、`README.md`
+- **抜け道**: 判定と一覧は今までどおり base 側（決定3）。マージ時は guard-pr-merge.js が master の一覧で判定し直す
+- **辿り方**（system-architect の審査で広げた）: 根は e2e/・src/・設定・index.html と、e2e の3つのワークフローが `node` で呼ぶ scripts。相対と `/` 始まり（vite は root から解く）の import（括弧の中のコメント可）、CSS の @import・url()、`"../..."` の文字列（`${` で切れた頭・ディレクトリはその下の全部を読みうるとみなす）、src の外（Node 側）では一覧の頭で始まる文字列（cwd・ROOT から組み立てる読み）。解けない指定も捨てず頭として照らす
+- **`verify-e2e-scope.js` 自身は0件にしない**（守りを弱める PR が e2e なしで通り、後の PR で抜け道を作る段を塞ぐ）
+- **限界**: 辿り方は正規表現で、パスを分けて組み立てる書き方（`path.join(root, "scripts", name)` 等）は拾えない。今の e2e・src にその形で一覧のディレクトリを読む所は無い。読む所を足すときは verify に固定の入力を足す
+
+## 追記（2026-11-18）: verify の補助（verifyData/）も0件に入れる
+
+`e2eSkipPathPatterns` に `^scripts/maintenance/verifyData/(?!e2e-scope)[^/]+\.js$` を足す。verify-*.js を分けた補助（fixture・偽の client 等）で、verify-*.js と一緒に変わる。
+
+- **理由**: verify-*.js だけの PR は 11/03 から0件だが、verify を分ける PR は補助を verifyData/ に置くので `full` に落ちていた。11/18 02:20〜07:49Z の PR の e2e 62 run のうち、差分が verify-*.js と verifyData/ だけの物が 18 run・e2e-shard 90 job・880分（e2e-shard の走行分の35%、同じ窓の全 job の走行分 3,660分の24%）
+- **読まれない根拠**: master で `verifyData` を import するのは `scripts/maintenance/verify-*.js` と verifyData/ の中だけ（src・api・e2e・scripts/lib・.github に無い）。e2e の閉包は今までどおり `verify-e2e-scope.js` が確かめる（一覧の頭 `scripts/maintenance/verifyData/` が閉包・Node 側の文字列に出れば落ちる）。本番のビルドは `scripts/maintenance/` ごと Vercel の ignoreCommand の除外（scripts/lib/vercelIgnoreBuild.js）
+- **入れないもの**: 下の階層・.js 以外（今は直下の .js が58本だけ。増えたら全部に倒れる）、`e2e-scope` で始まる名前（verify-e2e-scope.js を分けたとき、守りを弱める PR が e2e なしで通る段を塞ぐ。上の「自身は0件にしない」と同じ理由）
+- 検査の側（Quality Gates の verify:ci）は今までどおり全 PR で走る
+
+## 追記（2026-11-08、CI02）: 範囲 selected と、none を閉包の外へ
+
+正本の設計は `docs/design/ci-minutes-reduction/design.md` 12章（hq の CI02）。各段の PR で、この追記の該当の行を「予定」から「済み」に直す。
+
+- **予定（段4）: 範囲 `selected` を足す**。master の毎晩の全件（段3）が page.coverage で作る spec→src の表（artifact）を、base 側の e2e-scope が引き、差分に当たる spec だけを流す。共通の物（CSS・index.html・main.jsx・package*.json・vite と playwright の設定・fixtures.js・shards.json）・新しいファイル・表に無い・表が7日超・読めない → `full`。spec 自体の変更はその spec も足す
+  - 組: selected では shards.json の rest（`--grep-invert` で残り全部）を使わず、選んだ spec を名指しした組だけを作る。job 名は `e2e-shard` のまま（決定2の集約 `e2e`・maker-merge の照合を変えない）
+  - 集約の検査（check-e2e-shard-coverage.js）が受け取る一覧は、選んだ spec の一覧にする
+  - 決定3（判定は base 側、guard が master の一覧で判定し直す）は変えない。guard は selected を full と同じく `e2e-shard` が全部成功で見る
+- **予定（段5）: none を手の一覧から「E2E の閉包の外」へ**。e2e/・src/・playwright*.config.js・vite.config.js から `scripts/lib/relativeImportGraph.js` の reach で辿れる物＋index.html・public/・package*.json・e2e-smoke-test.yml・e2e-scope.js・content-pr-gate.json の外だけが none。辿れないときは full。11/3〜11/7 の full 171 run 中 37 run・1,639分が閉包の外（hq の実測）。hq の maker-merge の required_checks を同じ日に入れる
+- 変えないもの: 必須は集約 `e2e` 1本、paths フィルタは使わない、`pull_request_target` は使わない、ADR-0077（どう流すか）

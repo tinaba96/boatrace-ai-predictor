@@ -1,24 +1,14 @@
-import { useState, useEffect } from "react";
+import { useMoriartyData } from "./HolmesMoriartyData";
+import { getStage } from "./HolmesMoriartyLogic";
+import HolmesMoriartyHeader from "./HolmesMoriartyHeader";
 import {
-  getMoriartyStats,
-  getMoriartyROIHistory,
-  getMoriartyVenueBreakdown,
-  getMoriartyCalibrationData,
-} from "../../services/moriartyService";
-import MoriartyStatsHeader from "./MoriartyStatsHeader";
-import MoriartyDataMaturity from "./MoriartyDataMaturity";
-import MoriartyROIChart from "./MoriartyROIChart";
-import MoriartyVenueBreakdown from "./MoriartyVenueBreakdown";
-import MoriartyCalibrationDiagram from "./MoriartyCalibrationDiagram";
+  MoriartyStageStarting,
+  MoriartyStageGathering,
+  MoriartyStageGrowing,
+  MoriartyStageMature,
+} from "./HolmesMoriartyStages";
 import { MoriartyExplanation } from "./explanations";
 import "./HolmesMoriarty.css";
-
-function getStage(totalBets) {
-  if (totalBets < 30) return "starting";
-  if (totalBets < 100) return "gathering";
-  if (totalBets < 300) return "growing";
-  return "mature";
-}
 
 /**
  * 推奨の提示を止めている理由（docs/issues/moriarty-post-hoc-generation-and-odds-drift.md）。
@@ -51,32 +41,8 @@ function MoriartyVerificationNotice() {
 }
 
 function HolmesMoriarty() {
-  const [stats, setStats] = useState({});
-  const [roiHistory, setRoiHistory] = useState([]);
-  const [venueBreakdown, setVenueBreakdown] = useState([]);
-  const [calibrationData, setCalibrationData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    Promise.all([
-      getMoriartyStats(),
-      getMoriartyROIHistory(30),
-      getMoriartyVenueBreakdown(30),
-      getMoriartyCalibrationData(),
-    ])
-      .then(([s, roi, venue, cal]) => {
-        setStats(s || {});
-        setRoiHistory(roi || []);
-        setVenueBreakdown(venue || []);
-        setCalibrationData(cal || []);
-      })
-      .catch((err) => {
-        console.error("[HolmesMoriarty] fetch error:", err);
-        setError("データの取得に失敗しました");
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  const data = useMoriartyData();
+  const { stats, loading, error } = data;
 
   const totalBets = stats.total_bets ?? 0;
   const stage = getStage(totalBets);
@@ -99,95 +65,20 @@ function HolmesMoriarty() {
 
   return (
     <div className="holmes-detective-card moriarty-card">
-      <div className="holmes-detective-header">
-        <div
-          className="holmes-detective-icon"
-          style={{ background: "#1f2937" }}
-        >
-          🎩
-        </div>
-        <div className="holmes-detective-meta">
-          <div className="holmes-detective-name">モリアーティ予想</div>
-          <div className="holmes-detective-title">
-            犯罪界のナポレオン - 数学的最適化の教授
-          </div>
-          <div className="holmes-detective-tech">
-            技術: <code>Probability Calibration + Kelly Criterion</code>
-          </div>
-        </div>
-        {/* 推奨停止中は .moriarty-status-badge（緑）を付けず、共通の .holmes-status-badge（アンバー）で出す */}
-        <div className="holmes-status-badge">検証中（推奨停止）</div>
-      </div>
+      <HolmesMoriartyHeader />
 
       <section className="holmes-section">
         <MoriartyVerificationNotice />
       </section>
 
       {stage === "starting" && (
-        <div className="moriarty-stage-starting">
-          <section className="holmes-section">
-            <h3>⏳ データ蓄積中</h3>
-            <p className="moriarty-stage-desc">
-              運用 {stats.operation_days ?? 0} 日目 / 推奨レース {totalBets} 件
-            </p>
-            <MoriartyDataMaturity totalBets={totalBets} stage={stage} />
-            <div className="moriarty-notice moriarty-notice--warning">
-              初期段階のため数値は参考程度です。30件到達でチャートが表示されます。
-            </div>
-          </section>
-        </div>
+        <MoriartyStageStarting {...data} totalBets={totalBets} stage={stage} />
       )}
-
       {stage === "gathering" && (
-        <>
-          <section className="holmes-section">
-            <MoriartyStatsHeader stats={stats} />
-          </section>
-          <section className="holmes-section">
-            <MoriartyDataMaturity totalBets={totalBets} stage={stage} />
-          </section>
-          <section className="holmes-section">
-            <h3>累積回収率推移</h3>
-            <MoriartyROIChart data={roiHistory} showSampleWarning />
-          </section>
-        </>
+        <MoriartyStageGathering {...data} totalBets={totalBets} stage={stage} />
       )}
-
-      {stage === "growing" && (
-        <>
-          <section className="holmes-section">
-            <MoriartyStatsHeader stats={stats} />
-          </section>
-          <section className="holmes-section">
-            <h3>累積回収率推移</h3>
-            <MoriartyROIChart data={roiHistory} />
-          </section>
-          <section className="holmes-section">
-            <h3>会場別回収率</h3>
-            <MoriartyVenueBreakdown data={venueBreakdown} />
-          </section>
-        </>
-      )}
-
-      {stage === "mature" && (
-        <>
-          <section className="holmes-section">
-            <MoriartyStatsHeader stats={stats} />
-          </section>
-          <section className="holmes-section">
-            <h3>累積回収率推移</h3>
-            <MoriartyROIChart data={roiHistory} />
-          </section>
-          <section className="holmes-section">
-            <h3>会場別回収率</h3>
-            <MoriartyVenueBreakdown data={venueBreakdown} />
-          </section>
-          <section className="holmes-section">
-            <h3>予測キャリブレーション</h3>
-            <MoriartyCalibrationDiagram data={calibrationData} />
-          </section>
-        </>
-      )}
+      {stage === "growing" && <MoriartyStageGrowing {...data} />}
+      {stage === "mature" && <MoriartyStageMature {...data} />}
       <MoriartyExplanation />
     </div>
   );

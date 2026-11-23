@@ -2,9 +2,11 @@
  * オッズのライブ取得（BOA-487）: GET /api/odds/live?raceId=YYYY-MM-DD-VV-RR&page=tf|3t|3f|2tf|k
  *
  * オッズ一覧タブを開いたとき・「更新」を押したときに、公式のオッズページを1ページ取得して解析し、そのまま返す。
- * race_odds には書かない（スナップショットの窓・prediction_odds の導出と混ぜない）。
+ * 締切 -90〜+10分（両端を含む）だけ公式へ取得する。範囲外は race_odds の最新行を返す。
+ * 締切不明は従来どおり取得する。race_odds には書かない。
  *
  * - 受け付けるのは JST の当日のレースだけ。page は列挙値のみ、未知のクエリパラメータは 400（no-store）
+ * - クエリの形は ?raceId=…&page=… の順・エンコードなしの1つだけ。違えば 400（BOA-1110、isCanonicalLiveOddsSearch）
  * - 成功: 200 { ok:true, raceId, page, fetchedAt, officialUpdatedAt, final, data }
  *   Cache-Control は s-maxage=30（締切時オッズ＝final なら300）。CDN に集約し、閲覧者数によらず公式への
  *   アクセスを1レース×1ページあたり最大30秒に1回に抑える
@@ -22,6 +24,9 @@ import { handleLiveOddsRequest } from "../../scripts/lib/liveOdds.js";
 import { createCircuitBreaker } from "../../scripts/lib/scrapeJobs/circuitBreaker.js";
 import { createPoliteFetch } from "../../scripts/lib/scrapeJobs/politeFetch.js";
 import { createSupabaseStore } from "../../scripts/lib/scrapeJobs/store.js";
+import { createFetchCounter } from "../../scripts/lib/scrapeJobs/fetchCounter.js";
+import { raceStartInstant } from "../../scripts/lib/scrapeJobs/time.js";
+import { waitUntil } from "@vercel/functions";
 
 export const config = {
   maxDuration: 30,
@@ -39,19 +44,91 @@ function getPoliteFetch() {
             ? createSupabaseStore(supabase).breakerStore
             : undefined,
         });
-        return createPoliteFetch({ breaker, maxRetries: 0, timeoutMs: 12000 });
+        // 公式へ取りに行った数を数え、20件か60秒ごとに足す（長く生きるインスタンス。BOA-1145 P3）
+        const counter = createFetchCounter({
+          client: supabase ?? null,
+          source: "live",
+        });
+        // 利用者の要求の 429 は段階を上げない（Retry-After>10秒ならその時間開く。BOA-1145 #1983 の審査）
+        const politeFetch = createPoliteFetch({
+          breaker,
+          maxRetries: 0,
+          timeoutMs: 12000,
+          countOverload: false,
+          counter,
+        });
+        return { politeFetch, counter, ...createLiveOddsReaders(supabase) };
       },
     );
   }
   return politeFetchPromise;
 }
 
+/** DBの読み取りだけを注入する。最新行に要求ページの値が無ければ null。 */
+export function createLiveOddsReaders(supabase) {
+  return {
+    async getDeadline(raceId) {
+      if (!supabase) return null;
+      const { data, error } = await supabase.from("races")
+        .select("race_date, start_time").eq("race_id", raceId).maybeSingle();
+      if (error) throw error;
+      return data?.start_time ? raceStartInstant(data.race_date, data.start_time) : null;
+    },
+    async getLatestSnapshot(raceId, page) {
+      if (!supabase) throw new Error("Supabase client not initialized");
+      const { data: row, error } = await supabase.from("race_odds")
+        .select("*").eq("race_id", raceId)
+        .order("captured_at", { ascending: false }).limit(1).maybeSingle();
+      if (error) throw error;
+      if (!row) return null;
+      const nonEmpty = (value) => value && Object.keys(value).length > 0;
+      const data = {};
+      const columns = {
+        "3t": { trifectaAll: "trifecta_all" }, "3f": { trioAll: "trio_all" },
+        "2tf": { exactaAll: "exacta_all", quinellaAll: "quinella_all" },
+        k: { wideAll: "wide_all" },
+      };
+      if (page === "tf") {
+        data.win = {}; data.place = {};
+        for (let n = 1; n <= 6; n++) {
+          const win = row[`odds_win_${n}`];
+          const low = row[`odds_place_${n}_low`];
+          const high = row[`odds_place_${n}_high`];
+          if (win != null) data.win[n] = win;
+          if (low != null && high != null) data.place[n] = { low, high };
+        }
+      } else {
+        for (const [key, column] of Object.entries(columns[page])) {
+          data[key] = row[column] ?? {};
+        }
+      }
+      if (!Object.values(data).some(nonEmpty)) return null;
+      // race_odds は発売中の窓。公式更新時刻と締切時の印は保存していない。
+      return { fetchedAt: row.captured_at, officialUpdatedAt: null, final: false, data };
+    },
+  };
+}
+
 export default async function handler(req, res) {
+  const { politeFetch, counter, getDeadline, getLatestSnapshot } = await getPoliteFetch();
   const { status, cacheControl, body } = await handleLiveOddsRequest({
     query: req.query ?? {},
     method: req.method,
-    politeFetch: await getPoliteFetch(),
+    // 生のクエリの形も検査する（並び替え・エンコードでキャッシュを外させない。BOA-1110）
+    rawSearch: new URL(req.url ?? "", "http://localhost").search,
+    politeFetch,
+    getDeadline,
+    getLatestSnapshot,
   });
   res.setHeader("Cache-Control", cacheControl);
-  return res.status(status).json(body);
+  const sent = res.status(status).json(body);
+  // 数えの書き込みは応答の後に回す（利用者を待たせない。185 の審査 P3）。waitUntil が使えない環境（ローカル）はそのまま流す。
+  // fetchCounter は投げない
+  const pending = counter.maybeFlush();
+  try {
+    waitUntil(pending);
+  } catch {
+    void pending;
+  }
+  return sent;
 }

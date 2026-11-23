@@ -1,3 +1,106 @@
+const betTypeOf = (state) => state.betType ?? "trifecta";
+
+function lensEvent(state, action) {
+  return action.lens === state.lens
+    ? null
+    : {
+        name: "assist_lens_select",
+        params: { assist_lens: action.lens },
+      };
+}
+
+function deepEvent(state, action) {
+  return action.boat === state.deep
+    ? null
+    : {
+        name: "assist_deep_open",
+        params: { assist_boat: action.boat, assist_lens: state.lens },
+      };
+}
+
+function metricEvent(state, action) {
+  return action.metric === state.metric
+    ? null
+    : {
+        name: "assist_metric_compare",
+        params: { assist_metric: action.metric, assist_lens: state.lens },
+      };
+}
+
+function targetEvent(state, action) {
+  return action.target === (state.target ?? 1)
+    ? null
+    : {
+        name: "assist_target",
+        params: {
+          assist_target: action.target,
+          assist_lens: state.lens,
+          assist_bet_type: betTypeOf(state),
+        },
+      };
+}
+
+// 展開レンズの形の選択（承認モック v2 ④）。選んでいる形の押し直しは画面が送らない
+function flowFormEvent(state, action) {
+  return action.form === state.flowForm
+    ? null
+    : {
+        name: "assist_flow_form",
+        params: { assist_form: action.form },
+      };
+}
+
+// 相手レンズの軸の艇（BOA-845、spec D-48）。艇は assist_boat を流用する。選んでいる艇の押し直しは画面が送らない
+function placeAxisEvent(state, action) {
+  return action.boat === state.placeAxis
+    ? null
+    : {
+        name: "assist_place_axis",
+        params: { assist_boat: action.boat, assist_lens: state.lens },
+      };
+}
+
+function betTypeEvent(state, action) {
+  return action.betType === betTypeOf(state)
+    ? null
+    : {
+        name: "assist_bet_type",
+        params: {
+          assist_bet_type: action.betType,
+          assist_bet_from: action.from,
+        },
+      };
+}
+
+function boxEvent(state) {
+  return {
+    name: "assist_bet_box",
+    params: { assist_bet_type: betTypeOf(state) },
+  };
+}
+
+function guideEvent(state, action) {
+  return action.step == null
+    ? null
+    : {
+        name: "assist_guide_step",
+        params: { assist_guide_step: action.step + 1 },
+      };
+}
+
+function sheetEvent(state, action) {
+  return action.sheet == null
+    ? null
+    : {
+        name: "assist_sheet_open",
+        params: {
+          assist_sheet:
+            typeof action.sheet === "string" ? action.sheet : action.sheet.type,
+          assist_bet_type: betTypeOf(state),
+        },
+      };
+}
+
 /**
  * 思考アシスト（BOA-430）の GA4 のイベント。画面の操作（reducer の action）と押す前の状態から、送るイベントを決める純関数。
  * 定義と GA4 の登録は docs/design/thinking-assist/events.md。パラメータ名に GA4 の予約語（source・id 等）を使わない
@@ -9,76 +112,36 @@
  * - 買い目の着順の切り替え（BOA-831、spec D-46 で買い目だけ）は assist_target。選択中の着順の押し直しは送らない。押したレンズも送る
  * - 相手レンズで軸の艇を選び替えたときは assist_place_axis（BOA-845）
  * - 展開レンズで形を選び替えた（形が2つ以上当てはまるとき、spec D-47）ときは assist_flow_form
- * @param {{lens: string, deep: number|null, metric: string|null, target?: number, flowForm?: string|null}} state 押す前の状態
+ * - 買い目の券種を替えたときは assist_bet_type（BOA-990）。押した場所（tab＝券種のタブ・compare＝券種で比べるの行）も送る。選んでいる券種の押し直しは送らない
+ * - 「選んだ艇でボックス」を押したときは assist_bet_box（BOA-990）。そのときの券種を送る
+ * - シートを開いたとき・着順を替えたときも、そのときの券種 assist_bet_type を送る（保存から戻った人も券種別に読む。BOA-990 の計測の審査 P1）
+ * @param {{lens: string, deep: number|null, metric: string|null, target?: number, flowForm?: string|null, betType?: string}} state 押す前の状態
  * @param {{type: string, [key: string]: unknown}} action
  * @returns {{name: string, params: Record<string, string|number>} | null}
  */
 export function assistEventOf(state, action) {
   switch (action.type) {
     case "lens":
-      return action.lens === state.lens
-        ? null
-        : {
-            name: "assist_lens_select",
-            params: { assist_lens: action.lens },
-          };
+      return lensEvent(state, action);
     case "deep":
     case "openFacts":
-      return action.boat === state.deep
-        ? null
-        : {
-            name: "assist_deep_open",
-            params: { assist_boat: action.boat, assist_lens: state.lens },
-          };
+      return deepEvent(state, action);
     case "metric":
-      return action.metric === state.metric
-        ? null
-        : {
-            name: "assist_metric_compare",
-            params: { assist_metric: action.metric, assist_lens: state.lens },
-          };
+      return metricEvent(state, action);
     case "target":
-      return action.target === (state.target ?? 1)
-        ? null
-        : {
-            name: "assist_target",
-            params: { assist_target: action.target, assist_lens: state.lens },
-          };
+      return targetEvent(state, action);
     case "flowForm":
-      // 展開レンズの形の選択（承認モック v2 ④）。選んでいる形の押し直しは画面が送らない
-      return action.form === state.flowForm
-        ? null
-        : {
-            name: "assist_flow_form",
-            params: { assist_form: action.form },
-          };
+      return flowFormEvent(state, action);
     case "placeAxis":
-      // 相手レンズの軸の艇（BOA-845、spec D-48）。艇は assist_boat を流用する。選んでいる艇の押し直しは画面が送らない
-      return action.boat === state.placeAxis
-        ? null
-        : {
-            name: "assist_place_axis",
-            params: { assist_boat: action.boat, assist_lens: state.lens },
-          };
+      return placeAxisEvent(state, action);
+    case "betType":
+      return betTypeEvent(state, action);
+    case "box":
+      return boxEvent(state);
     case "guide":
-      return action.step == null
-        ? null
-        : {
-            name: "assist_guide_step",
-            params: { assist_guide_step: action.step + 1 },
-          };
+      return guideEvent(state, action);
     case "sheet":
-      return action.sheet == null
-        ? null
-        : {
-            name: "assist_sheet_open",
-            params: {
-              assist_sheet:
-                typeof action.sheet === "string"
-                  ? action.sheet
-                  : action.sheet.type,
-            },
-          };
+      return sheetEvent(state, action);
     default:
       return null;
   }

@@ -1,6 +1,6 @@
 // SNS の送信の runner（sns-pdca-loop tasks 19）・鍵の健全性 API・死活の稼働時間の再現テスト。
-// SQL153 までを PGlite に入れ、X・YouTube はモックの adapter。外部接続なし。
-import { test, before, beforeEach, after } from "node:test";
+// SQL153 と 186（BOA-1164 の閉じる遷移・残した理由）・191（送らなかった理由、BOA-1201）・196（見直して公開する遷移、BOA-1283）を PGlite に入れ、X・YouTube はモックの adapter。外部接続なし。
+import { test, before, beforeEach, after, mock } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
@@ -9,16 +9,27 @@ import {
   createXSnapshot,
 } from "../../api/_lib/snsXSend.js";
 import { createMockYoutubeAdapter } from "../../api/_lib/snsDeadlineQueue.js";
-import {
-  createSnsSendStore,
-  pickDueJobs,
-  runSnsSend,
-} from "../lib/snsSendRunner.js";
-import { checkTokenHealth } from "../../api/_lib/snsTokenHealth.js";
-import { handleTokenHealth } from "../../api/admin/sns-hub/token-health.js";
-import { livenessCheckable } from "../lib/scrapeJobs/monitor.js";
-import { SCRAPE_JOBS, activeMinutesOf } from "../lib/scrapeJobs/registry.js";
+import { pickDueJobs, runSnsSend } from "../lib/snsSendRunner.js";
 
+
+
+
+
+
+
+
+
+
+import { runSnsSendRunnerScenesB1 } from "./verifyData/sns-send-runner-scenes-b-1.js";
+import {
+  runSnsSendRunnerScenesB2,
+  runSnsSendRunnerScenesB3,
+  runSnsSendRunnerScenesB4,
+} from "./verifyData/sns-send-runner-scenes-b-2.js";
+
+// PT の日付境界の外に固定する。Date だけを止め、PGlite の now()・承認・期限も同じ時計で動かす。
+const TEST_NOW = Date.parse("2026-10-27T03:00:00Z");
+mock.timers.enable({ apis: ["Date"], now: TEST_NOW });
 const db = new PGlite();
 const first = async (sql, args = []) => (await db.query(sql, args)).rows[0];
 const bytes = new Uint8Array([1, 2, 3]);
@@ -75,16 +86,55 @@ const store = {
           : null,
     };
   },
-  expiredSending: async (now) =>
+  waitingChildren: async (now, minutes) =>
     (
       await db.query(
-        "SELECT id, channel FROM sns_x_send_jobs WHERE state='sending' AND lease_until<=$1",
-        [now.toISOString()],
+        `SELECT c.id, c.channel, c.parent_job_id, c.expires_at FROM sns_x_send_jobs c
+           JOIN sns_x_send_jobs p ON p.id = c.parent_job_id
+         WHERE c.state='queued' AND c.expires_at <= $1::timestamptz + make_interval(mins => $2)
+           AND NOT (p.state='posted' AND p.external_post_id IS NOT NULL) ORDER BY c.id`,
+        [now.toISOString(), minutes],
+      )
+    ).rows,
+  reconcileJobs: async () =>
+    (
+      await db.query(
+        "SELECT id, channel, error_code, youtube_stage FROM sns_x_send_jobs WHERE state='reconcile' ORDER BY id",
+      )
+    ).rows,
+  // 本番の PostgREST の書き込み（createPostgrestEventWriter、on_conflict と resolution=ignore-duplicates）と同じ意味
+  recordEvent: async (e) => {
+    await db.query(
+      "INSERT INTO sns_send_events(job_id,stage,reason,detail) VALUES($1,$2,$3,$4) ON CONFLICT (job_id,stage,reason) DO NOTHING",
+      [e.job_id, e.stage, e.reason, e.detail],
+    );
+  },
+  // 本番の PostgREST の読み取り（createSnsSendStore の retainedYoutubeJobs）と同じ条件
+  retainedYoutubeJobs: async (now, limit) =>
+    (
+      await db.query(
+        `SELECT id, channel, state, youtube_stage, error_code, external_post_id, attempts, expires_at, snapshot FROM sns_x_send_jobs
+         WHERE state='reconcile' AND channel='youtube' AND youtube_stage='private_retained' AND expires_at<=$1
+           AND (lease_until IS NULL OR lease_until<=$1) ORDER BY id LIMIT $2`,
+        [now.toISOString(), limit],
+      )
+    ).rows,
+  // 本番の PostgREST の読み取り（createSnsSendStore の resumableYoutubeJobs）と同じ条件（BOA-1283）
+  resumableYoutubeJobs: async (now, limit) =>
+    (
+      await db.query(
+        `SELECT id, channel, state, youtube_stage, error_code, external_post_id, attempts, expires_at, snapshot FROM sns_x_send_jobs
+         WHERE state='reconcile' AND channel='youtube'
+           AND ((youtube_stage='private_retained' AND error_code IN ('youtube_retained_processing','youtube_retained_budget'))
+             OR (youtube_stage='ready' AND error_code IS NULL)) AND expires_at>$1
+           AND (lease_until IS NULL OR lease_until<=$1) ORDER BY expires_at, id LIMIT $2`,
+        [now.toISOString(), limit],
       )
     ).rows,
 };
 
 before(async () => {
+  assert.equal((await first("SELECT now() AS at")).at.getTime(), TEST_NOW);
   await db.exec(
     "CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;",
   );
@@ -105,6 +155,9 @@ before(async () => {
     "147_sns_draft_diff.sql",
     "148_sns_posted_approval_guard.sql",
     "153_sns_auto_send.sql",
+    "186_sns_youtube_close_private.sql",
+    "191_sns_send_events.sql",
+    "196_sns_youtube_resume_processed.sql",
   ])
     await db.exec(
       await readFile(
@@ -116,6 +169,7 @@ before(async () => {
     .id;
 });
 beforeEach(async () => {
+  mock.timers.setTime(TEST_NOW);
   await db.exec(
     "DELETE FROM sns_youtube_quota_reads; DELETE FROM sns_youtube_quota_attempts; UPDATE sns_x_send_jobs SET parent_job_id=NULL; DELETE FROM sns_x_send_jobs; DELETE FROM sns_drafts;",
   );
@@ -126,11 +180,17 @@ beforeEach(async () => {
     UPDATE sns_youtube_quota_control SET verified=true,baseline_day=(now() AT TIME ZONE 'America/Los_Angeles')::date,upload_limit=10,general_limit=10000,external_uploads=0,external_general=0;
     UPDATE sns_auto_send_control SET dry_run=false;`);
 });
-after(() => db.close());
+after(async () => {
+  try {
+    await db.close();
+  } finally {
+    mock.timers.reset();
+  }
+});
 
 async function approvedJob(
   platform = "x",
-  { parentJobId = null, scheduledOffsetMin = -1 } = {},
+  { parentJobId = null, scheduledOffsetMin = -1, cover = null } = {},
 ) {
   const deadline = new Date(Date.now() + 2 * 3600000).toISOString();
   const queue = {
@@ -142,8 +202,8 @@ async function approvedJob(
     ...(parentJobId ? { parent_job_id: parentJobId } : {}),
   };
   const draft = await first(
-    "INSERT INTO sns_drafts(content_group_id,format,platform,language,title,caption_text,video_storage_path,source_data) VALUES(gen_random_uuid(),'short',$1,'ja','全貌','本文','v.mp4',$2) RETURNING *",
-    [platform, { deadline_queue: queue }],
+    "INSERT INTO sns_drafts(content_group_id,format,platform,language,title,caption_text,video_storage_path,source_data,cover_image_path) VALUES(gen_random_uuid(),'short',$1,'ja','全貌','本文','v.mp4',$2,$3) RETURNING *",
+    [platform, { deadline_queue: queue }, cover],
   );
   return (
     await first("SELECT approve_sns_x_send($1,$2,$3,$4) r", [
@@ -166,7 +226,9 @@ const failingPreflight = async () => {
 const job = (id) => first("SELECT * FROM sns_x_send_jobs WHERE id=$1", [id]);
 const reserved = async () =>
   Number((await first("SELECT reserved_microusd r FROM sns_x_send_control")).r);
+// モックの送る前の検査は Chromium を開かないので、検査の枠（BOA-1164）は既定で無制限にする。枠を見る試験は headlessBudget: 6 を渡す
 const deps = (extra = {}) => ({
+  headlessBudget: Infinity,
   store,
   adapters: {
     x: async () => createMockXAdapter(),
@@ -255,419 +317,101 @@ test("live・dry_run=false: X と YouTube を送って posted、最大件数を�
   );
 });
 
-test("YouTube の処理が3回の確認で終わらなければ、公開せず非公開のまま残す", async () => {
-  const y = await approvedJob("youtube");
-  const youtube = createMockYoutubeAdapter({ processingStatus: "processing" });
-  const notices = [];
-  const result = await runSnsSend(
-    ctx(),
-    deps({
-      adapters: { youtube: async () => youtube },
-      notify: async (t) => notices.push(t),
-    }),
-  );
-  const row = await job(y.id);
-  assert.equal(row.state, "reconcile");
-  assert.equal(row.youtube_stage, "private_retained");
-  assert.equal(
-    youtube.calls.filter((c) => c.method === "videos.list:processing").length,
-    3,
-  );
-  assert.equal(
-    youtube.calls.some((c) => c.method === "videos.update"),
-    false,
-  );
-  // 一度きりの事象は report（2分ごとに上書き）ではなく、その場で Slack に知らせる
-  assert.equal(notices.length, 1);
-  assert.match(notices[0], /要照合/);
-  assert.deepEqual(result.report.alerts, []);
-});
-
-test("スレッドの子は親が posted になってから選ぶ", async () => {
-  const parent = await approvedJob("x", { scheduledOffsetMin: -2 });
-  const child = await approvedJob("x", {
-    parentJobId: parent.id,
-    scheduledOffsetMin: -1,
-  });
-  assert.deepEqual(
-    (await store.dueJobs(new Date(), 5)).jobs.map((j) => j.id),
-    [parent.id],
-  );
-  await runSnsSend(ctx(), deps({ maxJobs: 1 }));
-  assert.equal((await job(parent.id)).state, "posted");
-  assert.deepEqual(
-    (await store.dueJobs(new Date(), 5)).jobs.map((j) => j.id),
-    [child.id],
-  );
-});
-
-test("PostgREST の読み取り: 送る時刻を過ぎた queued を古い順に、親は id で引く", async () => {
-  const calls = [];
-  const fakeDb = async (path) => {
-    calls.push(decodeURIComponent(path));
-    if (path.startsWith("sns_auto_send_control"))
-      return [{ channel: "x", mode: "manual", dry_run: true }];
-    if (path.includes("state=eq.queued"))
-      return [
-        { id: "c", parent_job_id: "p" },
-        { id: "a", parent_job_id: null },
-      ];
-    return [{ id: "p", state: "posted", external_post_id: "1" }];
-  };
-  const pg = createSnsSendStore({ db: fakeDb, xSendStore: {} });
-  assert.deepEqual(await pg.controls(), {
-    x: { channel: "x", mode: "manual", dry_run: true },
-  });
-  const due = await pg.dueJobs(new Date("2026-10-13T03:00:00Z"), 3);
-  assert.equal(due.nextCursor, null); // 3件の上限に届かない（読み切った）
-  assert.deepEqual(
-    due.jobs.map((j) => j.id),
-    ["c", "a"],
-  );
-  assert.match(
-    calls[1],
-    /state=eq\.queued&scheduled_at=lte\.2026-10-13T03:00:00\.000Z&order=scheduled_at\.asc,id\.asc/,
-  );
-  assert.match(calls[2], /id=in\.\(p\)/);
-  // cursor の後から読む
-  await pg.dueJobs(new Date("2026-10-13T03:00:00Z"), 3, {
-    scheduled_at: "2026-10-13T02:00:00.000Z",
-    id: "a",
-  });
-  assert.match(
-    calls.at(-2),
-    /&or=\(scheduled_at\.gt\.2026-10-13T02:00:00\.000Z,and\(scheduled_at\.eq\.2026-10-13T02:00:00\.000Z,id\.gt\.a\)\)&order=scheduled_at\.asc,id\.asc&limit=3/,
-  );
-});
-
-test("鍵の健全性: refresh の可否と scope だけを返し、トークンの値は返さない", async () => {
-  const fetchImpl = async (url) => {
-    const u = String(url);
-    if (u === "https://oauth2.googleapis.com/token")
-      return Response.json({ access_token: "ya29.secret-value" });
-    if (u.startsWith("https://oauth2.googleapis.com/tokeninfo"))
-      return Response.json({
-        scope: u.includes("secret-value")
-          ? "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube"
-          : "",
-      });
-    if (u.startsWith("https://youtubeanalytics.googleapis.com"))
-      return new Response("{}", { status: 200 });
-    throw new Error(u);
-  };
-  const env = {
-    YOUTUBE_CLIENT_ID: "a",
-    YOUTUBE_CLIENT_SECRET: "b",
-    YOUTUBE_REFRESH_TOKEN: "c",
-    YOUTUBE_ANALYTICS_CLIENT_ID: "d",
-    YOUTUBE_ANALYTICS_CLIENT_SECRET: "e",
-    YOUTUBE_ANALYTICS_REFRESH_TOKEN: "f",
-  };
-  const health = await checkTokenHealth({ env, fetchImpl, xDb: {} });
-  assert.deepEqual(health.x, { configured: false });
-  assert.equal(health.youtube.refresh, true);
-  assert.equal(health.youtube.canUpload, true);
-  assert.equal(health.youtube.canPublish, true);
-  assert.equal(health.analytics.reportsStatus, 200);
-  assert.ok(!JSON.stringify(health).includes("secret-value"));
-
-  // 今の投稿用トークン（youtube.upload だけ）は公開に切り替えられない
-  const uploadOnly = await checkTokenHealth({
-    env,
-    xDb: {},
-    fetchImpl: async (url) =>
-      String(url).includes("tokeninfo")
-        ? Response.json({
-            scope: "https://www.googleapis.com/auth/youtube.upload",
-          })
-        : fetchImpl(url),
-  });
-  assert.equal(uploadOnly.youtube.canPublish, false);
-
-  process.env.SNS_HUB_BASIC_AUTH_USER = "owner";
-  process.env.SNS_HUB_BASIC_AUTH_PASSWORD = "pw";
-  const unauth = await handleTokenHealth(
-    new Request("https://www.boat-ai.jp/api/admin/sns-hub/token-health"),
-    { env, fetchImpl, xDb: {} },
-  );
-  assert.equal(unauth.status, 401);
-  const res = await handleTokenHealth(
-    new Request("https://www.boat-ai.jp/api/admin/sns-hub/token-health", {
-      headers: {
-        authorization: `Basic ${Buffer.from("owner:pw").toString("base64")}`,
-      },
-    }),
-    { env, fetchImpl, xDb: {} },
-  );
-  assert.equal(res.status, 200);
-  assert.equal(res.headers.get("cache-control"), "no-store");
-  assert.ok(!(await res.text()).includes("secret-value"));
-});
-
-test("死活の監視: sns_send は JST 8:00〜21:00 の中だけを見る", () => {
-  const active = activeMinutesOf(SCRAPE_JOBS.sns_send);
-  assert.deepEqual(active, { start: 480, end: 1260 });
-  const at = (hhmm) => new Date(`2026-10-13T${hhmm}:00+09:00`);
-  assert.equal(livenessCheckable(at("07:50"), 25, active), false);
-  assert.equal(livenessCheckable(at("08:30"), 25, active), true);
-  assert.equal(livenessCheckable(at("21:10"), 25, active), false);
-  // 稼働時間の無いジョブは、今までどおり 7:00〜24:00
-  assert.equal(livenessCheckable(at("21:10"), 25, null), true);
-});
-
-test("検査に落ちた job は送信の件数に数えず、後ろの job を送る。トークンは1回の実行で1回だけ取る", async () => {
-  const bad = [];
-  for (let i = 0; i < 3; i++)
-    bad.push(await approvedJob("x", { scheduledOffsetMin: -10 + i }));
-  const good1 = await approvedJob("x", { scheduledOffsetMin: -2 });
-  const good2 = await approvedJob("x", { scheduledOffsetMin: -1 });
-  const badIds = new Set(bad.map((j) => j.id));
-  let tokenCalls = 0;
-  const result = await runSnsSend(
-    ctx(),
-    deps({
-      maxJobs: 2,
-      preflight: async (job) => {
-        if (badIds.has(job.id))
-          throw new Error("race_unconfirmed_or_withdrawn");
-      },
-      adapters: {
-        x: async () => {
-          tokenCalls++;
-          // 1つの adapter で2件送るので、実際の X と同じく投稿ごとに別の ID を返す
-          const adapter = createMockXAdapter();
-          let n = 0;
-          return {
-            ...adapter,
-            createPost: async (payload) => ({
-              ...(await adapter.createPost(payload)),
-              id: String(1900000000000000000n + BigInt(++n)),
-            }),
-          };
-        },
-      },
-    }),
-  );
-  assert.deepEqual(
-    result.body.jobs.map((r) => r.outcome),
-    [
-      "precheck_failed",
-      "precheck_failed",
-      "precheck_failed",
-      "posted",
-      "posted",
-    ],
-  );
-  assert.equal((await job(good1.id)).state, "posted");
-  assert.equal((await job(good2.id)).state, "posted");
-  assert.equal(tokenCalls, 1);
-
-  // トークンの失敗も1回だけ試し、同じ実行の残りの job では取り直さない
-  await approvedJob("x", { scheduledOffsetMin: -1 });
-  await approvedJob("x", { scheduledOffsetMin: -1 });
-  let failingCalls = 0;
-  const failed = await runSnsSend(
-    ctx(),
-    deps({
-      preflight: async (job) => {
-        if (badIds.has(job.id))
-          throw new Error("race_unconfirmed_or_withdrawn");
-      },
-      adapters: {
-        x: async () => {
-          failingCalls++;
-          throw new Error("X と連携していません");
-        },
-      },
-    }),
-  );
-  assert.equal(failingCalls, 1);
-  assert.equal(
-    failed.body.jobs.filter((r) => r.outcome === "token_failed").length,
-    2,
-  );
-});
-
-test("鍵の健全性: X は保存値を読むだけで refresh しない", async () => {
-  const { encryptTokens } = await import("../../api/_lib/snsTokenStore.js");
-  const key = Buffer.alloc(32, 7).toString("base64");
-  const row = {
-    ...(await encryptTokens({ access_token: "a", refresh_token: "r" }, key)),
-    account_id: "1",
-    access_expires_at: "2026-10-13T03:02:00Z",
-    refreshed_at: "2026-10-13T01:00:00Z",
-  };
-  const env = {
-    X_OAUTH_CLIENT_ID: "i",
-    X_OAUTH_CLIENT_SECRET: "s",
-    SNS_TOKEN_ENC_KEY: key,
-  };
-  const health = await checkTokenHealth({
-    env,
-    xDb: { read: async () => row },
-    fetchImpl: async () => assert.fail("X にも Google にも問い合わせない"),
-    now: () => new Date("2026-10-13T03:00:00Z"),
-  });
-  assert.deepEqual(health.x, {
-    configured: true,
-    connected: true,
-    decrypt: true,
-    accountId: true,
-    accessExpiresAt: "2026-10-13T03:02:00Z",
-    refreshDue: true,
-    lastRefreshedAt: "2026-10-13T01:00:00Z",
-  });
-  const wrongKey = await checkTokenHealth({
-    env: { ...env, SNS_TOKEN_ENC_KEY: Buffer.alloc(32, 8).toString("base64") },
-    xDb: { read: async () => row },
-    fetchImpl: async () => assert.fail("呼ばない"),
-  });
-  assert.equal(wrongKey.x.connected, false);
-  assert.match(wrongKey.x.error, /復号できません/);
-  const refreshFails = await checkTokenHealth({
-    env: {
-      YOUTUBE_CLIENT_ID: "a",
-      YOUTUBE_CLIENT_SECRET: "b",
-      YOUTUBE_REFRESH_TOKEN: "c",
-    },
-    xDb: {},
-    fetchImpl: async () =>
-      new Response(JSON.stringify({ error: "invalid_grant" }), { status: 400 }),
-  });
-  assert.equal(refreshFails.youtube.refresh, false);
-});
-
-test("D1: 検査に落ち続ける job が上限を超えて並んでも、走査位置を進めて後ろの job を送る", async () => {
-  // 落ち続ける6件（古い）と、送れる1件（新しい）。1回に読むのは3件
-  const bad = new Set();
-  for (let i = 0; i < 6; i++)
-    bad.add((await approvedJob("x", { scheduledOffsetMin: -20 + i })).id);
-  const good = await approvedJob("x", { scheduledOffsetMin: -1 });
-  const run = (state) =>
-    runSnsSend(
-      { ...ctx(), state },
+// 境界の検査では runner の時計だけを変える。SQL の now() と承認・失効は TEST_NOW のままにし、
+// dueJobs の取得時刻だけ合わせる（SQL の日次ガードを別の日に偽装しない）。
+for (const [at, paused] of [
+  ["2026-10-27T06:49:59Z", false],
+  ["2026-10-27T06:50:00Z", true],
+  ["2026-10-27T06:55:00Z", true],
+  ["2026-10-27T07:00:00Z", true],
+  ["2026-10-27T07:01:00Z", true],
+  ["2026-10-27T07:04:59Z", true],
+  ["2026-10-27T07:05:00Z", false],
+  ["2026-11-02T07:49:59Z", false],
+  ["2026-11-02T07:50:00Z", true],
+  ["2026-11-02T07:55:00Z", true],
+  ["2026-11-02T08:01:00Z", true],
+  ["2026-11-02T08:05:00Z", false],
+]) {
+  test(`YouTube の PT 日付境界: ${at} は${paused ? "待機" : "送信"}、X は送信`, async () => {
+    const y = await approvedJob("youtube", { scheduledOffsetMin: -2 });
+    const x = await approvedJob("x");
+    const notices = [];
+    const youtube = createMockYoutubeAdapter();
+    const result = await runSnsSend(
+      { ...ctx(), now: () => new Date(at) },
       deps({
-        maxCandidates: 3,
-        preflight: async (job) => {
-          if (bad.has(job.id)) throw new Error("race_unconfirmed_or_withdrawn");
+        maxJobs: paused ? 1 : 2,
+        store: {
+          ...store,
+          dueJobs: (_, ...args) => store.dueJobs(new Date(), ...args),
         },
+        adapters: {
+          x: async () => createMockXAdapter(),
+          youtube: async () => youtube,
+        },
+        notify: async (text) => notices.push(text),
       }),
     );
-  const r1 = await run({});
-  assert.deepEqual(
-    r1.body.jobs.map((r) => r.outcome),
-    ["precheck_failed", "precheck_failed", "precheck_failed"],
-  );
-  assert.ok(r1.cursor, "3件を読み切ったので位置を進める");
-  const r2 = await run({ cursor: r1.cursor });
-  const r3 = await run({ cursor: r2.cursor });
-  assert.equal(r3.body.jobs.find((r) => r.id === good.id)?.outcome, "posted");
-  // 読み切ったら次は先頭から
-  assert.equal(r3.cursor, null);
+    const row = await job(y.id);
+    assert.equal(row.state, paused ? "queued" : "posted");
+    assert.equal(row.attempts, paused ? 0 : 1);
+    assert.equal(
+      Number(
+        (await first("SELECT count(*) n FROM sns_youtube_quota_attempts")).n,
+      ),
+      paused ? 0 : 1,
+    );
+    assert.equal(
+      result.body.jobs.find((r) => r.id === y.id).outcome,
+      paused ? "youtube_quota_day_wait" : "posted",
+    );
+    assert.equal((await job(x.id)).state, "posted");
+    assert.deepEqual(
+      result.report.alerts.map((a) => a.key),
+      paused ? [`youtube_quota_day_wait:${y.id}`] : [],
+    );
+    assert.deepEqual(notices, []);
+    if (paused) assert.deepEqual(youtube.calls, []);
+  });
+}
+
+// ---- 後半の場面（verifyData/sns-send-runner-scenes-b-1.js・sns-send-runner-scenes-b-2.js） ----
+runSnsSendRunnerScenesB1({ store, approvedJob, ctx, job, deps });
+runSnsSendRunnerScenesB2({ db, first, store, approvedJob, ctx, failingPreflight, job, deps, retainedJob2 });
+
+test("BOA-1164 検査の枠: cron は Chromium の上限に runner と同じ値を渡す（本文の字でなく、cron の run が作る Chromium の引数で見る。作った所で止め、送信・DB に届かせない）", async () => {
+  const stub = `export const createChromiumHeadless = (o) => { globalThis.snsSendHeadless = o; throw new Error("headless_stub"); };`;
+  (await import("node:module")).register(`data:text/javascript,${encodeURIComponent(`export async function resolve(s, c, next) { const r = await next(s, c); return r.url === ${JSON.stringify(new URL("../../api/_lib/snsHeadless.js", import.meta.url).href)} && c.parentURL === ${JSON.stringify(new URL("../../api/cron/sns-send.js", import.meta.url).href)} ? { url: ${JSON.stringify(`data:text/javascript,${encodeURIComponent(stub)}`)}, shortCircuit: true } : r; }`)}`);
+  const { made } = await (await import("./verifyData/cronWiring.js")).cronWiring(() => import("../../api/cron/sns-send.js"));
+  await assert.rejects(made[0].options.run({}), /headless_stub/);
+  assert.equal(globalThis.snsSendHeadless?.maxInspections, (await import("../lib/snsSendRunner.js")).SNS_SEND_HEADLESS_BUDGET);
 });
 
-test("D2: 即時の通知が届かなければ report.alerts に残し、次の実行にも持ち越す。sweep で要照合になった送信も知らせる", async () => {
+// ---- 後半の場面（verifyData/sns-send-runner-scenes-b-2.js） ----
+runSnsSendRunnerScenesB3({ db, first, store, approvedJob, ctx, failingPreflight, job, deps, retainedJob2 });
+
+// 動画 ID が違う2件目の非公開の残置（external_post_id は一意）
+async function retainedJob2() {
   const y = await approvedJob("youtube");
-  const failingNotify = async () => {
-    throw new Error("SLACK_WEBHOOK_URL が未設定です");
-  };
-  const first1 = await runSnsSend(
+  await runSnsSend(
     ctx(),
     deps({
-      notify: failingNotify,
       adapters: {
         youtube: async () =>
-          createMockYoutubeAdapter({ processingStatus: "processing" }),
+          createMockYoutubeAdapter({
+            processingStatus: "processing",
+            videoId: "secondvid01",
+          }),
       },
     }),
   );
-  const undelivered = first1.report.alerts.filter((a) =>
-    a.key.startsWith("undelivered:"),
-  );
-  assert.equal(undelivered.length, 1);
-  assert.match(undelivered[0].key, new RegExp(`undelivered:reconcile:${y.id}`));
-  assert.ok(Date.parse(undelivered[0].until) > Date.now());
-  // 次の実行（対象の job なし）でも持ち越す。期限を過ぎたものは落とす
-  const next = await runSnsSend(
-    { ...ctx(), state: { last_report: first1.report } },
-    deps({ notify: failingNotify }),
-  );
-  assert.deepEqual(
-    next.report.alerts.map((a) => a.key),
-    undelivered.map((a) => a.key),
-  );
-  const expired = await runSnsSend(
-    {
-      ...ctx(),
-      state: {
-        last_report: {
-          alerts: [
-            {
-              ...undelivered[0],
-              until: new Date(Date.now() - 1000).toISOString(),
-            },
-          ],
-        },
-      },
-    },
-    deps({ notify: failingNotify }),
-  );
-  assert.deepEqual(expired.report.alerts, []);
-
-  // sweep でリースの切れた送信が要照合になったら知らせる
-  const x = await approvedJob("x");
-  await store.transition(x.id, "claim");
   await db.query(
-    "UPDATE sns_x_send_jobs SET lease_until=now()-interval '1 minute' WHERE id=$1",
-    [x.id],
+    "UPDATE sns_x_send_jobs SET expires_at=now()-interval '1 minute', lease_until=now()-interval '1 minute' WHERE id=$1",
+    [y.id],
   );
-  const notices = [];
-  await runSnsSend(ctx(), deps({ notify: async (t) => notices.push(t) }));
-  assert.equal((await job(x.id)).state, "reconcile");
-  assert.ok(notices.some((t) => t.includes(x.id) && t.includes("要照合")));
-});
+  return { y };
+}
 
-test("鍵の健全性: ?x_read=1 のときだけ X の自分のアカウントを読み、既定では X を呼ばない", async () => {
-  const { encryptTokens } = await import("../../api/_lib/snsTokenStore.js");
-  const key = Buffer.alloc(32, 9).toString("base64");
-  const row = {
-    ...(await encryptTokens(
-      { access_token: "x-access", refresh_token: "x-refresh" },
-      key,
-    )),
-    key_version: 1,
-    account_id: "1234567890",
-    access_expires_at: new Date(Date.now() + 3600000).toISOString(),
-  };
-  const env = {
-    X_OAUTH_CLIENT_ID: "i",
-    X_OAUTH_CLIENT_SECRET: "s",
-    SNS_TOKEN_ENC_KEY: key,
-  };
-  const calls = [];
-  const fetchImpl = async (url, options = {}) => {
-    calls.push({ url: String(url), auth: options.headers?.Authorization });
-    if (String(url) === "https://api.x.com/2/users/me")
-      return Response.json({ data: { id: "1234567890" } });
-    throw new Error("想定外: " + url);
-  };
-  const xDb = { read: async () => row };
-  const plain = await checkTokenHealth({ env, xDb, fetchImpl });
-  assert.equal(plain.x.read, undefined);
-  assert.equal(calls.length, 0);
-  const withRead = await checkTokenHealth({ env, xDb, fetchImpl, xRead: true });
-  assert.deepEqual(withRead.x.read, { ok: true, sameAccount: true });
-  assert.deepEqual(calls, [
-    { url: "https://api.x.com/2/users/me", auth: "Bearer x-access" },
-  ]);
-  assert.ok(!JSON.stringify(withRead).includes("x-access"));
-  const denied = await checkTokenHealth({
-    env,
-    xDb,
-    xRead: true,
-    fetchImpl: async () =>
-      new Response(JSON.stringify({ title: "Unauthorized" }), { status: 401 }),
-  });
-  assert.equal(denied.x.read.ok, false);
-  assert.match(denied.x.read.error, /HTTP 401/);
-});
+// ---- 後半の場面（verifyData/sns-send-runner-scenes-b-2.js） ----
+runSnsSendRunnerScenesB4({ db, first, store, approvedJob, ctx, failingPreflight, job, deps, retainedJob2 });

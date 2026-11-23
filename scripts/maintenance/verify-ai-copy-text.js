@@ -13,9 +13,20 @@
  *   - 訳し漏れ（キーがそのまま出る・{{}} が残る・undefined / NaN）が無い
  */
 import fs from "node:fs";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { createRequire } from "node:module";
+import { build as bundle } from "esbuild";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { aiCopyPageUrl, buildAiCopyText } from "../../src/utils/aiCopyText.js";
+import {
+  AI_COPY_PROMPT_TYPES,
+  aiCopyFollowUpKeys,
+  getAiCopyPromptOptions,
+  getAiCopyPromptText,
+} from "../../src/utils/aiCopyPrompts.js";
+import { checkLangText } from "./verifyData/ai-copy-text-scenes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "../..");
@@ -124,184 +135,266 @@ const build = (lang, overrides = {}) => {
   };
 };
 
+// 実際の行生成を実行する。DBを読むフック・サービスだけを置換し、
+// raceIndicators の整形・訳語は実物を使う（JSX は esbuild で変換）。
+const bundled = await bundle({
+  stdin: {
+    // 製品のフックの本文は読まず、export を組んで呼ぶ（buildRows は製品の export buildAiCopyRows）
+    contents: 'export { buildAiCopyRows as buildRows, useAiCopyText } from "./useAiCopyText.js";' +
+      '\nexport { buildBasicIndicatorRows, buildIndicatorRows, buildOriginalExhibitionRows } from "../components/race/raceIndicators";',
+    resolveDir: path.join(ROOT, "src/hooks"),
+    loader: "js",
+  },
+  bundle: true,
+  write: false,
+  platform: "node",
+  format: "cjs",
+  packages: "external",
+  jsx: "automatic",
+  plugins: [{
+    name: "offline-copy",
+    setup(b) {
+      // 描画の span を入れ子にしても、コピーの値はプレーンテキストのまま。
+      b.onLoad({ filter: /raceIndicators\.jsx$/ }, (args) => ({
+        contents: fs.readFileSync(args.path, "utf8").replace(
+          /<span className="drt-value">\{value\.toFixed\(2\)\}<\/span>/g,
+          '<span className="drt-value"><b>{value.toFixed(2)}</b></span>',
+        ).replace(
+          '<span className="drt-value">{formatValue(p)}</span>',
+          '<span className="drt-value"><b>{formatValue(p)}</b></span>',
+        ),
+        loader: "jsx",
+      }));
+      b.onResolve({ filter: /^react-i18next$/ },
+        () => ({ path: "translation", namespace: "offline" }));
+      // 文面生成は上の ESM import で実物を検証。ここでは buildRows だけを取り出す。
+      b.onResolve({ filter: /utils\/aiCopyText$/ },
+        () => ({ path: "copy-text", namespace: "copy-text" }));
+      b.onLoad({ filter: /.*/, namespace: "copy-text" }, () => ({
+        contents: "export const aiCopyPageUrl = () => {}; export const buildAiCopyText = ({ rows }) => rows;",
+      }));
+      b.onResolve({ filter: /(?:useRaceAnalysisData|useRaceEntryFlyingRows|useCurrentMeetFlyingBoats|useSixBoatCourseStats|(?:^|\/)(?:core|[A-Za-z0-9_]*Queries)[A-Za-z0-9_]*)(?:\.js)?$/ },
+        (args) => ({ path: args.path, namespace: "offline" }));
+      b.onLoad({ filter: /.*/, namespace: "offline" }, (args) => ({
+        contents: args.path === "translation"
+          ? 'export const useTranslation = () => ({ t: (key) => key, i18n: { resolvedLanguage: "ja" } });'
+          : args.path.endsWith("useRaceAnalysisData")
+            ? 'export const useRaceAnalysisData = () => ({ loading: false });'
+            : args.path.endsWith("useRaceEntryFlyingRows")
+              ? 'export const useRaceEntryFlyingRows = () => new Map();'
+              : args.path.endsWith("useSixBoatCourseStats")
+                ? 'export const useSixBoatCourseStats = () => ({ status: "ready", rows: [] });'
+              : args.path.endsWith("useCurrentMeetFlyingBoats")
+                ? 'export const useCurrentMeetFlyingBoats = () => new Set();'
+                // 名前つき import（../services/raceQueries4.js）で DB を読ませない（BOA-1499。殻 supabaseDataService は RA40 で消えた）
+                : 'const forbidden = () => { throw new Error("DB access forbidden"); };'
+                  + " export const getRaceOriginalExhibition = forbidden;",
+      }));
+    },
+  }],
+});
+const bundledModule = { exports: {} };
+new Function("require", "module", "exports", bundled.outputFiles[0].text)(
+  createRequire(import.meta.url), bundledModule, bundledModule.exports,
+);
+const {
+  buildRows, buildOriginalExhibitionRows, useAiCopyText, buildBasicIndicatorRows, buildIndicatorRows,
+} = bundledModule.exports;
+
 const failures = [];
 const check = (name, ok, detail = "") => {
   if (!ok) failures.push(`${name}${detail ? `: ${detail}` : ""}`);
 };
 
+// SSR は effect が始まる前の状態。展示の取得が未完了でもコピーは押せる。
+let pendingCopy;
+function PendingCopy() {
+  pendingCopy = useAiCopyText({ raceId: RACE_ID, prediction: { allPlayers: players } });
+  return null;
+}
+renderToStaticMarkup(createElement(PendingCopy));
+check("オリジナル展示が未取得でもコピー可能", pendingCopy.isReady === true);
+check("オリジナル展示が未取得ならその行は省略",
+  !pendingCopy.buildText("win").some((r) => r.originalExhibitionLabel));
+
+for (const lang of LANGS) checkLangText(lang, { RACE_ID, row, ROWS, lookup, build, check });
+
+// BOA-1296: データ出走表とAI用のコピーの「想定コース1着率」は、枠別情報の6艇の表と同じ行
+// （useSixBoatCourseStats の rows）から作る。1号艇 63/102（6艇の表の 61.8）→ 62%
 for (const lang of LANGS) {
-  const { dict, text } = build(lang);
-  const a = dict.aiCopy;
-  const lines = text.split("\n");
-  const url =
-    lang === "ja"
-      ? `https://www.boat-ai.jp/race/${RACE_ID}`
-      : `https://www.boat-ai.jp/${lang}/race/${RACE_ID}`;
+  const t = makeT(loadLocale(lang));
+  const runN = (n) => t("beforeInfo.meetFormRunN", { n });
+  const courseRows = [
+    { boat: 1, racerId: 4001, winRate: (63 / 102) * 100, wins: 63, entries: 102, reliability: "ok" },
+    { boat: 2, racerId: 4002, winRate: 80, wins: 12, entries: 15, reliability: "warn" },
+    { boat: 3, racerId: 4003, winRate: null, wins: 3, entries: 3, reliability: "none" },
+    { boat: 4, racerId: 4004, winRate: 20, wins: 18, entries: 90, reliability: "ok" },
+    { boat: 5, racerId: 4005, winRate: 90, wins: 18, entries: 20, reliability: "warn" },
+    // 選手が取れない艇（欠場・出走表なし）は「0走」でなく「—」（/code-review の指摘の再現）
+    { boat: 6, racerId: null, winRate: null, wins: 0, entries: 0, reliability: "none" },
+  ];
+  const ready = { status: "ready", rows: courseRows };
+  const args = { t, players, analysis: {}, courseStats: ready };
+  const basic = buildBasicIndicatorRows(args).find((r) => r.key === "expectedCourseWinRate");
+  check(`[${lang}] データ出走表の行名と注記`, basic?.label === t("dataTable.rowExpectedCourseWinRate") &&
+    basic?.note === t("dataTable.expectedCourseWinRateNote"));
+  check(`[${lang}] データ出走表から旧い枠番勝率の行が消える`,
+    !buildBasicIndicatorRows(args).some((r) => r.key === "courseRate"));
+  // 5号艇の 90% は warn なので金枠の候補にしない
+  check(`[${lang}] 金枠は ok の艇だけで比べる`, basic?.best?.size === 1 && basic.best.has(1),
+    JSON.stringify([...(basic?.best ?? [])]));
+  check(`[${lang}] 一覧カード（buildIndicatorRows）は旧い行のまま`,
+    buildIndicatorRows({ t, players, analysis: {} }).some((r) => r.key === "courseRate"));
+  const html = (boat) => renderToStaticMarkup(createElement("div", null, basic.render({ number: boat })));
+  check(`[${lang}] 表: 整数%と 1着数/進入`, html(1).includes("62%") && html(1).includes("63/102"), html(1));
+  check(`[${lang}] 表: warn は灰の字と ⚠`, html(2).includes("80%") && html(2).includes("⚠") &&
+    html(2).includes("drt-value--muted"), html(2));
+  check(`[${lang}] 表: 10走未満は率を出さず走数`, !html(3).includes("%") && html(3).includes(runN(3)), html(3));
+  check(`[${lang}] 表: 選手が取れない艇は —`, html(6).replace(/<[^>]*>/g, "") === "—", html(6));
+  check(`[${lang}] 表: 行の名前は旧い超展開データへ送らない`, basic?.tab === null);
+  for (const [status, expectDash] of [["error", true], ["loading", false]]) {
+    const row = buildBasicIndicatorRows({ ...args, courseStats: { status, rows: [] } })
+      .find((r) => r.key === "expectedCourseWinRate");
+    const cell = renderToStaticMarkup(createElement("div", null, row.render({ number: 1 })));
+    check(`[${lang}] 表: ${status} は0%を出さない`, !cell.includes("%") && row.best.size === 0, cell);
+    check(`[${lang}] 表: ${status} の表示`, expectDash ? cell.replace(/<[^>]*>/g, "") === "—"
+      : cell.includes("drt-skeleton"), cell);
+  }
+  for (const [stats, expected] of [
+    [ready, ["62% (63/102)", "80% (12/15) ⚠", `— (${runN(3)})`, "20% (18/90)", "90% (18/20) ⚠", "—"]],
+    [{ status: "error", rows: [] }, players.map(() => "—")],
+  ]) {
+    const rows = buildRows(t, players, {}, { rows: new Map(), currentMeet: new Set() }, RACE_ID, null, stats);
+    const r = rows.find((x) => x.key === "expectedCourseWinRate");
+    check(`[${lang}] コピー: 行名と値（${stats.status}）`, r?.label === t("dataTable.rowExpectedCourseWinRate") &&
+      JSON.stringify(r.values) === JSON.stringify(expected), JSON.stringify(r?.values));
+    check(`[${lang}] コピー: 旧い枠番勝率の行は残らない`, !rows.some((x) => x.key === "courseRate"));
+    const { text } = build(lang, { rows });
+    check(`[${lang}] コピー: 新しい行の注記`, text.includes(loadLocale(lang).aiCopy.note.expectedCourseWinRate));
+  }
+}
 
-  // 出典1行
-  const last = lines[lines.length - 1];
-  check(
-    `[${lang}] 末尾が出典1行`,
-    last.includes(dict.nav.logoText) && last.endsWith(url),
-    last,
-  );
-  check(`[${lang}] 出典は1回だけ`, text.split(dict.nav.logoText).length === 2);
+// BOA-772: 取得関数の戻り値の形を行生成へ渡し、その行を文面にする。
+for (const lang of LANGS) {
+  const t = makeT(loadLocale(lang));
+  const kinds = ["一周", "半周ラップ", "まわり足", "直線"];
+  const labelKeys = ["rowOriLap", "rowOriHalfLap", "rowOriTurn", "rowOriStraight"];
+  const byBoat = { 1: { 一周: 36.1, 半周ラップ: 18, まわり足: 5.12, 直線: 7.009 } };
+  const cases = [
+    [{ state: "published", kinds, byBoat }, [0, 1, 2, 3]],
+    [{ state: "published", kinds: ["一周", "まわり足"], byBoat }, [0, 2]],
+    [{ state: "empty", kinds: [], byBoat: {} }, []],
+    [{ state: "forbidden", kinds, byBoat }, []],
+    [null, []],
+    [{ state: "published", kinds, byBoat: { 1: { 一周: 36.1 } } }, [0]],
+  ];
+  for (const [input, indices] of cases) {
+    const rows = buildRows(t, players, {}, { rows: new Map(), currentMeet: new Set() }, RACE_ID, input);
+    const { text } = build(lang, { rows });
+    // 入れ子 JSX の表とコピーの値が一致する（欠測艇も含む）。
+    for (const r of buildOriginalExhibitionRows(t, input)) {
+      const copyRow = rows.find((copy) => copy.key === r.key);
+      for (const p of players) {
+        const displayed = renderToStaticMarkup(createElement("div", null, r.render(p)))
+          .replace(/<[^>]*>/g, "");
+        check(`[${lang}] ${r.key} ${p.number}号艇の表とコピーの一致`,
+          displayed === copyRow.values[p.number - 1]);
+      }
+    }
+    for (let i = 0; i < kinds.length; i++) {
+      const label = t(`dataTable.${labelKeys[i]}`);
+      const line = `| ${label} | ${["36.10", "18.00", "5.12", "7.01"][i]} | — | — | — | — | — |`;
+      check(`[${lang}] ${input?.state ?? "null"} ${kinds[i]}の行と欠測艇`,
+        indices.includes(i) ? text.includes(line) : !text.includes(label));
+    }
+    const source = t("beforeInfo.originalExhibitionSource", {
+      items: indices.map((i) => t(`dataTable.${labelKeys[i]}`))
+        .join(t("beforeInfo.originalExhibitionItemSeparator")),
+    });
+    check(`[${lang}] 実際の行だけの出典1行`, indices.length
+      ? text.split("\n").filter((line) => line === `- ${source}`).length === 1
+      : !text.includes("BOATCAST"));
+    check(`[${lang}] オリジナル展示の訳・値に欠落なし`,
+      !/dataTable\.|beforeInfo\.|\{\{|undefined|NaN|競艇|\[object Object\]/.test(text));
+    check(`[${lang}] オリジナル展示に的中を示唆する語なし`,
+      !/的中|当た|勝てる|儲|稼|狙い目|guaranteed|적중|명중|必中|穩賺/i.test(
+        rows.filter((r) => r.originalExhibitionLabel).map((r) => r.label).join(" ") + source,
+      ));
+    if (indices.length) {
+      const keys = rows.map((r) => r.key);
+      check(`[${lang}] 展示タイムの直後にオリジナル展示`,
+        keys[keys.indexOf("exhibition") + 1] === "oriLap");
+    }
+  }
+}
 
-  // 前提の行が見出しの直後にある
-  check(`[${lang}] 1行目が見出し`, lines[0].startsWith("## "), lines[0]);
-  check(
-    `[${lang}] 見出しの直後に日付`,
-    lines[2] === `- ${a.premiseDate}: 2026-10-05`,
-    lines[2],
-  );
-  check(`[${lang}] 締切`, text.includes(`- ${a.premiseDeadline}: 15:23`));
-  check(
-    `[${lang}] グレード・節・日目`,
-    text.includes(
-      `- ${a.premiseMeet}: G1 / 周年記念 / ${dict.raceDetailPage.seriesDayNth.replace("{{day}}", "3")}`,
+// BOA-822（機能フラグの側）: 「イン崩れ狙い」はイン崩れ注意度の段が崩れやすい（high）ときだけ出し、質問の文は
+// 展開予測に触れない（ファン評価1周目: 堅めのレースで「イン崩れ注意度が高い」と書いた・展開予測の確率が残った）
+for (const lang of LANGS) {
+  const dict = JSON.parse(
+    fs.readFileSync(
+      path.join(ROOT, "src", "locales", lang, "common.json"),
+      "utf8",
     ),
   );
+  const t = makeT(dict);
+  const types = (opts) => getAiCopyPromptOptions(t, opts).map((o) => o.type);
+  const V = AI_COPY_PROMPT_TYPES.VOLATILITY_TRIFECTA;
   check(
-    `[${lang}] 風速・波高・観測時刻`,
-    text.includes("3.0m") && text.includes("3cm") && text.includes("14:52"),
+    `[${lang}] フラグの側は段で出し分ける（崩れやすいだけ。旧指数が高くても堅めなら出さない）`,
+    types({ inCautionEnabled: true, inCautionLevel: "high" }).includes(V) &&
+      !types({
+        inCautionEnabled: true,
+        inCautionLevel: "low",
+        volatilityPercentile: 0.95,
+      }).includes(V) &&
+      !types({ inCautionEnabled: true, inCautionLevel: "mid" }).includes(V) &&
+      !types({ inCautionEnabled: true, inCautionLevel: null }).includes(V),
   );
   check(
-    `[${lang}] 風向は会場ごとに本当の方位に直す（徳山の DB「北西」→ 北。BOA-819）`,
-    text.includes(`${dict.beforeInfo.windDirection.n} 3.0m`) &&
-      !text.includes(`${dict.beforeInfo.windDirection.nw} 3.0m`),
+    `[${lang}] フラグの外は今のまま（旧指数で出し分ける）`,
+    types({ volatilityPercentile: 0.95 }).includes(V) &&
+      !types({ volatilityPercentile: 0.1, inCautionLevel: "high" }).includes(V),
   );
+  const prompt = getAiCopyPromptText(t, V, { inCautionEnabled: true });
   check(
-    `[${lang}] データの時点（JST）`,
-    text.includes(`- ${a.premiseAsOf}: `) && text.includes("2026-10-05 14:58"),
+    `[${lang}] フラグの側のイン崩れ狙いの質問は新しい文で、展開予測に触れない`,
+    prompt === dict.aiCopy.promptInCautionTrifecta &&
+      prompt !== dict.aiCopy.promptVolatilityTrifecta &&
+      !prompt.includes(dict.aiCopy.turnPredictionHeading ?? "\u0000"),
+    prompt,
   );
-  check(
-    `[${lang}] 展示前の断り`,
-    text.includes(a.premiseExhibitionUnpublished),
-  );
+}
+if (
+  /展開予測|決まり手別/.test(
+    JSON.parse(
+      fs.readFileSync(path.join(ROOT, "src/locales/ja/common.json"), "utf8"),
+    ).aiCopy.promptInCautionTrifecta,
+  )
+)
+  failures.push("[ja] promptInCautionTrifecta に展開予測の言葉がある");
 
-  // 注記（行名は表の行と同じ文字列。訳語のずれで注記を引けなくならないように）
-  for (const key of [
-    "winRate",
-    "motor",
-    "form",
-    "avgSt",
-    "avgSt30",
-    "st",
-    "exSt",
-    "exhibition",
-    "exhibitionCourse",
-    "partsChanged",
-    "courseRate",
-    "technique",
-    "returnRate",
-  ]) {
-    check(
-      `[${lang}] 注記 ${key}（表の行名つき）`,
-      text.includes(`\n- ${key}: ${a.note[key]}`),
-    );
-  }
-  check(`[${lang}] 「—」の注記`, text.includes(`- ${a.note.dash}`));
-  // 総合力順位は画面に無く、1着候補と食い違って読めるので入れない
-  check(`[${lang}] 総合力順位を入れない`, !text.includes(" > "));
-  check(
-    `[${lang}] 2着・3着の列の説明`,
-    text.includes(a.turnPredictionCandidateNote),
+{
+  // ファン評価3周目: 展開を聞くの締めの文と「貼ったあとの質問の例」も展開予測に触れない（フラグの側）
+  const ja = JSON.parse(
+    fs.readFileSync(path.join(ROOT, "src/locales/ja/common.json"), "utf8"),
   );
-  // 表の後ろに注記、注記の後ろに展開予測
-  const tableEnd = text.lastIndexOf("| returnRate |");
-  // 種別はページの見出しと同じく分類名で出す（会場独自の名前「東尋坊ドリーム」→「ドリーム戦」）
-  const { text: dream } = build(lang, {
-    context: { raceStage: "東尋坊ドリーム" },
+  const t = makeT(ja);
+  const turn = getAiCopyPromptText(t, AI_COPY_PROMPT_TYPES.TURN, {
+    inCautionEnabled: true,
   });
+  const follow = aiCopyFollowUpKeys(true).map((k) => t(k));
   check(
-    `[${lang}] 種別は分類名`,
-    dream.includes(` / ${lookup(dict, "raceStage.dream")}\n`),
-    dream.split("\n")[4],
-  );
-  const notesAt = text.indexOf(a.notesHeading);
-  const turnAt = text.indexOf(a.turnPredictionHeading);
-  check(
-    `[${lang}] 表 → 注記 → 展開予測 の順`,
-    tableEnd < notesAt && notesAt < turnAt,
-    `${tableEnd} ${notesAt} ${turnAt}`,
-  );
-  check(`[${lang}] 単勝でも展開予測が入る`, turnAt > 0);
-
-  // 訳し漏れ
-  check(
-    `[${lang}] キーがそのまま出ていない`,
-    !/aiCopy\.|beforeInfo\.|raceDetailPage\./.test(text),
-  );
-  check(`[${lang}] {{}} が残っていない`, !text.includes("{{"));
-  check(`[${lang}] undefined / NaN が無い`, !/undefined|NaN/.test(text));
-  check(`[${lang}] 「競艇」が無い`, !text.includes("競艇"));
-
-  // 気象が無い・展示後
-  const { text: noWeather } = build(lang, {
-    context: { weather: null, startTime: null },
-    exhibitionPublished: true,
-  });
-  check(
-    `[${lang}] 気象が無いと各項目が未取得`,
-    noWeather.includes(`${dict.beforeInfo.waveHeightLabel} ${a.unpublished}`) &&
-      noWeather.includes(`${a.premiseWind} ${a.unpublished}`),
+    "[ja] フラグの側の「展開を聞く」の文と質問の例に「展開予測」が無い",
+    !/展開予測/.test(turn) && follow.every((f) => !/展開予測/.test(f)),
+    [turn, ...follow].join(" / "),
   );
   check(
-    `[${lang}] 締切が無いと未発表`,
-    noWeather.includes(`- ${a.premiseDeadline}: ${a.unpublished}`),
+    "[ja] フラグの外は今のまま（展開を聞くは展開予測の文、質問の例は followUp1）",
+    getAiCopyPromptText(t, AI_COPY_PROMPT_TYPES.TURN) ===
+      ja.aiCopy.promptTurn &&
+      aiCopyFollowUpKeys(false)[0] === "aiCopy.followUp1",
   );
-  check(
-    `[${lang}] 展示後は展示前の断りが無い`,
-    !noWeather.includes(a.premiseExhibitionUnpublished),
-  );
-
-  // 取得失敗で展示の有無が分からないときは「未反映」と言い切らない
-  const { text: unknownEx } = build(lang, { exhibitionPublished: null });
-  check(
-    `[${lang}] 展示の有無が不明なら未反映の行を出さない`,
-    !unknownEx.includes(a.premiseExhibitionUnpublished),
-  );
-
-  // 表に無い行の注記は出さない
-  const { text: fewRows } = build(lang, {
-    rows: [row("name", "name"), row("form", "form")],
-  });
-  check(
-    `[${lang}] 表に無い行の注記は出さない`,
-    !fewRows.includes(a.note.partsChanged) &&
-      fewRows.includes(a.note.form) &&
-      fewRows.includes(a.note.dash),
-  );
-
-  // 追加した文言に「競艇」が無い
-  const added = [
-    ...Object.values(a.note),
-    a.followUp1,
-    a.followUp2,
-    a.followUp3,
-    a.followUpHeading,
-    a.promptTurn,
-    a.promptDataOnly,
-    a.promptSelectorTurn,
-    a.promptSelectorDataOnly,
-    a.premiseExhibitionUnpublished,
-    a.sourceLine,
-    a.previewToggleLabel,
-  ];
-  check(
-    `[${lang}] 追加文言に「競艇」が無い`,
-    added.every((s) => !s.includes("競艇")),
-  );
-  if (lang === "ja") {
-    // 的中・回収を示唆する表現（BOA-617）。単勝回収率の注記は既存の指標名なので「回収率」だけ許す
-    const hint = /的中|当た|勝てる|儲|稼|狙い目/;
-    const bad = added.filter((s) => hint.test(s) || /回収(?!率)/.test(s));
-    check(
-      "[ja] 追加文言に的中・回収を示唆する語が無い",
-      bad.length === 0,
-      bad.join(" / "),
-    );
-  }
 }
 
 if (failures.length > 0) {

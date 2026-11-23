@@ -16,21 +16,45 @@
  *   9. 承認画面（job summary）を SQL の書き手が操作できない（表のセル・見出しのエスケープ、見えない制御文字の拒否、
  *      長い行の注意、本文を切り詰めない）
  *  10. psql の引数（lock_timeout・statement_timeout をファイルの前に設定する）
+ *  11. 軽い／重い／止めるの判定（ADR-0097 の許可のリスト。列挙の外は全部重い、控えの無い削除・個人情報らしい列は止める）
+ *  12. 実ファイルのラベルの一覧（scripts/lib/__fixtures__/db-apply-labels.json）と一致する。判定を変えたら一覧も同じ PR で直す
  */
-import { readFileSync, readdirSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  extractConfirmationSections,
+  classifyMigration,
   extractTables,
   inspectMigration,
-  isAppliedInLedger,
-  markAppliedInLedger,
-  psqlArgs,
-  renderSummary,
   splitStatements,
   validateMigrationPath,
 } from "../lib/dbApplySql.js";
+import {
+  runDbApplyScenes1,
+  runDbApplyScenes2,
+  runDbApplyScenes3,
+  runDbApplyScenes4,
+  runDbApplyScenes5,
+  runDbApplyScenes6,
+} from "./verifyData/db-apply-scenes-1.js";
+import {
+  runDbApplyScenes7,
+  runDbApplyScenes8,
+  runDbApplyScenes9,
+  runDbApplyScenes10,
+  runDbApplyScenes11,
+  runDbApplyScenes12,
+  runDbApplyScenes13,
+  runDbApplyScenes14,
+} from "./verifyData/db-apply-scenes-2.js";
+import {
+  runDbApplyScenes15,
+  runDbApplyScenes16,
+  runDbApplyScenes17,
+} from "./verifyData/db-apply-scenes-3.js";
 
 const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -199,169 +223,24 @@ check(
     { table: "foo", op: "CREATE" },
   ]),
 );
-check(
-  "ALTER TABLE ONLY",
-  eq(extractTables('ALTER TABLE ONLY "Bar" ADD COLUMN x int'), [
-    { table: '"Bar"', op: "ALTER" },
-  ]),
-);
-check(
-  "INSERT（CTE の中も）",
-  eq(extractTables("WITH x AS (SELECT 1) INSERT INTO a (c) SELECT 1"), [
-    { table: "a", op: "INSERT" },
-  ]),
-);
-check(
-  "UPDATE（別名つき）",
-  eq(extractTables("UPDATE races r SET x = 1"), [
-    { table: "races", op: "UPDATE" },
-  ]),
-);
-check(
-  "ON UPDATE CASCADE はテーブルにしない",
-  extractTables(
-    "ALTER TABLE t ADD CONSTRAINT f FOREIGN KEY (a) REFERENCES u(a) ON UPDATE CASCADE",
-  ).length === 1,
-);
-check(
-  "DELETE FROM",
-  eq(extractTables("DELETE FROM s.t WHERE a = 1"), [
-    { table: "s.t", op: "DELETE" },
-  ]),
-);
-check(
-  "DROP TABLE の複数",
-  eq(
-    extractTables("DROP TABLE IF EXISTS a, b CASCADE").map((t) => t.table),
-    ["a", "b"],
-  ),
-);
-check(
-  "TRUNCATE の複数",
-  eq(
-    extractTables("TRUNCATE TABLE a, public.b RESTART IDENTITY").map(
-      (t) => t.table,
-    ),
-    ["a", "b"],
-  ),
-);
-check(
-  "inspectMigration は表ごとに操作をまとめる",
-  eq(
-    inspectMigration(
-      "ALTER TABLE a ADD c int;\nUPDATE a SET c = 1;\nINSERT INTO b VALUES (1);",
-    ).tables,
-    [
-      { table: "a", ops: ["ALTER", "UPDATE"] },
-      { table: "b", ops: ["INSERT"] },
-    ],
-  ),
-);
 
-// 5. 冒頭コメントの確認 SQL
-{
-  const sql = [
-    "-- 122: 説明",
-    "-- 過去分: 埋めない。確認できておらず、",
-    "--",
-    "-- 適用後の確認（読み取りのみ）:",
-    "--   SELECT 1",
-    "--    FROM t;",
-    "--   → 1",
-    "--",
-    "-- 確認（適用後）: scripts/x.js --rpc",
-    "-- 元に戻す:",
-    "--   DROP x;",
-    "",
-    "SELECT 1;",
-    "-- 確認（本文より後ろは見ない）:",
-    "--   SELECT 2;",
-  ].join("\n");
-  const sections = extractConfirmationSections(sql);
-  check("確認の節は2つ", sections.length === 2, JSON.stringify(sections));
-  check(
-    "節の中身（字下げ行）",
-    eq(sections[0]?.lines, ["SELECT 1", " FROM t;", "→ 1"]),
-    JSON.stringify(sections[0]?.lines),
-  );
-  check("見出しと同じ行の中身", eq(sections[1]?.lines, ["scripts/x.js --rpc"]));
-}
+// ---- 後半の場面（verifyData/db-apply-scenes-1.js） ----
+runDbApplyScenes1({ ROOT, check, eq, dbApplyLedger2, dbApplyRealFiles2, dbApplyRealFiles4 });
 
-// 6. 台帳
-{
-  const ledger = [
-    "## 台帳",
-    "",
-    "| 番号 | ファイル | 適用状況 | 確認した根拠（実スキーマ） |",
-    "|---|---|---|---|",
-    "| 121 | 121_a.sql | 未適用 | 説明 |",
-    "| 122 | 122_b.sql | 未適用（先に適用する） | 説明 b |",
-    "| （番号なし） | add-x.sql | 適用済み | x |",
-    "",
-    "後ろの文",
-  ].join("\n");
-  const args = {
-    date: "2026-10-03",
-    runUrl: "https://example.test/run/1",
-    sha256: "a".repeat(64),
-  };
-  const updated = markAppliedInLedger(ledger, {
-    ...args,
-    fileName: "122_b.sql",
-  });
-  check("既存の行は updated", updated.action === "updated");
-  check(
-    "既存の行の適用状況だけが変わる",
-    updated.text.includes(
-      "| 122 | 122_b.sql | 適用済み（2026-10-03、db-apply",
-    ) && updated.text.includes("| 説明 b |"),
-  );
-  check(
-    "他の行は変わらない",
-    updated.text.includes("| 121 | 121_a.sql | 未適用 | 説明 |"),
-  );
-  check(
-    "更新後は isAppliedInLedger が真",
-    isAppliedInLedger(updated.text, "122_b.sql") &&
-      !isAppliedInLedger(updated.text, "121_a.sql"),
-  );
-  const inserted = markAppliedInLedger(ledger, {
-    ...args,
-    fileName: "123_c.sql",
-  });
-  const rows = inserted.text.split("\n");
-  check("行が無ければ inserted", inserted.action === "inserted");
-  check(
-    "（番号なし）の前に足す",
-    rows.findIndex((l) => l.startsWith("| 123 | 123_c.sql |")) ===
-      rows.findIndex((l) => l.startsWith("| （番号なし）")) - 1,
-  );
+/** { の中身を割った 2/3 */
+function dbApplyLedger2() {
   const real = readFileSync(
     path.join(ROOT, "docs/db-migration/APPLIED.md"),
     "utf8",
   );
-  check(
-    "実台帳: 適用済みの判定（001 は適用済み）",
-    isAppliedInLedger(real, "001_schema.sql"),
-  );
-  const realUpdate = markAppliedInLedger(real, {
-    ...args,
-    fileName: "122_venues_first_win_rate_race_count.sql",
-  });
-  check(
-    "実台帳: 122 の行を更新でき、行数は変わらない",
-    realUpdate.action === "updated" &&
-      realUpdate.text.split("\n").length === real.split("\n").length,
-  );
+  return { real };
 }
 
-// 7. 実ファイル
-{
-  const dir = path.join(ROOT, "docs/db-migration");
-  const rejected = [];
-  // 導入時点（122 まで）のファイルに限る。以後のファイルが CONCURRENTLY 等を含んでも（手で適用するもの）、
-  // 無関係な PR の CI を落とさない
-  const atIntroduction = (x) => x.endsWith(".sql") && Number.parseInt(x, 10) <= 122;
+// ---- 後半の場面（verifyData/db-apply-scenes-1.js） ----
+runDbApplyScenes2({ ROOT, check, eq, dbApplyLedger2, dbApplyRealFiles2, dbApplyRealFiles4 });
+
+/** { の中身を割った 2/4 */
+function dbApplyRealFiles2({ atIntroduction, dir, rejected }) {
   for (const f of readdirSync(dir).filter(atIntroduction)) {
     if (
       inspectMigration(readFileSync(path.join(dir, f), "utf8")).rejections
@@ -369,14 +248,13 @@ check(
     )
       rejected.push(f);
   }
-  check(
-    "実ファイル（122 まで）で拒否されるのは CONCURRENTLY を含む 050・055 だけ",
-    eq(rejected.sort(), [
-      "050_race_entries_racer_id_index.sql",
-      "055_get_latest_racer_grades_rpc.sql",
-    ]),
-    rejected.join(", "),
-  );
+}
+
+// ---- 後半の場面（verifyData/db-apply-scenes-1.js） ----
+runDbApplyScenes3({ ROOT, check, eq, dbApplyLedger2, dbApplyRealFiles2, dbApplyRealFiles4 });
+
+/** { の中身を割った 4/4 */
+function dbApplyRealFiles4({ dir }) {
   check(
     "122（BEGIN〜COMMIT で包んだ現行の書き方）は file-transaction",
     inspectMigration(
@@ -388,13 +266,24 @@ check(
   );
 }
 
+// ---- 後半の場面（verifyData/db-apply-scenes-1.js） ----
+runDbApplyScenes4({ ROOT, check, eq, dbApplyLedger2, dbApplyRealFiles2, dbApplyRealFiles4 });
+
 // 8. ワークフローの配線（YAML を字句で見る。actionlint は文法、ここは安全の前提）
-{
+/** { の中身を割った 1/5 */
+function dbApplyWiring1() {
   const yml = readFileSync(
     path.join(ROOT, ".github/workflows/db-apply.yml"),
     "utf8",
   );
-  const jobs = {};
+  return { yml };
+}
+
+// ---- 後半の場面（verifyData/db-apply-scenes-1.js） ----
+runDbApplyScenes5({ ROOT, check, eq, dbApplyLedger2, dbApplyRealFiles2, dbApplyRealFiles4 });
+
+/** { の中身を割った 3/5 */
+function dbApplyWiring3({ jobs, yml }) {
   let current = null;
   let inJobs = false;
   for (const l of yml.split("\n")) {
@@ -407,113 +296,139 @@ check(
       jobs[current].push(l);
     }
   }
-  const body = (job) => (jobs[job] ?? []).join("\n");
-  check(
-    "job は inspect・apply・record",
-    eq(Object.keys(jobs), ["inspect", "apply", "record"]),
-  );
-  check(
-    "起動は workflow_dispatch だけ",
-    /^on:\n {2}workflow_dispatch:/m.test(yml) &&
-      !/^ {2}(push|pull_request|pull_request_target|schedule|workflow_run|issue_comment):/m.test(
-        yml,
-      ),
-  );
-  check(
-    "全体の既定権限は contents: read",
-    /^permissions:\n {2}contents: read\s*$/m.test(yml),
-  );
-  check(
-    "DB の secret を読むのは apply だけ・inspect は secret を読まない",
-    !/secrets\./.test(body("inspect")) &&
-      !/SUPABASE_DB_URL/.test(body("record")) &&
-      /secrets\.SUPABASE_DB_URL/.test(body("apply")),
-  );
-  check(
-    "record が読む secret は ryujin-bot の App の鍵だけ",
-    eq(
-      [...body("record").matchAll(/secrets\.([A-Z_]+)/g)].map((m) => m[1]).sort(),
-      ["RYUJIN_BOT_APP_ID", "RYUJIN_BOT_PRIVATE_KEY"],
-    ),
-  );
-  check(
-    "apply は environment: production-db",
-    /^ {4}environment: production-db\s*$/m.test(body("apply")),
-  );
-  check("inspect は environment なし", !/environment:/.test(body("inspect")));
-  check(
-    "record は environment: ryujin-bot（App の鍵は master だけが使える）",
-    /^ {4}environment: ryujin-bot\s*$/m.test(body("record")),
-  );
-  // 「Allow GitHub Actions to create and approve pull requests」を ON にさせない（ON にすると pull_request の
-  // ワークフローが bot として PR を承認でき、master の承認1件の要件が実質なくなる）
-  check(
-    "GITHUB_TOKEN に書き込み権限を渡さない・PR を作らない",
-    !/: write/.test(yml.replace(/permission-contents: write/g, "")) &&
-      !/gh pr create/.test(yml),
-  );
-  check(
-    "record は App トークンで push-with-retry.sh を使い、checkout に資格情報を残さない",
-    /permission-contents: write/.test(body("record")) &&
-      /PUSH_TOKEN: \$\{\{ steps\.app-token\.outputs\.token \}\}/.test(body("record")) &&
-      /bash scripts\/maintenance\/push-with-retry\.sh/.test(body("record")) &&
-      /persist-credentials: false/.test(body("record")),
-  );
-  check(
-    "record のコミットは [automated]（Quality Gates・再生成ワークフローを再起動させない）",
-    /git commit -m "[^"]*\[automated\]"/.test(body("record")),
-  );
-  const runLines = [];
-  let inRun = false;
-  let runIndent = 0;
+}
+
+// ---- 後半の場面（verifyData/db-apply-scenes-1.js・db-apply-scenes-2.js） ----
+runDbApplyScenes6({ ROOT, check, eq, dbApplyLedger2, dbApplyRealFiles2, dbApplyRealFiles4 });
+runDbApplyScenes7({ ROOT, check, eq, rejects, dbApplyWiring1, dbApplyWiring3, dbApplyWorkflow1, dbApplyWorkflow3, dbApplyWorkflow5, dbApplyWorkflow7, dbApplyWorkflow9, dbApplyWorkflow10, dbApplyWorkflow12, dbApplyEnvUsers2 });
+
+// 8a. 定期の起動（ADR-0097 段取り D）の配線
+/** { の中身を割った 1/13 */
+function dbApplyWorkflow1() {
+  const yml = readFileSync(path.join(ROOT, ".github/workflows/db-apply.yml"), "utf8");
+  return { yml };
+}
+
+// ---- 後半の場面（verifyData/db-apply-scenes-2.js） ----
+runDbApplyScenes8({ ROOT, check, eq, rejects, dbApplyWiring1, dbApplyWiring3, dbApplyWorkflow1, dbApplyWorkflow3, dbApplyWorkflow5, dbApplyWorkflow7, dbApplyWorkflow9, dbApplyWorkflow10, dbApplyWorkflow12, dbApplyEnvUsers2 });
+
+/** { の中身を割った 3/13 */
+function dbApplyWorkflow3({ jobs, yml }) {
+  let current = null;
+  let inJobs = false;
   for (const l of yml.split("\n")) {
-    const start = /^(\s*)(?:- )?run:\s*(.*)$/.exec(l);
-    if (start) {
-      inRun = start[2] === "|";
-      runIndent = start[1].length;
-      if (!inRun) runLines.push(start[2]);
-      continue;
-    }
-    if (inRun) {
-      if (l.trim() !== "" && l.search(/\S/) <= runIndent) inRun = false;
-      else runLines.push(l);
+    if (/^jobs:/.test(l)) inJobs = true;
+    const m = inJobs && /^ {2}([a-z-]+):\s*$/.exec(l);
+    if (m) {
+      current = m[1];
+      jobs[current] = [];
+    } else if (current) {
+      jobs[current].push(l);
     }
   }
+}
+
+// ---- 後半の場面（verifyData/db-apply-scenes-2.js） ----
+runDbApplyScenes9({ ROOT, check, eq, rejects, dbApplyWiring1, dbApplyWiring3, dbApplyWorkflow1, dbApplyWorkflow3, dbApplyWorkflow5, dbApplyWorkflow7, dbApplyWorkflow9, dbApplyWorkflow10, dbApplyWorkflow12, dbApplyEnvUsers2 });
+
+/** { の中身を割った 5/13 */
+function dbApplyWorkflow5({ body }) {
+  {
+    // 台帳に書くファイルを決める step を実際に bash で動かす（手での起動は inputs・inspect、定期の起動は judge）
+    const script = /id: target\n[\s\S]*?run: \|\n((?: {10}.*\n)+)/.exec(body("record") + "\n")?.[1]?.replace(/^ {10}/gm, "") ?? "";
+    const pick = (env) => {
+      const out = path.join(tmpdir(), `db-apply-target-${process.pid}-${Math.random().toString(36).slice(2)}`);
+      const r = spawnSync("bash", ["-c", script], { env: { PATH: process.env.PATH, GITHUB_OUTPUT: out, ...env }, encoding: "utf8" });
+      const text = r.status === 0 && existsSync(out) ? readFileSync(out, "utf8") : "";
+      rmSync(out, { force: true });
+      return { status: r.status, text };
+    };
+    const both = { INPUT_MIGRATION: "docs/db-migration/1_a.sql", INSPECT_SHA256: "aaa", JUDGE_FILE: "docs/db-migration/2_b.sql", JUDGE_SHA256: "bbb" };
+    const manual = pick({ MANUAL: "true", ...both });
+    const periodic = pick({ MANUAL: "false", ...both });
+    const empty = pick({ MANUAL: "false", INPUT_MIGRATION: "docs/db-migration/1_a.sql", INSPECT_SHA256: "aaa", JUDGE_FILE: "", JUDGE_SHA256: "" });
+    check(
+      "record: 手での起動は inputs と inspect、定期の起動は judge のファイルを台帳に書き、空なら落とす（片方に寄せない）",
+      script !== "" &&
+        manual.text === "migration=docs/db-migration/1_a.sql\nsha256=aaa\n" &&
+        periodic.text === "migration=docs/db-migration/2_b.sql\nsha256=bbb\n" &&
+        empty.status !== 0,
+      JSON.stringify({ manual, periodic, empty }),
+    );
+  }
+}
+
+// ---- 後半の場面（verifyData/db-apply-scenes-2.js） ----
+runDbApplyScenes10({ ROOT, check, eq, rejects, dbApplyWiring1, dbApplyWiring3, dbApplyWorkflow1, dbApplyWorkflow3, dbApplyWorkflow5, dbApplyWorkflow7, dbApplyWorkflow9, dbApplyWorkflow10, dbApplyWorkflow12, dbApplyEnvUsers2 });
+
+/** { の中身を割った 7/13 */
+function dbApplyWorkflow7() {
   check(
-    "run に ${{ }} を直接書かない（式インジェクション）",
-    runLines.length > 0 && !runLines.some((l) => l.includes("${{")),
-    runLines.filter((l) => l.includes("${{")).join(" / "),
-  );
-  check("set -x を使わない", !/set -[a-wyz]*x/.test(yml));
-  check(
-    "checkout は commit SHA で固定",
-    [...yml.matchAll(/uses: (\S+)/g)].every((m) => /@[0-9a-f]{40}$/.test(m[1])),
-  );
-  check(
-    "inspect・apply は起動時のコミット（github.sha）を取り出す",
-    (body("inspect").match(/ref: \$\{\{ github\.sha \}\}/g) ?? []).length ===
-      1 &&
-      (body("apply").match(/ref: \$\{\{ github\.sha \}\}/g) ?? []).length === 1,
-  );
-  check(
-    "inspect・apply は資格情報を残さない",
-    /persist-credentials: false/.test(body("inspect")) &&
-      /persist-credentials: false/.test(body("apply")),
-  );
-  check(
-    "master 以外からの起動を落とす",
-    /refs\/heads\/master/.test(body("inspect")),
-  );
-  check(
-    "apply は承認前の sha256 を受け取る",
-    /needs\.inspect\.outputs\.sha256/.test(body("apply")),
+    "台帳の確認の fetch に --depth を付けない（手元の clone を shallow にしない）",
+    !/["']--depth/.test(readFileSync(path.join(ROOT, "scripts/db/db-apply.js"), "utf8")),
   );
 }
 
-// 8b. production-db の secret を読めるのは db-apply.yml だけ（他のワークフローが environment: production-db を宣言すると、
-//     承認画面では区別できないまま同じ鍵が渡る）
-{
-  const dir = path.join(ROOT, ".github/workflows");
+// ---- 後半の場面（verifyData/db-apply-scenes-2.js） ----
+runDbApplyScenes11({ ROOT, check, eq, rejects, dbApplyWiring1, dbApplyWiring3, dbApplyWorkflow1, dbApplyWorkflow3, dbApplyWorkflow5, dbApplyWorkflow7, dbApplyWorkflow9, dbApplyWorkflow10, dbApplyWorkflow12, dbApplyEnvUsers2 });
+
+/** { の中身を割った 9/13 */
+function dbApplyWorkflow9() {
+  // 当てる直前の判定（apply-auto）: 重い・止めるのファイルは、DB の接続より前に落ちる
+  for (const f of ["163_drop_sns_mobile_approval.sql", "166_claude_ro_readonly_role.sql"]) {
+    const rel = `docs/db-migration/${f}`;
+    const sha = createHash("sha256").update(readFileSync(path.join(ROOT, rel))).digest("hex");
+    const env = { ...process.env, SUPABASE_DB_URL: "", DB_APPLY_DRY_RUN: "false" };
+    const r = spawnSync(process.execPath, [path.join(ROOT, "scripts/db/db-apply.js"), "apply-auto", rel, sha], { cwd: ROOT, env, encoding: "utf8" });
+    check(`apply-auto は軽いでない ${f} を当てずに落とす`, r.status === 1 && /軽い」でない/.test(r.stderr), r.stderr.slice(0, 200));
+  }
+}
+
+/** { の中身を割った 10/13 */
+function dbApplyWorkflow10() {
+  {
+    // 試運転の間は、軽いファイルでも apply-auto の中で止める（judge の mode と合わせて2段）
+    const rel = "docs/db-migration/125_raw_snapshots.sql";
+    const sha = createHash("sha256").update(readFileSync(path.join(ROOT, rel))).digest("hex");
+    const r = spawnSync(process.execPath, [path.join(ROOT, "scripts/db/db-apply.js"), "apply-auto", rel, sha], {
+      cwd: ROOT,
+      env: { ...process.env, SUPABASE_DB_URL: "", DB_APPLY_DRY_RUN: "" },
+      encoding: "utf8",
+    });
+    check("apply-auto は試運転の間は軽いファイルでも当てない", r.status === 1 && /試運転/.test(r.stderr), r.stderr.slice(0, 200));
+    const j = spawnSync(process.execPath, [path.join(ROOT, "scripts/db/db-apply.js"), "judge-all"], {
+      cwd: ROOT,
+      env: {
+        ...process.env,
+        GITHUB_OUTPUT: "",
+        PENDING: JSON.stringify([
+          { file: rel, ok: true, reasons: [], pr: 1 },
+          { file: "docs/db-migration/163_drop_sns_mobile_approval.sql", ok: true, reasons: [], pr: 2 },
+          { file: "docs/db-migration/166_claude_ro_readonly_role.sql", ok: false, reasons: ["x"], pr: 3 },
+        ]),
+      },
+      encoding: "utf8",
+    });
+    check("judge-all は5点の検査を通ったものだけを判定する", j.status === 0 && /125_raw_snapshots\.sql=light, 163_drop_sns_mobile_approval\.sql=stop$/m.test(j.stdout), j.stdout + j.stderr);
+  }
+}
+
+// ---- 後半の場面（verifyData/db-apply-scenes-2.js） ----
+runDbApplyScenes12({ ROOT, check, eq, rejects, dbApplyWiring1, dbApplyWiring3, dbApplyWorkflow1, dbApplyWorkflow3, dbApplyWorkflow5, dbApplyWorkflow7, dbApplyWorkflow9, dbApplyWorkflow10, dbApplyWorkflow12, dbApplyEnvUsers2 });
+
+/** { の中身を割った 12/13 */
+function dbApplyWorkflow12({ dir }) {
+  const autoUsers = readdirSync(dir)
+    .filter((f) => /\.ya?ml$/.test(f))
+    .filter((f) => /environment:\s*(?:\n\s*name:\s*)?["']?production-db-auto\b/.test(readFileSync(path.join(dir, f), "utf8")));
+  return { autoUsers };
+}
+
+// ---- 後半の場面（verifyData/db-apply-scenes-2.js） ----
+runDbApplyScenes13({ ROOT, check, eq, rejects, dbApplyWiring1, dbApplyWiring3, dbApplyWorkflow1, dbApplyWorkflow3, dbApplyWorkflow5, dbApplyWorkflow7, dbApplyWorkflow9, dbApplyWorkflow10, dbApplyWorkflow12, dbApplyEnvUsers2 });
+
+/** { の中身を割った 2/3 */
+function dbApplyEnvUsers2({ dir }) {
   const users = readdirSync(dir)
     .filter((f) => /\.ya?ml$/.test(f))
     .filter((f) =>
@@ -521,135 +436,49 @@ check(
         readFileSync(path.join(dir, f), "utf8"),
       ),
     );
-  check(
-    "Environment production-db を使うのは db-apply.yml だけ",
-    eq(users, ["db-apply.yml"]),
-    users.join(", "),
-  );
+  return { users };
 }
 
-// 9. 承認画面（job summary）
-{
-  const summaryOf = (sql) =>
-    renderSummary({
-      path: "docs/db-migration/999_x.sql",
-      sha256: "0".repeat(64),
-      sql,
-      inspection: inspectMigration(sql),
-      fileUrl: "https://example.invalid/x",
-      alreadyApplied: false,
-    });
-  const tableRows = (md) =>
-    md
-      .split("\n")
-      .filter((l) => /^\| `/.test(l) && !/^\| [0-9]/.test(l));
+// ---- 後半の場面（verifyData/db-apply-scenes-2.js） ----
+runDbApplyScenes14({ ROOT, check, eq, rejects, dbApplyWiring1, dbApplyWiring3, dbApplyWorkflow1, dbApplyWorkflow3, dbApplyWorkflow5, dbApplyWorkflow7, dbApplyWorkflow9, dbApplyWorkflow10, dbApplyWorkflow12, dbApplyEnvUsers2 });
 
-  // 引用識別子には ` | < 改行を入れられる。コードスパンを抜けて表を壊したり HTML を差し込んだりさせない
-  const evil = summaryOf(
-    'CREATE TABLE "a`<details><summary>確認済み</summary>|x" (id int);\n',
-  );
-  const evilRow = tableRows(evil)[0] ?? "";
-  check(
-    "触るテーブル: 識別子の ` でコードスパンを抜けない",
-    (evilRow.match(/`/g) ?? []).length === 2,
-    evilRow,
-  );
-  check(
-    "触るテーブル: 識別子の | で列を増やさない",
-    evilRow.split(/(?<!\\)\|/).length === 4,
-    evilRow,
-  );
-  const stmtRows = evil
-    .split("\n")
-    .filter((l) => /^\| [0-9]+ \| `/.test(l));
-  check(
-    "文の一覧: 識別子の ` でコードスパンを抜けない",
-    stmtRows.length === 1 && (stmtRows[0].match(/`/g) ?? []).length === 2,
-    stmtRows.join(" / "),
-  );
-
-  // 冒頭コメントの見出しは地の文に出る。HTML・強調を解釈させない
-  const heading = summaryOf(
-    "-- <details><summary>x</summary> **済** 確認:\n--   SELECT 1;\nSELECT 1;\n",
-  );
-  const headingLine =
-    heading.split("\n").find((l) => l.includes("確認") && l.startsWith("**")) ??
-    "";
-  check(
-    "確認 SQL の見出し: < > と * をエスケープする",
-    headingLine.includes("&lt;details&gt;") &&
-      !headingLine.includes("<details>") &&
-      headingLine.includes("\\*\\*済\\*\\*"),
-    headingLine,
-  );
-
-  // 見えない制御文字（Trojan Source）
-  for (const [label, ch] of [
-    ["RLO（U+202E）", "\u202E"],
-    ["LRI（U+2066）", "\u2066"],
-    ["ゼロ幅スペース（U+200B）", "\u200B"],
-    ["BOM（U+FEFF）", "\uFEFF"],
-  ]) {
-    check(
-      `見えない制御文字は拒否: ${label}`,
-      rejects(`SELECT 1; -- a${ch}b\n`).some((r) => r.includes("見えない制御文字")),
-    );
-  }
-  check(
-    "日本語のコメントは拒否しない",
-    rejects("-- 日本語のコメント（全角）\nSELECT 1;\n").length === 0,
-  );
-
-  // 長い行は注意を出す
-  const long = summaryOf(`SELECT 1;${" ".repeat(300)}DROP TABLE t;\n`);
-  check("200字を超える行には注意を出す", /200 字を超える行がある（1行目/.test(long));
-  check(
-    "短い行だけなら注意を出さない",
-    !/字を超える行がある/.test(summaryOf("SELECT 1;\n")),
-  );
+/** { の中身を割った 2/3 */
+function dbApplyClassify2() {
 
   // 本文は 001（748行）まで切り詰めずに全文を出す
   const big = readFileSync(
     path.join(ROOT, "docs/db-migration/001_schema.sql"),
     "utf8",
   );
-  const bigSummary = summaryOf(big);
-  check(
-    "本文: 既存の最長のマイグレーション（001）を切り詰めない",
-    bigSummary.includes("### 本文\n") &&
-      bigSummary.includes(big.trimEnd().split("\n").at(-1)),
-  );
+  return { big };
 }
 
-// 10. psql の引数
-{
-  const single = psqlArgs("single-transaction", "docs/db-migration/999_x.sql");
-  const file = psqlArgs("file-transaction", "docs/db-migration/999_x.sql");
-  const idx = (args, needle) => args.findIndex((a) => a.includes(needle));
-  for (const [label, args] of [
-    ["single-transaction", single],
-    ["file-transaction", file],
-  ]) {
-    check(
-      `${label}: lock_timeout・statement_timeout を -f より前に設定する`,
-      idx(args, "lock_timeout") !== -1 &&
-        idx(args, "statement_timeout") !== -1 &&
-        idx(args, "lock_timeout") < args.indexOf("-f") &&
-        idx(args, "statement_timeout") < args.indexOf("-f"),
-      args.join(" "),
-    );
-    check(
-      `${label}: ON_ERROR_STOP=1 と -X`,
-      args.includes("ON_ERROR_STOP=1") && args.includes("-X"),
-    );
-    check(`${label}: 最後がファイル`, args.at(-1) === "docs/db-migration/999_x.sql");
-  }
-  check(
-    "--single-transaction は single-transaction のときだけ",
-    single.includes("--single-transaction") &&
-      !file.includes("--single-transaction"),
-  );
+// ---- 後半の場面（verifyData/db-apply-scenes-3.js） ----
+runDbApplyScenes15({ ROOT, check, dbApplyClassify2, dbApplyLabels2, dbApplyLabels4 });
+
+/** { の中身を割った 2/5 */
+function dbApplyLabels2() {
+  const expected = JSON.parse(readFileSync(path.join(ROOT, "scripts/lib/__fixtures__/db-apply-labels.json"), "utf8"));
+  return { expected };
 }
+
+// ---- 後半の場面（verifyData/db-apply-scenes-3.js） ----
+runDbApplyScenes16({ ROOT, check, dbApplyClassify2, dbApplyLabels2, dbApplyLabels4 });
+
+/** { の中身を割った 4/5 */
+function dbApplyLabels4({ diffs, dir, expected }) {
+  for (const f of readdirSync(dir).filter((x) => /^\d{3}[a-z]?_.*\.sql$/.test(x)).sort()) {
+    const got = classifyMigration(readFileSync(path.join(dir, f), "utf8"), f).label;
+    if (!(f in expected)) {
+      console.log(`  （一覧に無い新しいファイル: ${f} → ${got}）`);
+      continue;
+    }
+    if (expected[f] !== got) diffs.push(`${f}: 一覧 ${expected[f]} / 今 ${got}`);
+  }
+}
+
+// ---- 後半の場面（verifyData/db-apply-scenes-3.js） ----
+runDbApplyScenes17({ ROOT, check, dbApplyClassify2, dbApplyLabels2, dbApplyLabels4 });
 
 if (failures > 0) {
   console.error(`\n${failures} 件失敗`);

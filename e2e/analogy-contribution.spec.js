@@ -121,6 +121,27 @@ async function openSonarTab(page, n = 1) {
 const sectionOf = (page) => page.getByRole("region", { name: /龍神ソナー/ });
 
 test.describe("アナロジー・ファインダーの節（BOA-271 v16）", () => {
+  test("boat= の艇を主役にし、未指定・不正値は1号艇で開く", async ({ page }) => {
+    await setup(page);
+    for (const [query, boat] of [
+      ["&boat=3", 3],
+      ["", 1],
+      ["&boat=9", 1],
+    ]) {
+      await page.goto(`/race/${DATE}-09-01?tab=sonar${query}`);
+      const section = sectionOf(page);
+      const buttons = section.locator(".af-boat-btn");
+      await expect(buttons.nth(boat - 1)).toHaveAttribute("aria-pressed", "true");
+      const main = section.locator(".af-hep-legend button:has(.af-hep-main)");
+      await expect(main).toContainText(`${boat}号艇`);
+      const url = page.url();
+      await buttons.nth(1).click();
+      await expect(buttons.nth(1)).toHaveAttribute("aria-pressed", "true");
+      await expect(main).toContainText("2号艇");
+      expect(page.url()).toBe(url);
+    }
+  });
+
   test("公開後（ANALOGY_FINDER_PUBLIC=true）は、内部確認の印が無くても節を出す", async ({
     page,
   }) => {
@@ -566,11 +587,19 @@ test.describe("アナロジー・ファインダーの節（BOA-271 v16）", () 
       page,
     }) => {
       await setup(page);
+      // facts の応答を遅らせ、カードが描かれる前に札を読む揺れを毎回起こす（E2E Live 2026-10-27 run 40487069745。
+      // fulfill の約90ms後に allInnerTexts が走り0件を読んだ。allInnerTexts は待たないので、先にカードの表示を待つ）
+      await page.route("**/api/analogy/facts/**", async (route) => {
+        await new Promise((r) => setTimeout(r, 1500));
+        return route.fulfill({ json: analogyV16Facts() });
+      });
       await openSonarTab(page);
       // ボート2連率は畳んだ折りたたみの中なので外す
-      const judges = await sectionOf(page)
-        .locator(".af-cards > [data-testid='analogy-fact-card'] .af-card-judge")
-        .allInnerTexts();
+      const cards = sectionOf(page).locator(
+        ".af-cards > [data-testid='analogy-fact-card']",
+      );
+      await expect(cards.first().locator(".af-card-judge")).toBeVisible();
+      const judges = await cards.locator(".af-card-judge").allInnerTexts();
       expect(judges.length).toBeGreaterThan(0);
       for (const j of judges)
         expect(j.trim()).toMatch(

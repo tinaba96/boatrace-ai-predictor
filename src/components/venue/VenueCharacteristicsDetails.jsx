@@ -1,56 +1,42 @@
 /**
  * VenueCharacteristicsDetails - 会場特徴カードの「もっと詳しく」（BOA-269）
- * 枠番別の1着率・2連率・3連率の表と、枠番ごとの勝ったときの決まり手の全内訳を、
- * 初期は閉じた折りたたみで出す。カードが既に取得した2つのデータだけを使う。
+ * 過去90日・枠番別の2連率・3連率の表と、枠番ごとの勝ったときの決まり手の全内訳を、
+ * 初期は閉じた折りたたみで出す。出目分布（outcome_distribution）と決まり手（winning_technique_stats）を自分で取る。
+ * 1着率の列は BOA-1189 で外した（カードの上は直近1年・進入コース別の1着率。同じ画面に期間の違う同じ指標を並べない）。
  * 出目のランキングは分析ツールの出目タブにあるため、ここにはリンクだけを置く
  * （2026-10-02 ユーザー承認）。
  */
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { translateTechnique } from "../race/raceIndicators";
-import { SMALL_SAMPLE_THRESHOLD } from "../race/basicInfoStats";
-import { BOAT_COLORS } from "../../utils/colors";
-import { localizePath } from "../../config/languages";
+import InlineFetchError from "../InlineFetchError";
+import { placeRatesByBoat } from "../../utils/venuePlaceRates";
+import { useVenueDetailsData } from "./VenueCharacteristicsDetailsData";
 import {
-  placeRatesByBoat,
-  techniqueBreakdown,
-} from "../../utils/venuePlaceRates";
+  buildOutcomeLink,
+  hasEnoughRaces,
+} from "./VenueCharacteristicsDetailsLogic";
+import PlaceRatesSection from "./VenueCharacteristicsDetailsPlaceRates";
+import TechniqueSection from "./VenueCharacteristicsDetailsTechniques";
 import "./VenueCharacteristicsDetails.css";
 
-const TECHNIQUE_SLUG = {
-  逃げ: "nige",
-  差し: "sashi",
-  まくり: "makuri",
-  まくり差し: "makurizashi",
-  抜き: "nuki",
-  恵まれ: "megumare",
-};
-
-function Lane({ boat }) {
-  const color = BOAT_COLORS[boat] ?? {};
-  return (
-    <span
-      className="venue-details-lane"
-      style={{ background: color.bg, color: color.text }}
-    >
-      {boat}
-    </span>
-  );
-}
-
-export default function VenueCharacteristicsDetails({
-  venueCode,
-  outcomeData,
-  techniqueData,
-}) {
+export default function VenueCharacteristicsDetails({ venueCode }) {
   const { t, i18n } = useTranslation();
+  const { loaded, failedVenue, retry } = useVenueDetailsData(venueCode);
+
+  if (failedVenue === venueCode) {
+    return (
+      <InlineFetchError
+        message={t("venueCharacteristics.fetchError")}
+        onRetry={retry}
+      />
+    );
+  }
+  if (loaded.venueCode !== venueCode) return null;
+  const { outcomeData, techniqueData } = loaded.data;
+  if (!hasEnoughRaces(outcomeData)) return null;
   const rates = placeRatesByBoat(outcomeData);
   if (!rates) return null;
-  const pct = (v) => `${v.toFixed(1)}%`;
-  const outcomeLink = localizePath(
-    `/winning-technique?venue_code=${venueCode}&tab=outcome`,
-    i18n.resolvedLanguage,
-  );
+  const outcomeLink = buildOutcomeLink(venueCode, i18n.resolvedLanguage);
 
   return (
     <details className="venue-details" data-testid="venue-details">
@@ -58,111 +44,9 @@ export default function VenueCharacteristicsDetails({
         {t("venueCharacteristics.details.summary")}
       </summary>
       <div className="venue-details__body">
-        <section>
-          <h3>{t("venueCharacteristics.details.placeRatesTitle")}</h3>
-          <p className="venue-details__sub">
-            {t("venueCharacteristics.details.placeRatesNote", {
-              count: outcomeData.total_races,
-            })}
-          </p>
-          <table className="venue-details__table">
-            <thead>
-              <tr>
-                <th scope="col">{t("venueCharacteristics.details.boat")}</th>
-                <th scope="col">{t("venueCharacteristics.details.winRate")}</th>
-                <th scope="col">
-                  {t("venueCharacteristics.details.top2Rate")}
-                </th>
-                <th scope="col">
-                  {t("venueCharacteristics.details.top3Rate")}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rates.map((r) => (
-                <tr key={r.boat}>
-                  <td>
-                    <Lane boat={r.boat} />
-                  </td>
-                  <td>{pct(r.winRate)}</td>
-                  <td>{pct(r.top2Rate)}</td>
-                  <td>{pct(r.top3Rate)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+        <PlaceRatesSection t={t} outcomeData={outcomeData} rates={rates} />
 
-        <section>
-          <h3>{t("venueCharacteristics.details.techniqueTitle")}</h3>
-          <p className="venue-details__sub">
-            {t("venueCharacteristics.details.techniqueNote")}
-          </p>
-          <ul className="venue-details__legend" aria-hidden="true">
-            {Object.entries(TECHNIQUE_SLUG).map(([name, slug]) => (
-              <li key={slug}>
-                <i className={`venue-details__swatch is-${slug}`} />
-                {translateTechnique(t, name)}
-              </li>
-            ))}
-          </ul>
-          <div className="venue-details__techniques">
-            {[1, 2, 3, 4, 5, 6].map((boat) => {
-              const { total, items } = techniqueBreakdown(
-                techniqueData?.data?.[boat],
-              );
-              if (total === 0) return null;
-              const itemLabels = items.map(
-                (x) =>
-                  `${translateTechnique(t, x.technique)} ${x.share.toFixed(0)}%(${x.count})`,
-              );
-              const label = itemLabels.join(t("listSeparator"));
-              const isSmall = total < SMALL_SAMPLE_THRESHOLD;
-              return (
-                <div
-                  className="venue-details__technique-row"
-                  key={boat}
-                  data-testid={`venue-details-technique-${boat}`}
-                >
-                  <Lane boat={boat} />
-                  <span
-                    className="venue-details__stack"
-                    role="img"
-                    aria-label={label}
-                  >
-                    {items.map((x) => (
-                      <span
-                        key={x.technique}
-                        className={`venue-details__swatch is-${TECHNIQUE_SLUG[x.technique] ?? "other"}`}
-                        style={{ width: `${x.share}%` }}
-                      />
-                    ))}
-                  </span>
-                  <span
-                    className={`venue-details__count${isSmall ? " is-small-sample" : ""}`}
-                  >
-                    {t("venueCharacteristics.details.winCount", {
-                      count: total,
-                    })}
-                  </span>
-                  <span className="venue-details__breakdown">
-                    {items.map((x, index) => (
-                      <span key={x.technique}>
-                        {index > 0 ? t("listSeparator") : null}
-                        <span className="venue-details__breakdown-item">
-                          {itemLabels[index]}
-                        </span>
-                      </span>
-                    ))}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          <p className="venue-details__sub">
-            {t("venueCharacteristics.details.smallSampleNote")}
-          </p>
-        </section>
+        <TechniqueSection t={t} techniqueData={techniqueData} />
 
         <p className="venue-details__link">
           <Link to={outcomeLink}>

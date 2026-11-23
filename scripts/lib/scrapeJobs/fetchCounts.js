@@ -1,0 +1,67 @@
+/** M1: 最終 outcome と累積 attempts からの固定ページ数による近似。純粋関数。 */
+export const FETCH_COUNT_NOTES = [
+  "対象は指定日の scrape_slots（race_date、JSTの開催日）。実際の取得日時別ではありません。",
+  "再試行込みの attempts × 固定ページ数の近似。odds・odds_final は5パスへ各1ページ。",
+  "取得0の最終 outcome（skipped_*・cancelled_race・breaker_open・budget_exhausted・not_due）は除外。",
+  "1ページ確認・partial の不足券種だけの取得を反映せず、最終 outcome による過去試行の除外でも実取得と差が出ます。",
+  "politeFetch 内部の再試行・日次ジョブ・ライブ・GHA・BOATCASTのカナリアは含みません。BOATCASTのパスはテンプレートです。",
+];
+
+export function validateTargetDate(date) {
+  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      !Number.isFinite(Date.parse(date)) || new Date(date).toISOString().slice(0, 10) !== date) {
+    throw new Error("対象日は実在する YYYY-MM-DD で指定してください");
+  }
+  return date;
+}
+
+/**
+ * 入力は slot 行、または job/status/outcome/target_date ごとに attempts を合算した行。
+ * target_date は DB の race_date::text の別名。status によらず実行済みの試行を含む。
+ * attempts は各パスに配分した試行数。パス間の合計はジョブの試行総数ではない。
+ */
+export function dailyFetchCounts(rows, registry, targetDate) {
+  validateTargetDate(targetDate);
+  const totals = new Map();
+  for (const row of rows) {
+    if (row.target_date !== targetDate) continue;
+    const n = validateRowAttempts(row, registry);
+    if (n === 0 || isNoFetchOutcome(row)) continue;
+    addRowTotals(totals, row.job, registry[row.job].fetchPaths, n);
+  }
+  return sortTotals([...totals.values()]);
+}
+
+// 行のジョブが窓型で fetchPaths を持つことと attempts の妥当性を確かめ、attempts の数値を返す
+function validateRowAttempts(row, registry) {
+  if (!Object.hasOwn(registry, row.job) || registry[row.job].kind !== "window") {
+    throw new Error(`窓型ジョブが未定義です: ${row.job}`);
+  }
+  if (!Array.isArray(registry[row.job].fetchPaths)) throw new Error(`ページ数が未定義です: ${row.job}`);
+  const n = typeof row.attempts === "string" && /^\d+$/.test(row.attempts)
+    ? Number(row.attempts) : row.attempts;
+  if (!Number.isSafeInteger(n) || n < 0) throw new Error("attempts は非負の安全な整数が必要です");
+  return n;
+}
+
+function isNoFetchOutcome(row) {
+  return row.outcome?.startsWith("skipped_") ||
+    ["cancelled_race", "breaker_open", "budget_exhausted", "not_due"].includes(row.outcome);
+}
+
+function addRowTotals(totals, job, fetchPaths, n) {
+  const host = job === "boatcast_oriten" ? "race.boatcast.jp" : "www.boatrace.jp";
+  for (const path of fetchPaths) {
+    const key = `${host}${path}`;
+    const total = totals.get(key) ?? { host, path, attempts: 0, pages: 0 };
+    total.attempts += n;
+    total.pages += n;
+    if (!Number.isSafeInteger(total.pages)) throw new Error("集計値が安全な整数の範囲を超えました");
+    totals.set(key, total);
+  }
+}
+
+function sortTotals(list) {
+  return list.sort((a, b) =>
+    a.host < b.host ? -1 : a.host > b.host ? 1 : a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+}

@@ -1,3 +1,6 @@
+import { VISIT_DAYS_KEY, nextVisitDays, favHolder } from "../pure/visitDays.js";
+import { FAVORITES_KEY } from "../pure/favorites.js";
+
 // Cookie同意管理
 const CONSENT_KEY = "boatai:cookie-consent";
 
@@ -83,14 +86,72 @@ export const trackPageView = (pathWithSearch) => {
     // 初回は document.referrer（外部の流入元）をそのまま使わせる
     ...(lastPageLocation ? { page_referrer: lastPageLocation } : {}),
   });
+  if (lastPageLocation === null) trackVisitDay();
   lastPageLocation = pageLocation;
 };
 
-// イベントをトラッキング
-export const trackEvent = (eventName, eventParams = {}) => {
-  if (window.gtag) {
-    window.gtag("event", eventName, eventParams);
+// 再訪の計測（GS03）。その日の最初の来訪で1回、直近7日・今の ISO 週に来た日数と☆の有無を送る。
+// gtag は Cookie に同意した後にしか無いので、同意していない人の来訪日は保存も送信もしない
+export const trackVisitDay = (now = new Date()) => {
+  try {
+    const next = nextVisitDays(localStorage.getItem(VISIT_DAYS_KEY), now);
+    if (!next.send) return;
+    // 保存できなければ同じ日に何度も送るので、送らない
+    localStorage.setItem(VISIT_DAYS_KEY, JSON.stringify(next.days));
+    trackEvent("visit_day", {
+      active_days_7d: next.activeDays7d,
+      active_days_iso_week: next.activeDaysIsoWeek,
+      fav_holder: favHolder(localStorage.getItem(FAVORITES_KEY)),
+    });
+  } catch {
+    // ストレージが使えない環境では送らない
   }
+};
+
+// GA4 がセッションの流入元（source / medium / campaign 等）として読むパラメータ名。
+// カスタムイベントに付けると、そのセッションの流入元が値で上書きされる（PR #656 で
+// deep_link_click の source が data_race_table 等の流入元になった）。上書きは同じ人の
+// 後の直接の訪問にも引き継がれる（BOA-996）。導線の区別は link_source のような別名にする
+export const GA4_RESERVED_EVENT_PARAMS = Object.freeze([
+  "source",
+  "medium",
+  "campaign",
+  "term",
+  "content",
+  "id",
+  "campaign_id",
+  "campaign_source",
+  "campaign_medium",
+  "campaign_name",
+  "campaign_term",
+  "campaign_content",
+  "gclid",
+  "dclid",
+  "gbraid",
+  "wbraid",
+  "gad_source",
+]);
+const isReservedEventParam = (key) =>
+  GA4_RESERVED_EVENT_PARAMS.includes(key) || key.startsWith("utm_");
+
+// イベントをトラッキング。予約名のパラメータは送らずにエラーを出す（流入元を壊さない）
+export const trackEvent = (eventName, eventParams = {}) => {
+  if (!window.gtag) return;
+  const reserved = Object.keys(eventParams ?? {}).filter(isReservedEventParam);
+  if (reserved.length > 0) {
+    console.error(
+      `trackEvent(${eventName}): GA4 の流入元を上書きするパラメータ名 ${reserved.join(", ")} は送りません。別の名前にしてください`,
+    );
+  }
+  window.gtag(
+    "event",
+    eventName,
+    reserved.length > 0
+      ? Object.fromEntries(
+          Object.entries(eventParams).filter(([k]) => !isReservedEventParam(k)),
+        )
+      : eventParams,
+  );
 };
 
 // 龍神ソナー（BOA-271）を最後に画面で見た時刻。ソナーを見た人の7日以内の再訪を数えるのに使う。
@@ -160,7 +221,7 @@ export const refreshAdsOnRouteChange = () => {
   try {
     const adsbygoogle = window.adsbygoogle || [];
     adsbygoogle.push({});
-  } catch (e) {
+  } catch {
     // AdSense未読み込み時は無視
   }
 };

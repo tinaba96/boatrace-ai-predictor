@@ -14,21 +14,24 @@
  *   blogPostsZhTw・blogPostsKo に載る記事の /{lang}/blog/{id}、一覧は /blog と /{lang}/blog。
  *   一覧の NEW の印は描いた時点の日付で決まるので外して保存する（ビルドから日が経つと人の画面と食い違うため）
  */
-import { createServer } from "node:http";
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
-import { readFile, stat } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { blogPosts } from "../src/data/blogPosts.js";
 import { blogPostsEn } from "../src/data/blogPostsEn.js";
 import { blogPostsZhTw } from "../src/data/blogPostsZhTw.js";
 import { blogPostsKo } from "../src/data/blogPostsKo.js";
+import { renderWithFreshPage } from "./lib/renderWithFreshPage.js";
+import { planBlogSnapshots } from "./lib/previewSnapshotPlan.js";
+import { isDirectRun } from "./lib/isDirectRun.js";
+import { withSnapshotBrowser } from "./aiSnapshots/staticServer.js";
 import {
-  createPageOpener,
-  renderWithFreshPage,
-} from "./lib/renderWithFreshPage.js";
-import { planRacerSnapshots } from "./lib/racerSnapshotPlan.js";
-import { launchChromium } from "./lib/launchChromium.js";
+  addChartPngStatus,
+  addRacerStatus,
+  addTranslatedStatus,
+  exportChartPngsSafely,
+  generateBlogFamily,
+  generateRacerSnapshotsSafely,
+} from "./aiSnapshots/runSteps.js";
 import {
   summarizeSnapshotRun,
   addSnapshotGroup,
@@ -41,31 +44,15 @@ import {
   MORNING_DIGEST_SECTIONS,
   glossaryBodyToText,
 } from "../src/data/morningDigestCopy.js";
+import {
+  ROOT,
+  DIST_DIR,
+  SNAPSHOT_DIR,
+  dedupeDefaultTitle,
+  generateRacerSnapshots,
+} from "./generateAiSnapshotsRacers.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.join(__dirname, "..");
-const DIST_DIR = path.join(ROOT, "dist");
-const SNAPSHOT_DIR = path.join(DIST_DIR, "ai-snapshots");
 const CONCURRENCY = 4;
-// 選手ページの並列数。理由は PR の説明と ADR 0032 の追記（BOA-848）
-const RACER_CONCURRENCY = 4;
-
-const MIME_TYPES = {
-  ".html": "text/html; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".mjs": "text/javascript; charset=utf-8",
-  ".css": "text/css; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".svg": "image/svg+xml",
-  ".webp": "image/webp",
-  ".ico": "image/x-icon",
-  ".woff": "font/woff",
-  ".woff2": "font/woff2",
-  ".webmanifest": "application/manifest+json",
-};
 
 function escapeHtml(str) {
   return String(str)
@@ -75,70 +62,17 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
-// index.htmlの静的<title>（サイト共通デフォルト）がReact描画後のページ固有<title>と
-// 並存してしまう（React管理外の初期HTMLタグのため、Reactの重複排除が効かない）。
-// デフォルトタイトルと一致する<title>を除去し、ページ固有のものだけを残す。
-const DEFAULT_TITLE = "龍神レーダー - 無料のボートレースAI予想＆データ分析";
-
-function dedupeDefaultTitle(html) {
-  const titleMatches = [...html.matchAll(/<title>([^<]*)<\/title>/g)];
-  if (titleMatches.length <= 1) return html;
-
-  let result = html;
-  for (const match of titleMatches) {
-    if (match[1] === DEFAULT_TITLE) {
-      result = result.replace(match[0], "");
-    }
-  }
-  return result;
-}
-
-// 当初はvite previewを子プロセス（npx経由）で起動していたが、Vercelの
-// ビルドサンドボックス環境では起動が20秒のタイムアウト内に完了せず、
-// npm run build全体を失敗させ本番デプロイを10時間以上止めた実績がある
-// （2026-09-11〜09-12インシデント、詳細はPR#624参照）。npx解決・子プロセス
-// spawn・stdoutの正規表現マッチという複数の不確実要素を排除するため、
-// 同一プロセス内で完結する最小限の静的サーバーに置き換えた。
-// SPAのクライアントサイドルーティングに対応するため、存在しないパスは
-// index.htmlにフォールバックする（history APIルーティングと同じ挙動）。
-function startStaticServer() {
-  return new Promise((resolve, reject) => {
-    const server = createServer((req, res) => {
-      (async () => {
-        try {
-          const urlPath = decodeURIComponent((req.url || "/").split("?")[0]);
-          let filePath = path.join(DIST_DIR, urlPath);
-
-          let fileExists = false;
-          try {
-            fileExists = (await stat(filePath)).isFile();
-          } catch {
-            fileExists = false;
-          }
-
-          if (!fileExists) {
-            filePath = path.join(DIST_DIR, "index.html");
-          }
-
-          const content = await readFile(filePath);
-          const ext = path.extname(filePath);
-          res.writeHead(200, {
-            "Content-Type": MIME_TYPES[ext] || "application/octet-stream",
-          });
-          res.end(content);
-        } catch (err) {
-          res.writeHead(500);
-          res.end(String(err));
-        }
-      })();
-    });
-
-    server.on("error", reject);
-    server.listen(0, "127.0.0.1", () => {
-      const address = server.address();
-      resolve({ server, baseUrl: `http://127.0.0.1:${address.port}` });
-    });
-  });
+/**
+ * 記事の図（src/components/blog/BlogChart.jsx）は、JSON を本文と一緒に取ってから描く（src/utils/blogChartLoader.js）ので、
+ * .blog-post-content が出た時点で図も出ている。図が error の記事は保存せず失敗として数える
+ * （図の無い HTML を配らず、ボットには SPA を返す。ADR 0089 の「失敗したら SPA」と同じ。docs/design/blog-charts/contract.md 6節）
+ */
+async function waitForBlogCharts(page) {
+  const failed = await page.$$eval(
+    '[data-chart-state="error"]',
+    (els) => els.length,
+  );
+  if (failed > 0) throw new Error(`ブログの図の読み込みに失敗（${failed}件）`);
 }
 
 async function generateBlogSnapshots(openPage, baseUrl) {
@@ -159,6 +93,7 @@ async function generateBlogSnapshots(openPage, baseUrl) {
           timeout: 15000,
         });
         await page.waitForSelector(".blog-post-content", { timeout: 10000 });
+        await waitForBlogCharts(page);
         const html = dedupeDefaultTitle(await page.content());
         writeFileSync(path.join(outDir, `${post.id}.html`), html, "utf-8");
       },
@@ -178,7 +113,7 @@ async function generateBlogSnapshots(openPage, baseUrl) {
 }
 
 // 翻訳記事の言語と記事の一覧（src/config/languages.js の BLOG_TRANSLATION_SOURCES と同じ）
-const BLOG_TRANSLATIONS = {
+export const BLOG_TRANSLATIONS = {
   en: blogPostsEn,
   "zh-TW": blogPostsZhTw,
   ko: blogPostsKo,
@@ -243,6 +178,7 @@ async function generateTranslatedBlogSnapshots(openPage, baseUrl) {
         file: `${lang}/blog/${post.id}.html`,
       })),
       waitSelector: ".blog-post-content",
+      beforeSave: waitForBlogCharts,
     });
   }
   return results;
@@ -264,69 +200,6 @@ async function generateBlogListSnapshots(openPage, baseUrl) {
         document.querySelectorAll(".new-badge").forEach((el) => el.remove());
       }),
   });
-}
-
-/**
- * 選手ページ（/racer/{番号}）のスナップショット（BOA-848）。
- *
- * 人の画面を描いた HTML をそのまま保存するので、人の画面に無い文言は入らない（ADR 0089 決定3）。
- * 保存するのは、プロフィールと成績が揃った目印（RacerProfile.jsx の data-snapshot-ready）が付いてから。
- * 失敗したページは保存しない（vercel.json の catch-all で SPA の外枠に戻る。ブログと同じ）。
- * 描いたページが noindex なら保存しない（sitemap が書かれた後に条件から外れた選手）。
- */
-async function generateRacerSnapshots(openPage, baseUrl) {
-  const { ids, reason } = planRacerSnapshots({
-    vercelEnv: process.env.VERCEL_ENV,
-    limit: process.env.RACER_SNAPSHOT_LIMIT,
-    sitemapXml: readFileSync(path.join(DIST_DIR, "sitemap.xml"), "utf-8"),
-  });
-  console.log(`選手ページのスナップショット: ${reason}`);
-  if (ids.length === 0) return { total: 0, failed: [], skipped: [] };
-
-  const outDir = path.join(SNAPSHOT_DIR, "racer");
-  mkdirSync(outDir, { recursive: true });
-
-  const skipped = [];
-  const startedAt = Date.now();
-  const { succeeded, failed: failedItems } = await renderWithFreshPage(ids, {
-    concurrency: RACER_CONCURRENCY,
-    openPage,
-    retries: 2,
-    render: async (page, id) => {
-      await page.goto(`${baseUrl}/racer/${id}`, {
-        waitUntil: "networkidle",
-        timeout: 30000,
-      });
-      await page.waitForSelector('[data-snapshot-ready="true"]', {
-        timeout: 20000,
-      });
-      const robots = await page.getAttribute('meta[name="robots"]', "content");
-      if (robots?.includes("noindex")) {
-        skipped.push(id);
-        return;
-      }
-      const html = dedupeDefaultTitle(await page.content());
-      writeFileSync(path.join(outDir, `${id}.html`), html, "utf-8");
-    },
-  });
-  const failed = failedItems.map(({ item, error }) => ({
-    id: item,
-    error: error.split("\n")[0],
-  }));
-  const seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
-
-  console.log(
-    `✓ 選手ページスナップショット: ${succeeded.length - skipped.length}/${ids.length}件（${seconds}秒、並列${RACER_CONCURRENCY}）`,
-  );
-  if (skipped.length > 0) {
-    console.log(`  noindex のため保存しなかった選手: ${skipped.join(", ")}`);
-  }
-  if (failed.length > 0) {
-    console.error(
-      `⚠️ 生成に失敗した選手（SPA の外枠に戻る）: ${failed.map((f) => `${f.id} (${f.error})`).join(", ")}`,
-    );
-  }
-  return { total: ids.length, failed, skipped };
 }
 
 function generateWinningTechniqueSnapshot() {
@@ -447,80 +320,53 @@ ${sections}
   console.log("✓ /today スナップショット生成完了");
 }
 
-async function main() {
+// ブログ記事（ja）・翻訳記事・ブログ一覧を描く関数（scripts/aiSnapshots/runSteps.js の generateBlogFamily が順に呼ぶ）
+const BLOG_STEPS = {
+  generateBlogSnapshots,
+  generateTranslatedBlogSnapshots,
+  generateBlogListSnapshots,
+};
+
+export async function main() {
   console.log("AIクローラー向けスナップショット生成を開始します...");
 
   generateWinningTechniqueSnapshot();
   generateTodaySnapshot();
 
-  // ブログ記事スナップショット生成が万一失敗しても、ビルド全体は成功させ
-  // /winning-technique・/today分だけは配信を継続する（2026-09-11〜09-12インシデントの
-  // 再発防止、詳細はPR#624参照）。
+  const blogPlan = planBlogSnapshots({
+    vercelEnv: process.env.VERCEL_ENV,
+    commitMessage: process.env.VERCEL_GIT_COMMIT_MESSAGE,
+    optIn: process.env.BOT_SNAPSHOTS_ON_PREVIEW,
+  });
+  console.log(`ブログ・翻訳・一覧のスナップショット: ${blogPlan.reason}`);
+
   let failed = [];
-  let fatalError = null;
-  let relaunches = 0;
   let racerResult = null;
   let translatedResult = null;
   let listResult = null;
-  let server;
-  try {
-    const started = await startStaticServer();
-    server = started.server;
-    const baseUrl = started.baseUrl;
-    // ブラウザが落ちたら起動し直す（Vercel の Chromium は単一プロセスで、ページが落ちるとブラウザごと落ちる）
-    const opener = createPageOpener(launchChromium);
-    try {
-      failed = await generateBlogSnapshots(opener.openPage, baseUrl);
-      // 翻訳記事・一覧（BOA-848 第2段）。止まっても ja の記事・選手ページの結果には影響させない
-      try {
-        translatedResult = await generateTranslatedBlogSnapshots(
-          opener.openPage,
+  let chartPngResult = null;
+  const { relaunches, fatalError } = await withSnapshotBrowser(
+    DIST_DIR,
+    async (openPage, baseUrl) => {
+      // ブログ・翻訳記事・ブログ一覧。Preview では印のあるコミットだけで作る（planBlogSnapshots、Vercel の費用 2026-11-05）
+      if (blogPlan.build) {
+        ({ failed, translatedResult, listResult } = await generateBlogFamily(
+          openPage,
           baseUrl,
-        );
-      } catch (err) {
-        translatedResult = { fatalError: err.message };
-        console.error(
-          "⚠️ 翻訳記事のスナップショット生成が途中で止まった:",
-          err.message,
-        );
+          BLOG_STEPS,
+        ));
       }
-      try {
-        listResult = await generateBlogListSnapshots(opener.openPage, baseUrl);
-      } catch (err) {
-        listResult = { total: null, failed: [], fatalError: err.message };
-        console.error(
-          "⚠️ ブログ一覧のスナップショット生成が途中で止まった:",
-          err.message,
-        );
-      }
-      // 選手ページの失敗は、ブログの生成結果に影響させない（それぞれ別に落ちてよい）
-      try {
-        racerResult = await generateRacerSnapshots(opener.openPage, baseUrl);
-      } catch (err) {
-        racerResult = {
-          total: null,
-          failed: [],
-          skipped: [],
-          fatalError: err.message,
-        };
-        console.error(
-          "⚠️ 選手ページのスナップショット生成が途中で止まりましたが、ビルドは継続します:",
-          err.message,
-        );
-      }
-    } finally {
-      relaunches = Math.max(0, opener.launches() - 1);
-      await opener.close();
-    }
-  } catch (err) {
-    fatalError = err.message;
-    console.error(
-      "⚠️ ブログ記事スナップショットの生成に失敗しましたが、ビルドは継続します（/winning-technique・/today分は生成済み）:",
-      err.message,
-    );
-  } finally {
-    if (server) server.close();
-  }
+      chartPngResult = await exportChartPngsSafely(openPage, baseUrl, {
+        root: ROOT,
+        distDir: DIST_DIR,
+      });
+      racerResult = await generateRacerSnapshotsSafely(
+        generateRacerSnapshots,
+        openPage,
+        baseUrl,
+      );
+    },
+  );
 
   // 失敗をログの途中に埋もれさせない。最後にまとめを出し、配信物にも残す（毎日の照合が読む）
   const { status, lines } = summarizeSnapshotRun({
@@ -529,37 +375,13 @@ async function main() {
     fatalError,
     relaunches,
     generatedAt: new Date().toISOString(),
+    skipped: blogPlan.build ? null : blogPlan.reason,
   });
-  // 選手ページ（BOA-848）の結果も残す。ok はブログの結果のまま（選手の失敗は記録だけ。判断は毎日の照合の側で見て決める）
-  if (racerResult) {
-    status.racer = {
-      total: racerResult.total,
-      succeeded:
-        racerResult.total == null
-          ? null
-          : racerResult.total -
-            racerResult.failed.length -
-            racerResult.skipped.length,
-      failedIds: racerResult.failed.map((f) => f.id),
-      skippedIds: racerResult.skipped,
-      fatalError: racerResult.fatalError ?? null,
-    };
-  }
-  // 翻訳記事・一覧（BOA-848 第2段）。失敗があれば ok を false にする（毎日の照合が Slack に流す）
-  if (translatedResult) {
-    if (translatedResult.fatalError) {
-      addSnapshotGroup(status, lines, "blogI18n", {
-        total: null,
-        failed: [],
-        fatalError: translatedResult.fatalError,
-      });
-    } else {
-      for (const [lang, r] of Object.entries(translatedResult)) {
-        addSnapshotGroup(status, lines, `blogI18n.${lang}`, r);
-      }
-    }
-  }
+  if (racerResult) addRacerStatus(status, racerResult);
+  if (translatedResult) addTranslatedStatus(status, lines, translatedResult);
   if (listResult) addSnapshotGroup(status, lines, "blogList", listResult);
+  if (chartPngResult) addChartPngStatus(status, lines, chartPngResult);
+
   writeFileSync(
     path.join(SNAPSHOT_DIR, "status.json"),
     `${JSON.stringify(status, null, 2)}\n`,
@@ -570,11 +392,14 @@ async function main() {
   console.log("スナップショット生成が完了しました。");
 }
 
-main().catch((err) => {
-  // ここに到達するのはgenerateWinningTechniqueSnapshot()・generateTodaySnapshot()自体の失敗のみ
-  // （ブログ側のエラーは上のtry-catchで既に吸収済み）。同期的なテンプレート
-  // 生成なので、失敗する場合は環境差異ではなく実際のバグの可能性が高く、
-  // ビルドを失敗させて気づけるようにする。
-  console.error("スナップショット生成中にエラーが発生しました:", err);
-  process.exit(1);
-});
+// 直接起動（npm run build）のときだけ main を回す（import されただけなら描き・書きは走らない。verify が BLOG_TRANSLATIONS・main を読むため）
+if (isDirectRun(import.meta.url)) {
+  main().catch((err) => {
+    // ここに到達するのはgenerateWinningTechniqueSnapshot()・generateTodaySnapshot()自体の失敗のみ
+    // （ブログ側のエラーは上のtry-catchで既に吸収済み）。同期的なテンプレート
+    // 生成なので、失敗する場合は環境差異ではなく実際のバグの可能性が高く、
+    // ビルドを失敗させて気づけるようにする。
+    console.error("スナップショット生成中にエラーが発生しました:", err);
+    process.exit(1);
+  });
+}

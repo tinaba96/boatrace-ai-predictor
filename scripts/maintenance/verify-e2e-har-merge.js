@@ -12,12 +12,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { canonicalUrl, harKey, mergeHarLogs } from "../../e2e/har-merge.js";
 import { isPartialRun } from "../../e2e/global-setup.js";
+
 import {
-  countResults,
-  judgeAdoption,
   NOTIFY_STEP_PREFIX,
-  notifiedInJobs,
   notifyDedupe,
+  recordCancelledInJobs,
   RECORD_CUTOFF_HOUR_JST,
   scheduleGate,
 } from "./e2e-recording.js";
@@ -26,7 +25,9 @@ const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../..",
 );
-import { summarize, toMarkdown, MARKER } from "./report-e2e-passthrough.js";
+
+import { checkCollectTodayRuns } from "./verifyData/e2e-recording-collect.js";
+import { runE2eHarMergeScenes1 } from "./verifyData/e2e-har-merge-scenes.js";
 
 const failures = [];
 let checked = 0;
@@ -179,6 +180,51 @@ check(
   [false, true],
 );
 
+// --- 同じ日に record が時間切れなら撮らない・JST10時より前は撮らない
+const timedOutRun = (s) => [
+  { id: 1, createdAt: jst(s).toISOString(), recordCancelled: true },
+];
+const gateAt = (s, runs) => scheduleGate(jst(s), null, runs);
+check(
+  "今日 record が時間切れなら撮らない（理由つき）",
+  [
+    gateAt("2026-11-07T14:00:00", timedOutRun("2026-11-07T10:30:00")).run,
+    gateAt("2026-11-07T14:00:00", timedOutRun("2026-11-07T10:30:00"))
+      .reasons[0].includes("本日すでに時間切れ"),
+  ],
+  [false, true],
+);
+check(
+  "時間切れが昨日だけなら撮る",
+  gateAt("2026-11-07T14:00:00", timedOutRun("2026-11-06T10:30:00")).run,
+  true,
+);
+check(
+  "今日の run が時間切れでなければ撮る",
+  gateAt("2026-11-07T14:00:00", [
+    { id: 2, createdAt: jst("2026-11-07T10:30:00").toISOString() },
+  ]).run,
+  true,
+);
+check("run の取得に失敗（null）なら撮る", gateAt("2026-11-07T14:00:00", null).run, true);
+check(
+  "JST 9:59 は撮らない・10:00 は撮る",
+  [
+    gateAt("2026-11-07T09:59:00", null).run,
+    gateAt("2026-11-07T10:00:00", null).run,
+  ],
+  [false, true],
+);
+check(
+  "record ジョブの cancelled だけを時間切れとみなす",
+  [
+    recordCancelledInJobs([{ name: "record", conclusion: "cancelled" }]),
+    recordCancelledInJobs([{ name: "replay (1/3)", conclusion: "cancelled" }]),
+    recordCancelledInJobs([{ name: "record", conclusion: "success" }]),
+  ],
+  [true, false, false],
+);
+
 // --- 定期実行の起動時刻（e2e-rerecord.yml）。1日4回・JST10〜17時・0分を避ける。
 // どの起動も gate の打ち切り時刻より前で、採用済みなら後の起動は空振りする
 const workflow = readFileSync(
@@ -228,15 +274,47 @@ check(
   true,
 );
 check(
-  "ワークフロー自体の失敗は、通知済みでも必ず通知する（重複判定は不採用の通知だけ）",
+  "ワークフロー自体の失敗（judge・record ジョブの失敗）は、通知済みでも必ず通知する（重複判定は不採用の通知だけ）",
   [
-    workflow.includes("JOB_FAILED: ${{ job.status == 'failure' }}"),
-    /if \[ "\$EVENT_NAME" = "schedule" \] && \[ "\$JOB_FAILED" != "true" \]; then\s*\n\s*DEDUPE=\$\(node scripts\/maintenance\/e2e-recording\.js notify-dedupe/.test(
+    workflow.includes("JOB_FAILED: ${{ job.status == 'failure' }}") &&
+      workflow.includes("RECORD_RESULT: ${{ needs.record.result }}"),
+    /if \[ "\$SCHEDULED" = "true" \] && \[ "\$JOB_FAILED" != "true" \] && \[ "\$RECORD_RESULT" = "success" \]; then\s*\n\s*DEDUPE=\$\(node scripts\/maintenance\/e2e-recording\.js notify-dedupe/.test(
       workflow,
     ),
   ],
   [true, true],
 );
+// Vercel Cron の dispatch（inputs.gate=true、BOA-929）は schedule と同じ扱い: gate の判定と通知の1日1回。
+// 人が起こす dispatch（gate=false、既定）は判定せずに撮り、毎回通知する。
+// github.event.inputs は文字列（inputs.gate は boolean）なので 'true' と比べる。schedule では空で false になる
+const SCHEDULED_EXPR =
+  "SCHEDULED: ${{ github.event_name == 'schedule' || github.event.inputs.gate == 'true' }}";
+check(
+  "dispatch の入力 gate（boolean・既定 false）がある",
+  /workflow_dispatch:\s*\n\s+inputs:\s*\n\s+gate:\s*\n(?:\s+description: .*\n)?\s+type: boolean\s*\n\s+default: false/.test(
+    workflow,
+  ),
+  true,
+);
+check(
+  "gate の判定と通知の重複判定は、schedule と gate=true の dispatch で同じ式を使う（2か所）",
+  workflow.split(SCHEDULED_EXPR).length - 1,
+  2,
+);
+check(
+  "gate の step は SCHEDULED が true のときだけ判定する（EVENT_NAME で schedule だけを見ない）",
+  [
+    /if \[ "\$SCHEDULED" != "true" \]; then\s*\n\s*echo "run=true"/.test(
+      workflow,
+    ),
+    /EVENT_NAME/.test(workflow),
+  ],
+  [true, false],
+);
+// 通知の重複判定は event で絞らない（schedule だけを見ると、Vercel Cron の dispatch の通知を数えず1日最大4回に戻る）。
+// PR のブランチを ref にした手の起動は数えない
+// notify-dedupe の runs の取得は、偽の gh api で collectTodayRuns を回して見る（verifyData/e2e-recording-collect.js）
+checkCollectTodayRuns(check);
 // 状態関数（failure() / success() / cancelled() / always()）は if: の中でしか使えない。
 // env や with の ${{ }} に書くと、GitHub はワークフロー全体を無効と判定し、schedule も
 // 起動しなくなる。#1080 で JOB_FAILED: ${{ failure() }} を入れ、この検証自体がその
@@ -257,9 +335,11 @@ function findStatusFuncOutsideIf(text) {
 check(
   "状態関数の検出: if: 以外の ${{ failure() }} を見つける（検出器の自己検査）",
   [
-    findStatusFuncOutsideIf("        env:\n          X: ${{ failure() }}\n").length,
+    findStatusFuncOutsideIf("        env:\n          X: ${{ failure() }}\n")
+      .length,
     findStatusFuncOutsideIf("        if: ${{ failure() }}\n").length,
-    findStatusFuncOutsideIf("          X: ${{ job.status == 'failure' }}\n").length,
+    findStatusFuncOutsideIf("          X: ${{ job.status == 'failure' }}\n")
+      .length,
   ],
   [1, 0, 0],
 );
@@ -320,106 +400,9 @@ check(
   ]).notify,
   true,
 );
-check(
-  "通知ステップが動いた実行だけを通知済みとみなす",
-  [
-    notifiedInJobs([
-      { steps: [{ name: `${NOTIFY_STEP_PREFIX} (x)`, conclusion: "success" }] },
-    ]),
-    notifiedInJobs([
-      { steps: [{ name: `${NOTIFY_STEP_PREFIX} (x)`, conclusion: "skipped" }] },
-    ]),
-    notifiedInJobs([{ steps: [{ name: "録画", conclusion: "success" }] }]),
-    notifiedInJobs(undefined),
-  ],
-  [true, false, false, false],
-);
 
-// --- 自動撮り直しの採用判定（全件通過・skip が増えていない）
-const report = (statuses) => ({
-  suites: [
-    {
-      title: "a.spec.js",
-      specs: statuses.map((status, i) => ({
-        title: `t${i}`,
-        tests: [{ status }],
-      })),
-    },
-  ],
-});
-const counts = countResults(
-  report(["expected", "skipped", "unexpected", "flaky"]),
-);
-check("件数の数え方（flaky は失敗に数えない）", counts, {
-  tests: 4,
-  skipped: 1,
-  failed: 1,
-  flaky: 1,
-  errors: 0,
-});
-check(
-  "全件通過・skip 同数なら採用",
-  judgeAdoption({ tests: 10, skipped: 1, failed: 0, errors: 0 }, { skipped: 1 })
-    .adopt,
-  true,
-);
-check(
-  "skip が増えたら不採用",
-  judgeAdoption({ tests: 10, skipped: 2, failed: 0, errors: 0 }, { skipped: 1 })
-    .adopt,
-  false,
-);
-check(
-  "失敗があれば不採用",
-  judgeAdoption({ tests: 10, skipped: 0, failed: 1, errors: 0 }, { skipped: 5 })
-    .adopt,
-  false,
-);
-check(
-  "1件も走っていなければ不採用",
-  judgeAdoption({ tests: 0, skipped: 0, failed: 0, errors: 0 }, null).adopt,
-  false,
-);
-check(
-  "現行の録画が無ければ skip は比べない",
-  judgeAdoption({ tests: 10, skipped: 3, failed: 0, errors: 0 }, null).adopt,
-  true,
-);
-
-check(
-  "レポートに問題（途中停止・プロジェクト0件）があれば不採用",
-  judgeAdoption({ tests: 10, skipped: 0, failed: 0, errors: 0 }, null, ["x"])
-    .adopt,
-  false,
-);
-
-// --- 素通し一覧（黙って本番依存に戻らないよう、PR に必ず出す）
-const rows = summarize([
-  { method: "GET", url: "/rest/v1/a", test: "x", project: "smoke" },
-  { method: "GET", url: "/rest/v1/a", test: "y", project: "smoke" },
-  { method: "GET", url: "/rest/v1/a", test: "x", project: "smoke" },
-  { method: "POST", url: "/rest/v1/rpc/b", test: "z", project: "layout-wide" },
-]);
-check("同じ通信は1行にまとめ、テストを重複なく並べる", rows[0].tests, [
-  "[smoke] x",
-  "[smoke] y",
-]);
-check("通信の種類数", rows.length, 2);
-check(
-  "0件でも目印付きで出す（PRコメントを更新できるように）",
-  toMarkdown([]).startsWith(MARKER),
-  true,
-);
-check(
-  "E2E が走らなかったときは 0件 と書かない",
-  toMarkdown([], { ran: false }).includes("0件"),
-  false,
-);
-check(
-  "素通しがあれば URL を表に出す",
-  toMarkdown(rows).includes("/rest/v1/rpc/b"),
-  true,
-);
+// ---- 後半の場面（verifyData/e2e-har-merge-scenes.js） ----
+runE2eHarMergeScenes1({ check });
 
 if (failures.length > 0) {
   console.error(

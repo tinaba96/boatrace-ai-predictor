@@ -7,20 +7,12 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Header from "../components/Header";
-import Footer from "../components/Footer";
 import Breadcrumb from "../components/Breadcrumb";
-import UpdateStatus from "../components/UpdateStatus";
-import IntroBanner from "../components/IntroBanner";
 import HomeAiIntro from "../components/HomeAiIntro";
-import FirstVisitGuideCard from "../components/FirstVisitGuideCard";
 import { useFirstVisit } from "../hooks/useFirstVisit";
-import {
-  VenueGrid,
-  VenueGridSkeleton,
-  TodaysVolatilityHighlights,
-  SgNowBanner,
-} from "../components/race";
-import { dataService } from "../services/dataService";
+import { VenueGrid } from "../components/race";
+import { clearCache } from "../services/core.js";
+import { getRaces, getUpcomingSeries } from "../services/scheduleQueries.js";
 import DataFetchError from "../components/DataFetchError";
 import {
   useDatePredictions,
@@ -28,21 +20,23 @@ import {
   NO_DATA_ERROR,
 } from "../hooks/useDatePredictions";
 import { useLocalizedPath } from "../hooks/useLocalizedPath";
+import { useSocialMeta } from "../hooks/useSocialMeta";
 import { useNowHHMM } from "../hooks/useNowHHMM";
 import { getLanguage } from "../config/languages";
 import { getTopPageMeta } from "../utils/pageMeta";
-import { getHomeBlogPosts, getLatestPosts } from "../data/blogPosts";
 import { formatDate } from "../utils/formatters";
 import { getTodayJST } from "../utils/dateUtils";
 import { computeNextOpenDates } from "../utils/nextOpenDate";
-import {
-  formatDateShortLocalized,
-  formatDateLongLocalized,
-} from "../utils/formatters";
+import SiteUpdatesBanner from "../components/siteUpdates/SiteUpdatesBanner";
 import "./VenueGridPage.css";
 // 過去日付ビューのレイアウト（.race-detail-page/.page-header/.back-link等）は
 // 旧RaceDetail.jsxのスタイルを流用する
 import "./RaceDetail.css";
+import {
+  TodayVenuesSection,
+  HomeBlogSection,
+  TodayVenueFooter,
+} from "./VenueGridSections.jsx";
 
 // getPredictions系レスポンス（フラットなraces配列）を会場別にグループ化する
 function groupRacesByVenue(races) {
@@ -68,7 +62,7 @@ function groupRacesByVenue(races) {
   return venues.sort((a, b) => a.placeCd - b.placeCd);
 }
 
-// 本日用: dataService.getRaces() で会場別データを取得
+// 本日用: getRaces() で会場別データを取得
 function useTodayVenues() {
   const [venuesData, setVenuesData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +74,7 @@ function useTodayVenues() {
     try {
       setLoading(true);
       setError(null);
-      const result = await dataService.getRaces();
+      const result = await getRaces();
       if (!result.success || !result.data) {
         throw new Error("有効なデータが取得できませんでした");
       }
@@ -105,7 +99,7 @@ function useTodayVenues() {
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      dataService.clearCache();
+      clearCache();
       await fetchData();
     } finally {
       setIsRefreshing(false);
@@ -129,8 +123,7 @@ function useNextOpenDates() {
   useEffect(() => {
     let cancelled = false;
     const today = getTodayJST();
-    dataService
-      .getUpcomingSeries(today)
+    getUpcomingSeries(today)
       .then((rows) => {
         if (!cancelled) setNextOpenDates(computeNextOpenDates(rows, today));
       })
@@ -166,6 +159,11 @@ function TodayVenueGridPage() {
   const nextOpenDates = useNextOpenDates();
   // title・description・canonical はボット向け HTML（ADR 0089）と同じ関数で組む
   const meta = getTopPageMeta(t, i18n.resolvedLanguage);
+  useSocialMeta({
+    title: meta.title,
+    description: meta.description,
+    url: meta.canonical,
+  });
 
   return (
     <div className="app">
@@ -180,164 +178,31 @@ function TodayVenueGridPage() {
 
       <div className="container">
         <main className="main-content">
-          <section className="race-list-section" id="today-venues">
-            <h2>
-              🏁 {t("home.todayRaces")}{" "}
-              {formatDateShortLocalized(getTodayJST(), i18n.resolvedLanguage)}
-            </h2>
-            <p className="free-access-notice">
-              ✅ <strong>{t("home.freeAccessNoticeStrong")}</strong>{" "}
-              {t("home.freeAccessNoticeRest")}
-            </p>
-            <UpdateStatus
-              lastUpdated={lastUpdated}
-              dataType={t("home.dataType")}
-              onRefresh={handleRefresh}
-              isRefreshing={isRefreshing}
-            />
-            {isFirstVisit && i18n.language === "ja" ? (
-              <FirstVisitGuideCard />
-            ) : (
-              <IntroBanner />
-            )}
-
-            {loading ? (
-              <VenueGridSkeleton />
-            ) : (
-              <>
-                {/* 取得に失敗したら会場グリッドを出さない。出すと venuesData が空のため
-                    24会場すべてが「本日開催なし」になり、エラー表示と矛盾する（BOA-668）。
-                    「本日開催なし」は取得に成功して0件だったときだけ出す */}
-                {error ? (
-                  <DataFetchError
-                    detail={error === FETCH_FAILED_ERROR ? null : error}
-                  />
-                ) : (
-                  <>
-                    {/* SG開催中の会場への導線（集客レーン。SG の日だけ出る） */}
-                    <SgNowBanner venuesData={venuesData} />
-                    <TodaysVolatilityHighlights
-                      venuesData={venuesData}
-                      nowHHMM={nowHHMM}
-                    />
-                  </>
-                )}
-                {/* 本日のデータ一覧（BOA-402）への導線。高さを固定してCLSを出さない。
-                    /today は ja専用なので、ヘッダーと同じく ja のときだけ出す（BOA-653） */}
-                {/* i18n-allow-start: ja のときだけ出す導線（遷移先が ja専用ページ） */}
-                {i18n.language === "ja" && (
-                  <Link to="/today" className="home-digest-link">
-                    <span className="home-digest-link__label">
-                      📋 本日のデータ一覧
-                    </span>
-                    <span className="home-digest-link__desc">
-                      逃げが堅い選手・まくりが利く選手・昨日のフライング
-                    </span>
-                  </Link>
-                )}
-                {/* i18n-allow-end */}
-                {!error && (
-                  <VenueGrid
-                    venuesData={venuesData}
-                    getVenueLink={(code) => localize(`/venue/${code}`)}
-                    nowHHMM={nowHHMM}
-                    nextOpenDates={nextOpenDates}
-                  />
-                )}
-              </>
-            )}
-          </section>
+          {/* 更新のお知らせの帯（ja の今日のトップだけ。言語は部品の中で URL から決める） */}
+          <SiteUpdatesBanner />
+          <TodayVenuesSection
+            t={t}
+            i18n={i18n}
+            localize={localize}
+            nowHHMM={nowHHMM}
+            isFirstVisit={isFirstVisit}
+            venuesData={venuesData}
+            loading={loading}
+            error={error}
+            lastUpdated={lastUpdated}
+            isRefreshing={isRefreshing}
+            handleRefresh={handleRefresh}
+            nextOpenDates={nextOpenDates}
+          />
 
           {/* 何のサイトかを説明する本文と実績（集客レーン Phase3。検索向けにクロールできる本文として置く） */}
-          <HomeAiIntro />
+          <HomeAiIntro lastUpdated={lastUpdated} />
 
-          {/* ブログ記事セクション */}
-          <section className="blog-preview-section">
-            <h2>📝 {t("home.blogTitle")}</h2>
-            <p className="blog-preview-lead">{t("home.blogDesc")}</p>
-
-            {(() => {
-              // 記事の選び方はボット向け HTML（botPageModel.js）と共有する
-              const { popularPosts, newPosts } = getHomeBlogPosts(
-                i18n.resolvedLanguage,
-              );
-
-              const renderCard = (post) => (
-                <Link
-                  to={localize(`/blog/${post.id}`)}
-                  key={post.id}
-                  className="blog-preview-card"
-                >
-                  <span className="blog-preview-category">{post.category}</span>
-                  <h3 className="blog-preview-title">{post.title}</h3>
-                  <p className="blog-preview-desc">{post.description}</p>
-                  <div className="blog-preview-meta">
-                    <span>{post.readTime}</span>
-                  </div>
-                </Link>
-              );
-
-              return (
-                <>
-                  <h3 className="blog-preview-subheading">
-                    🌟 {t("home.popularArticles")}
-                  </h3>
-                  <div className="blog-preview-grid">
-                    {popularPosts.map(renderCard)}
-                  </div>
-
-                  <h3 className="blog-preview-subheading">
-                    🆕 {t("home.newArticles")}
-                  </h3>
-                  <div className="blog-preview-grid">
-                    {newPosts.map(renderCard)}
-                  </div>
-                </>
-              );
-            })()}
-
-            <div className="blog-preview-cta">
-              <Link to={localize("/blog")} className="blog-preview-btn">
-                {t("home.viewAllPosts")}
-              </Link>
-            </div>
-          </section>
+          <HomeBlogSection t={t} i18n={i18n} localize={localize} />
         </main>
       </div>
 
-      <Footer
-        links={[
-          { to: "/blog", label: t("footer.blog") },
-          { to: "/about", label: "About" },
-          { to: "/profile", label: t("footer.operator") },
-          { to: "/faq", label: "FAQ" },
-          { to: "/privacy", label: t("footer.privacy") },
-          { to: "/terms", label: t("footer.terms") },
-          { to: "/contact", label: t("footer.contact") },
-          {
-            to: "/responsible-gambling",
-            label: t("footer.responsibleGambling"),
-          },
-        ]}
-        extra={
-          <>
-            <p>{t("home.disclaimer")}</p>
-            <p className="site-footer-updated">
-              {(() => {
-                const latestPost = getLatestPosts(1, i18n.resolvedLanguage)[0];
-                return latestPost
-                  ? t("home.blogLastUpdated", {
-                      date: formatDateLongLocalized(
-                        latestPost.date,
-                        i18n.resolvedLanguage,
-                      ),
-                    })
-                  : "";
-              })()}
-            </p>
-          </>
-        }
-      />
+      <TodayVenueFooter t={t} i18n={i18n} />
     </div>
   );
 }
@@ -349,6 +214,10 @@ function PastVenueGridPage({ date }) {
   // 時刻比較を有効にする（無効のままだと本日の未終了レースが「全レース終了」と
   // 誤表示される）。真に過去の日付ではnullのまま（時刻比較不要）
   const nowHHMM = useNowHHMM(date === getTodayJST());
+  const title = `${formatDate(date)}のAI予想データ - 龍神レーダー`;
+  const description = `${formatDate(date)}のボートレースAI予想データと的中実績。各レース場の予想結果を確認できます。`;
+  const canonical = `https://www.boat-ai.jp/races/${date}`;
+  useSocialMeta({ title, description, url: canonical });
 
   const breadcrumbItems = [
     { name: "ホーム", url: "/" },
@@ -358,12 +227,9 @@ function PastVenueGridPage({ date }) {
 
   return (
     <>
-      <title>{`${formatDate(date)}のAI予想データ - 龍神レーダー`}</title>
-      <meta
-        name="description"
-        content={`${formatDate(date)}のボートレースAI予想データと的中実績。各レース場の予想結果を確認できます。`}
-      />
-      <link rel="canonical" href={`https://www.boat-ai.jp/races/${date}`} />
+      <title>{title}</title>
+      <meta name="description" content={description} />
+      <link rel="canonical" href={canonical} />
       <Header />
 
       <div className="race-detail-page">
@@ -398,6 +264,7 @@ function PastVenueGridPage({ date }) {
               venuesData={venuesData}
               getVenueLink={(code) => `/races/${date}/${code}`}
               nowHHMM={nowHHMM}
+              linkClosed={false}
             />
           )}
         </div>

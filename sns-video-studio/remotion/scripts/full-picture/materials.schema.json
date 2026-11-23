@@ -1,0 +1,608 @@
+{
+  "$comment": "全貌動画の材料 JSON の契約（龍神の取得 fetch-materials.mjs → 毎日の実行 run-full.mjs）。形を変えたら schemaVersion を上げ、この Schema・fetch-materials.mjs の MATERIALS_VERSION・場面の build を同じ PR で直す（verify-full-picture-scene2.js が落とす）。build が読む所だけを required にする。",
+  "$id": "full-picture-materials/2",
+  "type": "object",
+  "required": ["schemaVersion", "raceId", "date", "venueCode", "stage", "api", "db", "missing"],
+  "properties": {
+    "schemaVersion": { "$comment": "/2 は race に seriesDayText・raceTitle を足した版（BOA-1310）。/1 の材料（fixtures）もそのまま通す", "enum": ["full-picture-materials/1", "full-picture-materials/2"] },
+    "raceId": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}-\\d{2}-\\d{2}$" },
+    "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "venueCode": { "type": "integer", "minimum": 1, "maximum": 24 },
+    "stage": { "enum": ["racecard", "exhibition"] },
+    "race": {
+      "$comment": "締切（races.start_time）とグレード（races.race_grade）。見出しに使うだけで、無ければ締切・グレードを書かない（BOA-989）。/2 から何日目の文 seriesDayText（初日・N日目・最終日、画面と同じ規則）と大会名 raceTitle（SG・G1 だけ、NFKC）。どちらも scripts/lib/raceSeriesLabels.js（BOA-1309）",
+      "type": ["object", "null"],
+      "properties": {
+        "startTime": { "type": ["string", "null"] },
+        "grade": { "type": ["string", "null"] },
+        "seriesDayText": { "type": ["string", "null"] },
+        "raceTitle": { "type": ["string", "null"] }
+      }
+    },
+    "api": {
+      "type": "object",
+      "required": ["facts", "similar", "scenario", "races", "outcome"],
+      "properties": {
+        "facts": {
+          "type": ["object", "null"],
+          "required": ["today", "facts"],
+          "properties": {
+            "today": { "type": "object", "required": ["scope_keys"], "properties": { "scope_keys": { "type": "object" } } },
+            "facts": { "type": "object" }
+          }
+        },
+        "similar": {
+          "type": ["object", "null"],
+          "required": ["similar"],
+          "properties": {
+            "similar": {
+              "type": ["object", "null"],
+              "required": ["neighbors"],
+              "properties": {
+                "neighbors": { "type": "array", "items": { "type": "object", "required": ["race_id", "finish"], "properties": { "race_id": { "type": "string" }, "finish": { "type": ["array", "null"] } } } }
+              }
+            }
+          }
+        },
+        "scenario": { "$ref": "#/definitions/scenario" },
+        "scenarioNC": { "$ref": "#/definitions/scenario" },
+        "scenarioNCR": { "$ref": "#/definitions/scenario" },
+        "scenarioNA": { "$ref": "#/definitions/scenario" },
+        "scenarioVA": { "$ref": "#/definitions/scenario" },
+        "races": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "object",
+            "required": ["raceId", "raceNumber", "entries"],
+            "properties": {
+              "raceId": { "type": "string" },
+              "raceNumber": { "type": "integer" },
+              "entries": { "type": ["array", "null"] },
+              "weather": { "type": ["object", "null"] },
+              "exhibitionData": { "type": ["array", "null"] },
+              "result": { "type": ["object", "null"] }
+            }
+          }
+        },
+        "outcome": {
+          "type": "object",
+          "additionalProperties": {
+            "type": ["object", "null"],
+            "required": ["total_races", "data"],
+            "properties": { "total_races": { "type": "integer" }, "data": { "type": "object" } }
+          }
+        }
+      }
+    },
+    "db": {
+      "type": "object",
+      "required": ["racer1", "motor"],
+      "properties": {
+        "racer1": {
+          "type": ["object", "null"],
+          "required": ["entries", "races", "results", "st"],
+          "properties": { "entries": { "type": "array" }, "races": { "type": "array" }, "results": { "type": "array" }, "st": { "type": "array" } }
+        },
+        "motor": {
+          "type": ["object", "null"],
+          "required": ["meetStart", "pretest", "stats", "meetEntries", "exhibition"],
+          "properties": { "pretest": { "type": "array" }, "stats": { "type": "array" }, "meetEntries": { "type": "array" }, "exhibition": { "type": "array" } }
+        },
+        "exhibition": {
+          "$comment": "展示の後の材料（stage=exhibition のときだけ。展示の前の材料には無い）。足しただけで build はまだ読まないので required にしない（版は上げない）。欠けた欄は null で、missing に db.exhibition.* で記録する。start_flag・parts_changed・propeller_change の null は「表示なし」で欠けではない",
+          "type": ["object", "null"],
+          "required": ["boats", "conditions", "technique"],
+          "properties": {
+            "boats": {
+              "type": ["array", "null"],
+              "items": {
+                "type": "object",
+                "required": ["boat_number", "exhibition_course", "start_timing", "start_flag", "exhibition_time", "tilt", "parts_changed", "propeller_change", "is_absent", "updated_at", "f_count", "meet_finishes"],
+                "properties": {
+                  "boat_number": { "type": "integer", "minimum": 1, "maximum": 6 },
+                  "exhibition_course": { "type": ["integer", "null"], "minimum": 1, "maximum": 6 },
+                  "start_timing": { "type": ["number", "null"] },
+                  "start_flag": { "type": ["string", "null"] },
+                  "exhibition_time": { "type": ["number", "null"] },
+                  "tilt": { "type": ["number", "null"] },
+                  "parts_changed": { "type": ["array", "null"], "items": { "type": "string" } },
+                  "propeller_change": { "type": ["string", "null"] },
+                  "is_absent": { "type": ["boolean", "null"] },
+                  "updated_at": { "type": ["string", "null"] },
+                  "f_count": { "type": ["integer", "null"], "minimum": 0 },
+                  "today_weight": { "$comment": "exhibition_data.today_weight（展示の体重 kg）。任意の欄", "type": ["number", "null"] },
+                  "racer_id": { "type": ["integer", "null"] },
+                  "course": { "$comment": "進入コース。exhibition_course があればそれ、無ければ枠番（course_source に書く）。任意の欄", "type": "integer", "minimum": 1, "maximum": 6 },
+                  "course_source": { "enum": ["exhibition_course", "boat_number"] },
+                  "course_technique": {
+                    "$comment": "racer_course_technique_stats（racer_id, course）の行。最新の集計だけで、レースの日より後の集計なら missing に記録する。任意の欄",
+                    "type": ["object", "null"],
+                    "required": ["window_start", "window_end", "runs", "makuri_count", "makuri_rate", "runs_90d", "last_updated"],
+                    "properties": {
+                      "window_start": { "type": "string" },
+                      "window_end": { "type": "string" },
+                      "window_days": { "type": ["integer", "null"] },
+                      "runs": { "type": "integer", "minimum": 0 },
+                      "nige_count": { "type": ["integer", "null"] },
+                      "nige_rate": { "type": ["number", "null"] },
+                      "makuri_count": { "type": ["integer", "null"] },
+                      "makuri_rate": { "type": ["number", "null"] },
+                      "nigashi_count": { "type": ["integer", "null"] },
+                      "nigashi_rate": { "type": ["number", "null"] },
+                      "runs_90d": { "type": ["integer", "null"], "minimum": 0 },
+                      "nige_rate_90d": { "type": ["number", "null"] },
+                      "makuri_rate_90d": { "type": ["number", "null"] },
+                      "nigashi_rate_90d": { "type": ["number", "null"] },
+                      "last_updated": { "type": "string" }
+                    }
+                  },
+                  "period_course": {
+                    "$comment": "racer_period_stats の calc_to < レースの日 の最新の期の cN_*（N=course）。p1〜p3 は1〜3着の回数。任意の欄",
+                    "type": ["object", "null"],
+                    "required": ["period_year", "period_no", "calc_to", "course"],
+                    "properties": {
+                      "period_year": { "type": "integer" },
+                      "period_no": { "type": "integer" },
+                      "calc_to": { "type": "string" },
+                      "course": { "type": "integer", "minimum": 1, "maximum": 6 },
+                      "entries": { "type": ["integer", "null"] },
+                      "avg_st": { "type": ["number", "null"] },
+                      "avg_start_rank": { "type": ["number", "null"] },
+                      "f": { "type": ["integer", "null"] },
+                      "l0": { "type": ["integer", "null"] },
+                      "l1": { "type": ["integer", "null"] },
+                      "p1": { "type": ["integer", "null"] },
+                      "p2": { "type": ["integer", "null"] },
+                      "p3": { "type": ["integer", "null"] }
+                    }
+                  },
+                  "attack_defense": {
+                    "$comment": "画面の超展開データ（AttackDefenseTable、src/utils/attackDefenseCells.js）と同じ値。枠番（実進入コースでない）、予想（standard の最新）の時点。value は選手の値として使えるものだけ（全国平均から出た値は null、画面の文字は screen_value）。任意の欄",
+                    "type": ["object", "null"],
+                    "required": ["basis", "role", "wins", "total", "cells", "exhibition_course_differs"],
+                    "properties": {
+                      "basis": { "const": "boat_number" },
+                      "role": { "enum": ["defense", "attack"] },
+                      "wins": { "type": "integer", "minimum": 0 },
+                      "total": { "type": "integer", "minimum": 0 },
+                      "cells": {
+                        "type": "object",
+                        "required": ["nige", "sashi", "makuri", "makurizashi", "other"],
+                        "additionalProperties": {
+                          "type": "object",
+                          "required": ["value", "state", "screen_value"],
+                          "properties": {
+                            "value": { "type": ["string", "null"] },
+                            "state": { "enum": ["value", "reference", "national_default", "national_default_distribution", "no_distribution", "none"] },
+                            "screen_value": { "type": ["string", "null"] }
+                          }
+                        }
+                      },
+                      "exhibition_course_differs": { "type": "boolean" },
+                      "predicted_at": { "type": ["string", "null"] }
+                    }
+                  },
+                  "st_consideration": {
+                    "$comment": "画面の ST考察（computeStConsideration）と同じ値。このレースより前の730日の、実進入コースが course（枠番＝画面の枠なり想定）の走。late_rate は最速より0.10以上遅い率で公式の L ではない。任意の欄",
+                    "type": ["object", "null"],
+                    "required": ["course", "course_basis", "grade", "since", "n", "stable_rate", "late_rate", "breakout_count", "avg_st", "flying_count", "baseline"],
+                    "properties": {
+                      "course": { "type": "integer", "minimum": 1, "maximum": 6 },
+                      "course_basis": { "const": "boat_number" },
+                      "grade": { "type": ["string", "null"] },
+                      "since": { "type": "string" },
+                      "n": { "type": "integer", "minimum": 0 },
+                      "small_sample": { "type": "boolean" },
+                      "stable_rate": { "type": ["number", "null"] },
+                      "late_rate": { "type": ["number", "null"] },
+                      "breakout_count": { "type": ["integer", "null"] },
+                      "avg_st": { "type": ["number", "null"] },
+                      "flying_count": { "type": "integer", "minimum": 0 },
+                      "baseline": { "type": ["object", "null"] }
+                    }
+                  },
+                  "st_stability": {
+                    "$comment": "画面に無い値。st_consideration と同じ走の、そのコースの直近30走（欠場を除く）の窓の F・L 以外の ST の母標準偏差（有効2走以上）と公式の L の回数。任意の欄",
+                    "type": ["object", "null"],
+                    "required": ["course", "window_runs", "valid_runs", "st_stddev", "official_l_count"],
+                    "properties": {
+                      "course": { "type": "integer", "minimum": 1, "maximum": 6 },
+                      "window_runs": { "type": "integer", "minimum": 0, "maximum": 30 },
+                      "valid_runs": { "type": "integer", "minimum": 0, "maximum": 30 },
+                      "st_stddev": { "type": ["number", "null"], "minimum": 0 },
+                      "official_l_count": { "type": "integer", "minimum": 0 },
+                      "since": { "type": ["string", "null"] }
+                    }
+                  },
+                  "condition_rows": {
+                    "$comment": "基本情報タブの条件別の表（buildConditionRows）と同じ値。キーは national・local・ippan・sgg1・firstDay・finalDay・wave5・fHolding・fClean。行が null は race_conditions が読めず画面も出さない。率は%の1桁、avg_st は2桁。任意の欄",
+                    "type": ["object", "null"],
+                    "additionalProperties": { "$ref": "#/definitions/conditionRow" }
+                  },
+                  "condition_stats": {
+                    "$comment": "選手ページのレース条件別の成績（aggregateRacerConditionStats）と同じ値。rows は5走以上の条件だけ（windStrong＝風5m以上、waveRough＝波5cm以上）。率は%の1桁。任意の欄",
+                    "type": ["object", "null"],
+                    "required": ["since", "overall", "rows"],
+                    "properties": {
+                      "since": { "type": ["string", "null"] },
+                      "overall": { "$ref": "#/definitions/rateRow" },
+                      "rows": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "object",
+                          "required": ["group", "label", "n", "win_rate", "top2_rate", "top3_rate"],
+                          "properties": {
+                            "group": { "type": "string" },
+                            "label": { "type": "string" },
+                            "n": { "type": "integer", "minimum": 0 },
+                            "win_rate": { "type": ["number", "null"] },
+                            "top2_rate": { "type": ["number", "null"] },
+                            "top3_rate": { "type": ["number", "null"] }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "meet_results": {
+                    "$comment": "今節タブの日別の走りの表（buildMeetResults・getRecentRaces）と同じ行。決まり手は1着の走だけ。任意の欄",
+                    "type": ["array", "null"],
+                    "items": {
+                      "type": "object",
+                      "required": ["race_id", "date", "boat_number", "entry_course", "start_timing", "is_flying", "finish_rank", "finish_mark", "absent", "winning_technique", "race_stage"],
+                      "properties": {
+                        "race_id": { "type": "string" },
+                        "date": { "type": "string" },
+                        "race_no": { "type": ["integer", "null"] },
+                        "boat_number": { "type": "integer", "minimum": 1, "maximum": 6 },
+                        "entry_course": { "type": ["integer", "null"], "minimum": 1, "maximum": 6 },
+                        "start_timing": { "type": ["number", "null"] },
+                        "is_flying": { "type": "boolean" },
+                        "finish_rank": { "type": ["integer", "null"], "minimum": 1, "maximum": 6 },
+                        "finish_mark": { "type": ["string", "null"] },
+                        "absent": { "type": "boolean" },
+                        "winning_technique": { "type": ["string", "null"] },
+                        "race_stage": { "type": ["string", "null"] },
+                        "race_title": { "type": ["string", "null"] },
+                        "exhibition_time": { "type": ["number", "null"] },
+                        "exhibition_rank": { "type": ["integer", "null"] }
+                      }
+                    }
+                  },
+                  "entry_distribution": {
+                    "$comment": "直前情報タブのこの枠からの進入コース（computeFrameEntryDistribution）。inward_rate が前づけ%。waku_nari は枠情報タブの枠なり進入率（computeWakuNariRate、全枠）。任意の欄",
+                    "type": ["object", "null"],
+                    "required": ["frame", "n", "counts", "waku_rate", "inward_rate", "outward_rate", "waku_nari"],
+                    "properties": {
+                      "frame": { "type": "integer", "minimum": 1, "maximum": 6 },
+                      "n": { "type": "integer", "minimum": 0 },
+                      "counts": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
+                      "waku_rate": { "type": ["number", "null"] },
+                      "inward_rate": { "type": ["number", "null"] },
+                      "outward_rate": { "type": ["number", "null"] },
+                      "waku_nari": {
+                        "type": "object",
+                        "required": ["rate", "n"],
+                        "properties": { "rate": { "type": ["number", "null"] }, "n": { "type": "integer", "minimum": 0 } }
+                      }
+                    }
+                  },
+                  "accident": {
+                    "$comment": "基本情報タブの今期の事故率（RPC get_racer_accident_records・computeAccidentStats）。rate は小数第2位で切り捨て。任意の欄",
+                    "type": ["object", "null"],
+                    "required": ["from", "to", "starts", "points", "rate", "need", "counts", "status", "settled", "show_badge"],
+                    "properties": {
+                      "from": { "type": "string" },
+                      "to": { "type": "string" },
+                      "starts": { "type": "integer", "minimum": 0 },
+                      "points": { "type": "integer", "minimum": 0 },
+                      "rate": { "type": ["number", "null"] },
+                      "need": { "type": "integer", "minimum": 0 },
+                      "counts": {
+                        "type": "object",
+                        "required": ["F", "L1", "K1", "S1", "S2"],
+                        "additionalProperties": { "type": "integer", "minimum": 0 }
+                      },
+                      "status": { "enum": ["over", "near", null] },
+                      "settled": { "type": "boolean" },
+                      "show_badge": { "type": "boolean" }
+                    }
+                  },
+                  "original_exhibition": {
+                    "$comment": "オリジナル展示（getRaceOriginalExhibition と同じ表と整形）。キーは項目名（一周・半周ラップ・まわり足・直線と会場の項目）。行が無い（未公開）レースは null。任意の欄",
+                    "type": ["object", "null"],
+                    "additionalProperties": {
+                      "type": "object",
+                      "required": ["value", "status"],
+                      "properties": {
+                        "value": { "type": ["number", "null"] },
+                        "status": { "enum": ["value", "no_value", "not_offered"] }
+                      }
+                    }
+                  },
+                  "entry_tendency": {
+                    "$comment": "racer_aggregated_stats（venue_code=0＝全国）の course_entry_tendency.all のこの枠の {n, courses}（courses はコース→回数）と since。facts の racers.boats[].course_entry から写す。venue は会場の分（無ければ null）。任意の欄",
+                    "type": ["object", "null"],
+                    "required": ["boat_number", "n", "courses", "since"],
+                    "properties": {
+                      "boat_number": { "type": "integer", "minimum": 1, "maximum": 6 },
+                      "n": { "type": ["integer", "null"] },
+                      "courses": { "type": ["object", "null"] },
+                      "venue": { "type": ["object", "null"] },
+                      "since": { "type": ["string", "null"] },
+                      "calculated_at": { "type": ["string", "null"] }
+                    }
+                  },
+                  "final_race_record": {
+                    "$comment": "本人の優勝戦（race_stage・stage が '優勝戦' の完全一致）の、このレースより前（before）の成績。窓は本体と kb_archive を合わせ、読めなかった窓は windows の read=false・complete=false。不成立・中止・結果なしは除き（excluded_races）、欠場は走数に入れず（absent_runs）、F・L は走数に入れ1着にしない（fl_runs）。率は%の1桁。画面に無い値。任意の欄",
+                    "type": ["object", "null"],
+                    "required": ["stage", "before", "windows", "complete", "runs", "wins", "win_rate", "boat1_runs", "boat1_wins", "boat1_win_rate", "fl_runs", "absent_runs", "excluded_races", "rides"],
+                    "properties": {
+                      "stage": { "const": "優勝戦" },
+                      "before": { "type": "string" },
+                      "windows": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": ["source", "from", "to", "read"],
+                          "properties": { "source": { "enum": ["races", "kb_archive"] }, "from": { "type": ["string", "null"] }, "to": { "type": ["string", "null"] }, "read": { "type": "boolean" } }
+                        }
+                      },
+                      "complete": { "type": "boolean" },
+                      "runs": { "type": "integer", "minimum": 0 },
+                      "wins": { "type": "integer", "minimum": 0 },
+                      "win_rate": { "type": ["number", "null"] },
+                      "boat1_runs": { "type": "integer", "minimum": 0 },
+                      "boat1_wins": { "type": "integer", "minimum": 0 },
+                      "boat1_win_rate": { "type": ["number", "null"] },
+                      "fl_runs": { "type": "integer", "minimum": 0 },
+                      "absent_runs": { "type": "integer", "minimum": 0 },
+                      "excluded_races": {
+                        "type": "object",
+                        "required": ["no_result", "no_race", "cancelled"],
+                        "additionalProperties": { "type": "integer", "minimum": 0 }
+                      },
+                      "rides": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": ["race_id", "boat_number", "kind", "source"],
+                          "properties": { "race_id": { "type": "string" }, "boat_number": { "type": "integer", "minimum": 1, "maximum": 6 }, "kind": { "enum": ["win", "run", "fl", "absent"] }, "source": { "enum": ["races", "kb_archive"] } }
+                        }
+                      }
+                    }
+                  },
+                  "period_finals": {
+                    "$comment": "racer_period_stats の finals（優出回数）・wins（優勝回数）。latest は calc_to < レースの日 の最新の期、last4 は新しい順の4期の合計（そろわなければ periods_count<4、finals・wins の無い期があれば合計は null）。任意の欄",
+                    "type": ["object", "null"],
+                    "required": ["latest", "last4"],
+                    "properties": {
+                      "latest": {
+                        "type": ["object", "null"],
+                        "required": ["period_year", "period_no", "calc_from", "calc_to", "finals", "wins"],
+                        "properties": { "period_year": { "type": "integer" }, "period_no": { "type": "integer" }, "calc_from": { "type": "string" }, "calc_to": { "type": "string" }, "starts": { "type": ["integer", "null"] }, "finals": { "type": ["integer", "null"] }, "wins": { "type": ["integer", "null"] } }
+                      },
+                      "last4": {
+                        "type": "object",
+                        "required": ["periods_count", "from", "to", "finals", "wins", "periods"],
+                        "properties": {
+                          "periods_count": { "type": "integer", "minimum": 0, "maximum": 4 },
+                          "from": { "type": ["string", "null"] },
+                          "to": { "type": ["string", "null"] },
+                          "finals": { "type": ["integer", "null"] },
+                          "wins": { "type": ["integer", "null"] },
+                          "periods": { "type": "array", "items": { "type": "object", "required": ["period_year", "period_no"] } }
+                        }
+                      }
+                    }
+                  },
+                  "meet_finishes": {
+                    "type": ["array", "null"],
+                    "items": {
+                      "type": "object",
+                      "required": ["race_id", "finish_mark", "finish_rank"],
+                      "properties": { "race_id": { "type": "string" }, "finish_mark": { "type": ["string", "null"] }, "finish_rank": { "type": ["integer", "null"] } }
+                    }
+                  }
+                }
+              }
+            },
+            "conditions": {
+              "type": ["object", "null"],
+              "required": ["weather", "wind_direction", "wind_speed", "wave_height", "observedAt"],
+              "properties": {
+                "weather": { "type": ["string", "null"] },
+                "wind_direction": { "type": ["string", "null"] },
+                "wind_speed": { "type": ["number", "null"] },
+                "wave_height": { "type": ["number", "null"] },
+                "observedAt": { "type": ["string", "null"] }
+              }
+            },
+            "technique": {
+              "type": ["object", "null"],
+              "required": ["byPeriod", "byBoat"],
+              "properties": { "byPeriod": { "type": "array" }, "byBoat": { "type": "array" } }
+            },
+            "notes": { "$comment": "材料を読む側への注意（日付の無い表など）。任意の欄", "type": "array", "items": { "type": "string" } },
+            "losingTechnique": {
+              "$comment": "会場の負けの決まり手（losing_technique_stats、90日・会場×枠。LosingTechniqueChart と同じまとめ）。by_boat のキーは枠番。任意の欄",
+              "type": ["object", "null"],
+              "required": ["last_updated", "by_boat"],
+              "properties": {
+                "last_updated": { "type": ["string", "null"] },
+                "by_boat": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "required": ["total_races", "techniques"],
+                    "properties": {
+                      "total_races": { "type": "integer", "minimum": 0 },
+                      "techniques": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": ["technique", "count", "percentage"],
+                          "properties": { "technique": { "type": "string" }, "count": { "type": "integer", "minimum": 0 }, "percentage": { "type": "number" } }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "originalExhibition": {
+              "$comment": "オリジナル展示のレースの状態。state: published（値あり）・empty（値が1つも無い）・no_row（行が無い＝未公開・未取得）。measure_status 1=計測あり・2=計測不可。任意の欄",
+              "type": ["object", "null"],
+              "required": ["state", "measure_status", "item_labels", "kinds", "captured_at"],
+              "properties": {
+                "state": { "enum": ["published", "empty", "no_row"] },
+                "measure_status": { "enum": [1, 2, null] },
+                "item_labels": { "type": "array", "items": { "type": "string" } },
+                "kinds": { "type": "array", "items": { "type": "string" } },
+                "captured_at": { "type": ["string", "null"] },
+                "last_written_at": { "type": ["string", "null"] }
+              }
+            },
+            "venueCourse": {
+              "$comment": "venue_course_technique_baseline の会場・レースのグレード（無ければ ippan）の6コース（courses）と、グレードを問わない ALL の6コース（all）。行の無いコースは null。任意の欄",
+              "type": ["object", "null"],
+              "required": ["race_grade", "courses", "all"],
+              "properties": {
+                "race_grade": { "type": "string" },
+                "courses": { "type": "array", "items": { "$ref": "#/definitions/venueCourseRow" } },
+                "all": { "type": "array", "items": { "$ref": "#/definitions/venueCourseRow" } }
+              }
+            },
+            "nationalCourse": {
+              "$comment": "全国×実進入コースの逃げ率・まくり率・逃がし率（venueCourse と同じ表 venue_course_technique_baseline・同じ窓・同じグレードと ALL の6コース）。表に全国の行は無いので、24会場の行の率×runs から戻した回数と runs を足す（nationalCourseOf）。朝の一覧（/today）の会場平均と同じ表の全国版で、画面に全国の値は無い。任意の欄",
+              "type": ["object", "null"],
+              "required": ["race_grade", "courses", "all"],
+              "properties": {
+                "race_grade": { "enum": ["SG", "G1", "G2", "G3", "ippan", "ALL"] },
+                "courses": { "type": "array", "items": { "$ref": "#/definitions/nationalCourseRow" } },
+                "all": { "type": "array", "items": { "$ref": "#/definitions/nationalCourseRow" } }
+              }
+            },
+            "venueBoat": {
+              "$comment": "会場×枠の1着率・2連率・3連率と決まり手。会場ページの会場特徴カード（VenueCharacteristicsCard・もっと詳しく VenueCharacteristicsDetails）と同じ表（outcome_distribution・winning_technique_stats、90日）と同じ関数（placeRatesByBoat・techniqueBreakdown）。by_boat のキーは枠番。任意の欄",
+              "type": ["object", "null"],
+              "required": ["total_races", "last_updated", "technique_last_updated", "by_boat"],
+              "properties": {
+                "total_races": { "type": ["integer", "null"], "minimum": 0 },
+                "last_updated": { "type": ["string", "null"] },
+                "technique_last_updated": { "type": ["string", "null"] },
+                "by_boat": { "type": "object", "additionalProperties": { "$ref": "#/definitions/boatTendency" } }
+              }
+            },
+            "nationalBoat": {
+              "$comment": "全国×枠の1着率（会場特徴カードの全国平均の目盛りと同じ nationalWinRateByBoat、24会場の outcome_distribution のプール。元は api.outcome）と決まり手（画面に無い。24会場の winning_technique_stats の回数のプール）。90日。by_boat のキーは枠番。任意の欄",
+              "type": ["object", "null"],
+              "required": ["count_total", "total_races", "venues", "technique_venues", "last_updated", "technique_last_updated", "by_boat"],
+              "properties": {
+                "count_total": { "$comment": "1着率の分母（24会場の3連単の組の件数の合計。画面の全国平均と同じ）", "type": ["integer", "null"], "minimum": 0 },
+                "total_races": { "type": ["integer", "null"], "minimum": 0 },
+                "venues": { "type": ["integer", "null"], "minimum": 0 },
+                "technique_venues": { "type": ["integer", "null"], "minimum": 0 },
+                "last_updated": { "type": ["string", "null"] },
+                "technique_last_updated": { "type": ["string", "null"] },
+                "by_boat": { "type": "object", "additionalProperties": { "$ref": "#/definitions/boatTendency" } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "missing": { "type": "array", "items": { "type": "object", "required": ["source", "reason"], "properties": { "source": { "type": "string" }, "reason": { "type": "string" } } } }
+  },
+  "definitions": {
+    "rateRow": {
+      "type": "object",
+      "required": ["n", "win_rate", "top2_rate", "top3_rate"],
+      "properties": {
+        "n": { "type": "integer", "minimum": 0 },
+        "win_rate": { "type": ["number", "null"] },
+        "top2_rate": { "type": ["number", "null"] },
+        "top3_rate": { "type": ["number", "null"] }
+      }
+    },
+    "conditionRow": {
+      "type": ["object", "null"],
+      "required": ["n", "base_n", "win_rate", "top2_rate", "top3_rate", "avg_st", "avg_st_n"],
+      "properties": {
+        "n": { "type": "integer", "minimum": 0 },
+        "base_n": { "type": ["integer", "null"], "minimum": 0 },
+        "excluded_n": { "type": ["integer", "null"], "minimum": 0 },
+        "win_rate": { "type": ["number", "null"] },
+        "top2_rate": { "type": ["number", "null"] },
+        "top3_rate": { "type": ["number", "null"] },
+        "avg_st": { "type": ["number", "null"] },
+        "avg_st_n": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "venueCourseRow": {
+      "type": ["object", "null"],
+      "required": ["course", "runs", "nige_rate", "makuri_rate", "nigashi_rate", "window_start", "window_end"],
+      "properties": {
+        "course": { "type": "integer", "minimum": 1, "maximum": 6 },
+        "runs": { "type": "integer", "minimum": 0 },
+        "nige_rate": { "type": ["number", "null"] },
+        "makuri_rate": { "type": ["number", "null"] },
+        "nigashi_rate": { "type": ["number", "null"] },
+        "window_start": { "type": "string" },
+        "window_end": { "type": "string" },
+        "last_updated": { "type": ["string", "null"] }
+      }
+    },
+    "nationalCourseRow": {
+      "type": ["object", "null"],
+      "required": ["course", "runs", "venues", "nige_count", "nige_rate", "makuri_count", "makuri_rate", "nigashi_count", "nigashi_rate", "window_start", "window_end", "last_updated"],
+      "properties": {
+        "course": { "type": "integer", "minimum": 1, "maximum": 6 },
+        "runs": { "type": "integer", "minimum": 0 },
+        "venues": { "type": "integer", "minimum": 0, "maximum": 24 },
+        "nige_count": { "type": ["integer", "null"], "minimum": 0 },
+        "nige_rate": { "type": ["number", "null"] },
+        "makuri_count": { "type": "integer", "minimum": 0 },
+        "makuri_rate": { "type": "number" },
+        "nigashi_count": { "type": ["integer", "null"], "minimum": 0 },
+        "nigashi_rate": { "type": ["number", "null"] },
+        "window_start": { "type": "string" },
+        "window_end": { "type": "string" },
+        "last_updated": { "type": ["string", "null"] }
+      }
+    },
+    "boatTendency": {
+      "type": "object",
+      "required": ["win_rate", "technique_total", "techniques"],
+      "properties": {
+        "win_rate": { "type": ["number", "null"] },
+        "top2_rate": { "type": ["number", "null"] },
+        "top3_rate": { "type": ["number", "null"] },
+        "top_technique": {
+          "type": ["object", "null"],
+          "required": ["technique", "percentage"],
+          "properties": { "technique": { "type": "string" }, "percentage": { "type": "number" } }
+        },
+        "technique_total": { "type": ["integer", "null"], "minimum": 0 },
+        "techniques": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "object",
+            "required": ["technique", "count", "share"],
+            "properties": { "technique": { "type": "string" }, "count": { "type": "integer", "minimum": 0 }, "share": { "type": "number" } }
+          }
+        }
+      }
+    },
+    "scenario": {
+      "type": ["object", "null"],
+      "required": ["scenario"],
+      "properties": {
+        "scenario": {
+          "type": ["object", "null"],
+          "required": ["cells"],
+          "properties": { "cells": { "type": "object" }, "hints": { "type": ["object", "array", "null"] }, "attack": { "type": ["object", "null"] } }
+        }
+      }
+    }
+  }
+}

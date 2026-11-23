@@ -1,5 +1,6 @@
 /**
  * meetGrouping - 節（開催）のグルーピング共通ロジック
+ * groupIntoCurrentMeet・groupIntoMeetBeforeRace の本体は src/pure/meetGrouping.js
  *
  * 節の範囲はrace_idの日付部分の連続性で推定する（モーターは節単位で入れ替わる
  * ため、日付が連続していれば同じ節とみなせる）。racerService.jsのモーター使用
@@ -68,7 +69,7 @@
  *     （`groupIntoMeetBeforeRace`）
  *   - `getRacerMeetExhibitionTrendBefore`: 選手＋モーター番号＋**会場**＋表示中
  *     レースの目印（`groupIntoMeetBeforeRace`）
- *   - `racerService.getCurrentMeetRaceEntries`: 選手＋モーター番号＋**会場**＋直近30走
+ *   - `currentMeetEntries.fetchCurrentMeetRaceEntries`: 選手＋モーター番号＋**会場**＋直近30走
  *
  * **モーター番号は会場フィルタの代わりにならない**。番号は会場ごとに振られるので、
  * 別会場の同じ番号のモーターの節が混ざる（BOA-591: 2026-09-21 津1Rで、節の初戦の
@@ -84,59 +85,12 @@
  * 節の開始日を求めるだけなら当日のnullは問題にならない）。
  */
 
-/**
- * race_id昇順ソート済みの配列を受け取り、末尾（最新）から遡って日付の間隔が
- * maxGapDays以下の連続区間のみを1節として抜き出す
- * @param {Array<{race_id: string}>} sortedAscEntries - race_id（YYYY-MM-DD-VV-RR）昇順ソート済み
- * @param {number} maxGapDays - この日数を超えて空いたら別節とみなす
- * @returns {Array} 抜き出した節（昇順のまま）
- */
-export function groupIntoCurrentMeet(sortedAscEntries, maxGapDays = 2) {
-  if (!sortedAscEntries || sortedAscEntries.length === 0) return [];
-  const meet = [sortedAscEntries[sortedAscEntries.length - 1]];
-  for (let i = sortedAscEntries.length - 2; i >= 0; i--) {
-    const currentDate = new Date(meet[0].race_id.slice(0, 10));
-    const prevDate = new Date(sortedAscEntries[i].race_id.slice(0, 10));
-    const diffDays = (currentDate - prevDate) / (1000 * 60 * 60 * 24);
-    if (diffDays > maxGapDays) break;
-    meet.unshift(sortedAscEntries[i]);
-  }
-  return meet;
-}
+import {
+  groupIntoCurrentMeet,
+  groupIntoMeetBeforeRace,
+} from "../pure/meetGrouping.js";
 
-/**
- * 表示中のレース（`beforeRaceId`）と**同じ会場・同じ節**で、それより前の走だけを
- * 抜き出す（純関数、BOA-591）。
- *
- * `groupIntoCurrentMeet` をそのまま呼ぶと2つずれる。
- *
- * 1. **会場で絞らない**と、別会場の節が地続きのとき1つの節として繋がる。race_id の
- *    会場コード（`YYYY-MM-DD-VV-RR` の VV）で絞る
- * 2. **表示中のレースを目印に足さない**と「表示中のレースより前の最後のまとまり」を
- *    返す。節の初戦（今節の走がまだ無い）で、何ヶ月も前の前の節を今節として拾う
- *
- * @param {Array<{race_id: string}>} entries 1選手分。順序は問わない
- * @param {string} beforeRaceId 表示中のレース（`YYYY-MM-DD-VV-RR`）。結果には含めない
- * @returns {Array} 抜き出した走（race_id 昇順、入力の要素そのまま）
- */
-export function groupIntoMeetBeforeRace(entries, beforeRaceId) {
-  if (!Array.isArray(entries) || typeof beforeRaceId !== "string") return [];
-  const venue = beforeRaceId.slice(11, 13);
-  if (!venue) return [];
-  const upto = entries
-    .filter(
-      (e) =>
-        typeof e?.race_id === "string" &&
-        e.race_id.slice(11, 13) === venue &&
-        // **表示中のレースより前**だけ。日付単位（`<=` 同じ日）で切ると、5Rを見て
-        // いるのに同じ日の9Rが入る（2026-09-20 桐生5Rで発生）。race_id は固定長
-        // なので文字列比較でレース単位に切れる
-        e.race_id < beforeRaceId,
-    )
-    .sort((a, b) => a.race_id.localeCompare(b.race_id));
-  const ANCHOR = { race_id: beforeRaceId };
-  return groupIntoCurrentMeet([...upto, ANCHOR]).filter((e) => e !== ANCHOR);
-}
+export { groupIntoCurrentMeet, groupIntoMeetBeforeRace };
 
 /**
  * `series_day` から「表示中の日を含む節の初日」を求める（純関数、BOA-508）。
@@ -180,45 +134,50 @@ export function findMeetStartDate(days, targetDate) {
   const sorted = [...days].sort((a, b) => a.date.localeCompare(b.date));
 
   let meetStart = sorted[0].date;
-  let prevSeriesDay = null;
-  let prevDate = null;
   let answer = null;
-
-  let prevIsFinalDay = null;
+  // 直前の開催日の値（seriesDay・isFinalDay・date）。最初は無い
+  const prev = { seriesDay: null, isFinalDay: null, date: null };
 
   for (const d of sorted) {
-    const gapDays =
-      prevDate === null
-        ? 0
-        : (new Date(`${d.date}T00:00:00Z`) -
-            new Date(`${prevDate}T00:00:00Z`)) /
-          86400000;
-    // **前の日が節の最終日なら、そこが境目**。これがいちばん強い根拠で、
-    // `series_day` の増減にも日付の空きにも左右されない
-    const startsByFinalDay = prevIsFinalDay === true;
-    const startsBySeriesDay =
-      d.seriesDay != null &&
-      (d.seriesDay === 1 ||
-        (prevSeriesDay != null && d.seriesDay < prevSeriesDay));
-    // 前の開催日から2日以上空いた。**他の2つと並べて、条件を絞らずに使う**。
-    // 本番の `race_conditions` 全件（36,641行）で空き2日以上は537箇所あり、
-    // **537箇所すべてが節の境目**だった（「節の続きなのに空いている」は0件）。
-    // うち3箇所は前の日に `is_final_day` が立っておらず、空きか `series_day=1`
-    // でしか切れない。逆に「種別が取れているときは空きを見ない」と絞ると、
-    // その3箇所で節を跨ぐ（`is_final_day: false` は「最終日でない」ではなく
-    // 「印が付いていない」のこともある、が根拠）
-    const startsByGap = prevDate !== null && gapDays >= 2;
-    if (startsByFinalDay || startsBySeriesDay || startsByGap)
-      meetStart = d.date;
+    if (startsNewMeet(d, prev)) meetStart = d.date;
     // 表示日以前で最後に見た節の初日が答え。表示日の行が無くても遡れる
     if (d.date <= targetDate) answer = meetStart;
     // 当日の `series_day` / `is_final_day` は取得前で null のことがある。
     // null は「分からない」であって「続き」ではないので、直前の値は上書きしない
-    if (d.seriesDay != null) prevSeriesDay = d.seriesDay;
-    prevIsFinalDay = d.isFinalDay ?? null;
-    prevDate = d.date;
+    if (d.seriesDay != null) prev.seriesDay = d.seriesDay;
+    prev.isFinalDay = d.isFinalDay ?? null;
+    prev.date = d.date;
   }
   return answer ?? meetStart;
+}
+
+/** 前の開催日から d.date までの空き（日）。前の日が無ければ 0 */
+function gapDaysFrom(prevDate, date) {
+  return prevDate === null
+    ? 0
+    : (new Date(`${date}T00:00:00Z`) - new Date(`${prevDate}T00:00:00Z`)) /
+        86400000;
+}
+
+/** 開催日 d が節の初日か（直前の日 prev の seriesDay・isFinalDay・date で判定） */
+function startsNewMeet(d, prev) {
+  const gapDays = gapDaysFrom(prev.date, d.date);
+  // **前の日が節の最終日なら、そこが境目**。これがいちばん強い根拠で、
+  // `series_day` の増減にも日付の空きにも左右されない
+  const startsByFinalDay = prev.isFinalDay === true;
+  const startsBySeriesDay =
+    d.seriesDay != null &&
+    (d.seriesDay === 1 ||
+      (prev.seriesDay != null && d.seriesDay < prev.seriesDay));
+  // 前の開催日から2日以上空いた。**他の2つと並べて、条件を絞らずに使う**。
+  // 本番の `race_conditions` 全件（36,641行）で空き2日以上は537箇所あり、
+  // **537箇所すべてが節の境目**だった（「節の続きなのに空いている」は0件）。
+  // うち3箇所は前の日に `is_final_day` が立っておらず、空きか `series_day=1`
+  // でしか切れない。逆に「種別が取れているときは空きを見ない」と絞ると、
+  // その3箇所で節を跨ぐ（`is_final_day: false` は「最終日でない」ではなく
+  // 「印が付いていない」のこともある、が根拠）
+  const startsByGap = prev.date !== null && gapDays >= 2;
+  return startsByFinalDay || startsBySeriesDay || startsByGap;
 }
 
 /**
@@ -266,4 +225,27 @@ export function meetDaysFromRows(dates, conditions) {
  */
 export function meetStartFromRows(dates, conditions, targetDate) {
   return findMeetStartDate(meetDaysFromRows(dates, conditions), targetDate);
+}
+
+/** 同一選手・会場・モーターの走（race_id 昇順）から今節の走を返す。 */
+export function groupCurrentMeetFromRows(sortedAscEntries, conditions) {
+  if (!sortedAscEntries?.length) return [];
+  const rows = conditions ?? [];
+  const targetDate = sortedAscEntries.at(-1).race_id.slice(0, 10);
+  // 開催日は種別の行の日付に、選手の出走日（対象日を含む）を合わせる。種別の行だけが欠けた日
+  // （race_conditions だけ書けなかった日）を、開催休み（空き2日以上で別の節）や前の節の続きと
+  // 誤らないため（BOA-861 の審査 P1・P2）。種別の行が1つも無いときは従来の推定に戻す。
+  const start = meetStartFromRows(
+    rows.length > 0
+      ? [
+          ...rows.map((row) => row.race_id.slice(0, 10)),
+          ...sortedAscEntries.map((e) => e.race_id.slice(0, 10)),
+        ]
+      : [],
+    rows,
+    targetDate,
+  );
+  return start === null
+    ? groupIntoCurrentMeet(sortedAscEntries)
+    : sortedAscEntries.filter((entry) => entry.race_id.slice(0, 10) >= start);
 }

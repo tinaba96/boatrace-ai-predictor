@@ -14,7 +14,7 @@ model: sonnet
 - `docs/knowledge/fan-reactions.md`（ブログでファンが良し悪しとしたこと。検索の意図の仮説に使う）
 
 あわせて正本を読む:
-- `.claude/rules/content-ops.md`（ブログ記事のルールと公開前品質チェック）
+- `docs/operation/content-pr-contract.md`（ブログ記事の決まり。`verify-content-pr-gate.js` が見る）
 - `docs/reference/seo-architecture-constraints.md`（SPA の制約。JS を実行しないクローラーに何が見えないか）
 - `docs/adr/0032-ai-crawler-snapshot-delivery.md`・`docs/adr/0089-bot-html-for-daily-pages.md`（ボット向けスナップショット。どの UA・どのページに配るか）
 
@@ -28,7 +28,7 @@ model: sonnet
   - 構造化データ: 記事が出す JSON-LD（Article・FAQPage 等）の型と中身が本文と合うか。出している場所（`src/pages/BlogPost.jsx`・`src/utils/blogFaqSchema.js`）をコードで確かめる
   - SPA とボット向け HTML: その SEO 施策が JS 実行後にしか効かないものか、ボット向けスナップショット（ADR 0032・0089）に入るかを区別する。翻訳記事はスナップショットの対象外であることなど、正本に書かれた範囲で判定する
 - 答えない
-  - 数値の正しさ、公開前6観点の合否（→ content-qa、集計は data-accuracy-verifier）
+  - 数値の正しさ、公開前7観点の合否（→ content-qa、集計は data-accuracy-verifier）
   - 禁止語・誇大・保証・射幸心の表現（→ wording-editor）
   - ファンとしての面白さ・分かりやすさ（→ boatrace-fan-reviewer・discussion-panel）
 
